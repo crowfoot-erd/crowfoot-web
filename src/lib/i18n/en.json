@@ -1,0 +1,499 @@
+{
+  "common": {
+    "appName": "Crowfoot",
+    "appTagline": "ERD Editor",
+    "footer": "© 2026 Crowfoot — ERD Editor",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "create": "Create",
+    "delete": "Delete",
+    "close": "Close",
+    "search": "Search",
+    "searchKeywordHint": "Please enter at least 2 characters",
+    "searching": "Searching…",
+    "total": "{{count}} total",
+    "memberCount": "{{count}} members",
+    "overview": "Overview",
+    "members": "Members",
+    "settings": "Settings",
+    "name": "Name",
+    "description": "Description",
+    "email": "Email",
+    "none": "-",
+    "createdAt": "Created",
+    "withdrawn": "Withdrawn",
+    "admin": "Admin",
+    "yes": "Yes",
+    "no": "No",
+    "saving": "Saving…",
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} of {{totalPages}}"
+    },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "language": {
+      "label": "Language",
+      "ko": "한국어",
+      "en": "English"
+    },
+    "role": {
+      "OWNER": "Owner",
+      "EDITOR": "Editor",
+      "COMMENTER": "Commenter",
+      "VIEWER": "Viewer",
+      "MEMBER": "Member"
+    },
+    "roleShort": {
+      "OWNER": "OWNER",
+      "EDITOR": "EDITOR",
+      "COMMENTER": "COMMENTER",
+      "VIEWER": "VIEWER",
+      "MEMBER": "MEMBER"
+    },
+    "granteeType": {
+      "USER": "User",
+      "TEAM": "Team"
+    },
+    "provider": {
+      "github": "GitHub",
+      "google": "Google"
+    },
+    "system": "System"
+  },
+  "errors": {
+    "message": {
+      "GENERIC": "A temporary error occurred. Please try again later.",
+      "NETWORK_ERROR": "Please check your network connection.",
+      "SERVICE_UNAVAILABLE": "A temporary error occurred. Please try again later.",
+      "INVALID_REQUEST": "The request is invalid. Please check your input.",
+      "RESOURCE_NOT_FOUND": "The requested resource was not found.",
+      "PERMISSION_DENIED": "Only the workspace owner can perform this action.",
+      "RATE_LIMITED": "Too many requests. Please try again later.",
+      "AUTH_TOKEN_INVALID": "You need to sign in.",
+      "AUTH_TOKEN_EXPIRED": "Your sign-in has expired.",
+      "AUTH_SESSION_REVOKED": "You were signed out from another device or the session ended. Please sign in again.",
+      "AUTH_STATE_INVALID": "The sign-in session is expired or invalid. Please sign in again.",
+      "AUTH_PROVIDER_ERROR": "Failed to communicate with the sign-in provider (GitHub/Google). Please try again later.",
+      "USER_WITHDRAWN": "This account is withdrawn and cannot sign in again.",
+      "WORKSPACE_NOT_FOUND": "Workspace not found.",
+      "WORKSPACE_NAME_DUPLICATED": "A workspace with this name already exists.",
+      "MEMBERSHIP_NOT_FOUND": "Membership not found. The list will be refreshed.",
+      "MEMBERSHIP_DUPLICATED": "Already added as a member.",
+      "LAST_OWNER_PROTECTED": "The last owner cannot be removed.",
+      "TEAM_NOT_FOUND": "Team not found.",
+      "TEAM_NAME_DUPLICATED": "A team with this name already exists.",
+      "TEAM_MEMBER_DUPLICATED": "Already a member of this team.",
+      "TEAM_MEMBER_NOT_FOUND": "Team member not found. The list will be refreshed.",
+      "USER_NOT_FOUND": "User not found.",
+      "SESSION_NOT_FOUND": "This session is already terminated. The list will be refreshed.",
+      "DUPLICATED_NAME": "A document with this name already exists."
+    },
+    "loadFailed": "Failed to load",
+    "bootstrapFailed": "Could not reach the server."
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to Crowfoot",
+      "description": "Draw ERDs with your GitHub account — edit and share with your team.",
+      "continueWith": "Continue with {{provider}}",
+      "noProviders": {
+        "title": "No sign-in methods available",
+        "description": "Please contact the administrator."
+      },
+      "loadFailed": "Failed to load sign-in methods."
+    },
+    "callback": {
+      "processing": "Signing in…",
+      "failedTitle": "Sign-in failed",
+      "backToLogin": "Back to sign in"
+    },
+    "logout": "Sign out",
+    "sessionExpired": {
+      "title": "You need to sign in",
+      "loginAgain": "Sign in again"
+    }
+  },
+  "shell": {
+    "nav": {
+      "workspaces": "Workspaces",
+      "teams": "Teams",
+      "admin": "Admin"
+    },
+    "sidebar": {
+      "title": "Workspaces",
+      "newWorkspace": "New workspace",
+      "adminTitle": "Admin",
+      "adminUsers": "Users",
+      "adminCodes": "Code tables",
+      "backToWorkspaces": "Back to workspaces",
+      "adminAuditLogs": "Audit logs",
+      "teamsTitle": "Teams",
+      "newTeam": "New team",
+      "ownedTeams": "Teams I own",
+      "joinedTeams": "Teams I'm in",
+      "noTeams": "You're not in any teams."
+    },
+    "userMenu": {
+      "signedInAs": "{{name}}",
+      "profile": "My profile",
+      "joinedAt": "Joined",
+      "linkedAccounts": "Linked accounts",
+      "logout": "Sign out"
+    },
+    "defaultBadge": "Default"
+  },
+  "dashboard": {
+    "greeting": "Hello, {{name}}",
+    "newWorkspace": "New workspace",
+    "cards": {
+      "workspaces": "Workspaces",
+      "teams": "Teams",
+      "joinedAsMember": "Joined as member"
+    },
+    "joinedAsMemberHint": "Workspaces you don't own",
+    "shortcuts": "Workspace shortcuts",
+    "viewAll": "View all",
+    "myTeams": "My teams",
+    "empty": {
+      "workspaces": {
+        "title": "No workspaces yet",
+        "description": "Create your first workspace to start designing ERDs."
+      },
+      "teams": {
+        "title": "No teams yet",
+        "description": "Create a team or wait for an invitation from a team owner."
+      }
+    }
+  },
+  "workspace": {
+    "list": {
+      "title": "Workspaces",
+      "myRole": "My role",
+      "members": "{{count}} members",
+      "empty": {
+        "title": "No workspaces yet",
+        "description": "Create your first workspace to start designing ERDs.",
+        "cta": "New workspace"
+      }
+    },
+    "create": {
+      "title": "New workspace",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Order service ERD",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "What is this workspace for?",
+      "notice": "This workspace is created as personal — you become its owner (OWNER).",
+      "submit": "Create",
+      "successToast": "Workspace created.",
+      "nameRequired": "Please enter a name."
+    },
+    "detail": {
+      "tabs": {
+        "erd": "ERD",
+        "overview": "Overview",
+        "members": "Members",
+        "settings": "Settings"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "memberCount": "Members",
+        "createdBy": "Created by",
+        "createdAt": "Created"
+      },
+      "settings": {
+        "save": "Save",
+        "saveSuccess": "Saved.",
+        "dangerZone": "Danger zone",
+        "deleteButton": "Delete workspace",
+        "deleteTitle": "Delete workspace",
+        "deleteDescription": "You are deleting workspace \"{{name}}\". This action cannot be undone.",
+        "deleteConfirm": "Delete",
+        "deleteSuccess": "Deleted."
+      },
+      "notFound": {
+        "title": "Workspace not found",
+        "description": "It was deleted or you don't have access.",
+        "back": "Back to workspaces"
+      }
+    },
+    "members": {
+      "title": "Members",
+      "addButton": "Add member",
+      "searchPlaceholder": "Search names·teams",
+      "empty": "No members.",
+      "table": {
+        "granteeType": "Type",
+        "grantee": "Grantee",
+        "role": "Role",
+        "grantedBy": "Granted by",
+        "grantedAt": "Granted",
+        "actions": "Actions"
+      },
+      "teamLink": "View team",
+      "changeRole": "Change role",
+      "roleChangedToast": "Role changed.",
+      "grantedOnCreation": "— (on creation)",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke membership",
+      "revokeDescription": "Revoke workspace access for \"{{name}}\".",
+      "revokeSuccess": "Revoked.",
+      "ownerNotice": "The owner (OWNER) cannot be changed or revoked.",
+      "addDialog": {
+        "title": "Add member",
+        "targetUser": "User",
+        "targetTeam": "Team",
+        "searchUsers": "Search users (name·email)",
+        "searchTeams": "Search teams",
+        "role": "Role",
+        "roleHint": "Owner (OWNER) cannot be granted.",
+        "submit": "Add",
+        "noResults": "No results.",
+        "successToast": "Membership added.",
+        "teamGrantNotice": "Granting to a team applies the same role to all of its members."
+      }
+    }
+  },
+  "team": {
+    "list": {
+      "title": "Teams",
+      "ownerBadge": "Team Owner",
+      "memberCount": "{{count}} members",
+      "empty": {
+        "title": "No teams yet",
+        "description": "Create a team to own workspaces together.",
+        "cta": "Create a team"
+      }
+    },
+    "create": {
+      "title": "New team",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Payments platform team",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "What is this team for?",
+      "notice": "Create a team and manage its members. No workspace is created with it.",
+      "submit": "Create",
+      "successToast": "Team created.",
+      "nameRequired": "Please enter a name."
+    },
+    "detail": {
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "owner": "Owner",
+        "myRole": "My role",
+        "memberCount": "Members",
+        "createdAt": "Created"
+      },
+      "settings": {
+        "save": "Save",
+        "saveSuccess": "Saved.",
+        "dangerZone": "Danger zone",
+        "dissolveButton": "Dissolve team",
+        "dissolveTitle": "Dissolve team",
+        "dissolveDescription": "You are dissolving team \"{{name}}\". Every member's membership and workspace access granted to this team will be revoked. This action cannot be undone.",
+        "dissolveConfirm": "Dissolve",
+        "dissolveSuccess": "Team dissolved."
+      },
+      "notFound": {
+        "title": "Team not found",
+        "description": "It was dissolved or you don't have access.",
+        "back": "Back to teams"
+      }
+    },
+    "members": {
+      "title": "Members",
+      "addButton": "Add member",
+      "table": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "addedBy": "Added by",
+        "addedAt": "Added",
+        "actions": "Actions"
+      },
+      "empty": "No team members.",
+      "remove": "Remove",
+      "removeTitle": "Remove team member",
+      "removeDescription": "Remove \"{{name}}\" from this team.",
+      "removeSuccess": "Removed.",
+      "addDialog": {
+        "title": "Add member",
+        "searchPlaceholder": "Search users (name·email)",
+        "submit": "Add",
+        "noResults": "No results.",
+        "alreadyMember": "This user is already a member of the team.",
+        "successToast": "Member added."
+      }
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Users",
+      "searchPlaceholder": "Search names·emails",
+      "empty": {
+        "all": "No signed-up users.",
+        "search": "No results."
+      },
+      "table": {
+        "email": "Email",
+        "name": "Name",
+        "providers": "Sign-in providers",
+        "admin": "Admin",
+        "status": "Status",
+        "createdAt": "Joined"
+      },
+      "status": {
+        "active": "Active"
+      },
+      "detail": "View",
+      "back": "Back to list"
+    },
+    "userDetail": {
+      "title": "User",
+      "withdrawnNotice": "Withdrawn account — cannot sign in.",
+      "fields": {
+        "email": "Email",
+        "name": "Name",
+        "providers": "Sign-in providers",
+        "admin": "Admin",
+        "withdrawnAt": "Withdrawn",
+        "createdAt": "Joined"
+      },
+      "sessions": {
+        "title": "Active sessions",
+        "empty": "No active sessions.",
+        "table": {
+          "sid": "Session ID",
+          "createdAt": "Created",
+          "lastUsedAt": "Last used",
+          "ip": "IP",
+          "userAgent": "User-Agent",
+          "actions": "Actions"
+        },
+        "terminate": "Terminate",
+        "terminateTitle": "Force-terminate session",
+        "terminateDescription": "This session will be terminated. The user must sign in again.",
+        "terminateConfirm": "Terminate",
+        "terminatedToast": "Session terminated."
+      }
+    },
+    "codes": {
+      "title": "Code tables",
+      "providers": {
+        "title": "Sign-in providers",
+        "notice": "Turning a provider off hides its button from the sign-in screen. Sign-ins already in progress are not affected.",
+        "allDisabledWarning": "All sign-in methods are disabled — new sign-ins are unavailable.",
+        "table": {
+          "code": "Code",
+          "displayName": "Display name",
+          "active": "Active"
+        },
+        "savedToast": "Saved."
+      },
+      "databaseTypes": {
+        "title": "Database types",
+        "notice": "Types selectable when creating ERD documents. Only display name and active toggle can be changed.",
+        "savedToast": "Database type saved",
+        "table": {
+          "code": "Code",
+          "displayName": "Display name",
+          "active": "Active"
+        }
+      },
+      "roles": {
+        "title": "Roles",
+        "notice": "Display names are used for screen labels only. Permission levels cannot be changed.",
+        "table": {
+          "code": "Code",
+          "displayName": "Display name"
+        },
+        "savedToast": "Saved."
+      }
+    },
+    "auditLogs": {
+      "title": "Audit logs",
+      "searchPlaceholder": "Search actor…",
+      "actionFilter": "Action",
+      "allActions": "All actions",
+      "table": {
+        "createdAt": "Date/time",
+        "actor": "Actor",
+        "action": "Action",
+        "target": "Target",
+        "detail": "Detail"
+      },
+      "empty": {
+        "search": "No results found.",
+        "all": "No audit logs recorded yet."
+      }
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you requested does not exist or has moved.",
+    "home": "Go home"
+  },
+  "model": {
+    "list": {
+      "searchPlaceholder": "Search by name or description",
+      "newDocument": "New ERD document",
+      "columns": {
+        "document": "Document",
+        "databaseType": "Database",
+        "canvas": "Canvas",
+        "version": "Version",
+        "createdBy": "Created by",
+        "updatedAt": "Updated"
+      },
+      "empty": {
+        "title": "No ERD documents yet",
+        "description": "Create a document to start designing ERDs.",
+        "cta": "New ERD document"
+      },
+      "open": "Open {{name}}"
+    },
+    "create": {
+      "title": "New ERD document",
+      "notice": "A main diagram is created automatically.",
+      "name": "Name",
+      "nameRequired": "Name is required",
+      "namePlaceholder": "e.g. Orders service ERD",
+      "description": "Description",
+      "descriptionPlaceholder": "Short description of the document",
+      "databaseType": "Database type",
+      "databaseTypePlaceholder": "Select a type",
+      "canvasWidth": "Canvas width (px)",
+      "canvasHeight": "Canvas height (px)",
+      "sizeInvalid": "Enter an integer between 1 and 100000",
+      "successToast": "ERD document created"
+    },
+    "edit": {
+      "title": "Edit {{name}}",
+      "notice": "Only name and description can be changed.",
+      "successToast": "Document updated"
+    },
+    "delete": {
+      "title": "Delete {{name}}",
+      "description": "Delete {{name}}. This cannot be undone.",
+      "confirm": "Delete",
+      "successToast": "Deleted {{name}}"
+    },
+    "viewer": {
+      "close": "Close window",
+      "pending": {
+        "title": "Editor coming soon",
+        "description": "The ERD editing canvas arrives in the next phase."
+      }
+    }
+  }
+}

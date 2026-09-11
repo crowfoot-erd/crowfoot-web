@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 까마귀발(crow's foot) 표기법 — 한 줄기가 세 갈래로 갈라지는 모양.
+       배경은 앱 primary(라이트 #212121 계열), 심볼은 #fafafa — 라이트/다크 모두 대비 유지 -->
+  <rect width="64" height="64" rx="14" fill="#212121"/>
+  <g stroke="#fafafa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M32 13v22"/>
+    <path d="M32 35 17 51"/>
+    <path d="M32 35v17"/>
+    <path d="M32 35l15 16"/>
+  </g>
+</svg>

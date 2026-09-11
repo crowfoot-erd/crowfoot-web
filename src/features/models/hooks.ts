@@ -1,0 +1,82 @@
+/**
+ * ERD 문서 쿼리/뮤테이션 훅 — 생성 성공 후 목록 invalidate (낙관적 갱신 금지).
+ * 목록은 워크스페이스당 문서 수가 적어 size 100 고정 로드(페이징 UI는 에디터 단계).
+ */
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import {
+  createModel,
+  deleteModel,
+  fetchDatabaseTypes,
+  fetchModel,
+  fetchModels,
+  updateModel,
+  type CreateModelInput,
+} from '@/features/models/api'
+import type { ModelSummary } from '@/api/types'
+
+export const modelKeys = {
+  list: (workspaceId: string, keyword: string) => ['workspaces', workspaceId, 'models', keyword] as const,
+  detail: (workspaceId: string, modelId: string) =>
+    ['workspaces', workspaceId, 'models', 'detail', modelId] as const,
+  databaseTypes: ['database-types'] as const,
+}
+
+export function useModels(workspaceId: string, keyword = '') {
+  return useQuery({
+    queryKey: modelKeys.list(workspaceId, keyword),
+    queryFn: ({ signal }) => fetchModels(workspaceId, { keyword: keyword || undefined, size: 100 }, signal),
+    enabled: workspaceId.length > 0,
+  })
+}
+
+/** 문서 상세(1.3) — content 포함, 에디터 화면 로드 */
+export function useModel(workspaceId: string, modelId: string) {
+  return useQuery({
+    queryKey: modelKeys.detail(workspaceId, modelId),
+    queryFn: ({ signal }) => fetchModel(workspaceId, modelId, signal),
+    enabled: workspaceId.length > 0 && modelId.length > 0,
+  })
+}
+
+export function useDatabaseTypes() {
+  return useQuery({ queryKey: modelKeys.databaseTypes, queryFn: ({ signal }) => fetchDatabaseTypes(signal) })
+}
+
+/** 메타 변경 — 이름·설명 */
+export function useUpdateModel(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      modelId,
+      body,
+    }: { modelId: string; body: Partial<Pick<ModelSummary, 'name' | 'description'>> }) =>
+      updateModel(workspaceId, modelId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
+  })
+}
+
+export function useDeleteModel(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (modelId: string) => deleteModel(workspaceId, modelId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
+  })
+}
+
+export function useCreateModel(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CreateModelInput) => createModel(workspaceId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
+  })
+}

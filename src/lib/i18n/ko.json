@@ -1,0 +1,499 @@
+{
+  "common": {
+    "appName": "Crowfoot",
+    "appTagline": "ERD Editor",
+    "footer": "© 2026 Crowfoot — ERD Editor",
+    "loading": "불러오는 중…",
+    "retry": "다시 시도",
+    "cancel": "취소",
+    "confirm": "확인",
+    "save": "저장",
+    "create": "생성",
+    "delete": "삭제",
+    "close": "닫기",
+    "search": "검색",
+    "searchKeywordHint": "2자 이상 입력해 주세요",
+    "searching": "검색 중…",
+    "total": "총 {{count}}개",
+    "memberCount": "{{count}}명",
+    "overview": "개요",
+    "members": "멤버",
+    "settings": "설정",
+    "name": "이름",
+    "description": "설명",
+    "email": "이메일",
+    "none": "-",
+    "createdAt": "생성일",
+    "withdrawn": "탈퇴",
+    "admin": "관리자",
+    "yes": "예",
+    "no": "아니요",
+    "saving": "저장하는 중…",
+    "pagination": {
+      "prev": "이전",
+      "next": "다음",
+      "page": "{{page}} / {{totalPages}} 페이지"
+    },
+    "theme": {
+      "label": "테마",
+      "light": "라이트",
+      "dark": "다크",
+      "system": "시스템"
+    },
+    "language": {
+      "label": "언어",
+      "ko": "한국어",
+      "en": "English"
+    },
+    "role": {
+      "OWNER": "소유자",
+      "EDITOR": "편집자",
+      "COMMENTER": "댓글 작성자",
+      "VIEWER": "뷰어",
+      "MEMBER": "멤버"
+    },
+    "roleShort": {
+      "OWNER": "OWNER",
+      "EDITOR": "EDITOR",
+      "COMMENTER": "COMMENTER",
+      "VIEWER": "VIEWER",
+      "MEMBER": "MEMBER"
+    },
+    "granteeType": {
+      "USER": "개인",
+      "TEAM": "팀"
+    },
+    "provider": {
+      "github": "GitHub",
+      "google": "Google"
+    },
+    "system": "시스템"
+  },
+  "errors": {
+    "message": {
+      "GENERIC": "일시적 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      "NETWORK_ERROR": "네트워크 연결을 확인해 주세요.",
+      "SERVICE_UNAVAILABLE": "일시적 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      "INVALID_REQUEST": "요청이 올바르지 않습니다. 입력값을 확인해 주세요.",
+      "RESOURCE_NOT_FOUND": "요청한 리소스를 찾을 수 없습니다.",
+      "PERMISSION_DENIED": "이 작업은 워크스페이스 소유자만 할 수 있습니다.",
+      "RATE_LIMITED": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+      "AUTH_TOKEN_INVALID": "로그인이 필요합니다.",
+      "AUTH_TOKEN_EXPIRED": "로그인이 만료되었습니다.",
+      "AUTH_SESSION_REVOKED": "다른 기기에서 로그아웃되었거나 세션이 종료되었습니다. 다시 로그인해 주세요.",
+      "AUTH_STATE_INVALID": "로그인 세션이 만료되었거나 유효하지 않습니다. 다시 로그인해 주세요.",
+      "AUTH_PROVIDER_ERROR": "로그인 제공자(GitHub/Google)와의 통신에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      "USER_WITHDRAWN": "탈퇴한 계정입니다. 다시 로그인할 수 없습니다.",
+      "WORKSPACE_NOT_FOUND": "워크스페이스를 찾을 수 없습니다.",
+      "WORKSPACE_NAME_DUPLICATED": "같은 이름의 워크스페이스가 있습니다.",
+      "MEMBERSHIP_NOT_FOUND": "멤버십을 찾을 수 없습니다. 목록을 새로고칩니다.",
+      "MEMBERSHIP_DUPLICATED": "이미 멤버로 추가되어 있습니다.",
+      "LAST_OWNER_PROTECTED": "마지막 소유자는 해제할 수 없습니다.",
+      "TEAM_NOT_FOUND": "팀을 찾을 수 없습니다.",
+      "TEAM_NAME_DUPLICATED": "같은 이름의 팀이 있습니다.",
+      "TEAM_MEMBER_DUPLICATED": "이미 팀에 소속되어 있습니다.",
+      "TEAM_MEMBER_NOT_FOUND": "팀 멤버를 찾을 수 없습니다. 목록을 새로고칩니다.",
+      "USER_NOT_FOUND": "사용자를 찾을 수 없습니다.",
+      "SESSION_NOT_FOUND": "이미 종료된 세션입니다. 목록을 새로고칩니다.",
+      "DUPLICATED_NAME": "이미 존재하는 이름입니다"
+    },
+    "loadFailed": "불러오기에 실패했습니다",
+    "bootstrapFailed": "서버에 연결하지 못했습니다."
+  },
+  "auth": {
+    "login": {
+      "title": "Crowfoot에 로그인",
+      "description": "GitHub 계정으로 ERD를 그리고, 팀과 함께 편집하고 공유하세요.",
+      "continueWith": "{{provider}}로 계속하기",
+      "noProviders": {
+        "title": "사용 가능한 로그인 방식이 없습니다",
+        "description": "관리자에게 문의해 주세요."
+      },
+      "loadFailed": "로그인 방식을 불러오지 못했습니다."
+    },
+    "callback": {
+      "processing": "로그인 처리 중입니다…",
+      "failedTitle": "로그인에 실패했습니다",
+      "backToLogin": "다시 로그인하기"
+    },
+    "logout": "로그아웃",
+    "sessionExpired": {
+      "title": "로그인이 필요합니다",
+      "loginAgain": "다시 로그인"
+    }
+  },
+  "shell": {
+    "nav": {
+      "workspaces": "워크스페이스",
+      "teams": "팀",
+      "admin": "관리자"
+    },
+    "sidebar": {
+      "title": "워크스페이스",
+      "newWorkspace": "새 워크스페이스",
+      "adminTitle": "관리자",
+      "adminUsers": "사용자 관리",
+      "adminCodes": "코드 테이블",
+      "backToWorkspaces": "워크스페이스로 돌아가기",
+      "adminAuditLogs": "감사 로그",
+      "teamsTitle": "팀",
+      "newTeam": "새 팀",
+      "ownedTeams": "내가 소유한 팀",
+      "joinedTeams": "소속 팀",
+      "noTeams": "소속된 팀이 없습니다."
+    },
+    "userMenu": {
+      "signedInAs": "{{name}}",
+      "profile": "내 정보",
+      "joinedAt": "가입일",
+      "linkedAccounts": "연결된 계정",
+      "logout": "로그아웃"
+    },
+    "defaultBadge": "기본"
+  },
+  "dashboard": {
+    "greeting": "안녕하세요, {{name}}님",
+    "newWorkspace": "새 워크스페이스",
+    "cards": {
+      "workspaces": "워크스페이스",
+      "teams": "팀",
+      "joinedAsMember": "멤버로 참여"
+    },
+    "joinedAsMemberHint": "소유자가 아닌 워크스페이스",
+    "shortcuts": "워크스페이스 바로가기",
+    "viewAll": "전체 보기",
+    "myTeams": "내 팀",
+    "empty": {
+      "workspaces": {
+        "title": "워크스페이스가 없습니다",
+        "description": "첫 워크스페이스를 만들어 ERD 설계를 시작해 보세요."
+      },
+      "teams": {
+        "title": "소속된 팀이 없습니다",
+        "description": "팀을 만들거나 팀 소유자의 초대를 기다려 보세요."
+      }
+    }
+  },
+  "workspace": {
+    "list": {
+      "title": "워크스페이스",
+      "myRole": "내 역할",
+      "members": "{{count}}명",
+      "empty": {
+        "title": "워크스페이스가 없습니다",
+        "description": "첫 워크스페이스를 만들어 ERD 설계를 시작해 보세요.",
+        "cta": "새 워크스페이스"
+      }
+    },
+    "create": {
+      "title": "새 워크스페이스",
+      "nameLabel": "이름",
+      "namePlaceholder": "예: 주문 서비스 ERD",
+      "descriptionLabel": "설명 (선택)",
+      "descriptionPlaceholder": "이 워크스페이스의 용도를 적어 두세요",
+      "notice": "개인 소유 워크스페이스로 생성되며, 생성한 사람이 소유자(OWNER)가 됩니다.",
+      "submit": "생성",
+      "successToast": "워크스페이스를 만들었습니다.",
+      "nameRequired": "이름을 입력해 주세요."
+    },
+    "detail": {
+      "tabs": {
+        "erd": "ERD",
+        "overview": "개요",
+        "members": "멤버",
+        "settings": "설정"
+      },
+      "fields": {
+        "name": "이름",
+        "description": "설명",
+        "memberCount": "멤버 수",
+        "createdBy": "생성자",
+        "createdAt": "생성일"
+      },
+      "settings": {
+        "save": "저장",
+        "saveSuccess": "저장했습니다.",
+        "dangerZone": "위험 영역",
+        "deleteButton": "워크스페이스 삭제",
+        "deleteTitle": "워크스페이스 삭제",
+        "deleteDescription": "워크스페이스 \"{{name}}\"을(를) 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+        "deleteConfirm": "삭제",
+        "deleteSuccess": "삭제했습니다."
+      },
+      "notFound": {
+        "title": "워크스페이스를 찾을 수 없습니다",
+        "description": "삭제되었거나 접근 권한이 없습니다.",
+        "back": "워크스페이스 목록으로"
+      }
+    },
+    "members": {
+      "title": "멤버",
+      "addButton": "멤버 추가",
+      "searchPlaceholder": "이름·팀 검색",
+      "empty": "멤버가 없습니다.",
+      "table": {
+        "granteeType": "유형",
+        "grantee": "대상",
+        "role": "역할",
+        "grantedBy": "부여자",
+        "grantedAt": "부여일",
+        "actions": "작업"
+      },
+      "teamLink": "팀 상세 보기",
+      "changeRole": "역할 변경",
+      "roleChangedToast": "역할을 변경했습니다.",
+      "grantedOnCreation": "— (생성 시)",
+      "revoke": "회수",
+      "revokeTitle": "멤버십 회수",
+      "revokeDescription": "\"{{name}}\"의 워크스페이스 접근을 회수합니다.",
+      "revokeSuccess": "회수했습니다.",
+      "ownerNotice": "소유자(OWNER)는 변경·회수할 수 없습니다.",
+      "addDialog": {
+        "title": "멤버 추가",
+        "targetUser": "개인",
+        "targetTeam": "팀",
+        "searchUsers": "사용자 검색 (이름·이메일)",
+        "searchTeams": "팀 검색",
+        "role": "역할",
+        "roleHint": "소유자(OWNER)는 부여할 수 없습니다.",
+        "submit": "추가",
+        "noResults": "검색 결과가 없습니다.",
+        "successToast": "멤버십을 추가했습니다.",
+        "teamGrantNotice": "팀에 부여하면 팀 소속 멤버 전원에게 같은 역할이 적용됩니다."
+      }
+    }
+  },
+  "team": {
+    "list": {
+      "title": "팀",
+      "ownerBadge": "팀 Owner",
+      "memberCount": "{{count}}명",
+      "empty": {
+        "title": "소속된 팀이 없습니다",
+        "description": "팀을 만들어 워크스페이스를 함께 소유해 보세요.",
+        "cta": "새 팀 만들기"
+      }
+    },
+    "create": {
+      "title": "새 팀",
+      "nameLabel": "이름",
+      "namePlaceholder": "예: 결제 플랫폼팀",
+      "descriptionLabel": "설명 (선택)",
+      "descriptionPlaceholder": "팀의 목적을 적어 두세요",
+      "notice": "팀을 만들고 멤버를 구성할 수 있습니다. 워크스페이스는 함께 생성되지 않습니다.",
+      "submit": "생성",
+      "successToast": "팀을 만들었습니다.",
+      "nameRequired": "이름을 입력해 주세요."
+    },
+    "detail": {
+      "fields": {
+        "name": "이름",
+        "description": "설명",
+        "owner": "소유자",
+        "myRole": "내 역할",
+        "memberCount": "멤버 수",
+        "createdAt": "생성일"
+      },
+      "settings": {
+        "save": "저장",
+        "saveSuccess": "저장했습니다.",
+        "dangerZone": "위험 영역",
+        "dissolveButton": "팀 해체",
+        "dissolveTitle": "팀 해체",
+        "dissolveDescription": "팀 \"{{name}}\"을(를) 해체합니다. 팀 소속 멤버 전원의 소속과 이 팀에 부여된 워크스페이스 멤버십이 회수됩니다. 이 작업은 되돌릴 수 없습니다.",
+        "dissolveConfirm": "해체",
+        "dissolveSuccess": "팀을 해체했습니다."
+      },
+      "notFound": {
+        "title": "팀을 찾을 수 없습니다",
+        "description": "해체되었거나 접근 권한이 없습니다.",
+        "back": "팀 목록으로"
+      }
+    },
+    "members": {
+      "title": "멤버",
+      "addButton": "멤버 추가",
+      "table": {
+        "name": "이름",
+        "email": "이메일",
+        "role": "역할",
+        "addedBy": "추가한 사람",
+        "addedAt": "추가일",
+        "actions": "작업"
+      },
+      "empty": "팀 멤버가 없습니다.",
+      "remove": "제외",
+      "removeTitle": "팀 멤버 제외",
+      "removeDescription": "\"{{name}}\"을(를) 팀에서 제외합니다.",
+      "removeSuccess": "제외했습니다.",
+      "addDialog": {
+        "title": "멤버 추가",
+        "searchPlaceholder": "사용자 검색 (이름·이메일)",
+        "submit": "추가",
+        "noResults": "검색 결과가 없습니다.",
+        "alreadyMember": "이미 팀에 소속된 사용자입니다.",
+        "successToast": "멤버를 추가했습니다."
+      }
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "사용자",
+      "searchPlaceholder": "이름·이메일 검색",
+      "empty": {
+        "all": "가입된 사용자가 없습니다.",
+        "search": "검색 결과가 없습니다."
+      },
+      "table": {
+        "email": "이메일",
+        "name": "이름",
+        "providers": "로그인 제공자",
+        "admin": "관리자",
+        "status": "상태",
+        "createdAt": "가입일"
+      },
+      "status": {
+        "active": "활동"
+      },
+      "detail": "상세 보기",
+      "back": "목록으로 돌아가기"
+    },
+    "userDetail": {
+      "title": "사용자",
+      "withdrawnNotice": "탈퇴한 계정 — 로그인할 수 없습니다.",
+      "fields": {
+        "email": "이메일",
+        "name": "이름",
+        "providers": "로그인 제공자",
+        "admin": "관리자 여부",
+        "withdrawnAt": "탈퇴일",
+        "createdAt": "가입일"
+      },
+      "sessions": {
+        "title": "활성 세션",
+        "empty": "활성 세션이 없습니다.",
+        "table": {
+          "sid": "세션 ID",
+          "createdAt": "생성일",
+          "lastUsedAt": "마지막 사용",
+          "ip": "IP",
+          "userAgent": "User-Agent",
+          "actions": "작업"
+        },
+        "terminate": "강제 종료",
+        "terminateTitle": "세션 강제 종료",
+        "terminateDescription": "이 세션을 강제 종료합니다. 해당 사용자는 다시 로그인해야 합니다.",
+        "terminateConfirm": "종료",
+        "terminatedToast": "세션을 종료했습니다."
+      }
+    },
+    "codes": {
+      "title": "코드 테이블",
+      "providers": {
+        "title": "로그인 제공자",
+        "notice": "활성을 끄면 로그인 화면에서 해당 버튼이 사라집니다. 진행 중인 로그인에는 영향이 없습니다.",
+        "allDisabledWarning": "로그인 방법이 모두 비활성화되었습니다 — 신규 로그인이 불가능합니다.",
+        "table": {
+          "code": "코드",
+          "displayName": "표시명",
+          "active": "활성"
+        },
+        "savedToast": "저장했습니다."
+      },
+      "databaseTypes": {
+        "title": "데이터베이스 종류",
+        "notice": "ERD 문서 생성 시 선택 가능한 종류입니다. 표시명·활성만 변경할 수 있습니다.",
+        "savedToast": "데이터베이스 종류를 저장했습니다",
+        "table": {
+          "code": "코드",
+          "displayName": "표시명",
+          "active": "활성"
+        }
+      },
+      "roles": {
+        "title": "역할",
+        "notice": "표시명은 화면 표기에만 사용됩니다. 권한 수준(level)은 변경할 수 없습니다.",
+        "table": {
+          "code": "코드",
+          "displayName": "표시명"
+        },
+        "savedToast": "저장했습니다."
+      }
+    },
+    "auditLogs": {
+      "title": "감사 로그",
+      "searchPlaceholder": "주체 검색…",
+      "actionFilter": "액션",
+      "allActions": "전체",
+      "table": {
+        "createdAt": "일시",
+        "actor": "주체",
+        "action": "액션",
+        "target": "대상",
+        "detail": "상세"
+      },
+      "empty": {
+        "search": "검색 결과가 없습니다.",
+        "all": "기록된 감사 로그가 없습니다."
+      }
+    }
+  },
+  "notFound": {
+    "title": "페이지를 찾을 수 없습니다",
+    "description": "요청하신 페이지가 존재하지 않거나 이동되었습니다.",
+    "home": "홈으로"
+  },
+  "model": {
+    "list": {
+      "searchPlaceholder": "문서 이름·설명 검색",
+      "newDocument": "새 ERD 문서",
+      "columns": {
+        "document": "문서",
+        "databaseType": "DB 종류",
+        "canvas": "캔버스",
+        "version": "버전",
+        "createdBy": "생성자",
+        "updatedAt": "최근 수정"
+      },
+      "empty": {
+        "title": "ERD 문서가 없습니다",
+        "description": "새 문서를 만들어 ERD 설계를 시작해 보세요.",
+        "cta": "새 ERD 문서"
+      },
+      "open": "{{name}} 문서 열기"
+    },
+    "create": {
+      "title": "새 ERD 문서",
+      "notice": "생성 시 대표 다이어그램이 자동으로 만들어집니다.",
+      "name": "이름",
+      "nameRequired": "이름을 입력하세요",
+      "namePlaceholder": "예: 주문 서비스 ERD",
+      "description": "설명",
+      "descriptionPlaceholder": "문서에 대한 짧은 설명",
+      "databaseType": "데이터베이스 종류",
+      "databaseTypePlaceholder": "종류 선택",
+      "canvasWidth": "캔버스 폭 (px)",
+      "canvasHeight": "캔버스 높이 (px)",
+      "sizeInvalid": "1 이상 100000 이하의 정수를 입력하세요",
+      "successToast": "ERD 문서를 만들었습니다"
+    },
+    "edit": {
+      "title": "{{name}} 문서 수정",
+      "notice": "이름·설명만 변경할 수 있습니다.",
+      "successToast": "문서를 수정했습니다"
+    },
+    "delete": {
+      "title": "{{name}} 문서 삭제",
+      "description": "{{name}} 문서를 삭제합니다. 되돌릴 수 없습니다.",
+      "confirm": "삭제",
+      "successToast": "{{name}} 문서를 삭제했습니다"
+    },
+    "viewer": {
+      "close": "창 닫기",
+      "pending": {
+        "title": "에디터 준비 중",
+        "description": "ERD 편집 화면은 다음 단계에서 제공됩니다."
+      }
+    }
+  }
+}
