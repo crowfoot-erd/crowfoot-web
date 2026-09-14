@@ -1,0 +1,1046 @@
+/**
+ * ERD 캔버스 — React Flow 12 래퍼 (05-editor/02-ui.md §8, storyboard 02-user §5A)
+ *
+ * 제어 노드 패턴: 노드/엣지는 로컬 state(표시 레이어)로 두고 스토어 present가 바뀔 때
+ * (커밋·undo/redo/수화) 다시 빌드한다. 드래그 중엔 스토어 쓰기 0 — RF 내부 좌표만 이동하고
+ * mouseup에 node/move 1커밋(undo 1스택). 빌드 시 안 바뀐 노드의 data 참조를 유지해
+ * 노드 단위 memo가 살아있는다(전 노드 리렌더 방지 — 성능 전략).
+ *
+ * 관계선 source=자식(FK 소유)·target=부모(1). 핸들은 양 노드 위치로 마주 보는 방향에 놓는다.
+ * 뷰포트 컬링(onlyRenderVisibleElements)은 의도적으로 쓰지 않는다 — 팬할 때마다 화면에
+ * 들어오는 테이블이 그때그때 마운트되며 끊기고(100테이블 문서에서 롱태스크 1초+ 실측),
+ * 전부 렌더해 두면 팬·줌·드래그 전부 60fps가 나온다(마운트 체인이 없으니 이동은 GPU 합성뿐).
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Background,
+  BackgroundVariant,
+  MiniMap,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+  type Connection,
+  type EdgeTypes,
+  type NodeTypes,
+  type OnEdgesChange,
+  type OnMoveEnd,
+  type OnNodeDrag,
+  type OnNodesChange,
+  type ReactFlowInstance,
+  type Viewport,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { cn } from 'cn'
+
+import { createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
+import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
+import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
+import { DEFAULT_CHILD_MULTIPLICITY, type ErdColumn } from '@/features/editor/model/content-schema'
+import { isDuplicateRelationship, isDuplicateTableName } from '@/features/editor/model/validation'
+import { findNoteDropTarget } from '@/features/editor/model/note-link'
+import { readStoredViewport, storeViewport } from '@/features/editor/model/viewport-memory'
+import { useEditorStore } from '@/features/editor/store/editor-store'
+import type { EditorDocument } from '@/features/editor/model/content-schema'
+import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
+import {
+  EditorCanvasContext,
+  type EditorCanvasContextValue,
+  type NameDisplayMode,
+  type PendingRelation,
+  type RelationHandleId,
+} from './canvas/editor-context'
+import { ColumnInfoDialog } from './ColumnInfoDialog'
+import { KeyInfoDialog, type KeyInfoSubmit } from './KeyInfoDialog'
+import { NoteNode, type NoteNodeType } from './canvas/NoteNode'
+import { RelationPickerOverlay, type RelationPick } from './canvas/RelationPickerOverlay'
+import { handleAnchors, shortestHandlePair } from './canvas/edge-router'
+import { RelationshipEdge, type RelationshipEdgeType } from './canvas/RelationshipEdge'
+import { TableNode, estimateTableHeight, tableRenderWidth, type TableNodeType } from './canvas/TableNode'
+import { RelationshipDialog } from './RelationshipDialog'
+import { TableInfoDialog } from './TableInfoDialog'
+
+type AppNode = TableNodeType | NoteNodeType
+type AppEdge = RelationshipEdgeType
+
+/** 노드 data는 비우고 공유 상수로 — 참조 안정이 노드 memo의 핵심 (editor-context 참조) */
+const EMPTY_NODE_DATA = {} as Record<string, never>
+
+const nodeTypes: NodeTypes = { table: TableNode, note: NoteNode }
+const edgeTypes: EdgeTypes = { relationship: RelationshipEdge }
+
+/** 신규 테이블 기본 물리명 — 문서 내 고유 (physicalName min(1) 계약) */
+function uniqueTableName(existingPhysicalNames: string[]): string {
+  const existing = new Set(existingPhysicalNames.map((name) => name.toLowerCase()))
+  for (let i = 1; ; i += 1) {
+    const candidate = `table_${i}`
+    if (!existing.has(candidate)) return candidate
+  }
+}
+
+/* ---------- 스토어 문서 → 표시 레이어 (마운트 초기 상태·빌드 이펙트 공용) ---------- */
+
+/** 노드 data는 비우고 공유 상수로 — 참조 안정이 노드 memo의 핵심 (editor-context 참조) */
+function buildNodes(doc: EditorDocument, selectedIds: Set<string>): AppNode[] {
+  const tableNodes: AppNode[] = doc.model.tables.map((table) => ({
+    id: table.id,
+    type: 'table',
+    position: {
+      x: doc.diagram.nodes[table.id]?.x ?? 0,
+      y: doc.diagram.nodes[table.id]?.y ?? 0,
+    },
+    data: EMPTY_NODE_DATA,
+    selected: selectedIds.has(table.id),
+  }))
+  const noteNodes: AppNode[] = doc.diagram.notes.map((note) => ({
+    id: note.id,
+    type: 'note',
+    position: { x: note.x, y: note.y },
+    data: EMPTY_NODE_DATA,
+    selected: selectedIds.has(note.id),
+  }))
+  return tableNodes.concat(noteNodes)
+}
+
+function buildEdges(doc: EditorDocument, sizeReports: Record<string, { w: number; h: number }>): AppEdge[] {
+  return doc.model.relationships.map((rel) => {
+    const childTable = doc.model.tables.find((t) => t.id === rel.childTableId)
+    const parentTable = doc.model.tables.find((t) => t.id === rel.parentTableId)
+    const childPos = doc.diagram.nodes[rel.childTableId] ?? { x: 0, y: 0, width: null }
+    const parentPos = doc.diagram.nodes[rel.parentTableId] ?? { x: 0, y: 0, width: null }
+    const childSize = sizeReports[rel.childTableId] ?? {
+      w: tableRenderWidth(childPos.width ?? null, 0),
+      h: estimateTableHeight(
+        childTable?.columns.length ?? 0,
+        childTable ? childTable.uniques.length + childTable.indexes.length : 0,
+      ),
+    }
+    const parentSize = sizeReports[rel.parentTableId] ?? {
+      w: tableRenderWidth(parentPos.width ?? null, 0),
+      h: estimateTableHeight(
+        parentTable?.columns.length ?? 0,
+        parentTable ? parentTable.uniques.length + parentTable.indexes.length : 0,
+      ),
+    }
+    // 연결면은 항상 현재 배치에서 다시 계산한다 — 테이블을 옮기면 선이 가장 가까운 면으로 따라간다.
+    // 자기 참조는 양 끝이 같은 노드라 최단 면 계산이 퇴화하므로 오른쪽 면으로 고정한다
+    const sides =
+      rel.childTableId === rel.parentTableId
+        ? { child: 'right', parent: 'right' }
+        : shortestHandlePair(childPos, parentPos, childSize, parentSize)
+    return {
+      id: rel.id,
+      type: 'relationship' as const,
+      source: rel.childTableId,
+      target: rel.parentTableId,
+      sourceHandle: sides.child,
+      targetHandle: sides.parent,
+      data: EMPTY_NODE_DATA,
+    }
+  })
+}
+
+/** RF 노드 memo는 객체 identity로 동작한다 — 값이 같으면 새 배열을 만들지 않고 기존 배열을 돌려
+ *  전 노드 리렌더(로드 직후 깜빡임)를 막는다. 비교는 memo에 영향 주는 필드만. */
+function nodesEqual(a: AppNode[], b: AppNode[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    const x = a[i]
+    const y = b[i]
+    if (
+      x.id !== y.id ||
+      x.type !== y.type ||
+      x.selected !== y.selected ||
+      x.position.x !== y.position.x ||
+      x.position.y !== y.position.y
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+function edgesEqual(a: AppEdge[], b: AppEdge[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    const x = a[i]
+    const y = b[i]
+    if (
+      x.id !== y.id ||
+      x.source !== y.source ||
+      x.target !== y.target ||
+      x.sourceHandle !== y.sourceHandle ||
+      x.targetHandle !== y.targetHandle
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+/** 메모 노드 추정 높이 — 헤더 + 본문 2줄 여유 (전체 맞춤 추정용) */
+const NOTE_ESTIMATED_HEIGHT = 120
+
+/** 문서만으로 전체 맞춤 뷰포트를 추정 — 노드가 그려지기 전 첫 프레임에 줄 화면이다.
+ *  실제 노드 크기와 어긋나면 마운트 후 fit 이펙트가 정확한 화면으로 보정한다. */
+function estimatedFitViewport(doc: EditorDocument): Viewport {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const table of doc.model.tables) {
+    const layout = doc.diagram.nodes[table.id]
+    if (!layout) continue
+    const w = tableRenderWidth(layout.width ?? null, 0)
+    const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
+    minX = Math.min(minX, layout.x)
+    minY = Math.min(minY, layout.y)
+    maxX = Math.max(maxX, layout.x + w)
+    maxY = Math.max(maxY, layout.y + h)
+  }
+  for (const note of doc.diagram.notes) {
+    minX = Math.min(minX, note.x)
+    minY = Math.min(minY, note.y)
+    maxX = Math.max(maxX, note.x + note.width)
+    maxY = Math.max(maxY, note.y + NOTE_ESTIMATED_HEIGHT)
+  }
+  if (minX === Infinity) return { x: 0, y: 0, zoom: 1 }
+  const width = window.innerWidth || 1200
+  const height = window.innerHeight || 800
+  const padding = 0.25
+  const boxWidth = Math.max(maxX - minX, 1)
+  const boxHeight = Math.max(maxY - minY, 1)
+  const zoom = Math.max(
+    0.1,
+    Math.min((width * (1 - padding)) / boxWidth, (height * (1 - padding)) / boxHeight, 1),
+  )
+  // 콘텐츠 중심을 화면 중심으로 이동
+  return {
+    x: width / 2 - ((minX + maxX) / 2) * zoom,
+    y: height / 2 - ((minY + maxY) / 2) * zoom,
+    zoom,
+  }
+}
+
+export interface ErdCanvasProps {
+  canEdit: boolean
+  /** 문서 대상 DBMS 템플릿 id — 모델 메타에서 파생된 고정값(문서 수명 동안 불변) */
+  dbmsId: string
+  nameDisplay: NameDisplayMode
+  /** 문서 식별자 — 마지막 화면(줌·팬)을 브라우저에 기억하는 키 */
+  modelId: string | null
+}
+
+export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasProps) {
+  const { t } = useTranslation()
+  const present = useEditorStore((s) => s.present)
+  const commit = useEditorStore((s) => s.commit)
+  const commitAll = useEditorStore((s) => s.commitAll)
+
+  /* 마운트 시점(EditorShell이 수화 뒤 마운트시킨다) 스토어 문서로 첫 렌더부터 노드를 그린다 —
+     빈 캔버스가 먼저 페인트되고 노드가 투척되는 깜빡임이 없다. StrictMode 이중 마운트에도 1회만 계산 */
+  const initialRef = useRef<{ nodes: AppNode[]; edges: AppEdge[] } | null>(null)
+  if (initialRef.current === null) {
+    const doc = useEditorStore.getState().present
+    initialRef.current = { nodes: buildNodes(doc, new Set()), edges: buildEdges(doc, {}) }
+  }
+  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialRef.current.nodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>(initialRef.current.edges)
+  const draggingRef = useRef(false)
+  const rfRef = useRef<ReactFlowInstance<AppNode, AppEdge> | null>(null)
+  const didInitialFit = useRef(false)
+
+  /* 초기 화면 — 브라우저 기억 > 저장된 뷰포인트 > 전체 맞춤(추정). defaultViewport으로
+     첫 프레임부터 적용해 zoom 1 → fit 점프가 보이지 않는다 */
+  const initialViewportRef = useRef<Viewport | null>(null)
+  if (initialViewportRef.current === null) {
+    initialViewportRef.current =
+      readStoredViewport(modelId) ??
+      useEditorStore.getState().present.diagram.viewport ??
+      estimatedFitViewport(useEditorStore.getState().present)
+  }
+
+  const [infoTableId, setInfoTableId] = useState<string | null>(null)
+  const [infoColumnRef, setInfoColumnRef] = useState<{ tableId: string; columnId: string } | null>(null)
+  const [keyDialogRef, setKeyDialogRef] = useState<{ tableId: string; keyId: string | null; kind: KeyKind } | null>(null)
+  const [relDialog, setRelDialog] = useState<
+    | { mode: 'create'; parentId: string; childId: string }
+    | { mode: 'edit'; relationshipId: string }
+    | null
+  >(null)
+
+  /* ---------- 노드 크기 보고 — 콘텐츠 자동 폭·높이가 커지면 이웃 겹침을 해소한다 ---------- */
+
+  const sizeReportsRef = useRef<Record<string, { w: number; h: number }>>({})
+  const [sizeReports, setSizeReports] = useState<Record<string, { w: number; h: number }>>({})
+  const reportSize = useCallback((tableId: string, w: number, h: number) => {
+    const prev = sizeReportsRef.current[tableId]
+    if (prev && prev.w === w && prev.h === h) return
+    sizeReportsRef.current = { ...sizeReportsRef.current, [tableId]: { w, h } }
+    setSizeReports(sizeReportsRef.current)
+  }, [])
+
+  /**
+   * 겹침 해소 — 크기 보고가 바뀔 때만 실행(드래그로 사용자가 놓은 위치는 존중).
+   * 두 노드가 x·y 모두 겹치면 **이동량이 작은 축**으로 분리: 가로면 오른쪽 것을, 세로면 아래 것을 민다.
+   * (보기 모드 전환으로 높이가 늘면 아래 테이블이 내려가고, 이름이 길어지면 옆 테이블이 밀린다)
+   * 반복 패스로 연쇄 겹침을 수렴시킨다.
+   */
+  useEffect(() => {
+    if (!canEdit) return
+    const { present: doc } = useEditorStore.getState()
+    if (doc.model.tables.length < 2) return
+
+    const rects = doc.model.tables.map((table) => {
+      const node = doc.diagram.nodes[table.id]
+      const reported = sizeReports[table.id]
+      return {
+        id: table.id,
+        x: node?.x ?? 0,
+        y: node?.y ?? 0,
+        w: reported?.w ?? tableRenderWidth(node?.width ?? null, 0),
+        h: reported?.h ?? estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+      }
+    })
+
+    const GAP = 32
+    const maxPasses = Math.min(rects.length * rects.length + 1, 200)
+    for (let pass = 0; pass < maxPasses; pass += 1) {
+      let changed = false
+      for (const a of rects) {
+        for (const b of rects) {
+          if (a === b) continue
+          const overlapsX = a.x < b.x + b.w && b.x < a.x + a.w
+          const overlapsY = a.y < b.y + b.h && b.y < a.y + a.h
+          if (!overlapsX || !overlapsY) continue
+          // 가로 분리: 오른쪽 것을 밀 양 / 세로 분리: 아래 것을 밀 양 — 작은 쪽을 택한다
+          const [lx, rx] = a.x <= b.x ? [a, b] : [b, a]
+          const [ty, by] = a.y <= b.y ? [a, b] : [b, a]
+          const pushX = lx.x + lx.w + GAP - rx.x
+          const pushY = ty.y + ty.h + GAP - by.y
+          if (pushX <= pushY) rx.x += pushX
+          else by.y += pushY
+          changed = true
+        }
+      }
+      if (!changed) break
+    }
+
+    const positions: Record<string, { x: number; y: number }> = {}
+    for (const rect of rects) {
+      const node = doc.diagram.nodes[rect.id]
+      if (node && (Math.round(rect.x) !== Math.round(node.x) || Math.round(rect.y) !== Math.round(node.y))) {
+        positions[rect.id] = { x: rect.x, y: rect.y }
+      }
+    }
+    if (Object.keys(positions).length > 0) commitAll([{ type: 'node/move', positions }])
+  }, [sizeReports, canEdit, commitAll])
+
+  /* ---------- 스토어 → 표시 레이어 동기화 (커밋·undo·수화 시) ---------- */
+
+  useEffect(() => {
+    if (draggingRef.current) return
+    setNodes((current) => {
+      const selectedIds = new Set(current.filter((n) => n.selected).map((n) => n.id))
+      const next = buildNodes(present, selectedIds)
+      // 값이 같으면 기존 배열 반환 — RF 노드 memo(객체 identity)가 살아있게
+      return nodesEqual(current, next) ? current : next
+    })
+    setEdges((current) => {
+      const next = buildEdges(present, sizeReports)
+      return edgesEqual(current, next) ? current : next
+    })
+  }, [present, sizeReports, setNodes, setEdges])
+
+  /* ---------- 초기 뷰: 브라우저에 기억한 마지막 화면 > 저장된 뷰포인트 > 전체 맞춤 ---------- */
+
+  useEffect(() => {
+    if (didInitialFit.current) return
+    // 기억·저장 어느 쪽이든 화면이 있으면 fit하지 않는다(복원은 onInit에서)
+    if (readStoredViewport(modelId) ?? present.diagram.viewport) {
+      didInitialFit.current = true
+      return
+    }
+    if (nodes.length > 0) {
+      didInitialFit.current = true
+      void rfRef.current?.fitView({ padding: 0.25, maxZoom: 1 })
+    }
+  }, [nodes.length, present.diagram.viewport, modelId])
+
+  /** 줌·팬이 끝날 때마다 마지막 화면을 브라우저에 기록 — 편집 없이 줌만 바꿔도 다음 열기에서 유지된다 */
+  const handleMoveEnd = useCallback<OnMoveEnd>(
+    (_event, viewport) => storeViewport(modelId, viewport),
+    [modelId],
+  )
+
+  /* ---------- 노드/엣지 변경 라우팅 — remove는 스토어 커밋으로 처리 ---------- */
+
+  /** 단일 선택 원칙 — 마지막에 선택된 노드 1개만 유지(다중 선택 이동 방지). remove는 스토어 커밋으로 */
+  const handleNodesChange: OnNodesChange<AppNode> = useCallback(
+    (changes) => {
+      let lastSelectedId: string | null = null
+      for (const change of changes) {
+        if (change.type === 'select' && change.selected) lastSelectedId = change.id
+      }
+      onNodesChange(
+        changes
+          .filter((change) => change.type !== 'remove')
+          .map((change) =>
+            change.type === 'select' && change.selected && change.id !== lastSelectedId
+              ? { ...change, selected: false }
+              : change,
+          ),
+      )
+    },
+    [onNodesChange],
+  )
+
+  const handleEdgesChange: OnEdgesChange<AppEdge> = useCallback(
+    (changes) => {
+      onEdgesChange(changes.filter((change) => change.type !== 'remove'))
+    },
+    [onEdgesChange],
+  )
+
+  /** 삭제 키 — 테이블은 관계·FK cascade가 applyChange에서, 메모/관계는 자기 삭제 */
+  const handleNodesDelete = useCallback(
+    (deleted: AppNode[]) => {
+      const changes: ErdChange[] = deleted.map((node) =>
+        node.type === 'note'
+          ? { type: 'note/remove', noteId: node.id }
+          : { type: 'table/remove', tableId: node.id },
+      )
+      commitAll(changes)
+    },
+    [commitAll],
+  )
+
+  const handleEdgesDelete = useCallback(
+    (deleted: AppEdge[]) => {
+      commitAll(
+        deleted.map(
+          (edge) => ({ type: 'relationship/remove', relationshipId: edge.id }) as ErdChange,
+        ),
+      )
+    },
+    [commitAll],
+  )
+
+  /* ---------- 드래그 — mouseup 1커밋 ---------- */
+
+  const handleNodeDragStop: OnNodeDrag<AppNode> = useCallback(
+    (_event, _node, draggedNodes) => {
+      draggingRef.current = false
+      const state = useEditorStore.getState()
+      const positions: Record<string, { x: number; y: number }> = {}
+      const noteChanges: ErdChange[] = []
+      /** 연관 지정 드롭 판정용 테이블 박스 — 드래그가 끝난 시점이라 스토어 좌표가 곧 화면 좌표다 */
+      const dropBoxes =
+        draggedNodes.some((n) => n.type === 'note') && draggedNodes.length === 1
+          ? state.present.model.tables.flatMap((table) => {
+              const layout = state.present.diagram.nodes[table.id]
+              if (!layout) return []
+              return [
+                {
+                  id: table.id,
+                  box: {
+                    x: layout.x,
+                    y: layout.y,
+                    w: tableRenderWidth(layout.width ?? null, 0),
+                    h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+                  },
+                },
+              ]
+            })
+          : []
+      const draggedNote = draggedNodes.length === 1 && draggedNodes[0].type === 'note' ? draggedNodes[0] : null
+      const dropTableId = draggedNote
+        ? findNoteDropTarget(
+            {
+              x: draggedNote.position.x,
+              y: draggedNote.position.y,
+              width: state.present.diagram.notes.find((n) => n.id === draggedNote.id)?.width ?? 360,
+            },
+            dropBoxes,
+          )
+        : null
+      for (const node of draggedNodes) {
+        if (node.type === 'note') {
+          const note = state.present.diagram.notes.find((n) => n.id === node.id)
+          if (!note) continue
+          if (node.id === draggedNote?.id && dropTableId) {
+            // 테이블 위 드롭 — 연관을 지정하고 위치는 드래그 전으로 되돌린다(커밋하지 않는다).
+            // 테이블 위에 올려 두면 테이블을 가려서, 원위치 복귀가 연관 지정 제스처의 피드백이 된다.
+            if (note.linkedTableId !== dropTableId) {
+              noteChanges.push({ type: 'note/patch', noteId: node.id, patch: { linkedTableId: dropTableId } })
+            }
+            continue
+          }
+          if (note.x !== node.position.x || note.y !== node.position.y) {
+            noteChanges.push({
+              type: 'note/patch',
+              noteId: node.id,
+              patch: { x: node.position.x, y: node.position.y },
+            })
+          }
+        } else {
+          const layout = state.present.diagram.nodes[node.id]
+          if (layout && (layout.x !== node.position.x || layout.y !== node.position.y)) {
+            positions[node.id] = { x: node.position.x, y: node.position.y }
+          }
+        }
+      }
+      const changes = [...noteChanges]
+      if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
+      if (changes.length > 0) commitAll(changes)
+    },
+    [commitAll],
+  )
+
+  /* ---------- 관계 생성 — 점 클릭 → 오버레이 선택(유형·종류) → 마우스 따라 선 → 대상 클릭으로 즉시 확정 ----------
+     점 근처 클릭으로 캔버스 오버레이 선택기를 열고, 종류까지 고르면 소스(부모) 테이블이 강조되며
+     임시 선이 포인터를 따라다닌다. 대상 테이블 클릭·(소스)핸들 드래그 둘 다 확정으로 받는다.
+     방향은 고정 — 시작 테이블 = 부모(1, PK 제공), 대상 테이블 = 자식(N, FK 생성). */
+
+  const [pendingRelation, setPendingRelation] = useState<PendingRelation | null>(null)
+  const [pointerScreen, setPointerScreen] = useState<{ x: number; y: number } | null>(null)
+  /** 점 클릭으로 열린 선택기 상태 — 캔버스 오버레이가 떠 있는 동안 다른 조작을 차단한다 */
+  const [relationPicker, setRelationPicker] = useState<{ parentId: string; side: RelationHandleId } | null>(null)
+
+  const startPendingRelation = useCallback((relation: PendingRelation) => {
+    setPendingRelation(relation)
+  }, [])
+
+  const openRelationPicker = useCallback((parentId: string, side: RelationHandleId) => {
+    setRelationPicker({ parentId, side })
+  }, [])
+
+  /** 선택기 확정 — 오버레이를 닫고 곧바로 관계 대기로. 클릭 좌표로 임시 선을 즉시 그린다 */
+  const handlePickerPick = useCallback(
+    (pick: RelationPick) => {
+      const picker = relationPicker
+      if (!picker) return
+      setRelationPicker(null)
+      setPointerScreen(pick.point)
+      startPendingRelation({
+        parentId: picker.parentId,
+        parentHandle: picker.side,
+        type: pick.type,
+        identifying: pick.identifying,
+        parentMultiplicity: pick.parentMultiplicity,
+        childMultiplicity: pick.childMultiplicity,
+      })
+    },
+    [relationPicker, startPendingRelation],
+  )
+
+  /** 확정 — 시작=부모(1)·대상=자식(N) 고정. FK 컬럼은 대상(자식) 테이블에 생성되고,
+   *  연결면은 렌더 시점에 배치 기준으로 계산되므로 저장하지 않는다.
+   *  대상으로 시작 테이블 자신을 고르면 자기 참조 관계(같은 테이블 FK)가 된다 */
+  const finishRelation = useCallback(
+    (targetTableId: string) => {
+      const pending = pendingRelation
+      if (!pending) return
+      const { present: doc } = useEditorStore.getState()
+      const parent = doc.model.tables.find((tb) => tb.id === pending.parentId)
+      const child = doc.model.tables.find((tb) => tb.id === targetTableId)
+      if (!parent || !child) return
+      // 같은 부모→자식 관계는 하나만 — 중복이면 알리고 대상을 다시 고르게 한다(대기 상태 유지)
+      if (isDuplicateRelationship(doc.model, parent.id, child.id)) {
+        toast.error(
+          t('model.editor.relationship.duplicate', { parent: parent.physicalName, child: child.physicalName }),
+        )
+        return
+      }
+      if (primaryKeyColumns(parent).length === 0) {
+        toast.error(t('model.editor.parentNoPk', { name: parent.physicalName }))
+        return
+      }
+
+      const result = buildRelationship({
+        parentTable: parent,
+        childTable: child,
+        type: pending.type,
+        identifying: pending.identifying,
+        parentMultiplicity: pending.parentMultiplicity,
+        childMultiplicity: pending.childMultiplicity,
+      })
+      if (!result.ok) {
+        toast.error(t('model.editor.parentNoPk', { name: parent.physicalName }))
+        return
+      }
+      commit({ type: 'relationship/create', relationship: result.relationship, fkColumns: result.fkColumns })
+      setPendingRelation(null)
+    },
+    [pendingRelation, t, commit],
+  )
+
+  const completeRelation = useCallback(
+    (targetTableId: string) => finishRelation(targetTableId),
+    [finishRelation],
+  )
+
+  // 진행 중 — 포인터를 따라다니는 임시 선. Esc·빈 캔버스 클릭으로 취소
+  useEffect(() => {
+    if (!pendingRelation) {
+      setPointerScreen(null)
+      return
+    }
+    const onMove = (event: PointerEvent) => setPointerScreen({ x: event.clientX, y: event.clientY })
+    window.addEventListener('pointermove', onMove)
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [pendingRelation])
+
+  useEffect(() => {
+    if (!pendingRelation && !relationPicker) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (relationPicker) setRelationPicker(null)
+      else setPendingRelation(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pendingRelation, relationPicker])
+
+  /** 임시 선 시작점 — 소스(부모) 핸들 앵커의 화면 좌표 (캔버스 래퍼 기준으로는 렌더에서 보정) */
+  const pendingAnchorScreen = useMemo(() => {
+    if (!pendingRelation) return null
+    const pos = present.diagram.nodes[pendingRelation.parentId]
+    if (!pos) return null
+    const table = present.model.tables.find((tb) => tb.id === pendingRelation.parentId)
+    const size = sizeReports[pendingRelation.parentId] ?? {
+      w: tableRenderWidth(null, 0),
+      h: estimateTableHeight(table?.columns.length ?? 0, table ? table.uniques.length + table.indexes.length : 0),
+    }
+    const anchor = handleAnchors(pos, size)[pendingRelation.parentHandle]
+    const rf = rfRef.current
+    return rf ? rf.flowToScreenPosition(anchor) : anchor
+  }, [pendingRelation, present.diagram.nodes, present.model.tables, sizeReports])
+
+  /* ---------- 연결 → 관계 다이얼로그 (source=드래그 시작=자식 가정, 필요시 스왑) ---------- */
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (!canEdit) return
+      // 진행 중 관계의 소스(부모)에서 드래그로 연결 — 유형·종류·기수는 이미 골랐으니 즉시 확정한다
+      if (pendingRelation && connection.source === pendingRelation.parentId) {
+        finishRelation(connection.target)
+        return
+      }
+      const { present: doc } = useEditorStore.getState()
+      const source = doc.model.tables.find((tb) => tb.id === connection.source)
+      const target = doc.model.tables.find((tb) => tb.id === connection.target)
+      // 자기 연결도 허용(자기 참조 관계) — 시작 쪽에 PK가 있어야 부모가 된다
+      if (!source || !target) return
+
+      // 드래그 시작 = 부모 가정(오버레이 관례와 동일), 시작 쪽에 PK가 없고 반대쪽에 있으면 뒤집는다
+      let parent = source
+      let child = target
+      if (primaryKeyColumns(parent).length === 0 && primaryKeyColumns(child).length > 0) {
+        ;[parent, child] = [child, parent]
+      }
+      if (primaryKeyColumns(parent).length === 0) {
+        toast.error(t('model.editor.parentNoPk', { name: parent.physicalName }))
+        return
+      }
+      if (isDuplicateRelationship(doc.model, parent.id, child.id)) {
+        toast.error(
+          t('model.editor.relationship.duplicate', { parent: parent.physicalName, child: child.physicalName }),
+        )
+        return
+      }
+      setRelDialog({ mode: 'create', parentId: parent.id, childId: child.id })
+    },
+    [canEdit, pendingRelation, finishRelation, t],
+  )
+
+  /* ---------- 컨텍스트 메뉴 액션 ---------- */
+
+  const toFlow = useCallback((point: { x: number; y: number }) => {
+    const rf = rfRef.current
+    return rf ? rf.screenToFlowPosition(point) : point
+  }, [])
+
+  const handleContextMenuAction = useCallback(
+    (action: ContextMenuAction) => {
+      switch (action.type) {
+        case 'createTable': {
+          const table = createTable(
+            uniqueTableName(
+              useEditorStore.getState().present.model.tables.map((tb) => tb.physicalName),
+            ),
+          )
+          commit({ type: 'table/create', table, position: action.position })
+          return
+        }
+        case 'createNote':
+          commit({
+            type: 'note/create',
+            note: { id: newId(), x: action.position.x, y: action.position.y, width: 360, text: '', title: '', color: 'yellow', linkedTableId: null },
+          })
+          return
+        case 'tableInfo':
+          setInfoTableId(action.tableId)
+          return
+        case 'removeTable':
+          commit({ type: 'table/remove', tableId: action.tableId })
+          return
+        case 'removeNote':
+          commit({ type: 'note/remove', noteId: action.noteId })
+          return
+        case 'editRelationship':
+          setRelDialog({ mode: 'edit', relationshipId: action.relationshipId })
+          return
+        case 'removeRelationship':
+          commit({ type: 'relationship/remove', relationshipId: action.relationshipId })
+      }
+    },
+    [commit],
+  )
+
+  /* ---------- 다이얼로그 재료 ---------- */
+
+  const infoTable = useMemo(
+    () => (infoTableId ? (present.model.tables.find((tb) => tb.id === infoTableId) ?? null) : null),
+    [infoTableId, present.model.tables],
+  )
+
+  const infoColumn = useMemo(
+    () =>
+      infoColumnRef
+        ? (present.model.tables
+            .find((tb) => tb.id === infoColumnRef.tableId)
+            ?.columns.find((c) => c.id === infoColumnRef.columnId) ?? null)
+        : null,
+    [infoColumnRef, present.model.tables],
+  )
+
+  const infoColumnIsPk = useMemo(
+    () =>
+      infoColumnRef
+        ? (present.model.tables
+            .find((tb) => tb.id === infoColumnRef.tableId)
+            ?.primaryKey?.columnIds.includes(infoColumnRef.columnId) ?? false)
+        : false,
+    [infoColumnRef, present.model.tables],
+  )
+
+  /** 대상 컬럼 소속 테이블의 PK 컬럼 수 — 복합 PK에서는 AI를 제공하지 않는다 */
+  const infoColumnPkCount = useMemo(
+    () => (infoColumnRef ? (present.model.tables.find((tb) => tb.id === infoColumnRef.tableId)?.primaryKey?.columnIds.length ?? 0) : 0),
+    [infoColumnRef, present.model.tables],
+  )
+
+  const keyDialogTable = useMemo(
+    () => (keyDialogRef ? (present.model.tables.find((tb) => tb.id === keyDialogRef.tableId) ?? null) : null),
+    [keyDialogRef, present.model.tables],
+  )
+
+  const keyDialogTarget = useMemo(() => {
+    if (!keyDialogRef?.keyId || !keyDialogTable) return null
+    if (keyDialogRef.kind === 'unique') {
+      const found = keyDialogTable.uniques.find((u) => u.id === keyDialogRef.keyId) ?? null
+      return found ? { name: found.name, columnIds: found.columnIds } : null
+    }
+    const found = keyDialogTable.indexes.find((ix) => ix.id === keyDialogRef.keyId) ?? null
+    return found
+      ? {
+          name: found.name,
+          columnIds: found.columns.map((entry) => entry.columnId),
+          orders: Object.fromEntries(found.columns.map((entry) => [entry.columnId, entry.order])),
+        }
+      : null
+  }, [keyDialogRef, keyDialogTable])
+
+  /** 문서 전체 키 이름에서 편집 대상 자기 이름만 뺀다 — 중복 검증에 쓴다 */
+  const keyExistingNames = useMemo(() => {
+    const names = documentKeyNames(present.model)
+    if (keyDialogTarget) names.delete(keyDialogTarget.name.toLowerCase())
+    return names
+  }, [present.model, keyDialogTarget])
+
+  /** 기본 이름 제안 — 문서(모델)를 읽는 쪽에서 계산한다. 다이얼로그는 문서를 모른다 */
+  const suggestKeyName = useCallback(
+    (columns: ErdColumn[]) => {
+      const ref = keyDialogRef
+      if (!ref) return ''
+      const { present: doc } = useEditorStore.getState()
+      const table = doc.model.tables.find((tb) => tb.id === ref.tableId)
+      return table ? defaultKeyName(doc.model, table, ref.kind, columns) : ''
+    },
+    [keyDialogRef],
+  )
+
+  const handleKeyConfirm = ({ name, columnIds, orders }: KeyInfoSubmit) => {
+    const ref = keyDialogRef
+    if (!ref) return
+    const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === ref.tableId)
+    if (!table) return
+    if (ref.kind === 'unique') {
+      const uniques = ref.keyId
+        ? table.uniques.map((u) => (u.id === ref.keyId ? { ...u, name, columnIds } : u))
+        : [...table.uniques, { id: newId(), name, columnIds }]
+      commit({ type: 'uniqueKey/set', tableId: ref.tableId, uniques })
+    } else {
+      const columns = columnIds.map((columnId) => ({ columnId, order: orders[columnId] ?? 'ASC' }))
+      const indexes = ref.keyId
+        ? table.indexes.map((ix) => (ix.id === ref.keyId ? { ...ix, name, columns } : ix))
+        : [...table.indexes, { id: newId(), name, columns }]
+      commit({ type: 'index/set', tableId: ref.tableId, indexes })
+    }
+  }
+
+  const relDialogData = useMemo(() => {
+    if (!relDialog) return { open: false, parent: null, child: null, relationship: null }
+    if (relDialog.mode === 'edit') {
+      const relationship =
+        present.model.relationships.find((r) => r.id === relDialog.relationshipId) ?? null
+      // 편집 모드에서도 양 끝 테이블을 내려준다 — 다이얼로그가 "어떤 테이블 ↔ 어떤 테이블"인지 보여준다
+      return {
+        open: true,
+        parent: relationship
+          ? (present.model.tables.find((tb) => tb.id === relationship.parentTableId) ?? null)
+          : null,
+        child: relationship
+          ? (present.model.tables.find((tb) => tb.id === relationship.childTableId) ?? null)
+          : null,
+        relationship,
+      }
+    }
+    return {
+      open: true,
+      parent: present.model.tables.find((tb) => tb.id === relDialog.parentId) ?? null,
+      child: present.model.tables.find((tb) => tb.id === relDialog.childId) ?? null,
+      relationship: null,
+    }
+  }, [relDialog, present.model.tables, present.model.relationships])
+
+  const openColumnInfo = useCallback(
+    (tableId: string, columnId: string) => {
+      if (canEdit) setInfoColumnRef({ tableId, columnId })
+    },
+    [canEdit],
+  )
+
+  const openKeyInfo = useCallback(
+    (tableId: string, keyId: string | null, kind: KeyKind) => {
+      if (canEdit) setKeyDialogRef({ tableId, keyId, kind })
+    },
+    [canEdit],
+  )
+
+  const canvasContext = useMemo<EditorCanvasContextValue>(
+    () => ({
+      canEdit,
+      dbmsId,
+      openTableInfo: canEdit ? setInfoTableId : () => {},
+      openColumnInfo,
+      openKeyInfo,
+      pendingRelation,
+      startPendingRelation,
+      completeRelation,
+      openRelationPicker,
+      nameDisplay,
+      reportSize,
+    }),
+    [
+      canEdit,
+      dbmsId,
+      nameDisplay,
+      reportSize,
+      openColumnInfo,
+      openKeyInfo,
+      pendingRelation,
+      startPendingRelation,
+      completeRelation,
+      openRelationPicker,
+    ],
+  )
+
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const flow = (
+    <div
+      ref={wrapperRef}
+      className={cn('relative h-full w-full', pendingRelation && 'cursor-crosshair')}
+    >
+      <ReactFlow<AppNode, AppEdge>
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
+        onNodesDelete={canEdit ? handleNodesDelete : undefined}
+        onEdgesDelete={canEdit ? handleEdgesDelete : undefined}
+        onConnect={canEdit ? handleConnect : undefined}
+        onPaneClick={pendingRelation ? () => setPendingRelation(null) : undefined}
+        onNodeDragStart={
+          canEdit
+            ? () => {
+                draggingRef.current = true
+              }
+            : undefined
+        }
+        onNodeDragStop={canEdit ? handleNodeDragStop : undefined}
+        onNodeDoubleClick={
+          canEdit
+            ? (_event, node) => {
+                if (node.type === 'table') setInfoTableId(node.id)
+              }
+            : undefined
+        }
+        onEdgeDoubleClick={
+          canEdit
+            ? (_event, edge) => setRelDialog({ mode: 'edit', relationshipId: edge.id })
+            : undefined
+        }
+        defaultViewport={initialViewportRef.current}
+        onInit={(instance) => {
+          rfRef.current = instance
+        }}
+        onMoveEnd={handleMoveEnd}
+        nodesDraggable={canEdit}
+        nodesConnectable={canEdit}
+        elementsSelectable
+        selectionKeyCode={null}
+        multiSelectionKeyCode={null}
+        deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
+        minZoom={0.1}
+        maxZoom={2.5}
+        connectionRadius={24}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
+        <MiniMap pannable zoomable className="!bottom-2 !right-2" />
+      </ReactFlow>
+
+      {/* 진행 중 관계 — 소스 핸들에서 포인터를 따라다니는 임시 선 (시작점=화면좌표 → 래퍼 기준 보정) */}
+      {pendingRelation && pendingAnchorScreen && pointerScreen && wrapperRef.current ? (
+        <svg className="pointer-events-none absolute inset-0 z-20 h-full w-full">
+          <line
+            x1={pendingAnchorScreen.x - wrapperRef.current.getBoundingClientRect().left}
+            y1={pendingAnchorScreen.y - wrapperRef.current.getBoundingClientRect().top}
+            x2={pointerScreen.x - wrapperRef.current.getBoundingClientRect().left}
+            y2={pointerScreen.y - wrapperRef.current.getBoundingClientRect().top}
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeDasharray="6 3"
+            className="text-sky-500"
+          />
+          <circle cx={pointerScreen.x - wrapperRef.current.getBoundingClientRect().left} cy={pointerScreen.y - wrapperRef.current.getBoundingClientRect().top} r={3} className="fill-sky-500" />
+        </svg>
+      ) : null}
+
+      {/* 진행 중 안내 — 선택한 유형·종류와 다음 동작 */}
+      {pendingRelation ? (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border bg-popover px-3 py-1 text-xs font-medium text-popover-foreground shadow-md">
+          {pendingRelation.identifying
+            ? t('model.editor.relation.identifying')
+            : t('model.editor.relation.nonIdentifying')}
+          {' · '}
+          {pendingRelation.type === 'ONE_TO_MANY'
+            ? t('model.editor.relation.oneToMany')
+            : t('model.editor.relation.oneToOne')}
+          {/* 기수 — 고른 값이 기본(부모 필수 · 자식은 유형별 기본)과 다를 때만 표기 */}
+          {pendingRelation.childMultiplicity !== DEFAULT_CHILD_MULTIPLICITY[pendingRelation.type]
+            ? ` · ${t('model.editor.relation.childSide')} ${t(`model.editor.relationship.multiplicity_${pendingRelation.childMultiplicity}`)}`
+            : ''}
+          {pendingRelation.parentMultiplicity === 'ZERO_OR_ONE'
+            ? ` · ${t('model.editor.relation.parentSide')} ${t('model.editor.relationship.multiplicity.ZERO_OR_ONE')}`
+            : ''}
+          {' — '}
+          {t('model.editor.relation.pickTarget')}
+        </div>
+      ) : null}
+
+      {/* 관계 시작 선택기 — 점 클릭 시 캔버스를 덮는 반투명 오버레이 (유형·종류 선택) */}
+      {relationPicker ? (
+        <RelationPickerOverlay onPick={handlePickerPick} onCancel={() => setRelationPicker(null)} />
+      ) : null}
+    </div>
+  )
+
+  return (
+    <EditorCanvasContext.Provider value={canvasContext}>
+      {/* 읽기 전용은 컨텍스트 메뉴를 제공하지 않는다 — 스토어를 흔들 편집 경로 차단 */}
+      {canEdit ? (
+        <CanvasContextMenu toFlow={toFlow} onAction={handleContextMenuAction}>
+          {flow}
+        </CanvasContextMenu>
+      ) : (
+        flow
+      )}
+
+      <TableInfoDialog
+        open={infoTable !== null}
+        onOpenChange={(open) => {
+          if (!open) setInfoTableId(null)
+        }}
+        table={infoTable}
+        onCommit={(tableId, patch) => commit({ type: 'table/patch', tableId, patch })}
+        isDuplicateName={(tableId, physicalName) =>
+          isDuplicateTableName(useEditorStore.getState().present.model, tableId, physicalName)}
+      />
+
+      <ColumnInfoDialog
+        open={infoColumn !== null}
+        onOpenChange={(open) => {
+          if (!open) setInfoColumnRef(null)
+        }}
+        column={infoColumn}
+        isPk={infoColumnIsPk}
+        pkCount={infoColumnPkCount}
+        dbmsId={dbmsId}
+        onConfirm={({ pk, patch }) => {
+          if (!infoColumnRef) return
+          const { tableId, columnId } = infoColumnRef
+          const { present } = useEditorStore.getState()
+          const table = present.model.tables.find((tb) => tb.id === tableId)
+          // PK 토글 묶음(이동·NN/AI 정리 — 해제 시 FK면 FK 영역으로) + 속성 patch를 한 undo 스택에
+          const fkIds = new Set(
+            present.model.relationships.flatMap((r) =>
+              r.childTableId === tableId ? r.columnMappings.map((m) => m.childColumnId) : [],
+            ),
+          )
+          const changes = table ? pkToggleChanges(table, columnId, pk, fkIds) : []
+          changes.push({ type: 'column/patch', tableId, columnId, patch })
+          commitAll(changes)
+        }}
+      />
+
+      <KeyInfoDialog
+        open={keyDialogRef !== null && keyDialogTable !== null}
+        onOpenChange={(open) => {
+          if (!open) setKeyDialogRef(null)
+        }}
+        kind={keyDialogRef?.kind ?? 'unique'}
+        target={keyDialogTarget}
+        table={keyDialogTable}
+        existingNames={keyExistingNames}
+        suggestName={suggestKeyName}
+        onConfirm={handleKeyConfirm}
+      />
+
+      <RelationshipDialog
+        open={relDialogData.open}
+        onOpenChange={(open) => {
+          if (!open) setRelDialog(null)
+        }}
+        parent={relDialogData.parent}
+        child={relDialogData.child}
+        relationship={relDialogData.relationship}
+        onConfirmCreate={({ relationship, fkColumns }) =>
+          commit({ type: 'relationship/create', relationship, fkColumns })
+        }
+        onConfirmPatch={(relationshipId, patch) =>
+          commit({ type: 'relationship/patch', relationshipId, patch })
+        }
+        onRemove={(relationshipId) => commit({ type: 'relationship/remove', relationshipId })}
+        isDuplicate={(parentId, childId) =>
+          isDuplicateRelationship(useEditorStore.getState().present.model, parentId, childId)
+        }
+      />
+    </EditorCanvasContext.Provider>
+  )
+}

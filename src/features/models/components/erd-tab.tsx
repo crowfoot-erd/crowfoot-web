@@ -22,9 +22,11 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatDateTime } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
 import type { ModelSummary } from '@/api/types'
+import { DatabaseImportButton } from '@/features/connections'
 import {
   CreateModelDialog,
   EditModelDialog,
+  ImportCrownButton,
   modelEditorPath,
   useDeleteModel,
   useModels,
@@ -78,10 +80,14 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
           />
         </div>
         {canCreate ? (
-          <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus aria-hidden />
-            {t('model.list.newDocument')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportCrownButton workspaceId={workspaceId} />
+            <DatabaseImportButton workspaceId={workspaceId} />
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden />
+              {t('model.list.newDocument')}
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -99,7 +105,6 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
             <TableRow>
               <TableHead>{t('model.list.columns.document')}</TableHead>
               <TableHead>{t('model.list.columns.databaseType')}</TableHead>
-              <TableHead>{t('model.list.columns.canvas')}</TableHead>
               <TableHead>{t('model.list.columns.version')}</TableHead>
               <TableHead>{t('model.list.columns.createdBy')}</TableHead>
               <TableHead>{t('model.list.columns.updatedAt')}</TableHead>
@@ -125,9 +130,6 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                   <Badge variant="outline" className="font-mono text-[10px]">
                     {model.databaseType}
                   </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {model.canvasWidth}×{model.canvasHeight}
                 </TableCell>
                 <TableCell className="text-muted-foreground">v{model.version}</TableCell>
                 <TableCell>{model.createdBy?.name ?? t('common.system')}</TableCell>

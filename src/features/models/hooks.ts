@@ -19,6 +19,9 @@ export const modelKeys = {
   list: (workspaceId: string, keyword: string) => ['workspaces', workspaceId, 'models', keyword] as const,
   detail: (workspaceId: string, modelId: string) =>
     ['workspaces', workspaceId, 'models', 'detail', modelId] as const,
+  // 협업 버전(폴링·WebSocket 푸시 주입 공용) — detail 키 아래에 둬 함께 invalidate 되지 않게 분리
+  version: (workspaceId: string, modelId: string) =>
+    ['workspaces', workspaceId, 'models', 'detail', modelId, 'version'] as const,
   databaseTypes: ['database-types'] as const,
 }
 

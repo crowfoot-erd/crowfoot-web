@@ -240,6 +240,11 @@ export async function apiPatch<T>(path: string, body?: unknown, signal?: AbortSi
   return envelope.response as T | undefined
 }
 
+export async function apiPut<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T | undefined> {
+  const envelope = await requestEnvelope('PUT', path, { body, signal })
+  return envelope.response as T | undefined
+}
+
 export async function apiDelete<T>(path: string, signal?: AbortSignal): Promise<T | undefined> {
   const envelope = await requestEnvelope('DELETE', path, { signal })
   return envelope.response as T | undefined
@@ -264,6 +269,11 @@ export async function apiGetPage<T>(path: string, query?: RequestOptions['query'
     size: envelope.size ?? 0,
     totalPages: envelope.totalPages ?? 1,
   }
+}
+
+/** envelope 원문 반환 — 공통 목록 파서가 버리는 확장 필드(limitSummary 등)가 필요한 목록용 */
+export async function apiGetEnvelope(path: string, query?: RequestOptions['query'], signal?: AbortSignal): Promise<ApiEnvelope> {
+  return requestEnvelope('GET', path, { query, signal })
 }
 
 export function isApiError(error: unknown): error is ApiError {

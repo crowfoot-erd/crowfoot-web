@@ -1,0 +1,137 @@
+/**
+ * 에디터 문서 스토어 (zustand plain create — 관례)
+ *
+ * 모든 변경은 ErdChange → applyChange를 통과하고(§15 Command 경로), undo/redo 실행은
+ * 문서 스냅샷 복원(하이브리드). 스냅샷은 구조 공유라 복사 비용이 O(변경분)이다.
+ * dirty 판정: past.length !== savedDepth — 저장 지점 기준이므로 undo로 되돌아가도 정확하다.
+ */
+import { create } from 'zustand'
+
+import { applyChange, applyChanges, type ErdChange } from '@/features/editor/model/changes'
+import type { EditorDocument, ErdViewport } from '@/features/editor/model/content-schema'
+
+const STACK_LIMIT = 50
+
+const emptyDocument: EditorDocument = {
+  model: { tables: [], relationships: [] },
+  diagram: { nodes: {}, notes: [], viewport: null },
+}
+
+export interface EditorHydrateInput {
+  modelId: string
+  baseVersion: number
+  document: EditorDocument
+}
+
+interface EditorState {
+  modelId: string | null
+  baseVersion: number
+  present: EditorDocument
+  past: EditorDocument[]
+  future: EditorDocument[]
+  /** 저장 시점의 past 길이 — dirty = past.length !== savedDepth */
+  savedDepth: number
+
+  /** 문서 로드. 같은 문서를 dirty 상태에서 다시 수화하려 하면 거부(false)해 로컬 변경을 지킨다. force는 충돌 재로드처럼 폐기가 확정된 경우 */
+  hydrate: (input: EditorHydrateInput, opts?: { force?: boolean }) => boolean
+  /** 변경 1건 커밋 — undo 1스택 */
+  commit: (change: ErdChange) => void
+  /** 연속 변경을 한 스택에 커밋 — 관계+FK·대상 일괄 삭제 등 */
+  commitAll: (changes: ErdChange[]) => void
+  undo: () => void
+  redo: () => void
+  /** 저장 완료 — 버전 갱신·dirty 해제 */
+  markSaved: (version: number) => void
+  /** 뷰포인트 저장(저장 시점 화면 복원용) — undo 대상 아님 */
+  setViewport: (viewport: ErdViewport) => void
+}
+
+export const useEditorStore = create<EditorState>((set, get) => ({
+  modelId: null,
+  baseVersion: 0,
+  present: emptyDocument,
+  past: [],
+  future: [],
+  savedDepth: 0,
+
+  hydrate: (input, opts) => {
+    const state = get()
+    if (!opts?.force && state.modelId === input.modelId && state.past.length !== state.savedDepth) {
+      return false
+    }
+    set({
+      modelId: input.modelId,
+      baseVersion: input.baseVersion,
+      present: input.document,
+      past: [],
+      future: [],
+      savedDepth: 0,
+    })
+    return true
+  },
+
+  commit: (change) => {
+    const { present, past } = get()
+    set({
+      past: [...past.slice(-(STACK_LIMIT - 1)), present],
+      present: applyChange(present, change),
+      future: [],
+    })
+  },
+
+  commitAll: (changes) => {
+    if (changes.length === 0) return
+    const { present, past } = get()
+    set({
+      past: [...past.slice(-(STACK_LIMIT - 1)), present],
+      present: applyChanges(present, changes),
+      future: [],
+    })
+  },
+
+  undo: () => {
+    const { past, future, present } = get()
+    if (past.length === 0) return
+    set({
+      past: past.slice(0, -1),
+      present: past[past.length - 1],
+      future: [present, ...future].slice(0, STACK_LIMIT),
+    })
+  },
+
+  redo: () => {
+    const { past, future } = get()
+    if (future.length === 0) return
+    set({
+      past: [...past.slice(-(STACK_LIMIT - 1)), get().present],
+      present: future[0],
+      future: future.slice(1),
+    })
+  },
+
+  markSaved: (version) => {
+    set({ baseVersion: version, savedDepth: get().past.length })
+  },
+
+  setViewport: (viewport) => {
+    set({ present: { ...get().present, diagram: { ...get().present.diagram, viewport } } })
+  },
+}))
+
+/* ---------- 셀렉터 — 노드 단위 구독으로 리렌더 격리 ---------- */
+
+export const selectDirty = (s: EditorState): boolean => s.past.length !== s.savedDepth
+export const selectCanUndo = (s: EditorState): boolean => s.past.length > 0
+export const selectCanRedo = (s: EditorState): boolean => s.future.length > 0
+
+/** 테스트·스토어 리셋용 */
+export function resetEditorStore(): void {
+  useEditorStore.setState({
+    modelId: null,
+    baseVersion: 0,
+    present: emptyDocument,
+    past: [],
+    future: [],
+    savedDepth: 0,
+  })
+}

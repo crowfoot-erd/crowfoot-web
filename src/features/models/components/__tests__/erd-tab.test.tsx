@@ -3,7 +3,7 @@
  *
  * given: /core/workspaces/101/models·/core/database-types 응답을 MSW로 정의
  * when: 탭 렌더
- * then: 목록(DB 종류·캔버스·버전·생성자)·검색·빈 상태·생성 다이얼로그·권한별 버튼 노출
+ * then: 목록(DB 종류·버전·생성자)·검색·빈 상태·생성 다이얼로그·권한별 버튼 노출
  */
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,6 +14,9 @@ import { fail } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
 import { Toaster } from '@/components/ui/sonner'
 import { ErdTab } from '@/features/models/components/erd-tab'
+import { createColumn, createTable } from '@/features/editor/model/changes'
+import { emptyContent } from '@/features/editor/model/content-io'
+import { buildCrownFile } from '@/features/editor/model/crown-io'
 import { renderWithProviders } from '@/test/test-app'
 
 function ok(body: object) {
@@ -36,15 +39,14 @@ function renderErdTab(props: { canCreate?: boolean; isOwner?: boolean } = {}) {
 }
 
 describe('ERD 탭', () => {
-  it('renders documents with database type, canvas size and version', async () => {
+  it('renders documents with database type and version', async () => {
     renderErdTab()
 
-    // then: fixtures의 문서 2건 — 이름·DB 종류·캔버스·버전·생성자
+    // then: fixtures의 문서 2건 — 이름·DB 종류·버전·생성자
     expect(await screen.findByText('주문 서비스 ERD')).toBeVisible()
     expect(screen.getByText('회원 서비스 ERD')).toBeVisible()
     expect(screen.getByText('postgresql')).toBeVisible()
     expect(screen.getByText('mysql')).toBeVisible()
-    expect(screen.getByText('1920×1080')).toBeVisible()
     expect(screen.getByText('v3')).toBeVisible()
     expect(screen.getByText('v1')).toBeVisible()
     expect(screen.getByText('결제 도메인 1차')).toBeVisible()
@@ -190,5 +192,95 @@ describe('ERD 탭', () => {
 
     // then: 에러 문구 + 재시도 버튼
     expect(await screen.findByRole('button', { name: /다시 시도/ })).toBeVisible()
+  })
+})
+
+describe('ERD 탭 — .crown 문서 파일 가져오기', () => {
+  /** 봉투 유효한 파일 — 테이블 1개(컬럼 1·PK). content는 헬퍼로 조립해 스키마 정합을 보장한다 */
+  function crownFile(name = '가져온 문서'): File {
+    const content = emptyContent()
+    content.model.tables.push(
+      createTable('member', {
+        id: 'T1',
+        columns: [createColumn({ id: 'c1', physicalName: 'id', dataType: 'BIGINT', nullable: false })],
+        primaryKey: { name: 'pk_member', columnIds: ['c1'] },
+      }),
+    )
+    const envelope = buildCrownFile(
+      { name, description: '봉투 설명', databaseType: 'mysql' },
+      content,
+      '2026-09-14T00:00:00Z',
+    )
+    return new File([envelope], `${name}.crown`, { type: 'application/json' })
+  }
+
+  function stubCreateAndSave() {
+    const created: { name?: string; description?: string; databaseType?: string }[] = []
+    const saved: { baseVersion?: number; content?: string }[] = []
+    server.use(
+      http.post('/api/v1/core/workspaces/101/models', async ({ request }) => {
+        created.push((await request.json()) as { name?: string })
+        return HttpResponse.json(
+          ok({
+            response: {
+              modelId: '509',
+              workspaceId: '101',
+              name: '가져온 문서',
+              description: null,
+              databaseType: 'mysql',
+              content: '{}',
+              version: 0,
+              createdBy: { userId: '2', name: '부트스트랩 관리자' },
+              createdAt: '2026-09-14T00:00:00Z',
+              updatedAt: '2026-09-14T00:00:00Z',
+            },
+          }),
+          { status: 201 },
+        )
+      }),
+      http.put('/api/v1/core/workspaces/101/models/509/content', async ({ request }) => {
+        saved.push((await request.json()) as { baseVersion?: number; content?: string })
+        return HttpResponse.json(ok({ response: { version: 1, updatedAt: '2026-09-14T00:00:00Z' } }))
+      }),
+    )
+    return { created, saved }
+  }
+
+  it('파일 선택 → 문서 생성(메타) + 본체 저장(content) 2단계 호출', async () => {
+    const { created, saved } = stubCreateAndSave()
+    renderErdTab()
+    await screen.findByText('주문 서비스 ERD')
+
+    // when: 숨은 input에 파일 업로드
+    await userEvent.upload(screen.getByLabelText('.crown 가져오기'), crownFile())
+
+    // then: 메타는 봉투 메타, 본체는 봉투 content(직렬화)
+    await waitFor(() => expect(created).toHaveLength(1))
+    expect(created[0]).toMatchObject({ name: '가져온 문서', description: '봉투 설명', databaseType: 'mysql' })
+    await waitFor(() => expect(saved).toHaveLength(1))
+    expect(saved[0]?.baseVersion).toBe(0)
+    expect(saved[0]?.content).toContain('"physicalName":"member"')
+
+    // then: 성공 토스트 — 봉투 문서명으로
+    expect(await screen.findByText('가져온 문서 문서를 가져왔습니다')).toBeVisible()
+  })
+
+  it('봉투가 아니면 생성 요청 없이 안내만', async () => {
+    const { created } = stubCreateAndSave()
+    renderErdTab()
+    await screen.findByText('주문 서비스 ERD')
+
+    const notCrown = new File([JSON.stringify({ hello: 'world' })], 'x.crown', { type: 'application/json' })
+    await userEvent.upload(screen.getByLabelText('.crown 가져오기'), notCrown)
+
+    expect(await screen.findByText('.crown 문서 파일이 아닙니다')).toBeVisible()
+    expect(created).toHaveLength(0)
+  })
+
+  it('편집 권한 없으면 가져오기 버튼이 없다', async () => {
+    renderErdTab({ canCreate: false })
+    await screen.findByText('주문 서비스 ERD')
+
+    expect(screen.queryByLabelText('.crown 가져오기')).not.toBeInTheDocument()
   })
 })

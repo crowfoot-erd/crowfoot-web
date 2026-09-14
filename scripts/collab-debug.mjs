@@ -1,0 +1,21 @@
+import { chromium } from '@playwright/test'
+
+const browser = await chromium.launch({ channel: 'chrome' })
+const page = await (await browser.newContext()).newPage()
+page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('[console]', m.text().slice(0, 200)) })
+page.on('requestfailed', (r) => console.log('[reqfail]', r.url().slice(0, 120), r.failure()?.errorText))
+page.on('response', (r) => { if (r.status() >= 400) console.log('[http]', r.status(), r.url().slice(0, 120)) })
+
+await page.route('**/api/v1/auth/oauth2/github/token', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ header: { isSuccessful: true, resultCode: 'OK', resultMessage: 'OK' }, response: { accessToken: 't', tokenType: 'Bearer', expiresIn: 3600 } }) }))
+await page.addInitScript(() => window.localStorage.setItem('crowfoot.lang', 'ko'))
+await page.goto('http://localhost:8080/login')
+await page.evaluate(() => window.sessionStorage.setItem('oauth.provider', 'github'))
+await page.goto('http://localhost:8080/auth/callback?code=e2e-code&state=e2e-state')
+await page.waitForURL((u) => !u.pathname.startsWith('/auth/callback'), { timeout: 10_000 }).catch(() => console.log('waitForURL timeout'))
+console.log('after callback url:', page.url())
+console.log('session keys:', await page.evaluate(() => Object.keys(sessionStorage)))
+console.log('local keys:', await page.evaluate(() => Object.keys(localStorage)))
+await page.goto('http://localhost:8080/workspaces/101/models/501')
+await page.waitForTimeout(2000)
+console.log('final url:', page.url())
+await browser.close()

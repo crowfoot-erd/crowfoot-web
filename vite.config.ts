@@ -23,6 +23,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      // 협업 2차 — 실시간 채널(crowfoot-collab 8083, STOMP over WebSocket)
+      '/ws': {
+        target: 'ws://localhost:8083',
+        ws: true,
+      },
     },
   },
   test: {

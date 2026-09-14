@@ -33,14 +33,15 @@ import {
   useWorkspace,
 } from '@/features/workspaces'
 import { isApiError } from '@/api/client'
+import { DatabaseTab } from '@/features/connections'
 import { ErdTab } from '@/features/models'
 import { formatDate } from '@/lib/format'
 import { setLastWorkspaceId } from '@/lib/last-workspace'
 import { errorMessage } from '@/lib/result-code'
 
-type TabValue = 'erd' | 'overview' | 'members' | 'settings'
+type TabValue = 'erd' | 'database' | 'overview' | 'members' | 'settings'
 
-const TAB_VALUES: TabValue[] = ['erd', 'overview', 'members', 'settings']
+const TAB_VALUES: TabValue[] = ['erd', 'database', 'overview', 'members', 'settings']
 
 /* ---------- 개요 정의표 ---------- */
 
@@ -296,6 +297,7 @@ export function WorkspaceDetailPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="erd">{t('workspace.detail.tabs.erd')}</TabsTrigger>
+          <TabsTrigger value="database">{t('workspace.detail.tabs.database')}</TabsTrigger>
           <TabsTrigger value="overview">{t('workspace.detail.tabs.overview')}</TabsTrigger>
           <TabsTrigger value="members">{t('workspace.detail.tabs.members')}</TabsTrigger>
           {isOwner ? (
@@ -307,6 +309,9 @@ export function WorkspaceDetailPage() {
 
       {activeTab === 'erd' ? (
         <ErdTab workspaceId={workspaceId} canCreate={canCreateModel} isOwner={isOwner} />
+      ) : null}
+      {activeTab === 'database' ? (
+        <DatabaseTab workspaceId={workspaceId} canEdit={canCreateModel} />
       ) : null}
       {activeTab === 'overview' ? <OverviewTab workspace={data} /> : null}
       {activeTab === 'members' ? (

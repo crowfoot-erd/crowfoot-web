@@ -1,7 +1,7 @@
 /**
  * ERD 문서 생성 다이얼로그 (storyboard 02-user §5 — ERD 탭)
  *
- * - 이름 필수·설명 선택·데이터베이스 종류(코드 테이블 드롭다운)·캔버스 크기(기본 1920×1080)
+ * - 이름 필수·설명 선택·데이터베이스 종류(코드 테이블 드롭다운) — 캔버스 크기는 폐지(#123, 에디터가 무한 캔버스)
  * - 성공 → 토스트 + 목록 갱신 (에디터 진입은 2단계)
  * - 오픈 지점: ERD 탭 헤더·빈 상태 CTA
  */
@@ -42,22 +42,17 @@ import {
 import { useCreateModel, useDatabaseTypes } from '@/features/models/hooks'
 import { errorMessage } from '@/lib/result-code'
 
-const DEFAULT_CANVAS_WIDTH = 1920
-const DEFAULT_CANVAS_HEIGHT = 1080
-
 export interface CreateModelDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string
 }
 
-function createModelSchema(nameRequiredMessage: string, sizeMessage: string) {
+function createModelSchema(nameRequiredMessage: string) {
   return z.object({
     name: z.string().trim().min(1, nameRequiredMessage),
     description: z.string().trim().optional(),
     databaseType: z.string().min(1, nameRequiredMessage),
-    canvasWidth: z.number().int().min(1, sizeMessage).max(100000, sizeMessage),
-    canvasHeight: z.number().int().min(1, sizeMessage).max(100000, sizeMessage),
   })
 }
 
@@ -65,8 +60,6 @@ type CreateModelForm = {
   name: string
   description?: string
   databaseType: string
-  canvasWidth: number
-  canvasHeight: number
 }
 
 export function CreateModelDialog({ open, onOpenChange, workspaceId }: CreateModelDialogProps) {
@@ -75,13 +68,11 @@ export function CreateModelDialog({ open, onOpenChange, workspaceId }: CreateMod
   const createMutation = useCreateModel(workspaceId)
 
   const form = useForm<CreateModelForm>({
-    resolver: zodResolver(createModelSchema(t('model.create.nameRequired'), t('model.create.sizeInvalid'))),
+    resolver: zodResolver(createModelSchema(t('model.create.nameRequired'))),
     defaultValues: {
       name: '',
       description: '',
       databaseType: '',
-      canvasWidth: DEFAULT_CANVAS_WIDTH,
-      canvasHeight: DEFAULT_CANVAS_HEIGHT,
     },
   })
 
@@ -99,8 +90,6 @@ export function CreateModelDialog({ open, onOpenChange, workspaceId }: CreateMod
         name: values.name,
         description: values.description || undefined,
         databaseType: values.databaseType,
-        canvasWidth: values.canvasWidth,
-        canvasHeight: values.canvasHeight,
       },
       {
         onSuccess: () => {
@@ -182,46 +171,6 @@ export function CreateModelDialog({ open, onOpenChange, workspaceId }: CreateMod
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="canvasWidth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('model.create.canvasWidth')}</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        {...field}
-                        value={field.value}
-                        onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="canvasHeight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('model.create.canvasHeight')}</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        {...field}
-                        value={field.value}
-                        onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpen(false)} disabled={createMutation.isPending}>
                 {t('common.cancel')}

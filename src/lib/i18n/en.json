@@ -95,7 +95,18 @@
       "TEAM_MEMBER_NOT_FOUND": "Team member not found. The list will be refreshed.",
       "USER_NOT_FOUND": "User not found.",
       "SESSION_NOT_FOUND": "This session is already terminated. The list will be refreshed.",
-      "DUPLICATED_NAME": "A document with this name already exists."
+      "DUPLICATED_NAME": "A document with this name already exists.",
+      "VERSION_CONFLICT": "Another client saved first.",
+      "MODEL_NOT_FOUND": "Document not found.",
+      "CONNECTION_NOT_FOUND": "Connection not found.",
+      "CONNECTION_UNREACHABLE": "Cannot reach the database. Check the connection settings.",
+      "INVALID_DBMS_TYPE": "Unsupported DBMS.",
+      "MANAGED_INSTANCE_NOT_FOUND": "Instance not found.",
+      "MANAGED_INSTANCE_UNREACHABLE": "Cannot reach the instance. Check the credentials and address.",
+      "MANAGED_INSTANCE_IN_USE": "This instance still has issued databases. Revoke them first.",
+      "MANAGED_LIMIT_EXCEEDED": "You have reached the issue limit. Revoke one or contact the administrator.",
+      "MANAGED_PROVISION_FAILED": "Provisioning failed. Please try again shortly.",
+      "MANAGED_DATABASE_NOT_FOUND": "Issued database not found."
     },
     "loadFailed": "Failed to load",
     "bootstrapFailed": "Could not reach the server."
@@ -134,6 +145,7 @@
       "adminTitle": "Admin",
       "adminUsers": "Users",
       "adminCodes": "Code tables",
+      "adminManaged": "Managed DB",
       "backToWorkspaces": "Back to workspaces",
       "adminAuditLogs": "Audit logs",
       "teamsTitle": "Teams",
@@ -201,7 +213,8 @@
         "erd": "ERD",
         "overview": "Overview",
         "members": "Members",
-        "settings": "Settings"
+        "settings": "Settings",
+        "database": "Database"
       },
       "fields": {
         "name": "Name",
@@ -420,6 +433,53 @@
         "savedToast": "Saved."
       }
     },
+    "managed": {
+      "title": "Managed DB",
+      "cardTitle": "Instances",
+      "notice": "Root connections that issue per-document schemas for users. Registration, credential changes, and connection tests verify reachability. Set the per-user issue limit (workspace-wide) on the right — default 5.",
+      "newInstance": "Register instance",
+      "savedToast": "Saved.",
+      "table": {
+        "displayName": "Display name",
+        "endpoint": "Endpoint",
+        "issuedCount": "Issued",
+        "active": "Active"
+      },
+      "empty": {
+        "title": "No instances registered",
+        "description": "Register an instance so users can issue databases in their workspaces."
+      },
+      "dialog": {
+        "createTitle": "Register instance",
+        "editTitle": "Edit instance",
+        "notice": "Register the root credentials of a database instance. Issued databases (PostgreSQL schemas / MySQL databases) are isolated per document inside it.",
+        "displayName": "Display name",
+        "displayNamePlaceholder": "e.g. Academy PG",
+        "host": "Host",
+        "port": "Port",
+        "database": "Database",
+        "username": "Username",
+        "password": "Password",
+        "passwordKeep": "Leave empty to keep the current password",
+        "fieldRequired": "This field is required.",
+        "createSuccess": "Instance registered.",
+        "updateSuccess": "Instance updated.",
+        "dbms": "DBMS",
+        "databasePlaceholder": "Optional",
+        "databaseHint": "If omitted, PostgreSQL connects to the database matching the username; MySQL creates one on each issuance."
+      },
+      "delete": {
+        "title": "Delete instance {{name}}",
+        "description": "Delete instance '{{name}}'? It cannot be deleted while databases are still issued.",
+        "successToast": "Instance deleted."
+      },
+      "databaseAuto": "Auto",
+      "test": "Test connection",
+      "testSuccess": "Connected ({{ms}}ms)",
+      "testFail": "Connection failed",
+      "issueLimitLabel": "Issue limit per user",
+      "limitSavedToast": "Issue limit set to {{limit}}."
+    },
     "auditLogs": {
       "title": "Audit logs",
       "searchPlaceholder": "Search actor…",
@@ -450,7 +510,6 @@
       "columns": {
         "document": "Document",
         "databaseType": "Database",
-        "canvas": "Canvas",
         "version": "Version",
         "createdBy": "Created by",
         "updatedAt": "Updated"
@@ -472,9 +531,6 @@
       "descriptionPlaceholder": "Short description of the document",
       "databaseType": "Database type",
       "databaseTypePlaceholder": "Select a type",
-      "canvasWidth": "Canvas width (px)",
-      "canvasHeight": "Canvas height (px)",
-      "sizeInvalid": "Enter an integer between 1 and 100000",
       "successToast": "ERD document created"
     },
     "edit": {
@@ -489,11 +545,338 @@
       "successToast": "Deleted {{name}}"
     },
     "viewer": {
-      "close": "Close window",
-      "pending": {
-        "title": "Editor coming soon",
-        "description": "The ERD editing canvas arrives in the next phase."
+      "close": "Close window"
+    },
+    "editor": {
+      "toolbar": {
+        "save": "Save",
+        "undo": "Undo",
+        "redo": "Redo",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "fit": "Fit view",
+        "readOnly": "Read-only",
+        "view": "View",
+        "nameMode": {
+          "label": "Column name display",
+          "physical": "Physical only",
+          "logical": "Logical only",
+          "both": "Physical + logical"
+        },
+        "dbmsLocked": "Target DBMS — fixed at document creation",
+        "autoLayout": "Auto layout",
+        "autoLayoutFailed": "Auto layout failed",
+        "ddl": "Generate SQL",
+        "image": "Export image",
+        "crown": "Export document file"
+      },
+      "ddl": {
+        "title": "SQL script",
+        "tableCount": "{{tables}} tables · {{relationships}} relationships",
+        "warningTitle": "Generation notes",
+        "loading": "Generating SQL script…",
+        "error": "Failed to generate SQL script",
+        "unsavedNote": "You have unsaved changes — the script reflects the last saved version",
+        "copy": "Copy",
+        "copied": "SQL script copied",
+        "copyFailed": "Copy failed",
+        "download": "Download"
+      },
+      "deploy": {
+        "button": "Deploy",
+        "title": "Deploy to database",
+        "description": "Runs the DDL of “{{model}}” on the selected connection's database",
+        "warning": "This creates tables and constraints in the target database. Statements that conflict with existing objects are reported as failed and the rest continue to run.",
+        "connection": "Target connection",
+        "noMatchingConnection": "No connection with the same DBMS ({{dbms}}) as this document — register one in connection management",
+        "run": "Deploy",
+        "running": "Deploying…",
+        "summary": "{{total}} statements — {{executed}} succeeded, {{failed}} failed"
+      },
+      "contextMenu": {
+        "createTable": "New entity",
+        "createNote": "New note",
+        "tableInfo": "Table info",
+        "removeTable": "Delete table",
+        "removeNote": "Delete note",
+        "editRelationship": "Edit relationship",
+        "removeRelationship": "Delete relationship"
+      },
+      "table": {
+        "addColumn": "Add column",
+        "columnName": "Column name",
+        "physicalName": "Table name",
+        "dataType": "Data type",
+        "length": "Length",
+        "precision": "Precision",
+        "scale": "Scale",
+        "primaryKey": "Primary key",
+        "nullable": "NOT NULL",
+        "autoIncrement": "Auto increment",
+        "foreignKey": "Foreign key",
+        "removeColumn": "Remove column",
+        "info": "Table info",
+        "dragHandle": "Drag to move",
+        "logicalName": "Logical name",
+        "logicalNamePlaceholder": "Logical name (optional)",
+        "columnLogicalName": "Column logical name",
+        "reorder": "Reorder column — drag to move",
+        "nnPkLocked": "Primary key columns are always NOT NULL",
+        "nameDuplicate": "Table name already exists: {{name}}"
+      },
+      "note": {
+        "placeholder": "Write a note…",
+        "text": "Note text",
+        "title": "Note title",
+        "untitled": "Note",
+        "color": "Note color",
+        "bandHint": "Drag to move · double-click to edit",
+        "remove": "Delete note",
+        "edit": "Edit note",
+        "editDescription": "Set the title, accent color, and linked table. Colors apply immediately.",
+        "customColor": "Custom color",
+        "linkedTable": "Linked table",
+        "noLink": "None",
+        "linkedHint": "You can also drop the note onto a table. Auto layout places the note next to it."
+      },
+      "relationship": {
+        "createTitle": "Create relationship",
+        "editTitle": "Edit relationship",
+        "parent": "Parent table (1)",
+        "child": "Child table (N)",
+        "swap": "Swap parent/child",
+        "fkPreview": "FK columns to create",
+        "type": "Relationship type",
+        "type_ONE_TO_ONE": "1:1",
+        "type_ONE_TO_MANY": "1:N",
+        "identifying": "Identifying",
+        "identifyingHint": "FK columns join the child primary key and become NOT NULL.",
+        "parentMultiplicity": "Parent (1) multiplicity",
+        "childMultiplicity": "Child (N) multiplicity",
+        "multiplicity_ZERO_OR_ONE": "Zero or one (○|)",
+        "multiplicity_EXACTLY_ONE": "Exactly one (|)",
+        "multiplicity_ZERO_OR_MORE": "Zero or more (○<)",
+        "multiplicity_ONE_OR_MORE": "One or more (|<)",
+        "fkName": "Constraint name",
+        "onDelete": "ON DELETE",
+        "onUpdate": "ON UPDATE",
+        "action_NO_ACTION": "No action",
+        "action_RESTRICT": "Restrict",
+        "action_CASCADE": "Cascade",
+        "action_SET_NULL": "Set NULL",
+        "action_SET_DEFAULT": "Set default",
+        "noPk": "The parent table has no primary key, so no FK can be created.",
+        "uniqueHint": "A non-identifying 1:1 relationship automatically creates a unique key on all FK columns to enforce 1:1.",
+        "optionalityHint": "A parent of exactly one (|) makes the FK NOT NULL; zero or one (○|) allows NULL. Child-side multiplicity is notation only.",
+        "duplicate": "Only one relationship is allowed between two tables: {{parent}} → {{child}}",
+        "remove": "Delete relationship"
+      },
+      "tableInfo": {
+        "title": "Table info",
+        "physicalName": "Physical name",
+        "logicalName": "Logical name",
+        "logicalNamePlaceholder": "e.g. Order",
+        "comment": "Description",
+        "commentPlaceholder": "Table description",
+        "nameRequired": "Physical name is required"
+      },
+      "savedToast": "Document saved",
+      "conflict": {
+        "title": "Version conflict",
+        "description": "Another client saved first. Reloading discards your unsaved local changes.",
+        "reload": "Reload",
+        "keep": "Keep editing"
+      },
+      "remoteChange": {
+        "banner": "Another user has updated this document. Saving now will conflict.",
+        "reload": "Load server version",
+        "synced": "Loaded another user's changes"
+      },
+      "presence": {
+        "label": "Watching now"
+      },
+      "parentNoPk": "Table {{name}} has no primary key — it cannot be the parent (1) side",
+      "parseError": "Cannot parse the document content.",
+      "columnInfo": {
+        "title": "Column Info",
+        "physicalName": "Physical Name",
+        "logicalName": "Logical Name",
+        "logicalNamePlaceholder": "Logical name (optional)",
+        "defaultValue": "Default Value",
+        "defaultValuePlaceholder": "e.g. 0, NOW()",
+        "comment": "Comment",
+        "commentPlaceholder": "Column description",
+        "nameRequired": "Physical name is required",
+        "pk": "PK (Primary Key)",
+        "nullable": "Nullable",
+        "autoIncrement": "Auto Increment",
+        "dataType": "Type",
+        "length": "Length",
+        "precision": "Precision",
+        "scale": "Scale",
+        "pkHint": "Saving as PK forces NOT NULL and moves the column to the top (PK block).",
+        "aiHint": "Auto increment is available only for integer PK types (INT/BIGINT/SMALLINT)."
+      },
+      "key": {
+        "unique": "Unique",
+        "index": "Index",
+        "addUnique": "Add unique",
+        "addIndex": "Add index",
+        "titleAdd": "Add {{kind}}",
+        "titleEdit": "Edit {{kind}}",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "nameDuplicate": "A key with this name already exists in this document",
+        "columns": "Columns",
+        "columnsRequired": "Select at least one column",
+        "columnsHint": "Check order is the composite key column order — adjust with the arrows",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "noColumns": "This table has no columns",
+        "remove": "Remove key",
+        "order": "Sort order",
+        "orderHint": "Indexes support per-column sort order (ASC/DESC)"
+      },
+      "dbms": {
+        "common": "Common (logical)"
+      },
+      "relation": {
+        "startMenu": "Start relationship",
+        "pickType": "Relationship type",
+        "oneToMany": "1:N",
+        "oneToOne": "1:1",
+        "back": "Back",
+        "nonIdentifying": "Non-identifying",
+        "identifying": "Identifying",
+        "pickTarget": "Click the target table · self-reference: click the same table · Esc to cancel",
+        "pickKind": "Relationship kind",
+        "pickKindHint": "Start table = parent (1) → FK columns are created on the target (N) table · identifying adds FK to the child PK (solid line)",
+        "cancel": "Cancel",
+        "multiplicity": "Multiplicity",
+        "childSide": "Child (N) — target table",
+        "parentSide": "Parent (1) — start table"
+      },
+      "image": {
+        "exported": "Image downloaded",
+        "failed": "Failed to export image"
+      },
+      "crown": {
+        "exported": "Downloaded a .crown document file",
+        "failed": "Failed to export the document file"
+      }
+    },
+    "import": {
+      "button": "Import .crown",
+      "successToast": "Imported \"{{name}}\"",
+      "errors": {
+        "SYNTAX": "JSON syntax error — the file may be corrupted",
+        "NOT_CROWN": "Not a .crown document file",
+        "NEWER_VERSION": "This file uses a newer format — update the app and try again",
+        "INVALID_MODEL": "Document metadata (name, database type) is invalid",
+        "INVALID_CONTENT": "Document content is invalid — schema mismatch"
       }
     }
+  },
+  "connection": {
+    "list": {
+      "description": "Manage database credentials for reverse engineering and deployment. Passwords are stored encrypted.",
+      "newConnection": "Add connection",
+      "columns": {
+        "name": "Name",
+        "dbmsType": "DBMS",
+        "endpoint": "Host",
+        "database": "Database",
+        "username": "User",
+        "createdBy": "Created by"
+      },
+      "empty": {
+        "title": "No connections yet",
+        "description": "Register a database connection to import schemas as documents.",
+        "cta": "Add connection"
+      }
+    },
+    "dialog": {
+      "createTitle": "Add connection",
+      "editTitle": "Edit connection",
+      "notice": "Passwords are stored encrypted. Test the connection after saving.",
+      "name": "Name",
+      "namePlaceholder": "Dev PG",
+      "dbmsType": "DBMS",
+      "port": "Port",
+      "host": "Host",
+      "database": "Database",
+      "schema": "Schema",
+      "schemaPlaceholder": "public (default schema when empty)",
+      "schemaPattern": "Schema name must be 100 characters or fewer, using letters, digits and underscores",
+      "username": "User",
+      "password": "Password",
+      "fieldRequired": "This field is required",
+      "createSuccess": "Connection created",
+      "updateSuccess": "Connection updated"
+    },
+    "test": {
+      "button": "Test connection {{name}}",
+      "pending": "Testing…",
+      "successToast": "{{name}} connected ({{latency}}ms)",
+      "failToast": "{{name}} connection failed — {{message}}",
+      "connectedBadge": "Connected · {{latency}}ms",
+      "connectedBadgeNoLatency": "Connected",
+      "failedBadge": "Failed"
+    },
+    "delete": {
+      "title": "Delete connection {{name}}",
+      "description": "Delete connection '{{name}}'? Documents created from it are kept.",
+      "successToast": "Connection deleted"
+    }
+  },
+  "managed": {
+    "sectionTitle": "Service-provided databases",
+    "sectionDescription": "Issuing creates a dedicated schema and registers it as a connection, ready for deploy and import.",
+    "issue": "Issue",
+    "issuing": "Issuing…",
+    "usage": "{{used}} / {{limit}}",
+    "exhausted": "Limit reached",
+    "inactive": "Inactive",
+    "issueSuccessToast": "Issued — registered as connection \"{{connection}}\".",
+    "list": {
+      "schema": "Schema",
+      "instance": "Instance",
+      "connection": "Connection",
+      "createdBy": "Issued by"
+    },
+    "revokeTitle": "Revoke {{schema}}",
+    "revokeDescription": "Schema '{{schema}}' and all of its data will be dropped, and the issued connection removed. This cannot be undone.",
+    "revokeConfirm": "Revoke",
+    "revokeSuccessToast": "Revoked '{{schema}}'.",
+    "credential": {
+      "button": "{{schema}} connection info",
+      "title": "Issued database credentials",
+      "description": "Address, account, and password for this issuance — use them to connect from external clients such as DBeaver.",
+      "host": "Address",
+      "database": "Database",
+      "schema": "Schema",
+      "username": "Username",
+      "password": "Password",
+      "copy": "Copy",
+      "copied": "Copied.",
+      "reveal": "Show password",
+      "hide": "Hide password"
+    }
+  },
+  "reverse": {
+    "openButton": "Import from DB",
+    "rowAction": "Import {{name}} as document",
+    "title": "Import database as document",
+    "notice": "Reads tables and relationships from the selected database and creates a new ERD document.",
+    "connection": "Connection",
+    "noConnection": "No connections registered",
+    "modelName": "Document name",
+    "modelNamePlaceholder": "Imported schema ERD",
+    "descriptionPlaceholder": "Note about this schema (optional)",
+    "submit": "Import",
+    "fieldRequired": "This field is required",
+    "defaultModelName": "{{name}} ERD",
+    "successToast": "Created '{{name}}' — {{tables}} tables · {{relationships}} relationships",
+    "skippedToast": "Skipped foreign keys: {{skipped}}"
   }
 }

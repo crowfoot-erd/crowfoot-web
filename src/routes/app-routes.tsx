@@ -20,6 +20,7 @@ import { WorkspaceDetailPage } from '@/pages/workspace-detail'
 import { WorkspacesPage } from '@/pages/workspaces'
 import { AdminAuditLogsPage } from '@/pages/admin/audit-logs'
 import { AdminCodesPage } from '@/pages/admin/codes'
+import { AdminManagedPage } from '@/pages/admin/managed'
 import { AdminUserDetailPage } from '@/pages/admin/user-detail'
 import { AdminUsersPage } from '@/pages/admin/users'
 
@@ -48,6 +49,7 @@ export function AppRoutes() {
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="users/:userId" element={<AdminUserDetailPage />} />
             <Route path="codes" element={<AdminCodesPage />} />
+            <Route path="managed" element={<AdminManagedPage />} />
             <Route path="audit-logs" element={<AdminAuditLogsPage />} />
           </Route>
         </Route>

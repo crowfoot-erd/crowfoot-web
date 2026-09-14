@@ -197,15 +197,13 @@ export interface DatabaseType {
   displayName: string
 }
 
-/** 모델 요약 — 목록 (content 제외) */
+/** 모델 요약 — 목록 (content 제외) — 캔버스 크기는 폐지(#123) */
 export interface ModelSummary {
   modelId: string
   workspaceId: string
   name: string
   description: string | null
   databaseType: string
-  canvasWidth: number
-  canvasHeight: number
   version: number
   createdBy: { userId: string; name: string } | null
   createdAt: string
@@ -216,3 +214,103 @@ export interface ModelSummary {
 export interface Model extends ModelSummary {
   content: string
 }
+
+/* ---------- DB 커넥션 (08-core/06-connection.md) ---------- */
+
+/** 커넥션 — 비밀번호는 응답에 내려오지 않는다 */
+export interface DbConnection {
+  connectionId: string
+  workspaceId: string
+  name: string
+  dbmsType: string
+  host: string
+  port: number
+  databaseName: string
+  /** PostgreSQL 커넥션의 대상 스키마 — null이면 기본 스키마(search_path) */
+  schemaName?: string | null
+  username: string
+  createdBy: { userId: string; name: string } | null
+  createdAt: string
+}
+
+/** 접속 테스트 응답 — 실패도 200 계약(connected:false + 분류 문구) */
+export interface ConnectionTestResult {
+  connected: boolean
+  latencyMs: number | null
+  message: string | null
+}
+
+/** 리버스 엔지니어링 응답 — 생성된 문서 + 가져오기 요약 */
+export interface ReverseEngineeringResult {
+  model: Model
+  tableCount: number
+  relationshipCount: number
+  skipped: string[]
+}
+
+/** 매니지드 루트 인스턴스 — 관리자 등록 root 커넥션 (08-core/07). password는 어떤 형태로도 내려오지 않는다.
+ *  databaseName은 생략 가능 — PostgreSQL은 username database 폴백, MySQL은 발급 시 database 생성 */
+export interface ManagedInstance {
+  instanceId: string
+  displayName: string
+  dbmsType: string
+  host: string
+  port: number
+  databaseName: string | null
+  username: string
+  isActive: boolean
+  issuedCount: number
+  createdBy: { userId: string; name: string } | null
+  createdAt: string
+}
+
+/** 매니지드 발급 — 1행 = 발급 스키마 + 자동 생성 커넥션 대응 */
+export interface ManagedDatabase {
+  databaseId: string
+  instanceId: string
+  instanceDisplayName: string | null
+  schemaName: string
+  workspaceId: string
+  connectionId: string
+  connectionName: string | null
+  createdBy: { userId: string; name: string } | null
+  createdAt: string
+}
+
+/** 발급 접속 정보 — 본인 발급의 접속 주소·계정·비밀번호. 요청 시마다 복호화해 내려온다(유일한 비밀번호 노출 경로) */
+export interface ManagedCredential {
+  databaseId: string
+  instanceDisplayName: string
+  dbmsType: string
+  host: string
+  port: number
+  databaseName: string
+  /** PostgreSQL은 발급 스키마, MySQL은 database = schema라 null */
+  schemaName: string | null
+  username: string
+  password: string
+}
+
+/** 발급 한도 — 관리자가 지정(기본 5). 워크스페이스 내 사용자당(모든 인스턴스 합산) 기준 */
+export interface ManagedIssueLimit {
+  limit: number
+}
+
+/** 인스턴스별 발급 한도 요약 — limit은 서비스 고정(워크스페이스 내 사용자당 5),
+ *  used는 이 워크스페이스에서 요청자가 받은 발급 수(모든 인스턴스 합산) */
+export interface ManagedLimitSummary {
+  instanceId: string
+  displayName: string
+  isActive: boolean
+  limit: number
+  used: number
+  remaining: number
+}
+
+/** 발급 목록 응답 — 목록 본문에 이어 한도 요약이 실린다 */
+export interface ManagedDatabaseListResult {
+  items: ManagedDatabase[]
+  totalCount: number
+  limitSummary: ManagedLimitSummary[]
+}
+

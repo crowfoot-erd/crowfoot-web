@@ -130,6 +130,46 @@ test.describe('스모크 — 로그인 → 대시보드 → 워크스페이스 �
       }),
     )
 
+    // 상세 페이지의 ERD 탭이 문서 목록을 가져온다 — 목킹이 없으면 프록시의 실물 gateway로
+    // 나가 가짜 토큰 401 → refresh(역시 실물 401) → 세션이 폐기된다(로그인 다이얼로그).
+    // refresh도 막아두면 백엔드 기동 여부와 무관하게 결정적으로 돈다.
+    await page.route('**/api/v1/auth/refresh-token', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          envelope({ response: { accessToken: 'e2e-access-token', tokenType: 'Bearer', expiresIn: 3600 } }),
+        ),
+      }),
+    )
+    // 상세 페이지의 데이터 일괄 목킹 — 끝의 * 는 쿼리스트링(size=100 등)까지 흡수한다.
+    // 하나라도 새면 vite 프록시 → 실물 gateway 401 → 치명 코드로 세션이 폐기된다.
+    const emptyList = (route: Parameters<Parameters<typeof page.route>[1]>[0]) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(envelope({ totalCount: 0, responses: [] })),
+      })
+    await page.route('**/api/v1/core/workspaces/301/models?*', emptyList)
+    await page.route('**/api/v1/core/workspaces/301/models', emptyList)
+    await page.route('**/api/v1/core/workspaces/301/connections?*', emptyList)
+    await page.route('**/api/v1/core/workspaces/301/connections', emptyList)
+    await page.route('**/api/v1/core/database-types?*', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(
+          envelope({ totalCount: 1, responses: [{ code: 'COMMON', displayName: '공용' }] }),
+        ),
+      }),
+    )
+    await page.route('**/api/v1/core/database-types', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(
+          envelope({ totalCount: 1, responses: [{ code: 'COMMON', displayName: '공용' }] }),
+        ),
+      }),
+    )
+
     // ---------- 로그인 ----------
     await loginViaCallback(page)
 

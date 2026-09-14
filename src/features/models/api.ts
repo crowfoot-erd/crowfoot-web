@@ -30,8 +30,6 @@ export interface CreateModelInput {
   name: string
   description?: string
   databaseType: string
-  canvasWidth: number
-  canvasHeight: number
 }
 
 export function createModel(workspaceId: string, body: CreateModelInput) {

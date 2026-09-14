@@ -95,7 +95,18 @@
       "TEAM_MEMBER_NOT_FOUND": "팀 멤버를 찾을 수 없습니다. 목록을 새로고칩니다.",
       "USER_NOT_FOUND": "사용자를 찾을 수 없습니다.",
       "SESSION_NOT_FOUND": "이미 종료된 세션입니다. 목록을 새로고칩니다.",
-      "DUPLICATED_NAME": "이미 존재하는 이름입니다"
+      "DUPLICATED_NAME": "이미 존재하는 이름입니다",
+      "VERSION_CONFLICT": "다른 클라이언트가 먼저 저장했습니다.",
+      "MODEL_NOT_FOUND": "문서를 찾을 수 없습니다.",
+      "CONNECTION_NOT_FOUND": "커넥션을 찾을 수 없습니다.",
+      "CONNECTION_UNREACHABLE": "데이터베이스에 접속할 수 없습니다. 접속 정보를 확인해 주세요.",
+      "INVALID_DBMS_TYPE": "지원하지 않는 DBMS입니다.",
+      "MANAGED_INSTANCE_NOT_FOUND": "인스턴스를 찾을 수 없습니다.",
+      "MANAGED_INSTANCE_UNREACHABLE": "인스턴스에 접속할 수 없습니다. 자격·주소를 확인해 주세요.",
+      "MANAGED_INSTANCE_IN_USE": "발급이 남아 있는 인스턴스는 삭제할 수 없습니다. 발급을 먼저 철회해 주세요.",
+      "MANAGED_LIMIT_EXCEEDED": "발급 한도에 도달했습니다. 철회 후 다시 시도하거나 관리자에게 문의해 주세요.",
+      "MANAGED_PROVISION_FAILED": "발급 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      "MANAGED_DATABASE_NOT_FOUND": "발급을 찾을 수 없습니다."
     },
     "loadFailed": "불러오기에 실패했습니다",
     "bootstrapFailed": "서버에 연결하지 못했습니다."
@@ -134,6 +145,7 @@
       "adminTitle": "관리자",
       "adminUsers": "사용자 관리",
       "adminCodes": "코드 테이블",
+      "adminManaged": "매니지드 DB",
       "backToWorkspaces": "워크스페이스로 돌아가기",
       "adminAuditLogs": "감사 로그",
       "teamsTitle": "팀",
@@ -201,7 +213,8 @@
         "erd": "ERD",
         "overview": "개요",
         "members": "멤버",
-        "settings": "설정"
+        "settings": "설정",
+        "database": "데이터베이스"
       },
       "fields": {
         "name": "이름",
@@ -420,6 +433,53 @@
         "savedToast": "저장했습니다."
       }
     },
+    "managed": {
+      "title": "매니지드 DB",
+      "cardTitle": "인스턴스",
+      "notice": "사용자에게 문서별 스키마를 발급해 주는 root 커넥션입니다. 등록·자격 변경·연결 테스트 시 접속을 검증합니다. 발급 한도(워크스페이스 내 사용자당)는 우측에서 지정합니다 — 기본 5개.",
+      "newInstance": "인스턴스 등록",
+      "savedToast": "저장했습니다.",
+      "table": {
+        "displayName": "표시명",
+        "endpoint": "엔드포인트",
+        "issuedCount": "발급",
+        "active": "활성"
+      },
+      "empty": {
+        "title": "등록된 인스턴스가 없습니다",
+        "description": "인스턴스를 등록하면 사용자가 워크스페이스에서 DB를 발급받을 수 있습니다."
+      },
+      "dialog": {
+        "createTitle": "인스턴스 등록",
+        "editTitle": "인스턴스 편집",
+        "notice": "데이터베이스 인스턴스의 root 자격을 등록합니다. 발급(PostgreSQL 스키마·MySQL database)은 이 인스턴스 안에 문서별로 격리됩니다.",
+        "displayName": "표시명",
+        "displayNamePlaceholder": "예: 아카데미 PG",
+        "host": "호스트",
+        "port": "포트",
+        "database": "데이터베이스",
+        "username": "사용자",
+        "password": "비밀번호",
+        "passwordKeep": "비워 두면 기존 비밀번호 유지",
+        "fieldRequired": "필수 입력입니다.",
+        "createSuccess": "인스턴스를 등록했습니다.",
+        "updateSuccess": "인스턴스를 변경했습니다.",
+        "dbms": "DBMS",
+        "databasePlaceholder": "선택",
+        "databaseHint": "생략 시 PostgreSQL은 사용자와 같은 이름의 database로 접속하고, MySQL은 발급 시 database를 만듭니다."
+      },
+      "delete": {
+        "title": "{{name}} 인스턴스 삭제",
+        "description": "'{{name}}' 인스턴스를 삭제합니다. 발급이 남아 있으면 삭제할 수 없습니다.",
+        "successToast": "인스턴스를 삭제했습니다."
+      },
+      "databaseAuto": "자동",
+      "test": "연결 테스트",
+      "testSuccess": "정상 연결됐습니다 ({{ms}}ms)",
+      "testFail": "연결에 실패했습니다",
+      "issueLimitLabel": "사용자당 발급 한도",
+      "limitSavedToast": "발급 한도를 {{limit}}개로 지정했습니다."
+    },
     "auditLogs": {
       "title": "감사 로그",
       "searchPlaceholder": "주체 검색…",
@@ -450,7 +510,6 @@
       "columns": {
         "document": "문서",
         "databaseType": "DB 종류",
-        "canvas": "캔버스",
         "version": "버전",
         "createdBy": "생성자",
         "updatedAt": "최근 수정"
@@ -472,9 +531,6 @@
       "descriptionPlaceholder": "문서에 대한 짧은 설명",
       "databaseType": "데이터베이스 종류",
       "databaseTypePlaceholder": "종류 선택",
-      "canvasWidth": "캔버스 폭 (px)",
-      "canvasHeight": "캔버스 높이 (px)",
-      "sizeInvalid": "1 이상 100000 이하의 정수를 입력하세요",
       "successToast": "ERD 문서를 만들었습니다"
     },
     "edit": {
@@ -489,11 +545,338 @@
       "successToast": "{{name}} 문서를 삭제했습니다"
     },
     "viewer": {
-      "close": "창 닫기",
-      "pending": {
-        "title": "에디터 준비 중",
-        "description": "ERD 편집 화면은 다음 단계에서 제공됩니다."
+      "close": "창 닫기"
+    },
+    "editor": {
+      "toolbar": {
+        "save": "저장",
+        "undo": "되돌리기",
+        "redo": "다시 실행",
+        "zoomIn": "확대",
+        "zoomOut": "축소",
+        "fit": "전체 보기",
+        "readOnly": "읽기 전용",
+        "view": "보기",
+        "nameMode": {
+          "label": "컬럼 이름 표시",
+          "physical": "물리명만",
+          "logical": "논리명만",
+          "both": "물리명 + 논리명"
+        },
+        "dbmsLocked": "문서 대상 DBMS — 문서 생성 시점에 고정됩니다",
+        "autoLayout": "자동 배치",
+        "autoLayoutFailed": "자동 배치에 실패했습니다",
+        "ddl": "SQL 생성",
+        "image": "이미지 내보내기",
+        "crown": "문서 파일 내보내기"
+      },
+      "ddl": {
+        "title": "SQL 스크립트",
+        "tableCount": "테이블 {{tables}}개 · 관계 {{relationships}}개",
+        "warningTitle": "생성 시 주의",
+        "loading": "SQL 스크립트를 생성하는 중…",
+        "error": "SQL 스크립트 생성에 실패했습니다",
+        "unsavedNote": "저장되지 않은 변경이 있습니다 — 마지막 저장 본문 기준입니다",
+        "copy": "복사",
+        "copied": "SQL 스크립트를 복사했습니다",
+        "copyFailed": "복사에 실패했습니다",
+        "download": "다운로드"
+      },
+      "deploy": {
+        "button": "배포",
+        "title": "데이터베이스에 배포",
+        "description": "‘{{model}}’ 문서의 DDL을 선택한 커넥션의 데이터베이스에서 실행합니다",
+        "warning": "대상 데이터베이스에 테이블·제약을 생성합니다. 기존 객체와 충돌하는 문장은 실패로 기록되고 나머지는 계속 실행됩니다.",
+        "connection": "대상 커넥션",
+        "noMatchingConnection": "이 문서와 같은 DBMS({{dbms}})의 커넥션이 없습니다 — 커넥션 관리에서 등록해 주세요",
+        "run": "배포",
+        "running": "배포 중…",
+        "summary": "{{total}}문장 실행 — 성공 {{executed}} · 실패 {{failed}}"
+      },
+      "contextMenu": {
+        "createTable": "엔터티 생성",
+        "createNote": "메모 생성",
+        "tableInfo": "테이블 정보",
+        "removeTable": "테이블 삭제",
+        "removeNote": "메모 삭제",
+        "editRelationship": "관계 편집",
+        "removeRelationship": "관계 삭제"
+      },
+      "table": {
+        "addColumn": "컬럼 추가",
+        "columnName": "컬럼 물리명",
+        "physicalName": "테이블 물리명",
+        "dataType": "데이터 타입",
+        "length": "길이",
+        "precision": "정밀도",
+        "scale": "스케일",
+        "primaryKey": "기본 키",
+        "nullable": "NOT NULL",
+        "autoIncrement": "자동 증가",
+        "foreignKey": "외래 키",
+        "removeColumn": "컬럼 삭제",
+        "info": "테이블 정보",
+        "dragHandle": "드래그하여 이동",
+        "logicalName": "논리명",
+        "logicalNamePlaceholder": "논리명(선택)",
+        "columnLogicalName": "컬럼 논리명",
+        "reorder": "컬럼 순서 변경 — 드래그하여 이동",
+        "nnPkLocked": "기본 키 컬럼은 NOT NULL이 고정입니다",
+        "nameDuplicate": "이미 존재하는 테이블 물리명입니다: {{name}}"
+      },
+      "note": {
+        "placeholder": "메모를 입력하세요",
+        "text": "메모 내용",
+        "title": "메모 제목",
+        "untitled": "메모",
+        "color": "메모 색상",
+        "bandHint": "드래그로 이동 · 두 번 클릭해 편집",
+        "remove": "메모 삭제",
+        "edit": "메모 편집",
+        "editDescription": "제목·강조색·연관 테이블을 지정합니다. 색은 고르는 즉시 반영됩니다.",
+        "customColor": "자유 색",
+        "linkedTable": "연관 테이블",
+        "noLink": "없음",
+        "linkedHint": "메모를 테이블 위로 드래그해 놓아도 지정할 수 있습니다. 자동 배치에서 이 테이블 근처에 위치합니다."
+      },
+      "relationship": {
+        "createTitle": "관계 생성",
+        "editTitle": "관계 편집",
+        "parent": "부모 테이블(1)",
+        "child": "자식 테이블(N)",
+        "swap": "부모/자식 바꾸기",
+        "fkPreview": "생성될 FK 컬럼",
+        "type": "관계 유형",
+        "type_ONE_TO_ONE": "1:1",
+        "type_ONE_TO_MANY": "1:N",
+        "identifying": "식별 관계",
+        "identifyingHint": "FK 컬럼이 자식 테이블 기본 키에 포함되고 NOT NULL이 됩니다.",
+        "parentMultiplicity": "부모(1) 기수",
+        "childMultiplicity": "자식(N) 기수",
+        "multiplicity_ZERO_OR_ONE": "0 또는 하나 (○|)",
+        "multiplicity_EXACTLY_ONE": "하나 (|)",
+        "multiplicity_ZERO_OR_MORE": "0 이상 (○<)",
+        "multiplicity_ONE_OR_MORE": "하나 이상 (|<)",
+        "fkName": "제약조건 이름",
+        "onDelete": "ON DELETE",
+        "onUpdate": "ON UPDATE",
+        "action_NO_ACTION": "동작 없음",
+        "action_RESTRICT": "제한(RESTRICT)",
+        "action_CASCADE": "전파(CASCADE)",
+        "action_SET_NULL": "NULL 설정",
+        "action_SET_DEFAULT": "기본값 설정",
+        "noPk": "부모 테이블에 기본 키가 없어 FK를 만들 수 없습니다",
+        "uniqueHint": "비식별 1:1 관계는 FK 컬럼 전체에 유니크 키를 자동 생성해 1:1을 강제합니다.",
+        "optionalityHint": "부모가 하나(|)면 FK가 NOT NULL, 0 또는 하나(○|)면 NULL을 허용합니다. 자식 쪽 기수는 표기에만 반영됩니다.",
+        "duplicate": "두 테이블 사이에는 관계가 하나만 있을 수 있습니다: {{parent}} → {{child}}",
+        "remove": "관계 삭제"
+      },
+      "tableInfo": {
+        "title": "테이블 정보",
+        "physicalName": "물리명",
+        "logicalName": "논리명",
+        "logicalNamePlaceholder": "예: 주문",
+        "comment": "설명",
+        "commentPlaceholder": "테이블 설명",
+        "nameRequired": "물리명을 입력하세요"
+      },
+      "savedToast": "문서를 저장했습니다",
+      "conflict": {
+        "title": "버전 충돌",
+        "description": "다른 클라이언트가 먼저 저장했습니다. 다시 불러오면 저장하지 않은 로컬 변경은 사라집니다.",
+        "reload": "다시 불러오기",
+        "keep": "계속 편집"
+      },
+      "remoteChange": {
+        "banner": "다른 사용자가 문서를 수정했습니다. 지금 저장하면 충돌합니다.",
+        "reload": "서버 본문 불러오기",
+        "synced": "다른 사용자의 변경을 불러왔습니다"
+      },
+      "presence": {
+        "label": "함께 보는 사람"
+      },
+      "parentNoPk": "테이블 {{name}}에 기본 키가 없어 부모(1) 쪽으로 쓸 수 없습니다",
+      "parseError": "문서 내용을 해석할 수 없습니다",
+      "columnInfo": {
+        "title": "컬럼 정보",
+        "physicalName": "물리명",
+        "logicalName": "논리명",
+        "logicalNamePlaceholder": "논리명(선택)",
+        "defaultValue": "기본값",
+        "defaultValuePlaceholder": "예: 0, NOW()",
+        "comment": "코멘트",
+        "commentPlaceholder": "컬럼 설명",
+        "nameRequired": "물리명은 필수입니다",
+        "pk": "PK (기본 키)",
+        "nullable": "NULL 허용",
+        "autoIncrement": "자동 증가",
+        "dataType": "타입",
+        "length": "길이",
+        "precision": "정밀도",
+        "scale": "스케일",
+        "pkHint": "PK로 저장하면 NOT NULL이 강제되고 컬럼이 최상단(PK 블록)으로 이동합니다.",
+        "aiHint": "자동 증가는 PK + 정수 타입(INT·BIGINT·SMALLINT)에서만 설정할 수 있습니다."
+      },
+      "key": {
+        "unique": "유니크",
+        "index": "인덱스",
+        "addUnique": "유니크 추가",
+        "addIndex": "인덱스 추가",
+        "titleAdd": "{{kind}} 추가",
+        "titleEdit": "{{kind}} 편집",
+        "name": "이름",
+        "nameRequired": "이름을 입력하세요",
+        "nameDuplicate": "문서 내에 같은 키 이름이 있습니다",
+        "columns": "컬럼",
+        "columnsRequired": "컬럼을 1개 이상 선택하세요",
+        "columnsHint": "체크한 순서가 복합 키의 컬럼 순서입니다 — 화살표로 조정할 수 있어요",
+        "moveUp": "위로 이동",
+        "moveDown": "아래로 이동",
+        "noColumns": "테이블에 컬럼이 없습니다",
+        "remove": "키 삭제",
+        "order": "정렬 순서",
+        "orderHint": "인덱스는 컬럼별 정렬(ASC/DESC)을 지정할 수 있어요"
+      },
+      "dbms": {
+        "common": "공용(논리)"
+      },
+      "relation": {
+        "startMenu": "관계 시작",
+        "pickType": "관계 유형",
+        "oneToMany": "1:N",
+        "oneToOne": "1:1",
+        "back": "뒤로",
+        "nonIdentifying": "비식별 관계",
+        "identifying": "식별 관계",
+        "pickTarget": "대상 테이블을 클릭해 연결 · 자기 참조는 자기 테이블 클릭 · Esc 취소",
+        "pickKind": "관계 종류",
+        "pickKindHint": "시작 테이블=부모(1) → 대상 테이블=자식(N)에 FK가 생성됩니다 · 식별 관계는 FK가 자식 PK에 포함됩니다(실선)",
+        "cancel": "취소",
+        "multiplicity": "기수",
+        "childSide": "자식(N) — 대상 테이블",
+        "parentSide": "부모(1) — 시작 테이블"
+      },
+      "image": {
+        "exported": "이미지를 내려받았습니다",
+        "failed": "이미지 내보내기에 실패했습니다"
+      },
+      "crown": {
+        "exported": ".crown 문서 파일을 내려받았습니다",
+        "failed": "문서 파일 내보내기에 실패했습니다"
+      }
+    },
+    "import": {
+      "button": ".crown 가져오기",
+      "successToast": "{{name}} 문서를 가져왔습니다",
+      "errors": {
+        "SYNTAX": "JSON 구문 오류입니다 — 파일이 손상되었을 수 있어요",
+        "NOT_CROWN": ".crown 문서 파일이 아닙니다",
+        "NEWER_VERSION": "새 버전 형식의 파일입니다 — 앱을 업데이트한 뒤 다시 시도하세요",
+        "INVALID_MODEL": "문서 메타(이름·DB 종류)가 올바르지 않습니다",
+        "INVALID_CONTENT": "문서 내용이 올바르지 않습니다 — 스키마가 맞지 않아요"
       }
     }
+  },
+  "connection": {
+    "list": {
+      "description": "리버스 엔지니어링·배포에 쓸 데이터베이스 접속 정보를 관리합니다. 비밀번호는 암호화되어 저장됩니다.",
+      "newConnection": "커넥션 추가",
+      "columns": {
+        "name": "이름",
+        "dbmsType": "DBMS",
+        "endpoint": "호스트",
+        "database": "데이터베이스",
+        "username": "사용자",
+        "createdBy": "등록자"
+      },
+      "empty": {
+        "title": "등록된 커넥션이 없습니다",
+        "description": "데이터베이스 접속 정보를 등록하면 스키마를 문서로 가져올 수 있습니다.",
+        "cta": "커넥션 추가"
+      }
+    },
+    "dialog": {
+      "createTitle": "커넥션 추가",
+      "editTitle": "커넥션 편집",
+      "notice": "비밀번호는 암호화되어 저장되며, 등록 후 접속 테스트로 확인할 수 있습니다.",
+      "name": "이름",
+      "namePlaceholder": "개발 PG",
+      "dbmsType": "DBMS",
+      "port": "포트",
+      "host": "호스트",
+      "database": "데이터베이스",
+      "schema": "스키마",
+      "schemaPlaceholder": "public (비워 두면 기본 스키마)",
+      "schemaPattern": "스키마 이름은 영문·숫자·밑줄로 100자 이내여야 합니다",
+      "username": "사용자",
+      "password": "비밀번호",
+      "fieldRequired": "필수 값입니다",
+      "createSuccess": "커넥션을 등록했습니다",
+      "updateSuccess": "커넥션을 수정했습니다"
+    },
+    "test": {
+      "button": "{{name}} 접속 테스트",
+      "pending": "테스트 중…",
+      "successToast": "{{name}} 접속 성공 ({{latency}}ms)",
+      "failToast": "{{name}} 접속 실패 — {{message}}",
+      "connectedBadge": "연결됨 · {{latency}}ms",
+      "connectedBadgeNoLatency": "연결됨",
+      "failedBadge": "연결 실패"
+    },
+    "delete": {
+      "title": "{{name}} 커넥션 삭제",
+      "description": "'{{name}}' 커넥션을 삭제합니다. 이 커넥션으로 만든 문서는 유지됩니다.",
+      "successToast": "커넥션을 삭제했습니다"
+    }
+  },
+  "managed": {
+    "sectionTitle": "서비스 제공 DB",
+    "sectionDescription": "발급받으면 문서 전용 스키마가 만들어지고 커넥션으로 자동 등록됩니다. 배포·가져오기에 바로 사용할 수 있습니다.",
+    "issue": "발급받기",
+    "issuing": "발급 중…",
+    "usage": "{{used}} / {{limit}}",
+    "exhausted": "한도 도달",
+    "inactive": "비활성",
+    "issueSuccessToast": "발급 완료 — 커넥션 \"{{connection}}\"으로 등록했습니다.",
+    "list": {
+      "schema": "스키마",
+      "instance": "인스턴스",
+      "connection": "커넥션",
+      "createdBy": "발급자"
+    },
+    "revokeTitle": "{{schema}} 발급 철회",
+    "revokeDescription": "'{{schema}}' 스키마와 그 안의 모든 데이터가 삭제되고 발급 커넥션도 제거됩니다. 되돌릴 수 없습니다.",
+    "revokeConfirm": "철회",
+    "revokeSuccessToast": "'{{schema}}' 발급을 철회했습니다.",
+    "credential": {
+      "button": "{{schema}} 접속 정보",
+      "title": "발급 접속 정보",
+      "description": "이 발급에 접속하는 주소·계정·비밀번호입니다. 외부 클라이언트(DBeaver 등) 접속에 그대로 쓸 수 있습니다.",
+      "host": "접속 주소",
+      "database": "데이터베이스",
+      "schema": "스키마",
+      "username": "계정",
+      "password": "비밀번호",
+      "copy": "복사",
+      "copied": "복사했습니다.",
+      "reveal": "비밀번호 표시",
+      "hide": "비밀번호 가리기"
+    }
+  },
+  "reverse": {
+    "openButton": "DB에서 가져오기",
+    "rowAction": "{{name}} 문서로 가져오기",
+    "title": "DB에서 문서로 가져오기",
+    "notice": "선택한 커넥션의 데이터베이스에서 테이블·관계를 읽어 새 ERD 문서를 만듭니다.",
+    "connection": "커넥션",
+    "noConnection": "등록된 커넥션이 없습니다",
+    "modelName": "문서 이름",
+    "modelNamePlaceholder": "가져온 문서 ERD",
+    "descriptionPlaceholder": "어떤 스키마인지 메모 (선택)",
+    "submit": "가져오기",
+    "fieldRequired": "필수 값입니다",
+    "defaultModelName": "{{name}} ERD",
+    "successToast": "'{{name}}' 문서를 만들었습니다 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
+    "skippedToast": "가져오지 못한 외래키: {{skipped}}"
   }
 }
