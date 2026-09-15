@@ -908,7 +908,7 @@
       },
       "editor": {
         "title": "브라우저 ERD 에디터",
-        "description": "설치·설정 없이 브라우저에서 바로. 카우풋(Crow's Foot) 표기법으로 테이블과 관계를 그립니다."
+        "description": "설치·설정 없이 브라우저에서 바로. 까마귀발(Crow's Foot) 표기법으로 테이블과 관계를 그립니다."
       },
       "collaboration": {
         "title": "실시간 협업",
