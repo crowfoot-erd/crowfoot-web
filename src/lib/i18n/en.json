@@ -449,6 +449,7 @@
       "table": {
         "displayName": "Display name",
         "endpoint": "Endpoint",
+        "internal": "internal",
         "issuedCount": "Issued",
         "active": "Active"
       },
@@ -463,12 +464,15 @@
         "displayName": "Display name",
         "displayNamePlaceholder": "e.g. Academy PG",
         "host": "Host",
+        "publicHost": "Public address",
         "port": "Port",
         "database": "Database",
         "username": "Username",
         "password": "Password",
         "passwordKeep": "Leave empty to keep the current password",
         "fieldRequired": "This field is required.",
+        "hostInvalid": "Invalid host format — enter the hostname only, without a scheme (http://) or port",
+        "publicHostHint": "The address shown in users' connection info. Leave empty to expose the connection host as-is.",
         "createSuccess": "Instance registered.",
         "updateSuccess": "Instance updated.",
         "dbms": "DBMS",

@@ -191,7 +191,8 @@ export const fixtures = {
       },
     ],
   },
-  /** 매니지드 루트 인스턴스 (08-core/07) — PostgreSQL·MySQL. MySQL은 database 생략(발급 시 생성) */
+  /** 매니지드 루트 인스턴스 (08-core/07) — PostgreSQL·MySQL. MySQL은 database 생략(발급 시 생성).
+   *  PG(401)는 노출 주소 분리 실측용, MySQL(403)은 publicHost null 폴백 커버 */
   managedInstances: {
     totalCount: 2,
     responses: [
@@ -200,6 +201,7 @@ export const fixtures = {
         displayName: 'Academy PG',
         dbmsType: 'postgresql',
         host: 's3.java21.net',
+        publicHost: 'db.crowfoot.java21.net',
         port: 8000,
         databaseName: 'crowfoot',
         username: 'crowfoot',
@@ -213,6 +215,7 @@ export const fixtures = {
         displayName: 'Academy MySQL',
         dbmsType: 'mysql',
         host: 's4.java21.net',
+        publicHost: null,
         port: 13306,
         databaseName: null,
         username: 'root',
@@ -814,6 +817,7 @@ export const handlers = [
       displayName?: string
       dbmsType?: string
       host?: string
+      publicHost?: string | null
       port?: number
       databaseName?: string | null
       username?: string
@@ -825,6 +829,7 @@ export const handlers = [
           displayName: body.displayName ?? '',
           dbmsType: body.dbmsType ?? 'postgresql',
           host: body.host ?? 'db.example.com',
+          publicHost: body.publicHost ?? null,
           port: body.port ?? 5432,
           databaseName: body.databaseName ?? null,
           username: body.username ?? 'crowfoot',
@@ -898,7 +903,8 @@ export const handlers = [
   ),
 
   // 사용자 — 발급 접속 정보(본인 발급만) — 발급 31(Academy PG)에 대한 PG 매핑 자격.
-  // 자격은 전용 계정(계정명 = 스키마명)이다 — 인스턴스 루트 자격은 노출되지 않는다
+  // 자격은 전용 계정(계정명 = 스키마명)이다 — 인스턴스 루트 자격은 노출되지 않는다.
+  // host는 노출 주소(publicHost ?? host)다 — 인스턴스 401의 publicHost가 내려간다
   http.get(
     `${BASE}/api/v1/core/workspaces/:workspaceId/managed-databases/:databaseId/credential`,
     ({ params }) => {
@@ -911,7 +917,7 @@ export const handlers = [
             databaseId: '31',
             instanceDisplayName: 'Academy PG',
             dbmsType: 'postgresql',
-            host: 's3.java21.net',
+            host: 'db.crowfoot.java21.net',
             port: 8000,
             databaseName: 'crowfoot',
             schemaName: 'cf_u2_d1',

@@ -32,6 +32,8 @@ export interface CreateManagedInstanceInput {
   displayName: string
   dbmsType: string
   host: string
+  /** 사용자 노출 주소(선택) — null이면 host를 그대로 노출 */
+  publicHost: string | null
   port: number
   /** 생략 가능(null) — PostgreSQL은 username database 폴백, MySQL은 발급 시 생성 */
   databaseName: string | null
@@ -45,10 +47,12 @@ export function createManagedInstance(body: CreateManagedInstanceInput) {
 }
 
 /** 변경 — 변경분만 전송. password는 입력했을 때만(빈 값 = 기존 유지), 자격이 오면 재검증된다.
- *  databaseName은 null 전송으로 제거할 수 있다(생략 = 변경 없음과 구분) */
+ *  databaseName은 null 전송으로 제거할 수 있다(생략 = 변경 없음과 구분).
+ *  publicHost는 표기 전용이라 재검증을 트리거하지 않는다 — 빈 칸("") 전송이 제거(host 폴백), null은 변경 없음 */
 export interface UpdateManagedInstanceInput {
   displayName?: string
   host?: string
+  publicHost?: string | null
   port?: number
   databaseName?: string | null
   username?: string

@@ -86,14 +86,17 @@ describe('매니지드 DB 섹션', () => {
     await user.click(await screen.findByRole('button', { name: 'cf_u2_d1 접속 정보' }))
     const dialog = await screen.findByRole('dialog')
 
-    // PG 매핑 — 접속 주소·database·스키마·계정, JDBC URL까지 표시된다
-    expect(within(dialog).getByText('s3.java21.net:8000')).toBeVisible()
+    // PG 매핑 — 접속 주소·database·스키마·계정, JDBC URL까지 표시된다.
+    // 접속 주소는 노출 주소(publicHost ?? host)다 — 인스턴스 401의 publicHost가 내려간다
+    expect(within(dialog).getByText('db.crowfoot.java21.net:8000')).toBeVisible()
     // database는 인스턴스 것(crowfoot) — 계정 칸에는 발급 전용 계정이 온다(루트 아님)
     expect(within(dialog).getByText('crowfoot')).toBeVisible()
     // 'cf_u2_d1'는 제목 배지·스키마 칸·계정 칸에 나온다
     expect(within(dialog).getAllByText('cf_u2_d1').length).toBeGreaterThanOrEqual(3)
     expect(
-      within(dialog).getByText('jdbc:postgresql://s3.java21.net:8000/crowfoot?currentSchema=cf_u2_d1'),
+      within(dialog).getByText(
+        'jdbc:postgresql://db.crowfoot.java21.net:8000/crowfoot?currentSchema=cf_u2_d1',
+      ),
     ).toBeVisible()
 
     // 비밀번호는 기본 가림 — 눈 토글로 드러난다
@@ -103,7 +106,7 @@ describe('매니지드 DB 섹션', () => {
 
     // 필드 복사 — 값이 클립보드로 간다
     await user.click(within(dialog).getByRole('button', { name: '접속 주소 복사' }))
-    expect(writeText).toHaveBeenCalledWith('s3.java21.net:8000')
+    expect(writeText).toHaveBeenCalledWith('db.crowfoot.java21.net:8000')
     await waitFor(() => {
       expect(screen.getByText('복사했습니다.')).toBeVisible()
     })

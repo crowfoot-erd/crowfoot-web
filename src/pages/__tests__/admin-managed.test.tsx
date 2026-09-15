@@ -40,17 +40,19 @@ function renderAdminManaged() {
 }
 
 describe('매니지드 인스턴스 관리 화면', () => {
-  it('인스턴스 목록을 렌더한다 — 표시명·엔드포인트·DBMS·발급 수·활성', async () => {
+  it('인스턴스 목록을 렌더한다 — 표시명·엔드포인트(노출 주소 1차·내부 보조)·DBMS·발급 수·활성', async () => {
     renderAdminManaged()
 
-    // 표시명은 readonly 박스로 표시된다(편집은 다이얼로그)
-    expect(await screen.findByText('s3.java21.net:8000')).toBeVisible()
+    // 표시명은 readonly 박스로 표시된다(편집은 다이얼로그).
+    // 엔드포인트 1차는 사용자 노출 주소(publicHost) — 내부 host와 다르면 보조로 회색 표기된다
+    expect(await screen.findByText('db.crowfoot.java21.net:8000')).toBeVisible()
+    expect(screen.getByText('내부 s3.java21.net:8000')).toBeVisible()
     expect(screen.getByText('Academy PG')).toBeVisible()
     expect(screen.getByText(/crowfoot · postgresql/)).toBeVisible()
     expect(screen.getByText('1')).toBeVisible() // 발급 수 배지
     expect(screen.getByRole('switch', { name: /Academy PG/ })).toBeChecked()
 
-    // MySQL 행 — database 생략 인스턴스는 "자동"으로 표시된다
+    // MySQL 행 — publicHost null 폴백(내부 주소가 곧 노출 주소), database 생략은 "자동"
     expect(screen.getByText('s4.java21.net:13306')).toBeVisible()
     expect(screen.getByText(/root · mysql/)).toBeVisible()
     expect(screen.getByText(/\/ 자동/)).toBeVisible()
@@ -136,6 +138,7 @@ describe('매니지드 인스턴스 관리 화면', () => {
 
     await user.type(within(dialog).getByLabelText(/^표시명/), 'Academy PG 2')
     await user.type(within(dialog).getByLabelText(/^호스트/), 'db2.example.com')
+    await user.type(within(dialog).getByLabelText(/^노출 주소/), 'db2.crowfoot.example.com')
     fireEvent.change(within(dialog).getByLabelText(/^포트/), { target: { value: '5432' } })
     await user.type(within(dialog).getByLabelText(/데이터베이스/), 'crowfoot')
     await user.type(within(dialog).getByLabelText('사용자'), 'crowfoot')
@@ -148,6 +151,7 @@ describe('매니지드 인스턴스 관리 화면', () => {
       displayName: 'Academy PG 2',
       dbmsType: 'postgresql',
       host: 'db2.example.com',
+      publicHost: 'db2.crowfoot.example.com',
       port: 5432,
       databaseName: 'crowfoot',
       username: 'crowfoot',
@@ -197,11 +201,47 @@ describe('매니지드 인스턴스 관리 화면', () => {
       displayName: 'Academy MySQL 2',
       dbmsType: 'mysql',
       host: 's4.java21.net',
+      // 노출 주소를 비워 두면 null — 접속 호스트를 그대로 노출(폴백)
+      publicHost: null,
       port: 3306,
       databaseName: null,
       username: 'root',
       password: 'secret',
     })
+  })
+
+  it('호스트 형식 검증 — 스킴·포트를 붙여 넣으면 안내 문구로 막고 전송하지 않는다', async () => {
+    let captured: Record<string, unknown> | null = null
+    server.use(
+      http.post('/api/v1/core/admin/managed-instances', async ({ request }) => {
+        captured = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(ok({ response: { instanceId: '405' } }))
+      }),
+    )
+    const user = userEvent.setup()
+    renderAdminManaged()
+
+    await user.click(await screen.findByRole('button', { name: '인스턴스 등록' }))
+    const dialog = await screen.findByRole('dialog')
+
+    // 호스트에 "host:port"를 붙여 넣은 경우 — 포트는 별도 필드다
+    await user.type(within(dialog).getByLabelText(/^표시명/), 'Academy PG 3')
+    await user.type(within(dialog).getByLabelText(/^호스트/), 'db.example.com:5432')
+    fireEvent.change(within(dialog).getByLabelText(/^포트/), { target: { value: '5432' } })
+    await user.type(within(dialog).getByLabelText('사용자'), 'crowfoot')
+    await user.type(within(dialog).getByLabelText('비밀번호'), 'secret')
+
+    await user.click(within(dialog).getByRole('button', { name: '생성' }))
+
+    expect(
+      within(dialog).getByText('호스트 형식이 올바르지 않습니다 — 스킴(http://)·포트 없이 호스트명만 입력하세요'),
+    ).toBeVisible()
+    expect(captured).toBeNull() // 검증 실패로 POST되지 않는다
+
+    // 노출 주소도 같은 규칙 — 스킴을 붙이면 막힌다
+    await user.type(within(dialog).getByLabelText(/^노출 주소/), 'https://db.example.com')
+    await user.click(within(dialog).getByRole('button', { name: '생성' }))
+    expect(captured).toBeNull()
   })
 
   it('연결 테스트 — 저장된 자격으로 SELECT 1 결과를 토스트로 보고한다(실패도 200 계약)', async () => {

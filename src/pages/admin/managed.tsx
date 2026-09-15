@@ -205,13 +205,19 @@ export function AdminManagedPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-0.5">
+                        {/* 1차 주소는 사용자에게 노출되는 값(publicHost 폴백 host) — 다를 때만 내부 주소 보조 표기 */}
                         <span className="font-mono text-xs">
-                          {instance.host}:{instance.port}
+                          {instance.publicHost ?? instance.host}:{instance.port}
                           <span className="text-muted-foreground">
                             {' / '}
                             {instance.databaseName ?? t('admin.managed.databaseAuto')}
                           </span>
                         </span>
+                        {instance.publicHost && instance.publicHost !== instance.host ? (
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {t('admin.managed.table.internal')} {instance.host}:{instance.port}
+                          </span>
+                        ) : null}
                         <span className="text-xs text-muted-foreground">
                           {instance.username} · {instance.dbmsType}
                         </span>

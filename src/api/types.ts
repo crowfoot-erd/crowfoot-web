@@ -287,6 +287,8 @@ export interface ManagedInstance {
   displayName: string
   dbmsType: string
   host: string
+  /** 사용자 노출 주소(선택) — null이면 host를 그대로 노출. 표기 전용이라 접속 검증 대상이 아니다 */
+  publicHost: string | null
   port: number
   databaseName: string | null
   username: string

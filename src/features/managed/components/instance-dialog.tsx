@@ -3,9 +3,11 @@
  *
  * - DBMS 드롭다운 — 공개 database-types(코드 테이블) 표시명 중 발급을 지원하는 것만 노출.
  *   최종 판정은 서버 프로비저너 레지스트리가 한다(이 목록은 옵션 표시용 필터)
- * - 표시명·host·port·database(선택)·사용자·비밀번호 — 발급 한도는 워크스페이스 내
+ * - 표시명·host·port·database(선택)·사용자·비밀번호·노출 주소(선택) — 발급 한도는 워크스페이스 내
  *   사용자당 5개로 서비스 고정이라 인스턴스 설정에 없다
  * - database 생략 — PostgreSQL은 username과 같은 database 폴백, MySQL은 발급 시 database 생성
+ * - 노출 주소(publicHost) — 사용자 접속 정보에 내려가는 표기 전용 주소. 비워 두면 접속 호스트 그대로 노출.
+ *   접속 검증·재검증 대상이 아니므로 편집해도 SELECT 1이 돌지 않는다(빈 칸 저장 = 제거)
  * - 등록·자격 변경은 서버가 접속 검증(SELECT 1)한다 — 실패 시 502 문구로 안내
  * - 편집 시 DBMS는 바꿀 수 없고 비밀번호는 빈 칸이면 기존 값 유지
  */
@@ -59,18 +61,22 @@ interface InstanceFormValues {
   displayName: string
   dbmsType: string
   host: string
+  publicHost: string
   port: number
   databaseName: string
   username: string
   password: string
 }
 
-function instanceSchema(fieldRequired: string) {
+function instanceSchema(fieldRequired: string, hostInvalid: string) {
   const required = z.string().trim().min(1, fieldRequired)
   return z.object({
     displayName: required,
     dbmsType: required,
-    host: required,
+    // 호스트명만 — 스킴(http://)·포트(:5432)·공백 붙여넣기 방지(포트는 별도 필드)
+    host: required.regex(/^[A-Za-z0-9.-]+$/, hostInvalid),
+    // 노출 주소는 선택 — 빈 칸 = 접속 호스트 그대로 노출
+    publicHost: z.string().trim().regex(/^[A-Za-z0-9.-]*$/, hostInvalid),
     port: z.number({ error: fieldRequired }).int().min(1).max(65535),
     // database는 선택 — 생략 시 PG는 username 폴백, MySQL은 발급 시 생성
     databaseName: z.string(),
@@ -94,11 +100,14 @@ export function InstanceDialog({ open, onOpenChange, instance }: InstanceDialogP
   }))
 
   const form = useForm<InstanceFormValues>({
-    resolver: zodResolver(instanceSchema(t('admin.managed.dialog.fieldRequired'))),
+    resolver: zodResolver(
+      instanceSchema(t('admin.managed.dialog.fieldRequired'), t('admin.managed.dialog.hostInvalid')),
+    ),
     defaultValues: {
       displayName: '',
       dbmsType: 'postgresql',
       host: '',
+      publicHost: '',
       port: 5432,
       databaseName: '',
       username: '',
@@ -115,6 +124,7 @@ export function InstanceDialog({ open, onOpenChange, instance }: InstanceDialogP
             displayName: instance.displayName,
             dbmsType: instance.dbmsType,
             host: instance.host,
+            publicHost: instance.publicHost ?? '',
             port: instance.port,
             databaseName: instance.databaseName ?? '',
             username: instance.username,
@@ -124,6 +134,7 @@ export function InstanceDialog({ open, onOpenChange, instance }: InstanceDialogP
             displayName: '',
             dbmsType: 'postgresql',
             host: '',
+            publicHost: '',
             port: 5432,
             databaseName: '',
             username: '',
@@ -148,13 +159,14 @@ export function InstanceDialog({ open, onOpenChange, instance }: InstanceDialogP
     const password = values.password.trim()
     if (editing && instance) {
       // 자격이 하나라도 오면 서버가 새 조합으로 재검증한다 — 변경분만 전송.
-      // databaseName은 빈 칸 → null 전송으로 "제거"(username 폴백)를 표현한다
+      // publicHost는 빈 칸을 그대로 전송해 "제거"(host 폴백)를 표현한다 — null은 변경 없음이라 쓰지 않는다
       updateMutation.mutate(
         {
           instanceId: instance.instanceId,
           body: {
             displayName: values.displayName.trim(),
             host: values.host.trim(),
+            publicHost: values.publicHost.trim(),
             port: values.port,
             databaseName: values.databaseName.trim() || null,
             username: values.username.trim(),
@@ -175,6 +187,7 @@ export function InstanceDialog({ open, onOpenChange, instance }: InstanceDialogP
           displayName: values.displayName.trim(),
           dbmsType: values.dbmsType,
           host: values.host.trim(),
+          publicHost: values.publicHost.trim() || null,
           port: values.port,
           databaseName: values.databaseName.trim() || null,
           username: values.username.trim(),
@@ -258,6 +271,22 @@ export function InstanceDialog({ open, onOpenChange, instance }: InstanceDialogP
                   <FormControl>
                     <Input placeholder="db.example.com" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="publicHost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('admin.managed.dialog.publicHost')}</FormLabel>
+                  <FormControl>
+                    <Input placeholder="db.crowfoot.example.com" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    {t('admin.managed.dialog.publicHostHint')}
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

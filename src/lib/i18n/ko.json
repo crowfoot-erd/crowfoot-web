@@ -449,6 +449,7 @@
       "table": {
         "displayName": "표시명",
         "endpoint": "엔드포인트",
+        "internal": "내부",
         "issuedCount": "발급",
         "active": "활성"
       },
@@ -463,12 +464,15 @@
         "displayName": "표시명",
         "displayNamePlaceholder": "예: 아카데미 PG",
         "host": "호스트",
+        "publicHost": "노출 주소",
         "port": "포트",
         "database": "데이터베이스",
         "username": "사용자",
         "password": "비밀번호",
         "passwordKeep": "비워 두면 기존 비밀번호 유지",
         "fieldRequired": "필수 입력입니다.",
+        "hostInvalid": "호스트 형식이 올바르지 않습니다 — 스킴(http://)·포트 없이 호스트명만 입력하세요",
+        "publicHostHint": "사용자 접속 정보에 내려가는 주소입니다. 비워 두면 접속 호스트를 그대로 노출합니다.",
         "createSuccess": "인스턴스를 등록했습니다.",
         "updateSuccess": "인스턴스를 변경했습니다.",
         "dbms": "DBMS",
