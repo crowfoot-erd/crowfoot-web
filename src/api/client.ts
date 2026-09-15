@@ -10,7 +10,9 @@
  */
 import type { ApiEnvelope, ListResult, PageResult } from './types'
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? ''
+/** API 기점 — 개발 = 빈 값(Vite 프록시 /api → gateway:8000) / 운영 = VITE_API_BASE_URL.
+ *  풀페이지 이동(로그인 시작)도 같은 기점을 써야 한다 — oauth.ts가 재사용한다. */
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export const SESSION_EXPIRED_EVENT = 'crowfoot:session-expired'
 export const AUTH_BROADCAST_CHANNEL = 'crowfoot-auth'
@@ -110,7 +112,7 @@ export function refreshAccessToken(): Promise<RefreshOutcome> {
   if (!refreshInFlight) {
     refreshInFlight = (async (): Promise<RefreshOutcome> => {
       try {
-        const res = await fetch(`${BASE_URL}/api/v1/auth/refresh-token`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh-token`, {
           method: 'POST',
           credentials: 'include',
         })
@@ -146,7 +148,7 @@ export interface RequestOptions {
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
-  const url = `${BASE_URL}${path}`
+  const url = `${API_BASE_URL}${path}`
   if (!query) return url
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
