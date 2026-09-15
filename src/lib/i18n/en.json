@@ -917,18 +917,34 @@
     "skippedToast": "Skipped foreign keys: {{skipped}}"
   },
   "landing": {
-    "badge": "Open-source ERD editor",
+    "badge": "Free, open-source ERD editor",
     "hero": {
-      "title": "Where design ends, your database begins",
-      "description": "Model, collaborate, and run — every step of your database work in one place."
+      "title": "From one diagram",
+      "titleAccent": "to a live database",
+      "description": "Design it, refine it together, then run it — every step of your data work in one browser tab."
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
       "quota": "Up to 5 per account",
       "free": "Free"
     },
+    "steps": {
+      "label": "How it works",
+      "draw": {
+        "title": "Draw",
+        "description": "Sketch your ERD right in the browser — no install, no setup."
+      },
+      "refine": {
+        "title": "Refine together",
+        "description": "Edit the same document with your team, changes merged in real time."
+      },
+      "run": {
+        "title": "Run it",
+        "description": "Get a free PostgreSQL or MySQL database shaped exactly like your design."
+      }
+    },
     "cta": {
-      "start": "Get started",
+      "start": "Start for free",
       "login": "Sign in",
       "github": "GitHub"
     },
@@ -962,6 +978,9 @@
     "footer": {
       "opensource": "All code is available on GitHub",
       "terms": "Terms"
+    },
+    "gallery": {
+      "heading": "Documents being shared right now"
     }
   },
   "terms": {

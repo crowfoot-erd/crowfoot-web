@@ -917,18 +917,34 @@
     "skippedToast": "가져오지 못한 외래키: {{skipped}}"
   },
   "landing": {
-    "badge": "오픈소스 ERD 에디터",
+    "badge": "무료 · 오픈소스 ERD 에디터",
     "hero": {
-      "title": "설계가 끝나면, 데이터베이스가 시작됩니다",
-      "description": "ERD 설계, 팀 협업, 그리고 실제 데이터베이스 — 데이터 작업의 처음부터 끝까지 한 곳에서."
+      "title": "한 장의 ERD가",
+      "titleAccent": "실제 데이터베이스가 됩니다",
+      "description": "설계하고, 함께 다듬고, 바로 구동까지 — 데이터 작업의 모든 단계를 브라우저 하나에서."
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
       "quota": "계정당 최대 5개",
       "free": "무료 제공"
     },
+    "steps": {
+      "label": "사용 흐름",
+      "draw": {
+        "title": "그리기",
+        "description": "브라우저에서 바로 ERD를 그립니다 — 설치도 설정도 없이."
+      },
+      "refine": {
+        "title": "함께 다듬기",
+        "description": "같은 문서를 여럿이 동시에 편집하고, 변경사항은 실시간으로 합쳐집니다."
+      },
+      "run": {
+        "title": "실행하기",
+        "description": "설계한 모양 그대로 PostgreSQL·MySQL 데이터베이스를 무료로 발급받습니다."
+      }
+    },
     "cta": {
-      "start": "시작하기",
+      "start": "무료로 시작하기",
       "login": "로그인",
       "github": "GitHub"
     },
@@ -962,6 +978,9 @@
     "footer": {
       "opensource": "모든 코드는 GitHub에 공개됩니다",
       "terms": "이용약관"
+    },
+    "gallery": {
+      "heading": "지금 공유되고 있는 문서"
     }
   },
   "terms": {

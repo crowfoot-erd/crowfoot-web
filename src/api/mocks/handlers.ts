@@ -159,6 +159,20 @@ export const fixtures = {
     startsAt: null,
     endsAt: null,
   },
+  /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답 (토큰은 위 shares fixture의 활성 링크) */
+  sharedGallery: {
+    totalCount: 1,
+    responses: [
+      {
+        shareToken: 'Sh4reT0ken0fM0del501aaaa',
+        modelName: '주문 서비스 ERD',
+        description: '결제 도메인 1차',
+        databaseType: 'postgresql',
+        updatedAt: '2026-09-15T00:00:00Z',
+        sharedAt: '2026-09-10T00:00:00Z',
+      },
+    ],
+  },
   connections: {
     totalCount: 1,
     responses: [
@@ -488,6 +502,9 @@ export const handlers = [
     }
     return HttpResponse.json(ok({ response: fixtures.sharedDocument }))
   }),
+
+  // 공유 갤러리 목록(§1.10.5) — 인증 없음. 랜딩 페이지가 현재 공유 중인 문서를 나열
+  http.get(`${BASE}/api/v1/core/shares`, () => HttpResponse.json(ok(fixtures.sharedGallery))),
 
   // 모델 생성 — 이름 중복 409, 응답은 생성 리소스(content 포함)
   http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models`, async ({ request }) => {

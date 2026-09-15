@@ -237,6 +237,16 @@ export interface PublicShare {
   endsAt: string | null
 }
 
+/** 공유 갤러리 항목 (08-core/02-model.md §1.10.5) — 랜딩 페이지가 현재 공유 중인 문서를 나열. 본문(content) 없음 */
+export interface SharedGalleryItem {
+  shareToken: string
+  modelName: string
+  description: string | null
+  databaseType: string
+  updatedAt: string
+  sharedAt: string
+}
+
 /* ---------- DB 커넥션 (08-core/06-connection.md) ---------- */
 
 /** 커넥션 — 비밀번호는 응답에 내려오지 않는다 */

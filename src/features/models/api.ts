@@ -3,7 +3,7 @@
  * content 저장은 에디터 단계(2.x)에서 추가한다.
  */
 import { apiDelete, apiGet, apiGetList, apiPatch, apiPost } from '@/api/client'
-import type { DatabaseType, ListResult, Model, ModelSummary, ModelShare, PublicShare } from '@/api/types'
+import type { DatabaseType, ListResult, Model, ModelSummary, ModelShare, PublicShare, SharedGalleryItem } from '@/api/types'
 
 export type FetchModelsParams = {
   keyword?: string
@@ -81,4 +81,9 @@ export function revokeModelShare(workspaceId: string, modelId: string, shareId: 
 /** 공유 문서 공개 조회 — 인증 없이 토큰으로만 (게이트웨이 화이트리스트 경로) */
 export function fetchSharedDocument(token: string, signal?: AbortSignal) {
   return apiGet<PublicShare>(`/api/v1/core/shares/${token}`, undefined, signal)
+}
+
+/** 공유 갤러리 목록 — 인증 없이(게이트웨이 화이트리스트), 랜딩 페이지가 현재 공유 중인 문서를 나열 */
+export function fetchSharedGallery(signal?: AbortSignal) {
+  return apiGetList<SharedGalleryItem>('/api/v1/core/shares', undefined, signal)
 }

@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ErrorState } from '@/components/error-state'
 import { LanguageSelect } from '@/components/language-select'
+import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -49,9 +50,7 @@ export function LoginPage() {
     <div className="relative flex min-h-svh flex-col items-center justify-center gap-8 bg-background px-4">
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex items-center gap-2 text-2xl font-semibold">
-          <span aria-hidden className="text-primary">
-            ✳
-          </span>
+          <Logo className="size-7" />
           {t('common.appName')}
         </div>
         <h1 className="text-lg font-medium">{t('auth.login.title')}</h1>

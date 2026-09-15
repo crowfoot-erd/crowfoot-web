@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { LanguageSelect } from '@/components/language-select'
+import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from 'cn'
 import { useMe } from '@/features/auth'
@@ -34,9 +35,7 @@ export function AppLayout() {
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4 md:gap-6">
           <Link to="/dashboard" className="flex items-center gap-2 text-base font-semibold">
-            <span aria-hidden className="text-primary">
-              ✳
-            </span>
+            <Logo className="size-5" />
             {t('common.appName')}
           </Link>
 

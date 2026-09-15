@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Crowfoot 로고 — ERD 까마귀발(Crow's Foot) 표기법의 관계선 그 자체:
+       '0 또는 1' 환(○) — 관계선 — '다수' 까마귀발(fork, 세 발가락 끝 정렬) -->
+  <rect width="512" height="512" rx="112" fill="#09090b"/>
+  <g stroke="#fafafa" stroke-width="34" stroke-linecap="round" fill="none">
+    <circle cx="124" cy="256" r="48"/>
+    <line x1="197" y1="256" x2="335" y2="256"/>
+    <line x1="335" y1="256" x2="435" y2="142"/>
+    <line x1="335" y1="256" x2="435" y2="256"/>
+    <line x1="335" y1="256" x2="435" y2="370"/>
+  </g>
+</svg>

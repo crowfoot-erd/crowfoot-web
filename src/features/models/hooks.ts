@@ -13,6 +13,7 @@ import {
   fetchModelShares,
   fetchModels,
   fetchSharedDocument,
+  fetchSharedGallery,
   revokeModelShare,
   updateModel,
   type CreateModelInput,
@@ -31,6 +32,8 @@ export const modelKeys = {
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'shares'] as const,
   /** 공개 공유 문서 — 인증과 무관한 별도 루트 키 (게스트도 조회) */
   shared: (token: string) => ['shares', token] as const,
+  /** 공유 갤러리 — 현재 공유 중인 문서 목록(랜딩), 마찬가지로 인증 무관 루트 키 */
+  gallery: ['shares', 'gallery'] as const,
   databaseTypes: ['database-types'] as const,
 }
 
@@ -134,6 +137,15 @@ export function useSharedDocument(token: string) {
     queryKey: modelKeys.shared(token),
     queryFn: ({ signal }) => fetchSharedDocument(token, signal),
     enabled: token.length > 0,
+    retry: false,
+  })
+}
+
+/** 공유 갤러리 목록 — 게스트(미인증) 랜딩 페이지에서도 그대로 쓴다 (빈 목록이면 섹션을 숨긴다) */
+export function useSharedGallery() {
+  return useQuery({
+    queryKey: modelKeys.gallery,
+    queryFn: ({ signal }) => fetchSharedGallery(signal),
     retry: false,
   })
 }

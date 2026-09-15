@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { LanguageSelect } from '@/components/language-select'
+import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 /** i18n terms.sections 한 단위 — heading + paragraphs */
@@ -25,9 +26,7 @@ export function TermsPage() {
     <div className="flex min-h-svh flex-col bg-background">
       <header className="mx-auto flex h-16 w-full max-w-3xl items-center px-4">
         <Link to="/" className="flex items-center gap-2 text-lg font-semibold hover:opacity-80">
-          <span aria-hidden className="text-primary">
-            ✳
-          </span>
+          <Logo className="size-6" />
           {t('common.appName')}
         </Link>
       </header>

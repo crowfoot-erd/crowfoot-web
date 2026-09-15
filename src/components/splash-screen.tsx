@@ -4,6 +4,7 @@
 import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 
 interface SplashScreenProps {
@@ -21,7 +22,7 @@ export function SplashScreen({ error = false, onRetry }: SplashScreenProps) {
       className="flex min-h-svh flex-col items-center justify-center gap-4"
     >
       <div className="flex items-center gap-2 text-lg font-semibold">
-        <span aria-hidden className="text-primary">✳</span>
+        <Logo className="size-6" />
         {t('common.appName')}
       </div>
       {error ? (
