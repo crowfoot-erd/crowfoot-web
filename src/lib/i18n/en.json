@@ -878,5 +878,52 @@
     "defaultModelName": "{{name}} ERD",
     "successToast": "Created '{{name}}' — {{tables}} tables · {{relationships}} relationships",
     "skippedToast": "Skipped foreign keys: {{skipped}}"
+  },
+  "landing": {
+    "badge": "Open-source ERD editor",
+    "hero": {
+      "title": "Draw your ERD, get a real database",
+      "description": "Turn your model into a running PostgreSQL or MySQL database instantly. From modeling to a live DB, all in one place."
+    },
+    "highlight": {
+      "engines": "PostgreSQL · MySQL",
+      "quota": "Up to 5 per account",
+      "free": "Free"
+    },
+    "cta": {
+      "start": "Get started",
+      "login": "Sign in",
+      "github": "GitHub"
+    },
+    "features": {
+      "heading": "Features",
+      "managed": {
+        "title": "Free managed databases",
+        "description": "Spin up to 5 free PostgreSQL or MySQL dev databases per account — tested and ready to connect."
+      },
+      "editor": {
+        "title": "Browser ERD editor",
+        "description": "No install, no setup. Draw tables and relationships with Crow's Foot notation right in your browser."
+      },
+      "collaboration": {
+        "title": "Real-time collaboration",
+        "description": "Edit the same document together — presence and changes sync in real time."
+      },
+      "connections": {
+        "title": "Bring your own database",
+        "description": "Store connection profiles for databases you already run, and test them in one click."
+      },
+      "roles": {
+        "title": "Workspace & team roles",
+        "description": "Owner, editor, commenter, viewer — role-based permissions keep team work safe."
+      },
+      "opensource": {
+        "title": "Open source",
+        "description": "All of Crowfoot's code is on GitHub. Read it, run it, contribute."
+      }
+    },
+    "footer": {
+      "opensource": "All code is available on GitHub"
+    }
   }
 }

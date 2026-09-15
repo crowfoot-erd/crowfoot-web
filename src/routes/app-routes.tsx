@@ -1,8 +1,8 @@
 /**
  * 라우팅 (storyboard 00-common §2.3 — 직접 URL 접근 규칙)
  *
- * /login·/auth/callback 공개 / 나머지 ProtectedRoute → AppLayout 셸 / /admin/* AdminRoute /
- * catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
+ * /·/login·/auth/callback 공개(게스트 랜딩·로그인·콜백) / 나머지 ProtectedRoute → AppLayout 셸 /
+ * /admin/* AdminRoute / catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -11,6 +11,7 @@ import { ProtectedRoute } from '@/routes/protected-route'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthCallbackPage } from '@/pages/auth-callback'
 import { DashboardPage } from '@/pages/dashboard'
+import { LandingPage } from '@/pages/landing'
 import { LoginPage } from '@/pages/login'
 import { ModelViewerPage } from '@/pages/model-viewer'
 import { NotFoundPage } from '@/pages/not-found'
@@ -28,6 +29,7 @@ export function AppRoutes() {
   return (
     <Routes>
       {/* 공개 — 셸 없음 */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
@@ -37,7 +39,8 @@ export function AppRoutes() {
         <Route path="/workspaces/:workspaceId/models/:modelId" element={<ModelViewerPage />} />
 
         <Route element={<AppLayout />}>
-          <Route index path="/" element={<DashboardPage />} />
+          {/* 앱 홈 — 게스트 / 는 랜딩(소개) 페이지가 담당한다 */}
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="/teams" element={<TeamsPage />} />
