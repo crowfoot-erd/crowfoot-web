@@ -17,7 +17,7 @@ describe('랜딩 페이지', () => {
     resetSessionState()
   })
 
-  it('게스트 — 히어로·핵심 강조·특징 6종·CTA·ERD 일러스트를 렌더한다', () => {
+  it('게스트 — 히어로·핵심 강조·특징 6종·CTA를 렌더한다', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('설계가 끝나면')
@@ -41,10 +41,7 @@ describe('랜딩 페이지', () => {
     expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute(
       'href',
       'https://github.com/crowfoot-erd',
-    )
-    // ERD 일러스트
-    expect(screen.getByRole('img', { name: /ERD 일러스트/ })).toBeInTheDocument()
-  })
+    )  })
 
   it('인증 상태 — 소개 대신 /dashboard로 보낸다', () => {
     asAuthenticated()

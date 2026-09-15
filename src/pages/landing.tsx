@@ -9,7 +9,6 @@ import { Navigate, Link } from 'react-router-dom'
 import { Cable, Code2, Database, Languages, Layers, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { ErdHeroArt } from '@/components/erd-hero-art'
 import { LanguageSelect } from '@/components/language-select'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -83,16 +82,6 @@ export function LandingPage() {
             </Button>
           </div>
         </section>
-
-        {/* 서비스 미리보기 — 카우풋 ERD 일러스트 (에디터 캔버스 프레임) */}
-        <div className="w-full max-w-3xl overflow-hidden rounded-xl border shadow-sm">
-          <div className="flex h-8 items-center gap-1.5 border-b bg-muted/60 px-3">
-            <span aria-hidden className="size-2.5 rounded-full bg-muted-foreground/30" />
-            <span aria-hidden className="size-2.5 rounded-full bg-muted-foreground/30" />
-            <span aria-hidden className="size-2.5 rounded-full bg-muted-foreground/30" />
-          </div>
-          <ErdHeroArt />
-        </div>
 
         {/* 특징 6종 */}
         <section aria-labelledby="landing-features" className="w-full">
