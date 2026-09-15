@@ -116,6 +116,11 @@
       "title": "Sign in to Crowfoot",
       "description": "Draw ERDs with your GitHub account — edit and share with your team.",
       "continueWith": "Continue with {{provider}}",
+      "consent": {
+        "prefix": "I have read and agree to the ",
+        "link": "Terms of Service",
+        "suffix": "."
+      },
       "noProviders": {
         "title": "No sign-in methods available",
         "description": "Please contact the administrator."

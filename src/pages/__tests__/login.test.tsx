@@ -14,7 +14,7 @@ import { afterAll, afterEach, beforeEach, beforeAll, describe, expect, it } from
 import { clearAccessToken } from '@/api/client'
 import { fail, fixtures } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
-import { OAUTH_PROVIDER_STORAGE_KEY } from '@/features/auth'
+import { OAUTH_PROVIDER_STORAGE_KEY, TERMS_CONSENT_STORAGE_KEY } from '@/features/auth'
 import { LoginPage } from '@/pages/login'
 import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
 
@@ -32,6 +32,7 @@ describe('로그인 화면', () => {
 
   beforeEach(() => {
     window.sessionStorage.clear()
+    window.localStorage.removeItem(TERMS_CONSENT_STORAGE_KEY)
     stubbedLocation.href = 'http://localhost/'
     resetSessionState()
     clearAccessToken()
@@ -106,12 +107,42 @@ describe('로그인 화면', () => {
   it('stores provider in sessionStorage and navigates full-page on click', async () => {
     renderWithProviders(<Route path="/login" element={<LoginPage />} />, { route: '/login' })
 
+    // given: 이용약관 동의
+    await userEvent.click(screen.getByRole('checkbox'))
     const button = await screen.findByRole('button', { name: /GitHub/ })
     await userEvent.click(button)
 
     // then: 풀페이지 이동(302 — fetch 금지) + provider 저장
     expect(stubbedLocation.href).toBe('/api/v1/auth/oauth2/github')
     expect(window.sessionStorage.getItem(OAUTH_PROVIDER_STORAGE_KEY)).toBe('github')
+  })
+
+  it('locks provider buttons until the terms consent is given', async () => {
+    renderWithProviders(<Route path="/login" element={<LoginPage />} />, { route: '/login' })
+
+    // then: 동의 전에는 제공자 버튼 잠금 + 약관 링크 노출
+    const button = await screen.findByRole('button', { name: /GitHub/ })
+    expect(button).toBeDisabled()
+    expect(screen.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms')
+
+    // when: 동의 체크
+    await userEvent.click(screen.getByRole('checkbox'))
+
+    // then: 버튼 활성 + 동의는 브라우저에 기록
+    expect(button).toBeEnabled()
+    expect(window.localStorage.getItem(TERMS_CONSENT_STORAGE_KEY)).toBe('agreed')
+  })
+
+  it('remembers previous consent — buttons enabled immediately', async () => {
+    // given: 이전 로그인에서 동의 기록
+    window.localStorage.setItem(TERMS_CONSENT_STORAGE_KEY, 'agreed')
+
+    renderWithProviders(<Route path="/login" element={<LoginPage />} />, { route: '/login' })
+
+    // then: 재동의 없이 즉시 진행 가능
+    const button = await screen.findByRole('button', { name: /GitHub/ })
+    expect(button).toBeEnabled()
+    expect(screen.getByRole('checkbox')).toBeChecked()
   })
 
   it('redirects to next when already authenticated', async () => {

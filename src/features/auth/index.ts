@@ -11,3 +11,4 @@ export {
   consumeOAuthProvider,
   startOAuthLogin,
 } from './oauth'
+export { TERMS_CONSENT_STORAGE_KEY, consentTerms, hasConsentedTerms } from './terms-consent'
