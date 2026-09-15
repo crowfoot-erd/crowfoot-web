@@ -136,6 +136,23 @@ describe('API 클라이언트', () => {
       expect(expiredListener).toHaveBeenCalledTimes(1)
       window.removeEventListener(SESSION_EXPIRED_EVENT, expiredListener)
     })
+
+    it('does not fire a session-expired event when a tokenless public request gets a fatal 401', async () => {
+      // 비로그인 랜딩의 공개 호출(갤러리 등)이 401을 받는 경우 — 화이트리스트 누락 같은 서버 설정 오류가
+      // 세션 만료 오버레이로 번져 메인 화면을 덮지 않게 한다 (토큰이 없으면 만료시킬 세션도 없다)
+      server.use(
+        http.get('/api/v1/core/shares', () => envelopeFail('AUTH_TOKEN_INVALID', 401)),
+      )
+
+      const expiredListener = vi.fn()
+      window.addEventListener(SESSION_EXPIRED_EVENT, expiredListener)
+
+      await expect(apiGet('/api/v1/core/shares')).rejects.toSatisfy((error: unknown) =>
+        isApiError(error) && error.resultCode === 'AUTH_TOKEN_INVALID',
+      )
+      expect(expiredListener).not.toHaveBeenCalled()
+      window.removeEventListener(SESSION_EXPIRED_EVENT, expiredListener)
+    })
   })
 
   describe('common format parsing', () => {

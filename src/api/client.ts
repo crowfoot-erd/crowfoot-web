@@ -7,6 +7,8 @@
  * - 401 AUTH_TOKEN_EXPIRED → refresh 단일 플라이트(공유 Promise) → 원요청 1회 재시도
  * - 치명 401(AUTH_TOKEN_INVALID·AUTH_SESSION_REVOKED, refresh 실패) → 세션 만료 이벤트
  *   (window 'crowfoot:session-expired' + BroadcastChannel 'crowfoot-auth' — 다른 탭 동시 처리)
+ *   단, Access 토큰 없이 보낸 요청(비로그인 공개 호출)의 401은 만료시킬 세션이 없으므로 제외 —
+ *   공개 경로 화이트리스트 누락 같은 서버 설정 오류가 랜딩 오버레이로 번지지 않게 한다
  */
 import type { ApiEnvelope, ListResult, PageResult } from './types'
 
@@ -41,21 +43,24 @@ export class ApiError extends Error {
   readonly errors?: ApiEnvelope['errors']
   /** fetch 자체 실패(네트워크) — 재시도 안내 문구 분기용 */
   readonly isNetworkError: boolean
+  /** 요청이 Access 토큰을 담아 보내졌는가 — 토큰 없는 공개 요청의 401은 세션 만료 대상에서 제외된다 */
+  readonly hadToken: boolean
 
-  constructor(resultCode: string, status: number, message: string, options?: { errors?: ApiEnvelope['errors']; isNetworkError?: boolean }) {
+  constructor(resultCode: string, status: number, message: string, options?: { errors?: ApiEnvelope['errors']; isNetworkError?: boolean; hadToken?: boolean }) {
     super(message)
     this.name = 'ApiError'
     this.resultCode = resultCode
     this.status = status
     this.errors = options?.errors
     this.isNetworkError = options?.isNetworkError ?? false
+    this.hadToken = options?.hadToken ?? false
   }
 }
 
 /** resultCode → 표시 문구 변환 시 서버 resultMessage는 폐기 (§3.6 — 서버 message 비표시) */
-function toApiError(payload: ApiEnvelope | null, status: number): ApiError {
+function toApiError(payload: ApiEnvelope | null, status: number, hadToken: boolean): ApiError {
   const resultCode = payload?.header?.resultCode ?? 'UNKNOWN'
-  return new ApiError(resultCode, status, resultCode, { errors: payload?.errors })
+  return new ApiError(resultCode, status, resultCode, { errors: payload?.errors, hadToken })
 }
 
 /* ---------- 세션 만료 통지 ---------- */
@@ -192,7 +197,7 @@ async function rawRequest(method: Method, path: string, options: RequestOptions)
   }
 
   if (!payload?.header || payload.header.isSuccessful !== true) {
-    throw toApiError(payload, res.status)
+    throw toApiError(payload, res.status, token !== null)
   }
   return payload
 }
@@ -217,7 +222,9 @@ async function requestEnvelope(method: Method, path: string, options: RequestOpt
       throw error
     }
     if (error instanceof ApiError && isFatalAuthError(error)) {
-      fireSessionExpired(error.resultCode)
+      // 토큰 없이 보낸 공개 요청(비로그인 랜딩 등)의 401 — 만료시킬 세션이 없다:
+      // 세션 만료 오버레이로 전체 화면을 덮지 않고 호출부 에러로만 끝낸다
+      if (error.hadToken) fireSessionExpired(error.resultCode)
     }
     throw error
   }
