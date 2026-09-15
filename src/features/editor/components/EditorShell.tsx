@@ -53,6 +53,8 @@ export interface EditorShellProps {
   canEdit: boolean
   /** 저장 성공 콜백 — 헤더 버전 표시 갱신용 */
   onSaved?: (version: number) => void
+  /** 공개 공유 뷰어(/share/{token}) — 협업 채널·버전 폴링·워크스페이스 액션을 끈다 (게스트 접근) */
+  publicView?: boolean
 }
 
 export function EditorShell(props: EditorShellProps) {
@@ -63,7 +65,7 @@ export function EditorShell(props: EditorShellProps) {
   )
 }
 
-function EditorShellInner({ model, canEdit, onSaved }: EditorShellProps) {
+function EditorShellInner({ model, canEdit, onSaved, publicView = false }: EditorShellProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const rf = useReactFlow()
@@ -256,7 +258,8 @@ function EditorShellInner({ model, canEdit, onSaved }: EditorShellProps) {
   // 서버 version이 로컬 base(마지막 저장·수화 시점)보다 높으면 남이 저장한 것이다.
   // 깨끗한 상태(dirty 아님)면 상세를 다시 떠와 자동 동기화 — 수화 effect가 이어받는다.
   // 편집 중이면 배너로만 알린다(자동 저장이 곧 409를 만나 충돌 다이얼로그로 이어짐).
-  const remoteVersionQuery = useModelVersion(model.workspaceId, model.modelId)
+  // 공개 뷰어에서는 폴링하지 않는다 — 스냅샷이 아니라 열 때 받은 본문을 그대로 보여준다.
+  const remoteVersionQuery = useModelVersion(model.workspaceId, model.modelId, !publicView)
   const remoteVersion = remoteVersionQuery.data?.version
   useEffect(() => {
     if (remoteVersion == null) return
@@ -299,6 +302,8 @@ function EditorShellInner({ model, canEdit, onSaved }: EditorShellProps) {
         databaseType={model.databaseType}
         modelDescription={model.description}
         workspaceId={model.workspaceId}
+        modelId={model.modelId}
+        publicView={publicView}
       />
       <main className="relative min-h-0 flex-1">
         {remoteChangeOpen && !conflictOpen && (

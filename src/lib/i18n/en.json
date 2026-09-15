@@ -106,7 +106,9 @@
       "MANAGED_INSTANCE_IN_USE": "This instance still has issued databases. Revoke them first.",
       "MANAGED_LIMIT_EXCEEDED": "You have reached the issue limit. Revoke one or contact the administrator.",
       "MANAGED_PROVISION_FAILED": "Provisioning failed. Please try again shortly.",
-      "MANAGED_DATABASE_NOT_FOUND": "Issued database not found."
+      "MANAGED_DATABASE_NOT_FOUND": "Issued database not found.",
+      "SHARE_NOT_FOUND": "Share link not found.",
+      "SHARE_INACTIVE": "This share link is not active yet or has expired."
     },
     "loadFailed": "Failed to load",
     "bootstrapFailed": "Could not reach the server."
@@ -573,7 +575,8 @@
         "autoLayoutFailed": "Auto layout failed",
         "ddl": "Generate SQL",
         "image": "Export image",
-        "crown": "Export document file"
+        "crown": "Export document file",
+        "share": "Share"
       },
       "ddl": {
         "title": "SQL script",
@@ -780,7 +783,36 @@
         "INVALID_MODEL": "Document metadata (name, database type) is invalid",
         "INVALID_CONTENT": "Document content is invalid — schema mismatch"
       }
+    },
+    "share": {
+      "title": "Share document",
+      "description": "Share \"{{name}}\" — anyone with the link can view it read-only.",
+      "issue": "Create link",
+      "copy": "Copy link",
+      "revoke": "Revoke",
+      "copiedToast": "Share link copied",
+      "copyFailed": "Failed to copy",
+      "issuedToast": "Share link created",
+      "revokedToast": "Share link revoked",
+      "empty": "No links yet",
+      "period": {
+        "unlimited": "Unlimited (no period)",
+        "custom": "Set period",
+        "startsAt": "Starts at",
+        "endsAt": "Ends at",
+        "from": "From {{at}}",
+        "until": "Until {{at}}"
+      },
+      "error": {
+        "incompletePeriod": "Enter both start and end date/time",
+        "reversedPeriod": "End must be after start"
+      }
     }
+  },
+  "shareViewer": {
+    "badge": "Shared",
+    "home": "Home",
+    "notFound": "Shared document not found."
   },
   "connection": {
     "list": {

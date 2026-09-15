@@ -129,6 +129,36 @@ export const fixtures = {
       },
     ],
   },
+  /** 공유 링크(§1.10) — 기간 있는 링크 1개 + 무제한 링크 1개 */
+  shares: {
+    totalCount: 2,
+    responses: [
+      {
+        shareId: '901',
+        shareToken: 'Sh4reT0ken0fM0del501aaaa',
+        startsAt: '2026-09-01T00:00:00Z',
+        endsAt: '2026-10-01T00:00:00Z',
+        createdAt: '2026-09-10T00:00:00Z',
+      },
+      {
+        shareId: '902',
+        shareToken: 'UnL1mitedT0ken0fM0del501bbb',
+        startsAt: null,
+        endsAt: null,
+        createdAt: '2026-09-11T00:00:00Z',
+      },
+    ],
+  },
+  /** 공개 공유 문서(§1.10) — 인증 없는 조회 응답 */
+  sharedDocument: {
+    modelName: '주문 서비스 ERD',
+    description: '결제 도메인 1차',
+    databaseType: 'postgresql',
+    version: 3,
+    content: EMPTY_CONTENT,
+    startsAt: null,
+    endsAt: null,
+  },
   connections: {
     totalCount: 1,
     responses: [
@@ -421,6 +451,42 @@ export const handlers = [
     return HttpResponse.json(
       ok({ response: { version: matched.version, updatedAt: '2026-09-14T05:00:00Z' } }),
     )
+  }),
+
+  // 공유 링크 목록(§1.10) — 최근 발급순
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares`, () => {
+    return HttpResponse.json(ok(fixtures.shares))
+  }),
+
+  // 공유 링크 발급(§1.10) — 무제한/기간 지정
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { startsAt?: string | null; endsAt?: string | null }
+    return HttpResponse.json(
+      ok({
+        response: {
+          shareId: String(900 + fixtures.shares.responses.length + 1),
+          shareToken: `NewT0ken00000000000000${fixtures.shares.responses.length}`,
+          startsAt: body.startsAt ?? null,
+          endsAt: body.endsAt ?? null,
+          createdAt: '2026-09-15T00:00:00Z',
+        },
+      }),
+      { status: 201 },
+    )
+  }),
+
+  // 공유 링크 철회(§1.10) — 204
+  http.delete(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares/:shareId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // 공유 문서 공개 조회(§1.10) — 인증 없음. expired 토큰은 410, 그 외 없는 토큰은 404
+  http.get(`${BASE}/api/v1/core/shares/:token`, ({ params }) => {
+    if (params.token === 'expired0000000000000000') return fail('SHARE_INACTIVE', 410)
+    if (!fixtures.shares.responses.some((share) => share.shareToken === params.token)) {
+      return fail('SHARE_NOT_FOUND', 404)
+    }
+    return HttpResponse.json(ok({ response: fixtures.sharedDocument }))
   }),
 
   // 모델 생성 — 이름 중복 409, 응답은 생성 리소스(content 포함)

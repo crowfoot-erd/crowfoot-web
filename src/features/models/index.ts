@@ -1,6 +1,7 @@
 export * from '@/features/models/api'
 export * from '@/features/models/hooks'
 export * from '@/features/models/components/erd-tab'
+export * from '@/features/models/components/share-dialog'
 export * from '@/features/models/components/import-crown-button'
 export * from '@/features/models/components/create-model-dialog'
 export * from '@/features/models/components/edit-model-dialog'

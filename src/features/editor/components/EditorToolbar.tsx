@@ -5,13 +5,14 @@
  * 보기 메뉴 — 이름 표시 모드(물리명/논리명/둘 다) 등 뷰 옵션. 편집 권한과 무관하게 항상 사용 가능.
  */
 import { useState } from 'react'
-import { ChevronDown, Database, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, Save, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronDown, Database, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ShareDialog } from '@/features/models/components/share-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +48,10 @@ export interface EditorToolbarProps {
   modelDescription: string | null
   /** 워크스페이스 id — DDL 생성 API 호출 경로 */
   workspaceId: string
+  /** 문서 id — 공유 링크 API 호출 경로 */
+  modelId: string
+  /** 공개 공유 뷰어(/share/{token}) — 워크스페이스 API(DDL)·공유 관리를 숨긴다 */
+  publicView?: boolean
 }
 
 export function EditorToolbar({
@@ -60,6 +65,8 @@ export function EditorToolbar({
   databaseType,
   modelDescription,
   workspaceId,
+  modelId,
+  publicView = false,
 }: EditorToolbarProps) {
   const { t } = useTranslation()
   const dirty = useEditorStore(selectDirty)
@@ -94,13 +101,18 @@ export function EditorToolbar({
       </Button>
 
       <AutoLayoutButton canEdit={canEdit} />
-      <DdlButton
-        dbmsId={dbmsId}
-        modelName={modelName}
-        workspaceId={workspaceId}
-        databaseType={databaseType}
-        canEdit={canEdit}
-      />
+      {!publicView && (
+        <DdlButton
+          dbmsId={dbmsId}
+          modelName={modelName}
+          workspaceId={workspaceId}
+          databaseType={databaseType}
+          canEdit={canEdit}
+        />
+      )}
+      {!publicView && canEdit ? (
+        <ShareButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} />
+      ) : null}
       <ImageButton modelName={modelName} />
       <CrownButton modelName={modelName} databaseType={databaseType} modelDescription={modelDescription} />
 
@@ -256,6 +268,42 @@ function DdlButton({
         workspaceId={workspaceId}
         databaseType={databaseType}
         canEdit={canEdit}
+      />
+    </>
+  )
+}
+
+/** 문서 공유 링크 — 발급·복사·철회 다이얼로그 (08-core/02-model.md §1.10). Editor 이상. */
+function ShareButton({
+  workspaceId,
+  modelId,
+  modelName,
+}: {
+  workspaceId: string
+  modelId: string
+  modelName: string
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpen(true)}
+        aria-label={t('model.editor.toolbar.share')}
+        title={t('model.editor.toolbar.share')}
+      >
+        <Share2 aria-hidden />
+      </Button>
+      <ShareDialog
+        open={open}
+        onOpenChange={setOpen}
+        workspaceId={workspaceId}
+        modelId={modelId}
+        modelName={modelName}
       />
     </>
   )

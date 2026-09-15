@@ -6,12 +6,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   createModel,
+  createModelShare,
   deleteModel,
   fetchDatabaseTypes,
   fetchModel,
+  fetchModelShares,
   fetchModels,
+  fetchSharedDocument,
+  revokeModelShare,
   updateModel,
   type CreateModelInput,
+  type CreateShareInput,
 } from '@/features/models/api'
 import type { ModelSummary } from '@/api/types'
 
@@ -22,6 +27,10 @@ export const modelKeys = {
   // 협업 버전(폴링·WebSocket 푸시 주입 공용) — detail 키 아래에 둬 함께 invalidate 되지 않게 분리
   version: (workspaceId: string, modelId: string) =>
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'version'] as const,
+  shares: (workspaceId: string, modelId: string) =>
+    ['workspaces', workspaceId, 'models', 'detail', modelId, 'shares'] as const,
+  /** 공개 공유 문서 — 인증과 무관한 별도 루트 키 (게스트도 조회) */
+  shared: (token: string) => ['shares', token] as const,
   databaseTypes: ['database-types'] as const,
 }
 
@@ -81,5 +90,50 @@ export function useCreateModel(workspaceId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
     },
+  })
+}
+
+/* ---------- 문서 공유 링크 (08-core/02-model.md §1.10) ---------- */
+
+/** 링크 목록 — 다이얼로그가 열려 있을 때만 */
+export function useModelShares(workspaceId: string, modelId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: modelKeys.shares(workspaceId, modelId),
+    queryFn: ({ signal }) => fetchModelShares(workspaceId, modelId, signal),
+    enabled: enabled && workspaceId.length > 0 && modelId.length > 0,
+  })
+}
+
+/** 링크 발급 — 성공 시 목록 갱신 */
+export function useCreateModelShare(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CreateShareInput) => createModelShare(workspaceId, modelId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shares(workspaceId, modelId) })
+    },
+  })
+}
+
+/** 링크 철회 — 성공 시 목록 갱신 */
+export function useRevokeModelShare(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (shareId: string) => revokeModelShare(workspaceId, modelId, shareId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shares(workspaceId, modelId) })
+    },
+  })
+}
+
+/** 공유 문서 공개 조회 — 게스트(미인증)도 그대로 쓴다 */
+export function useSharedDocument(token: string) {
+  return useQuery({
+    queryKey: modelKeys.shared(token),
+    queryFn: ({ signal }) => fetchSharedDocument(token, signal),
+    enabled: token.length > 0,
+    retry: false,
   })
 }

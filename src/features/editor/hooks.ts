@@ -49,11 +49,13 @@ export function useDeployModel(workspaceId: string) {
 }
 
 /** 협업 v1 버전 폴링(1.9) — 문서가 열려 있는 동안 주기적으로 version만 조회한다.
- *  404(삭제됨)·네트워크 오류는 조용히: 폴링이 편집을 방해하지 않게 retry 없음. */
-export function useModelVersion(workspaceId: string, modelId: string) {
+ *  404(삭제됨)·네트워크 오류는 조용히: 폴링이 편집을 방해하지 않게 retry 없음.
+ *  공개 공유 뷰어에서는 끈다(enabled=false) — 인증 없는 경로라 폴링이 401을 만든다. */
+export function useModelVersion(workspaceId: string, modelId: string, enabled = true) {
   return useQuery({
     queryKey: modelKeys.version(workspaceId, modelId),
     queryFn: ({ signal }) => fetchModelVersion(workspaceId, modelId, signal),
+    enabled,
     refetchInterval: VERSION_POLL_MS,
     staleTime: 0,
     gcTime: 15_000,

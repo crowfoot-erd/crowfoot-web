@@ -1,8 +1,9 @@
 /**
  * 라우팅 (storyboard 00-common §2.3 — 직접 URL 접근 규칙)
  *
- * /·/login·/auth/callback·/terms 공개(게스트 랜딩·로그인·콜백·이용약관) / 나머지 ProtectedRoute →
- * AppLayout 셸 / /admin/* AdminRoute / catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
+ * /·/login·/auth/callback·/terms 공개(게스트 랜딩·로그인·콜백·이용약관) /share/{token} 공개(공유 문서
+ * 읽기 전용 뷰어 — 토큰이 자격) / 나머지 ProtectedRoute → AppLayout 셸 / /admin/* AdminRoute /
+ * catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -13,6 +14,7 @@ import { AuthCallbackPage } from '@/pages/auth-callback'
 import { DashboardPage } from '@/pages/dashboard'
 import { LandingPage } from '@/pages/landing'
 import { LoginPage } from '@/pages/login'
+import { ShareViewerPage } from '@/pages/share-viewer'
 import { TermsPage } from '@/pages/terms'
 import { ModelViewerPage } from '@/pages/model-viewer'
 import { NotFoundPage } from '@/pages/not-found'
@@ -34,6 +36,8 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="/terms" element={<TermsPage />} />
+      {/* 공유 문서 공개 뷰어 — 토큰을 아는 누구나 (기간 내) */}
+      <Route path="/share/:token" element={<ShareViewerPage />} />
 
       {/* 보호 — 앱 셸 4분할 */}
       <Route element={<ProtectedRoute />}>

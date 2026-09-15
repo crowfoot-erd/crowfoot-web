@@ -215,6 +215,28 @@ export interface Model extends ModelSummary {
   content: string
 }
 
+/* ---------- 문서 공유 링크 (08-core/02-model.md §1.10) ---------- */
+
+/** 공유 링크 — 발급자에게만 보이는 관리 정보. startsAt·endsAt 없음(null)은 각각 즉시·무제한 */
+export interface ModelShare {
+  shareId: string
+  shareToken: string
+  startsAt: string | null
+  endsAt: string | null
+  createdAt: string
+}
+
+/** 공유 문서 공개 조회 — 토큰을 아는 누구나 (인증 없음) */
+export interface PublicShare {
+  modelName: string
+  description: string | null
+  databaseType: string
+  version: number
+  content: string
+  startsAt: string | null
+  endsAt: string | null
+}
+
 /* ---------- DB 커넥션 (08-core/06-connection.md) ---------- */
 
 /** 커넥션 — 비밀번호는 응답에 내려오지 않는다 */
