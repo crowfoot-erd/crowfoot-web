@@ -923,7 +923,42 @@
       }
     },
     "footer": {
-      "opensource": "All code is available on GitHub"
+      "opensource": "All code is available on GitHub",
+      "terms": "Terms"
     }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "updated": "As of September 2026",
+    "back": "← Home",
+    "sections": [
+      {
+        "heading": "About the Service",
+        "paragraphs": [
+          "Crowfoot is a browser-based ERD design and collaboration tool with free managed databases for development."
+        ]
+      },
+      {
+        "heading": "Free Managed Databases",
+        "paragraphs": [
+          "You can create up to 5 free PostgreSQL or MySQL databases per account, for development, learning, and testing purposes.",
+          "Data persistence is not guaranteed. Databases may be deleted, suspended, or changed at any time without prior notice due to service operating conditions.",
+          "Back up any important data yourself."
+        ]
+      },
+      {
+        "heading": "Changes to the Offering",
+        "paragraphs": [
+          "The free offering — supported engines, per-account quota, capacity — may change or end without prior notice."
+        ]
+      },
+      {
+        "heading": "Limitation of Liability",
+        "paragraphs": [
+          "The service is provided \"as is\". We are not liable for damages arising from data loss, service interruption, or the use of the service.",
+          "Accounts and databases may be restricted if the service is used outside its intended purpose."
+        ]
+      }
+    ]
   }
 }

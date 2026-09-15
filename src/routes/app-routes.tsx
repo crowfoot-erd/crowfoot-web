@@ -1,8 +1,8 @@
 /**
  * 라우팅 (storyboard 00-common §2.3 — 직접 URL 접근 규칙)
  *
- * /·/login·/auth/callback 공개(게스트 랜딩·로그인·콜백) / 나머지 ProtectedRoute → AppLayout 셸 /
- * /admin/* AdminRoute / catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
+ * /·/login·/auth/callback·/terms 공개(게스트 랜딩·로그인·콜백·이용약관) / 나머지 ProtectedRoute →
+ * AppLayout 셸 / /admin/* AdminRoute / catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -13,6 +13,7 @@ import { AuthCallbackPage } from '@/pages/auth-callback'
 import { DashboardPage } from '@/pages/dashboard'
 import { LandingPage } from '@/pages/landing'
 import { LoginPage } from '@/pages/login'
+import { TermsPage } from '@/pages/terms'
 import { ModelViewerPage } from '@/pages/model-viewer'
 import { NotFoundPage } from '@/pages/not-found'
 import { TeamDetailPage } from '@/pages/team-detail'
@@ -32,6 +33,7 @@ export function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/terms" element={<TermsPage />} />
 
       {/* 보호 — 앱 셸 4분할 */}
       <Route element={<ProtectedRoute />}>

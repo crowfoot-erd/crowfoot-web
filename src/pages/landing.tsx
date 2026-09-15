@@ -107,9 +107,14 @@ export function LandingPage() {
       <footer className="border-t">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 text-xs text-muted-foreground">
           <span>{t('common.footer')}</span>
-          <span className="flex items-center gap-1">
-            <Languages aria-hidden className="size-3" />
-            {t('landing.footer.opensource')}
+          <span className="flex items-center gap-3">
+            <Link to="/terms" className="hover:underline">
+              {t('landing.footer.terms')}
+            </Link>
+            <span className="flex items-center gap-1">
+              <Languages aria-hidden className="size-3" />
+              {t('landing.footer.opensource')}
+            </span>
           </span>
         </div>
       </footer>

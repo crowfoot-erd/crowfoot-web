@@ -41,7 +41,10 @@ describe('랜딩 페이지', () => {
     expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute(
       'href',
       'https://github.com/crowfoot-erd',
-    )  })
+    )
+    // 푸터 — 이용약관 링크
+    expect(screen.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms')
+  })
 
   it('인증 상태 — 소개 대신 /dashboard로 보낸다', () => {
     asAuthenticated()
