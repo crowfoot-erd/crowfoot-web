@@ -882,8 +882,8 @@
   "landing": {
     "badge": "오픈소스 ERD 에디터",
     "hero": {
-      "title": "ERD를 그리고, 데이터베이스를 바로 받으세요",
-      "description": "설계한 모델을 PostgreSQL·MySQL 개발용 데이터베이스로 즉시. 모델링부터 실제 DB까지 한 곳에서."
+      "title": "설계가 끝나면, 데이터베이스가 시작됩니다",
+      "description": "ERD 설계, 팀 협업, 그리고 실제 데이터베이스 — 데이터 작업의 처음부터 끝까지 한 곳에서."
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",

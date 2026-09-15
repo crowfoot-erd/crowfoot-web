@@ -20,7 +20,7 @@ describe('랜딩 페이지', () => {
   it('게스트 — 히어로·핵심 강조·특징 6종·CTA·ERD 일러스트를 렌더한다', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('ERD를 그리고')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('설계가 끝나면')
     // 핵심 강조 — 무료 매니지드 DB 조건
     expect(screen.getByText('PostgreSQL · MySQL')).toBeInTheDocument()
     expect(screen.getByText('계정당 최대 5개')).toBeInTheDocument()

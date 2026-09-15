@@ -882,8 +882,8 @@
   "landing": {
     "badge": "Open-source ERD editor",
     "hero": {
-      "title": "Draw your ERD, get a real database",
-      "description": "Turn your model into a running PostgreSQL or MySQL database instantly. From modeling to a live DB, all in one place."
+      "title": "Where design ends, your database begins",
+      "description": "Model, collaborate, and run — every step of your database work in one place."
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
