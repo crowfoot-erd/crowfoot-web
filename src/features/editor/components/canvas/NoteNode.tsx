@@ -8,7 +8,7 @@
  * 연관 테이블이 지정되면 밴드에 물리명 배지가 붙는다 — 메모를 테이블 위에 드래그해 놓으면
  * ErdCanvas가 연관을 지정하고 메모는 드래그 전 위치로 되돌린다.
  */
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
 import { Table2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +27,7 @@ const MIN_WIDTH = 120
 
 function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
   const { t } = useTranslation()
-  const { canEdit } = useEditorCanvas()
+  const { canEdit, reportSize } = useEditorCanvas()
   const note = useEditorStore((s) => s.present.diagram.notes.find((n) => n.id === id))
   const linkedTable = useEditorStore((s) =>
     note?.linkedTableId ? s.present.model.tables.find((t) => t.id === note.linkedTableId) : undefined,
@@ -48,6 +48,13 @@ function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
     if (!focused.current) setDraft(note?.text ?? '')
   }, [note?.text])
 
+  // 렌더 크기 보고 — 생성·폭 리사이즈 시 캔버스 겹침 해소(메모 밀어내기)의 트리거.
+  // 위치는 deps에 없다 — 겹침 해소로 밀려난 뒤 재보고→재해소 루프가 생기지 않게.
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    reportSize(id, rootRef.current?.offsetWidth ?? 0, rootRef.current?.offsetHeight ?? 0)
+  }, [id, note?.width, note?.text, reportSize])
+
   if (!note) return null
 
   const commitText = () => {
@@ -60,6 +67,7 @@ function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
 
   return (
     <div
+      ref={rootRef}
       data-nodekind="note"
       className={cn('relative rounded-md border shadow-sm', skin.box, selected && 'ring-1 ring-amber-400')}
       style={{ ...skin.boxStyle, width: resizingWidth ?? (note.width ?? DEFAULT_WIDTH) }}

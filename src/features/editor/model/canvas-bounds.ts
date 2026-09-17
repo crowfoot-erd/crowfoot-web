@@ -71,6 +71,17 @@ export function canvasExtent(
   ]
 }
 
+/** 한계 확장 병합 — 두 한계를 감싸는 최소 사각형. 팬 한계는 세션 동안 이 병합으로만
+ *  갱신된다(high-water mark): 객체를 안쪽으로 옮겨 콘텐츠 AABB가 줄어도 한계가 따라
+ *  줄면 지금 보고 있는 뷰가 클램프되며 화면이 뚝 끌려온다. 늘어난 적 있는 영역은 그대로
+ *  두고, 넓어지는 방향으로만 변한다 — 팬 한계가 줄어드는 순간이 아예 없어진다. */
+export function growExtent(prev: CanvasExtent, next: CanvasExtent): CanvasExtent {
+  return [
+    [Math.min(prev[0][0], next[0][0]), Math.min(prev[0][1], next[0][1])],
+    [Math.max(prev[1][0], next[1][0]), Math.max(prev[1][1], next[1][1])],
+  ]
+}
+
 /** 뷰포트 translate — x·y는 화면 좌표, zoom은 배율(@xyflow/react Viewport와 구조가 같다) */
 export interface ViewportTranslate {
   x: number

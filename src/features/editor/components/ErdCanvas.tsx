@@ -39,6 +39,8 @@ import { cn } from 'cn'
 import {
   canvasExtent,
   contentBounds,
+  growExtent,
+  NOTE_ESTIMATED_HEIGHT,
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
@@ -48,12 +50,14 @@ import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/edito
 import { DEFAULT_CHILD_MULTIPLICITY, type ErdColumn } from '@/features/editor/model/content-schema'
 import { isDuplicateRelationship, isDuplicateTableName } from '@/features/editor/model/validation'
 import { findNoteDropTarget } from '@/features/editor/model/note-link'
+import { objectRects, placeNoteFree, rectsOverlap, type ObjectRect } from '@/features/editor/model/note-overlap'
 import { readStoredViewport, storeViewport } from '@/features/editor/model/viewport-memory'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
 import {
   EditorCanvasContext,
+  type ColumnDisplayMode,
   type EditorCanvasContextValue,
   type NameDisplayMode,
   type PendingRelation,
@@ -214,11 +218,12 @@ export interface ErdCanvasProps {
   /** 문서 대상 DBMS 템플릿 id — 모델 메타에서 파생된 고정값(문서 수명 동안 불변) */
   dbmsId: string
   nameDisplay: NameDisplayMode
+  columnDisplay: ColumnDisplayMode
   /** 문서 식별자 — 마지막 화면(줌·팬)을 브라우저에 기억하는 키 */
   modelId: string | null
 }
 
-export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasProps) {
+export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId }: ErdCanvasProps) {
   const { t } = useTranslation()
   const present = useEditorStore((s) => s.present)
   const commit = useEditorStore((s) => s.commit)
@@ -270,38 +275,37 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
   /* 팬·드래그 한계 — 최외곽 객체(테이블·메모)의 사방 좌표에서 CANVAS_MARGIN까지만 캔버스가
      늘어난다(canvas-bounds 참조). 문서·측정 크기가 바뀔 때마다 다시 계산하므로 객체를 경계
      밖으로 옮기면 한계도 그 객체를 감싸도록 따라 자란다. 빈 문서는 첫 화면(zoom 1 · 원점)
-     영역만 팬할 수 있다 — 콘텐츠가 생기면 곧 한계도 생긴다 */
+     영역만 팬할 수 있다 — 콘텐츠가 생기면 곧 한계도 생긴다.
+     한계는 세션 동안 줄지 않는다(high-water mark) — 객체를 안쪽으로 옮겨 AABB가 줄어들 때
+     한계가 따라 줄면 현재 뷰가 클램프되며 화면이 뚝 끌려온다. 늘어난 방향(좌우상하 모두)은
+     유지하고 넓어지는 쪽으로만 갱신한다. 문서를 바꾸면 처음부터 다시 잡는다. */
+  const sessionExtentRef = useRef<{ modelId: string; extent: CanvasExtent } | null>(null)
   const extent = useMemo<CanvasExtent>(() => {
-    const bounds = canvasExtent(present, sizeReports)
-    if (bounds) return bounds
-    return [
+    const next: CanvasExtent = canvasExtent(present, sizeReports) ?? [
       [0, 0],
       [window.innerWidth || 1200, window.innerHeight || 800],
     ]
-  }, [present, sizeReports])
+    const prev = sessionExtentRef.current
+    const merged = prev && prev.modelId === modelId ? growExtent(prev.extent, next) : next
+    sessionExtentRef.current = { modelId, extent: merged }
+    return merged
+  }, [present, sizeReports, modelId])
 
   /**
    * 겹침 해소 — 크기 보고가 바뀔 때만 실행(드래그로 사용자가 놓은 위치는 존중).
-   * 두 노드가 x·y 모두 겹치면 **이동량이 작은 축**으로 분리: 가로면 오른쪽 것을, 세로면 아래 것을 민다.
+   * 두 테이블이 x·y 모두 겹치면 **이동량이 작은 축**으로 분리: 가로면 오른쪽 것을, 세로면 아래 것을 민다.
    * (보기 모드 전환으로 높이가 늘면 아래 테이블이 내려가고, 이름이 길어지면 옆 테이블이 밀린다)
+   * 메모가 겹침에 끼어 있으면 **메모가 물러난다** — 주석은 테이블을 비켜주고, 메모끼리면
+   * 문서 순서에서 나중 메모가 비켜난다(새로 만든 메모가 밀려난다).
    * 반복 패스로 연쇄 겹침을 수렴시킨다.
    */
   useEffect(() => {
     if (!canEdit) return
     const { present: doc } = useEditorStore.getState()
-    if (doc.model.tables.length < 2) return
 
-    const rects = doc.model.tables.map((table) => {
-      const node = doc.diagram.nodes[table.id]
-      const reported = sizeReports[table.id]
-      return {
-        id: table.id,
-        x: node?.x ?? 0,
-        y: node?.y ?? 0,
-        w: reported?.w ?? tableRenderWidth(node?.width ?? null, 0),
-        h: reported?.h ?? estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
-      }
-    })
+    const rects = objectRects(doc, sizeReports)
+    if (rects.length < 2) return
+    const order = new Map(rects.map((rect, index) => [rect.id, index]))
 
     const GAP = 32
     const maxPasses = Math.min(rects.length * rects.length + 1, 200)
@@ -310,9 +314,23 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
       for (const a of rects) {
         for (const b of rects) {
           if (a === b) continue
-          const overlapsX = a.x < b.x + b.w && b.x < a.x + a.w
-          const overlapsY = a.y < b.y + b.h && b.y < a.y + a.h
-          if (!overlapsX || !overlapsY) continue
+          if (!rectsOverlap(a, b)) continue
+          if (a.kind === 'note' || b.kind === 'note') {
+            // 메모가 끼어 있으면 메모가 물러난다 — 오른쪽/아래 중 이동량이 작은 쪽으로
+            const victim =
+              a.kind === 'note' && b.kind === 'note'
+                ? (order.get(a.id)! > order.get(b.id)! ? a : b)
+                : a.kind === 'note'
+                  ? a
+                  : b
+            const other = victim === a ? b : a
+            const pushX = other.x + other.w + GAP - victim.x
+            const pushY = other.y + other.h + GAP - victim.y
+            if (pushX <= pushY) victim.x += pushX
+            else victim.y += pushY
+            changed = true
+            continue
+          }
           // 가로 분리: 오른쪽 것을 밀 양 / 세로 분리: 아래 것을 밀 양 — 작은 쪽을 택한다
           const [lx, rx] = a.x <= b.x ? [a, b] : [b, a]
           const [ty, by] = a.y <= b.y ? [a, b] : [b, a]
@@ -327,13 +345,24 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
     }
 
     const positions: Record<string, { x: number; y: number }> = {}
+    const notePatches: ErdChange[] = []
     for (const rect of rects) {
-      const node = doc.diagram.nodes[rect.id]
-      if (node && (Math.round(rect.x) !== Math.round(node.x) || Math.round(rect.y) !== Math.round(node.y))) {
-        positions[rect.id] = { x: rect.x, y: rect.y }
+      if (rect.kind === 'table') {
+        const node = doc.diagram.nodes[rect.id]
+        if (node && (Math.round(rect.x) !== Math.round(node.x) || Math.round(rect.y) !== Math.round(node.y))) {
+          positions[rect.id] = { x: rect.x, y: rect.y }
+        }
+      } else {
+        const note = doc.diagram.notes.find((n) => n.id === rect.id)
+        if (note && (Math.round(rect.x) !== Math.round(note.x) || Math.round(rect.y) !== Math.round(note.y))) {
+          notePatches.push({ type: 'note/patch', noteId: rect.id, patch: { x: rect.x, y: rect.y } })
+        }
       }
     }
-    if (Object.keys(positions).length > 0) commitAll([{ type: 'node/move', positions }])
+    const changes: ErdChange[] = []
+    if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
+    changes.push(...notePatches)
+    if (changes.length > 0) commitAll(changes)
   }, [sizeReports, canEdit, commitAll])
 
   /* ---------- 스토어 → 표시 레이어 동기화 (커밋·undo·수화 시) ---------- */
@@ -492,6 +521,54 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
       }
       const changes = [...noteChanges]
       if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
+
+      /* 메모 겹침 해소 — 드래그한 메모는 놓인 자리에서, 드래그한 테이블이 덮친 메모는 밀려난다.
+         연관 지정(원위치 복귀) 메모는 건드리지 않고, 문서 순서대로 굴려 연쇄를 잡는다.
+         같은 커밋에 묶여 Undo 1스택. */
+      const tableMoved = Object.keys(positions).length > 0
+      const draggedNoteIds = new Set(draggedNodes.filter((n) => n.type === 'note').map((n) => n.id))
+      if (draggedNoteIds.size > 0 || tableMoved) {
+        // 장애물 사각형 — 테이블은 이동 후 최종 좌표, 드래그한 메모는 목표 좌표로
+        const obstacles: ObjectRect[] = objectRects(state.present, sizeReportsRef.current)
+        for (const o of obstacles) {
+          if (o.kind === 'table' && positions[o.id]) {
+            o.x = positions[o.id].x
+            o.y = positions[o.id].y
+          }
+        }
+        for (const change of noteChanges) {
+          if (change.type !== 'note/patch') continue
+          const self = obstacles.find((o) => o.id === change.noteId)
+          if (self && change.patch.x !== undefined) {
+            self.x = change.patch.x
+            self.y = change.patch.y ?? self.y
+          }
+        }
+        for (const note of state.present.diagram.notes) {
+          // 드래그 안 한 메모는 테이블이 움직였을 때만 검사한다
+          if (!draggedNoteIds.has(note.id) && !tableMoved) continue
+          // 연관 지정 드롭(원위치 복귀) 메모는 그대로 둔다
+          if (note.id === draggedNote?.id && dropTableId) continue
+          const self = obstacles.find((o) => o.id === note.id)
+          if (!self) continue
+          const free = placeNoteFree(
+            { x: self.x, y: self.y, w: self.w, h: self.h },
+            obstacles.filter((o) => o.id !== note.id),
+          )
+          if (free.x === Math.round(self.x) && free.y === Math.round(self.y)) continue
+          self.x = free.x
+          self.y = free.y
+          const existing = noteChanges.find(
+            (c): c is Extract<ErdChange, { type: 'note/patch' }> => c.type === 'note/patch' && c.noteId === note.id,
+          )
+          if (existing) existing.patch = { ...existing.patch, x: free.x, y: free.y }
+          else noteChanges.push({ type: 'note/patch', noteId: note.id, patch: { x: free.x, y: free.y } })
+        }
+        changes.length = 0
+        changes.push(...noteChanges)
+        if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
+      }
+
       if (changes.length > 0) commitAll(changes)
     },
     [commitAll],
@@ -673,12 +750,19 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
           commit({ type: 'table/create', table, position: action.position })
           return
         }
-        case 'createNote':
+        case 'createNote': {
+          // 클릭 지점이 테이블·다른 메모와 겹치면 비어 있는 곳으로 밀어 만든다
+          const doc = useEditorStore.getState().present
+          const free = placeNoteFree(
+            { x: action.position.x, y: action.position.y, w: 360, h: NOTE_ESTIMATED_HEIGHT },
+            objectRects(doc, sizeReportsRef.current),
+          )
           commit({
             type: 'note/create',
-            note: { id: newId(), x: action.position.x, y: action.position.y, width: 360, text: '', title: '', color: 'yellow', linkedTableId: null },
+            note: { id: newId(), x: free.x, y: free.y, width: 360, text: '', title: '', color: 'yellow', linkedTableId: null },
           })
           return
+        }
         case 'tableInfo':
           setInfoTableId(action.tableId)
           return
@@ -841,12 +925,14 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
       completeRelation,
       openRelationPicker,
       nameDisplay,
+      columnDisplay,
       reportSize,
     }),
     [
       canEdit,
       dbmsId,
       nameDisplay,
+      columnDisplay,
       reportSize,
       openColumnInfo,
       openKeyInfo,
@@ -919,6 +1005,8 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
         onMoveEnd={handleMoveEnd}
         nodesDraggable={canEdit}
         nodesConnectable={canEdit}
+        // 빈 캔버스 더블클릭 확대 방지 — 더블클릭은 편집기에서 다른 의미로 쓸 일이 없게 한다
+        zoomOnDoubleClick={false}
         elementsSelectable
         selectionKeyCode={null}
         multiSelectionKeyCode={null}

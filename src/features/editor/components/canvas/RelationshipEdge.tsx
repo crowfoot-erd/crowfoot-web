@@ -12,6 +12,9 @@
  * 같은 테이블의 같은 면에 여러 관계가 붙으면 앵커를 면을 따라 등간격으로 벌려 분산하고
  * (상호 참조도 이 규칙으로 흡수), 자기 참조(같은 테이블 FK)는 오른쪽 면 고정 루프로
  * 그린다(장애물 회피 없음).
+ * 문서 전역 계산(연결면·면 분산·통로 레인 라우팅)은 관계 수의 제곱이라 엣지마다 반복하면
+ * 프레임 비용이 세제곱으로 커진다 — edge-route-table이 문서·좌표 지문당 한 번 계산한
+ * 공유 테이블을 조회하고, 엣지별 남은 일은 양 끝 앵커(자기 관계의 RF 실측 좌표)뿐이다.
  * 엣지 id = 관계 id로 스토어를 직접 구독하고 memo로 격리 — 노드 위치가 불변인 엣지는
  * 경로 재계산·리렌더가 없다.
  */
@@ -20,23 +23,17 @@ import { BaseEdge, EdgeLabelRenderer, useStore, type Edge, type EdgeProps } from
 
 import { cn } from 'cn'
 import { useEditorStore } from '@/features/editor/store/editor-store'
-import type { ErdRelationship } from '@/features/editor/model/content-schema'
 import {
-  faceShareOffset,
-  handleAnchors,
   insetAnchors,
   offsetAlongFace,
   orthogonalRoundedPath,
   polylineMidpoint,
   routeWithNormalStubs,
   selfLoopPoints,
-  sharedRoutes,
-  shortestHandlePair,
   trimPolyline,
-  type CorridorEndpoint,
-  type RelationEndpoint,
   type RouterBox,
 } from './edge-router'
+import { relationshipSharedRoutes, sourceGlyphExtent, targetGlyphExtent } from './edge-route-table'
 import { estimateTableHeight, tableRenderWidth } from './TableNode'
 
 export type RelationshipEdgeData = Record<string, never>
@@ -86,21 +83,6 @@ function CrowFoot() {
 
 /* ---------- 선 물러남 — 글리프 끝점끼리 선이 이어진다 ---------- */
 
-/** 자식(시작) 글리프가 노드 경계에서 선 쪽으로 차지하는 길이(가장 바깥 심볼 + 스트로크 절반).
- *  선 몸체는 이 지점에서 시작해 글리프와 포개지지 않는다. */
-function sourceGlyphExtent(rel: Pick<ErdRelationship, 'type' | 'childMultiplicity'>): number {
-  if (rel.type === 'ONE_TO_MANY') {
-    if (rel.childMultiplicity === 'ZERO_OR_MORE') return 32 // 발톱(16) + ○(27+r3.5)
-    return 23 // 발톱 + |(21)
-  }
-  return rel.childMultiplicity === 'ZERO_OR_ONE' ? 26 : 16 // ‖ + ○(21+r3.5) / ‖(14)
-}
-
-/** 부모(끝) 글리프가 차지하는 길이 — ‖ + ○ 또는 ‖ */
-function targetGlyphExtent(rel: Pick<ErdRelationship, 'parentMultiplicity'>): number {
-  return rel.parentMultiplicity === 'ZERO_OR_ONE' ? 26 : 16
-}
-
 function RelationshipEdgeComponent({
   id,
   sourceX,
@@ -115,15 +97,20 @@ function RelationshipEdgeComponent({
   const relationships = useEditorStore((s) => s.present.model.relationships)
   const tables = useEditorStore((s) => s.present.model.tables)
   const layouts = useEditorStore((s) => s.present.diagram.nodes)
+  /** present 참조 — 문서 커밋(편집·드롭·undo)마다 변한다. 공유 라우팅 테이블의 캐시 키로,
+   *  문서 구조가 바뀌면(관계 추가·컬럼 편집 등) 전역 라우팅이 다시 계산되게 한다 */
+  const present = useEditorStore((s) => s.present)
   /** RF 내부 노드 맵 — 드래그 중에도 화면에 보이는 위치(internals.positionAbsolute)와
    *  실측 크기(measured)를 제공한다. 스토어 좌표는 드롭 커밋 전까지 과거 위치라 장애물로 부적합.
    *  RF는 드래그 중 nodeLookup Map 참조를 유지한 채 내부만 갱신하는 fast path가 있어,
-   *  참조 구독으로는 재계산이 촉발되지 않는다 — 좌표 원시값 시그니처를 별도로 구독한다 */
+   *  참조 구독으로는 재계산이 촉발되지 않는다 — 좌표 원시값 시그니처를 별도로 구독한다.
+   *  크기(measured)도 지문에 넣어 측정이 늦게 오거나 폭이 바뀌어도 테이블이 따라간다 */
   const nodeLookup = useStore((s) => s.nodeLookup)
   const nodeSignature = useStore((s) => {
     let sig = ''
     for (const node of s.nodeLookup.values()) {
-      sig += `${node.id}:${Math.round(node.internals.positionAbsolute.x)},${Math.round(node.internals.positionAbsolute.y)};`
+      const m = node.measured
+      sig += `${node.id}:${Math.round(node.internals.positionAbsolute.x)},${Math.round(node.internals.positionAbsolute.y)}:${m ? `${Math.round(m.width)}x${Math.round(m.height)}` : '?'};`
     }
     return sig
   })
@@ -155,56 +142,27 @@ function RelationshipEdgeComponent({
     [tables, layouts, nodeLookup],
   )
 
-  /** 장애물 — 양 끝 테이블 포함 전체. 선이 출발·도착 테이블 몸통을 관통하면 어느 쪽 끝인지
-   *  읽기 어려워서, 이동 중 겹침 배치에서도 몸통은 피해 돌아간다. 법선 밀기 앵커는 항상
-   *  박스 밖이라 정상 배치 경로는 그대로 유지된다. */
-  const obstacles = useMemo<RouterBox[]>(() => {
-    if (!relationship || isSelfLoop) return []
-    return tables.flatMap((table) => {
-      const box = boxOf(table.id)
-      return box ? [box] : []
-    })
-    // nodeSignature — 드래그 중 Map 참조가 불변일 때도 시각 좌표를 따라가게 하는 의존
-  }, [relationship, isSelfLoop, boxOf, nodeSignature])
-
-  /** 전체 관계의 양 끝 (테이블, 면) — 앵커는 면 중심 하나라 한 면에 관계가 여럿이면 선이
-   *  포개진다. 면은 배치마다 shortestHandlePair로 다시 계산하므로 드래그 중에도 분산이
-   *  실시간으로 따라간다(nodeSignature 의존). distance(두 테이블 중심 맨해튼 거리)는
-   *  같은 면 그룹의 위·아래 순서 — 연결 대상이 먼 관계가 위에 온다. 자기 참조는
-   *  오른쪽 면 루프 고정이라 뺀다 */
-  const relationEndpoints = useMemo<RelationEndpoint[]>(() => {
-    const endpoints: RelationEndpoint[] = []
-    for (const rel of relationships) {
-      if (rel.childTableId === rel.parentTableId) continue
-      const child = boxOf(rel.childTableId)
-      const parent = boxOf(rel.parentTableId)
-      if (!child || !parent) continue
-      const sides = shortestHandlePair(child, parent, child, parent)
-      const distance =
-        Math.abs(child.x + child.w / 2 - (parent.x + parent.w / 2)) +
-        Math.abs(child.y + child.h / 2 - (parent.y + parent.h / 2))
-      endpoints.push({ relId: rel.id, tableId: rel.childTableId, face: sides.child, distance })
-      endpoints.push({ relId: rel.id, tableId: rel.parentTableId, face: sides.parent, distance })
-    }
-    return endpoints
-  }, [relationships, boxOf, nodeSignature])
-
-  /** 면 공유 분산 오프셋 — 자식 끝·부모 끝 각각 같은 (테이블, 면)을 쓰는 관계들과
-   *  그룹 중심 대칭 등간격으로 벌린다. 상호 참조도 같은 규칙으로 흡수된다 */
-  const sourceFaceOffset = useMemo(
-    () => (relationship && !isSelfLoop ? faceShareOffset(relationEndpoints, relationship.id, relationship.childTableId) : 0),
-    [relationEndpoints, relationship, isSelfLoop],
+  /** 문서 전체 공유 라우팅 테이블 — 연결면(shortestHandlePair)·면 분산(faceShareOffset)·
+   *  장애물 박스·통로 레인 라우팅(sharedRoutes)은 관계 수의 제곱이라 엣지마다 계산하면
+   *  프레임 비용이 세제곱으로 커진다(테이블 수백 개 문서의 드래그 문제 원인).
+   *  edge-route-table이 문서(present)·좌표 지문(nodeSignature)당 한 번 계산해 모든 엣지가
+   *  같은 결과를 공유한다 — 장애물 박스도 전체 테이블을 감싸 드래그 중 실시간으로 따라간다 */
+  const shared = useMemo(
+    () =>
+      relationship && !isSelfLoop
+        ? relationshipSharedRoutes(present, nodeSignature, tables, relationships, boxOf)
+        : null,
+    [relationship, isSelfLoop, present, nodeSignature, tables, relationships, boxOf],
   )
-  const targetFaceOffset = useMemo(
-    () => (relationship && !isSelfLoop ? faceShareOffset(relationEndpoints, relationship.id, relationship.parentTableId) : 0),
-    [relationEndpoints, relationship, isSelfLoop],
-  )
+  const sharedRoute = shared?.routes.get(id) ?? null
 
   /** 면 공유 분산 — 여러 선이 같은 면에 포개지지 않게 양 끝 앵커를 면을 따라 벌린다.
    *  면 길이(좌우 면=높이, 상하 면=폭, RF 실측 우선)로 클램프해 앵커가 면 밖으로 나가지 않게 한다 */
   const adjustedAnchors = useMemo(() => {
     const src = { x: sourceX, y: sourceY }
     const tgt = { x: targetX, y: targetY }
+    const sourceFaceOffset = sharedRoute?.sourceFaceOffset ?? 0
+    const targetFaceOffset = sharedRoute?.targetFaceOffset ?? 0
     if (!relationship || (sourceFaceOffset === 0 && targetFaceOffset === 0)) return { source: src, target: tgt }
     const child = boxOf(relationship.childTableId)
     const parent = boxOf(relationship.parentTableId)
@@ -222,7 +180,7 @@ function RelationshipEdgeComponent({
         targetPosition === 'left' || targetPosition === 'right' ? (parent?.h ?? 0) : (parent?.w ?? 0),
       ),
     }
-  }, [relationship, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, sourceFaceOffset, targetFaceOffset, boxOf, nodeSignature])
+  }, [relationship, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, sharedRoute, boxOf])
 
   /** 라우팅 앵커 — 양 끝을 면 법선(글리프가 뻗는 방향)으로 심볼 폭만큼 밀어 선 몸체가
    *  가장 바깥 심볼 끝에서 시작/끝나게 한다. 라우터의 첫 선분은 면 평행 방향으로 꺾일 수
@@ -239,68 +197,23 @@ function RelationshipEdgeComponent({
     )
   }, [relationship, isSelfLoop, adjustedAnchors, sourcePosition, targetPosition])
 
-  /** 전체 관계의 라우팅 요청 — 면 분산 앵커를 글리프 폭만큼 면 바깥으로 민 라우팅 앵커로.
-   *  sharedRoutes가 통로 레인 배정(corridorLanes)과 순차 라우팅(먼저 그린 선의 통로 회피)을
-   *  함께 계산한다. 결정론이라 엣지마다 따로 계산해도 같은 결과가 나온다 (캐시로 공유) */
-  const corridorReqs = useMemo<CorridorEndpoint[]>(() => {
-    if (!relationship || isSelfLoop) return []
-    const reqs: CorridorEndpoint[] = []
-    for (const rel of relationships) {
-      if (rel.childTableId === rel.parentTableId) continue
-      const child = boxOf(rel.childTableId)
-      const parent = boxOf(rel.parentTableId)
-      if (!child || !parent) continue
-      const sides = shortestHandlePair(child, parent, child, parent)
-      const childAnchor = offsetAlongFace(
-        handleAnchors(child, child)[sides.child],
-        sides.child,
-        faceShareOffset(relationEndpoints, rel.id, rel.childTableId),
-        sides.child === 'left' || sides.child === 'right' ? child.h : child.w,
-      )
-      const parentAnchor = offsetAlongFace(
-        handleAnchors(parent, parent)[sides.parent],
-        sides.parent,
-        faceShareOffset(relationEndpoints, rel.id, rel.parentTableId),
-        sides.parent === 'left' || sides.parent === 'right' ? parent.h : parent.w,
-      )
-      const anchors = insetAnchors(
-        childAnchor,
-        parentAnchor,
-        sides.child,
-        sides.parent,
-        sourceGlyphExtent(rel),
-        targetGlyphExtent(rel),
-      )
-      reqs.push({
-        relId: rel.id,
-        source: anchors.source,
-        target: anchors.target,
-        sourceFace: sides.child,
-        targetFace: sides.parent,
-        sourceTableId: rel.childTableId,
-        targetTableId: rel.parentTableId,
-      })
-    }
-    return reqs
-  }, [relationship, isSelfLoop, relationships, boxOf, relationEndpoints, nodeSignature])
-
   const points = useMemo(() => {
     if (isSelfLoop) return selfLoopPoints({ x: sourceX, y: sourceY })
     if (!relationship) return []
     // 첫·끝 선분은 면 법선 — 앵커에서 잠깐 면 바깥으로 나갔다가 꺾여야 글리프 방향이 읽힌다.
-    // 문서 전체 관계를 순차 라우팅한 결과에서 내 경로를 가져온다(레인 강제 + 통로 회피).
+    // 문서 전체 관계를 순차 라우팅한 공유 결과에서 내 경로를 가져온다(레인 강제 + 통로 회피).
     // 양 끝점은 RF 실측 앵커(routeAnchors)로 교체해 글리프에 정확히 붙는다
-    const shared = sharedRoutes(corridorReqs, obstacles).get(relationship.id)
-    if (shared && shared.length >= 2)
-      return [routeAnchors.source, ...shared.slice(1, -1), routeAnchors.target]
+    const sharedPoints = sharedRoute?.points
+    if (sharedPoints && sharedPoints.length >= 2)
+      return [routeAnchors.source, ...sharedPoints.slice(1, -1), routeAnchors.target]
     return routeWithNormalStubs(
       routeAnchors.source,
       routeAnchors.target,
       sourcePosition,
       targetPosition,
-      obstacles,
+      shared?.obstacles ?? [],
     )
-  }, [isSelfLoop, sourceX, sourceY, relationship, corridorReqs, obstacles, routeAnchors, sourcePosition, targetPosition])
+  }, [isSelfLoop, sourceX, sourceY, relationship, sharedRoute, shared, routeAnchors, sourcePosition, targetPosition])
 
   /** 보이는 선 — 일반 관계는 라우팅 앵커가 이미 심볼 폭만큼 물러났고, 자기 참조 루프는
    *  양 끝 선분이 항상 법선(오른쪽)이라 경로를 잘라 물러남을 만든다 */

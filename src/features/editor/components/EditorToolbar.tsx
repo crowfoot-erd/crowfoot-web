@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
+  DropdownMenuSeparator,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -29,7 +30,7 @@ import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
 import { captureErdPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
-import type { NameDisplayMode } from './canvas/editor-context'
+import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
 
 export interface EditorToolbarProps {
@@ -38,6 +39,8 @@ export interface EditorToolbarProps {
   onSave: () => void
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
+  columnDisplay: ColumnDisplayMode
+  onColumnDisplayChange: (mode: ColumnDisplayMode) => void
   /** 문서 대상 DBMS 템플릿 id — 모델 메타에서 파생된 고정값 */
   dbmsId: string
   /** 문서명 — SQL·이미지·.crown 다운로드 파일명 */
@@ -60,6 +63,8 @@ export function EditorToolbar({
   onSave,
   nameDisplay,
   onNameDisplayChange,
+  columnDisplay,
+  onColumnDisplayChange,
   dbmsId,
   modelName,
   databaseType,
@@ -119,7 +124,12 @@ export function EditorToolbar({
       <div className="flex-1" />
 
       <DbmsIndicator dbmsId={dbmsId} />
-      <ViewMenu nameDisplay={nameDisplay} onNameDisplayChange={onNameDisplayChange} />
+      <ViewMenu
+        nameDisplay={nameDisplay}
+        onNameDisplayChange={onNameDisplayChange}
+        columnDisplay={columnDisplay}
+        onColumnDisplayChange={onColumnDisplayChange}
+      />
       <ZoomControls />
     </div>
   )
@@ -143,13 +153,17 @@ function DbmsIndicator({ dbmsId }: { dbmsId: string }) {
   )
 }
 
-/** 뷰 옵션 드롭다운 — 이름 표시 모드 (erwin·aQueryTool의 logical/physical 뷰 전환) */
+/** 뷰 옵션 드롭다운 — 이름 표시 모드(erwin·aQueryTool의 logical/physical 뷰 전환)·컬럼 표시 모드(전체/키만) */
 function ViewMenu({
   nameDisplay,
   onNameDisplayChange,
+  columnDisplay,
+  onColumnDisplayChange,
 }: {
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
+  columnDisplay: ColumnDisplayMode
+  onColumnDisplayChange: (mode: ColumnDisplayMode) => void
 }) {
   const { t } = useTranslation()
 
@@ -171,6 +185,15 @@ function ViewMenu({
           <DropdownMenuRadioItem value="physical">{t('model.editor.toolbar.nameMode.physical')}</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="logical">{t('model.editor.toolbar.nameMode.logical')}</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="both">{t('model.editor.toolbar.nameMode.both')}</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>{t('model.editor.toolbar.columnMode.label')}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={columnDisplay}
+          onValueChange={(value) => onColumnDisplayChange(value as ColumnDisplayMode)}
+        >
+          <DropdownMenuRadioItem value="all">{t('model.editor.toolbar.columnMode.all')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="keys">{t('model.editor.toolbar.columnMode.keys')}</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -10,9 +10,17 @@
  * 이름 더블클릭 = 컬럼 정보 다이얼로그(논리명·기본값·코멘트), 노드 더블클릭 = 테이블 정보와 구분.
  * 노드는 자기 테이블만 구독한다(구조 공유로 다른 테이블 편집 시 이 노드는 리렌더 0).
  * 컬럼 추가 시 새 행 물리명 input에 autofocus(DataGrip 그리드 UX).
+ * 컬럼 표시 모드(보기 옵션) — 'keys'면 일반 컬럼 행을 감추고 PK·FK만 그린다.
+ * 높이는 줄어들고(모드 전환마다 reportSize), 폭은 측정 미러가 전체 컬럼을 재므로 흔들리지 않는다.
+ * 관계 그리기 — 점(source 핸들)·엣지 밴드는 그대로 있되, 점을 눌러 끌어 선을 그리는
+ * 기능만 꺼 둔다(사용자 요청 — source 핸들 isConnectable=false). 관계 생성 진입은
+ * 밴드 클릭 → 오버레이 선택 → 대상 테이블 클릭.
+ * 축소(줌아웃) 렌더 — 배율이 TABLE_COMPACT_ZOOM보다 작으면 노드 상단에 논리명·물리명
+ * 불투명 라벨 판을 헤더처럼 붙인다(아래 컬럼·키 상세는 그대로 보인다). 노드 크기(footprint)는
+ * 그대로라 팬 한계·미니맵·엣지 앵커가 흔들리지 않는다.
  */
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
+import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
 import { GripHorizontal, GripVertical, Info, KeyRound, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -24,7 +32,7 @@ import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
 import { useEditorStore } from '@/features/editor/store/editor-store'
-import { useEditorCanvas, type RelationHandleId } from './editor-context'
+import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
 import { CommitInput, CommitSelect } from './inline-inputs'
 
 export type TableNodeData = Record<string, never>
@@ -43,6 +51,22 @@ const KEY_EXTRAS = 64
 /** 컬럼 그리드 — 그립·PK·이름·타입·길이·NN·AI·삭제 */
 const ROW_GRID = '36px 16px minmax(0,1fr) 62px 44px 20px 20px 16px'
 
+/** 축소 렌더 진입 배율 — 이보다 작으면 컬럼·키 목록을 감추고 논리명·물리명 라벨만 표시한다 */
+export const TABLE_COMPACT_ZOOM = 0.5
+/** 축소 라벨 폰트 하한 배율 — 배율이 아무리 작아도 라벨 폰트(플로우 px)가 여기서 자란다
+ *  없으면 극단 축소에서 라벨이 테이블 상자보다 커진다 */
+const COMPACT_LABEL_ZOOM_FLOOR = 0.3
+/** 축소 라벨 화면 목표 크기 — 라벨은 줌아웃해도 화면에서 이 크기로 읽힌다.
+ *  논리명·물리명 모두 13px — 크기가 아닌 색·굵기(굵게/흐릿)로 위계를 구분한다 */
+const COMPACT_LOGICAL_SCREEN_PX = 13
+const COMPACT_PHYSICAL_SCREEN_PX = 13
+
+/** 축소 라벨 폰트(플로우 px) — 화면 목표 크기를 배율로 나눠 화면 크기(≈ screenPx)를 유지한다.
+ *  배율이 하한보다 작으면 하한 배율 폰트에 머문다(라벨 폭이 상자를 넘지 않게). */
+export function compactLabelFontSize(screenPx: number, zoom: number): number {
+  return screenPx / Math.max(zoom, COMPACT_LABEL_ZOOM_FLOOR)
+}
+
 /** 노드 렌더 폭 — 저장 폭·측정 콘텐츠 폭·하한 중 최대 (ErdCanvas 겹침 해소도 같은 값 사용) */
 export function tableRenderWidth(stored: number | null, contentWidth: number): number {
   return Math.max(stored ?? DEFAULT_WIDTH, contentWidth, MIN_WIDTH)
@@ -53,6 +77,11 @@ export function tableRenderWidth(stored: number | null, contentWidth: number): n
  *  + UK/IX 컨테이너(빈 28) + 키 행 × 25 + 테두리. 자동 배치(elkjs) 레이어 간격의 기준이 된다. */
 export function estimateTableHeight(columnCount: number, keyRowCount = 0): number {
   return 112 + columnCount * 47 + keyRowCount * 25
+}
+
+/** 컬럼 표시 모드가 이 영역 행을 그리는지 — 'keys'면 일반 컬럼을 접는다 (PK·FK·UK/IX는 유지) */
+export function isZoneVisible(zone: 'pk' | 'fk' | 'general', mode: ColumnDisplayMode): boolean {
+  return mode !== 'keys' || zone !== 'general'
 }
 
 /** 컬럼 추가 기본 물리명 — 테이블 내에서 고유 보장 (physicalName min(1) 계약) */
@@ -404,6 +433,48 @@ function ColumnRow({
   )
 }
 
+/* ---------- 축소(줌아웃) 렌더 — 논리명·물리명 라벨 ---------- */
+
+/** 축소 라벨 — 컬럼이 읽히지 않는 배율에서 테이블 신원만 또렷하게 보여준다. 노드 상단에
+ *  헤더처럼 딱 붙인(바깥 여백 없음, 여백은 안쪽 padding) **불투명 판**에 논리명(굵게)·물리명을
+ *  두 줄로 두고, 아래 상세 영역은 **반투명 베일**로 흐리게 한다. 폰트는 화면 크기 기준(플로우
+ *  폰트 = 화면 목표 ÷ 배율)이라 줌아웃해도 이름이 화면에서 같은 크기로 읽힌다(긴 이름은
+ *  줄임표). 레이어가 클릭을 직접 받는다 — 클릭·드래그는 언제나 이 노드의 선택·이동이 되고
+ *  겹친 테이블에서 뒤 객체가 오선택되지 않는다. zoom을 직접 구독해 줌 틱마다 갱신되지만
+ *  자식 없는 잎 컴포넌트라 갱신이 가볍다. */
+function CompactNameOverlay({
+  logicalName,
+  physicalName,
+  grab,
+}: {
+  logicalName: string
+  physicalName: string
+  /** 이동 가능 계정 — 그립 커서 표시 (드래그 자체는 레이어가 항상 받는다) */
+  grab: boolean
+}) {
+  const zoom = useStore((s) => s.transform[2])
+  return (
+    <div
+      data-compact-table
+      className={cn('absolute inset-0 z-30 flex select-none flex-col text-left', grab && 'cursor-grab active:cursor-grabbing')}
+    >
+      {/* 라벨 판 — 불투명 헤더(#ccc보다 연한 밝은 회색 #e5e5e5·다크 #333). 컨테이너가 stretch라 노드 폭 전체를 쓴다 */}
+      <div className="flex flex-col items-start gap-0.5 rounded-t-md border-b bg-[#e5e5e5] px-3 py-2 dark:bg-[#333]">
+        {logicalName.length > 0 ? (
+          <div className="max-w-full truncate font-semibold text-primary" style={{ fontSize: compactLabelFontSize(COMPACT_LOGICAL_SCREEN_PX, zoom) }}>
+            {logicalName}
+          </div>
+        ) : null}
+        <div className="max-w-full truncate text-muted-foreground" style={{ fontSize: compactLabelFontSize(COMPACT_PHYSICAL_SCREEN_PX, zoom) }}>
+          {physicalName}
+        </div>
+      </div>
+      {/* 아래 상세 — 반투명 베일로 흐리게(투명도 높게). 바닥 굴곡은 노드 모서리에 맞춘다 */}
+      <div data-compact-veil className="min-h-0 flex-1 self-stretch rounded-b-md bg-card/75" />
+    </div>
+  )
+}
+
 /* ---------- 테이블 노드 본체 ---------- */
 
 function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
@@ -413,6 +484,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
     openTableInfo,
     openKeyInfo,
     nameDisplay,
+    columnDisplay,
     reportSize,
     pendingRelation,
     completeRelation,
@@ -428,6 +500,10 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       .join(' '),
   )
   const commit = useEditorStore((s) => s.commit)
+
+  /* 축소 렌더 여부 — boolean 셀렉터라 배율이 임계를 넘는 순간에만 리렌더된다.
+     상세 내용은 그대로 두고(footprint·reportSize 불변) 위쪽에 불투명 라벨 판을 얹는다 */
+  const compact = useStore((s) => s.transform[2] < TABLE_COMPACT_ZOOM)
 
   const [lastAddedId, setLastAddedId] = useState<string | null>(null)
   const fkColumnIds = useMemo(() => new Set(fkKey.length > 0 ? fkKey.split(' ') : []), [fkKey])
@@ -461,7 +537,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
     reportSize(id, renderWidth, rootRef.current?.offsetHeight ?? 0)
-  }, [id, renderWidth, reportSize, table, nameDisplay])
+  }, [id, renderWidth, reportSize, table, nameDisplay, columnDisplay])
 
   /* 리사이즈 라이브 프리뷰 — 커밋은 onResizeEnd지만 드래그 중에도 폭이 마우스를 따라
      늘어나야 얼마나 늘리는지 보인다. 임시 폭은 로컬 상태로만 갖고 reportSize는
@@ -602,6 +678,9 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       index,
     }))
     .sort((a, b) => ZONE_RANK[a.zone] - ZONE_RANK[b.zone])
+  /** 키만 보기 — 일반 컬럼 행을 감춘다. 높이는 줄지만 폭은 측정 미러(전체 컬럼)가 정하므로
+   *  모드를 전환해도 노드 폭이 흔들리지 않는다 */
+  const visibleRows = zoneRows.filter((row) => isZoneVisible(row.zone, columnDisplay))
 
   return (
     <div
@@ -720,8 +799,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       <div className="nodrag flex-1 overflow-y-auto" onDragOver={handleListDragOver} onDrop={handleListDrop}>
         {/* PK 영역 → FK 영역(PK 바로 밑, 하늘) → 일반 영역 순서로 그린다.
             구분선은 영역이 바뀌는 지점 — 위쪽 영역 색(PK 끝=주황, FK 끝=하늘) */}
-        {zoneRows.map((row, displayIndex) => {
-          const above = displayIndex > 0 ? zoneRows[displayIndex - 1].zone : null
+        {visibleRows.map((row, displayIndex) => {
+          const above = displayIndex > 0 ? visibleRows[displayIndex - 1].zone : null
           const { zone, column, index } = row
           return (
             <Fragment key={column.id}>
@@ -752,7 +831,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
             </Fragment>
           )
         })}
-        {canEdit ? (
+        {/* 키만 보기에서는 컬럼 추가 버튼을 숨긴다 — 새 컬럼은 일반이라 이 모드에선 안 보이므로 */}
+        {canEdit && columnDisplay === 'all' ? (
           <button
             type="button"
             className="nodrag flex w-full items-center gap-1 border-t px-2 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -817,6 +897,12 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         ) : null}
       </div>
 
+      {/* 축소 렌더 — 노드 상단에 논리명·물리명 불투명 판, 아래 상세엔 반투명 베일(z-30).
+          레이어가 클릭을 받아 이 노드가 선택·이동된다 — 겹친 뒤 객체 오선택 방지 */}
+      {compact ? (
+        <CompactNameOverlay grab={canEdit} logicalName={table.logicalName} physicalName={table.physicalName} />
+      ) : null}
+
       {/* 관계 시작 — 점 근처 밴드 클릭으로 캔버스 오버레이 선택기를 연다. 진행 중 관계가 있으면 치운다(클릭 확정 방해 없게) */}
       {canEdit && !pendingRelation
         ? RELATION_BANDS.map(({ side, className }) => (
@@ -851,11 +937,13 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
 
       {/* 관계선 엣지는 자식→부모 방향 — RF가 target 노드에서 target 타입 핸들을 찾으므로 각 면에
           source·target을 겹쳐 놓는다(같은 id·위치). source만 있으면 "Couldn't create edge for
-          target handle id" 경고와 함께 엣지가 아예 안 그려진다. target은 보이지 않는 앵커 역할. */}
-      <Handle id="top" type="source" position={Position.Top} isConnectable={canEdit} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="bottom" type="source" position={Position.Bottom} isConnectable={canEdit} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="left" type="source" position={Position.Left} isConnectable={canEdit} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="right" type="source" position={Position.Right} isConnectable={canEdit} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
+          target handle id" 경고와 함께 엣지가 아예 안 그려진다.
+          점은 보이는 마커로 그대로 두되 드래그로 선을 그리는 기능은 꺼 둔다(사용자 요청) —
+          isConnectable=false면 RF가 연결을 시작하지 않는다. target은 보이지 않는 앵커 역할. */}
+      <Handle id="top" type="source" position={Position.Top} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
+      <Handle id="bottom" type="source" position={Position.Bottom} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
+      <Handle id="left" type="source" position={Position.Left} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
+      <Handle id="right" type="source" position={Position.Right} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
       <Handle id="top" type="target" position={Position.Top} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
       <Handle id="bottom" type="target" position={Position.Bottom} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
       <Handle id="left" type="target" position={Position.Left} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />

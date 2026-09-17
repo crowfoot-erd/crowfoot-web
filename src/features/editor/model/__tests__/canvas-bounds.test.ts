@@ -8,6 +8,7 @@ import {
   NOTE_ESTIMATED_HEIGHT,
   canvasExtent,
   contentBounds,
+  growExtent,
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
@@ -116,6 +117,44 @@ describe('canvas-bounds — canvasExtent', () => {
     expect(after![1][0]).toBe(5340 + CANVAS_MARGIN)
     expect(after![0][0]).toBe(5000 - CANVAS_MARGIN)
     expect(before![1][0]).toBeLessThan(after![0][0])
+  })
+})
+
+describe('canvas-bounds — growExtent(세션 한계 병합)', () => {
+  it('콘텐츠가 안쪽으로 움직여 한계가 줄어들어도, 늘어났던 폭은 그대로 유지한다', () => {
+    // 왼쪽으로 크게 갔다가 다시 오른쪽으로 돌아온 경우 — 왼쪽 한계는 줄지 않는다
+    const wide: CanvasExtent = [
+      [-5000, -3000],
+      [2000, 1500],
+    ]
+    const shrunk: CanvasExtent = [
+      [0, 0],
+      [2000, 1500],
+    ]
+    expect(growExtent(wide, shrunk)).toEqual(wide)
+  })
+
+  it('바깥으로 움직이면 그 방향으로만 넓어진다 — 좌우상하 각각 반영', () => {
+    const base: CanvasExtent = [
+      [0, 0],
+      [1000, 800],
+    ]
+    // 오른쪽·아래로 확장
+    expect(growExtent(base, [
+      [0, 0],
+      [3000, 2000],
+    ])).toEqual([
+      [0, 0],
+      [3000, 2000],
+    ])
+    // 왼쪽·위로 확장(음수 좌표)
+    expect(growExtent(base, [
+      [-2000, -1200],
+      [1000, 800],
+    ])).toEqual([
+      [-2000, -1200],
+      [1000, 800],
+    ])
   })
 })
 

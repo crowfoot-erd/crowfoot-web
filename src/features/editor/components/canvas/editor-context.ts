@@ -12,6 +12,9 @@ import type { KeyKind } from '@/features/editor/model/keys'
 /** 테이블 이름 표시 모드 — 물리명만 / 논리명만 / 둘 다 (erwin·aQueryTool 뷰 전환) */
 export type NameDisplayMode = 'physical' | 'logical' | 'both'
 
+/** 컬럼 표시 모드 — 전체 컬럼 / 키(PK·FK)만. 넓은 모델을 훑어볼 때 일반 컬럼 행을 접는다 */
+export type ColumnDisplayMode = 'all' | 'keys'
+
 /** 관계선이 붙는 노드 면 — RF Handle id와 일치 */
 export type RelationHandleId = 'top' | 'bottom' | 'left' | 'right'
 
@@ -48,6 +51,7 @@ export interface EditorCanvasContextValue {
   /** 점(핸들) 클릭 — 캔버스 오버레이에서 관계 유형·종류를 고르는 선택기를 연다 */
   openRelationPicker: (parentId: string, side: RelationHandleId) => void
   nameDisplay: NameDisplayMode
+  columnDisplay: ColumnDisplayMode
   /** 노드가 자기 렌더 크기(폭·높이)를 보고 — 캔버스가 겹침 해소(이웃 밀어내기)에 쓴다. 안정 참조여야 한다 */
   reportSize: (tableId: string, width: number, height: number) => void
 }
@@ -63,6 +67,7 @@ export const EditorCanvasContext = createContext<EditorCanvasContextValue>({
   completeRelation: () => {},
   openRelationPicker: () => {},
   nameDisplay: 'both',
+  columnDisplay: 'all',
   reportSize: () => {},
 })
 

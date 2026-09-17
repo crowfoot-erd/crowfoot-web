@@ -38,7 +38,7 @@ import { useModelVersion, useSaveModelContent } from '@/features/editor/hooks'
 import { fetchModel } from '@/features/models/api'
 import { modelKeys } from '@/features/models/hooks'
 import { errorMessage } from '@/lib/result-code'
-import type { NameDisplayMode } from './canvas/editor-context'
+import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
 
@@ -74,6 +74,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const [conflictOpen, setConflictOpen] = useState(false)
   const [parseError, setParseError] = useState(false)
   const [nameDisplay, setNameDisplay] = useState<NameDisplayMode>('both')
+  const [columnDisplay, setColumnDisplay] = useState<ColumnDisplayMode>('all')
   const reloadingRef = useRef(false)
   const [remoteChangeOpen, setRemoteChangeOpen] = useState(false)
   const syncedVersionRef = useRef(0)
@@ -297,6 +298,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         onSave={() => handleSave()}
         nameDisplay={nameDisplay}
         onNameDisplayChange={setNameDisplay}
+        columnDisplay={columnDisplay}
+        onColumnDisplayChange={setColumnDisplay}
         dbmsId={dbmsId}
         modelName={model.name}
         databaseType={model.databaseType}
@@ -349,7 +352,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           </div>
         )}
         {hydrated ? (
-          <ErdCanvas canEdit={canEdit} nameDisplay={nameDisplay} dbmsId={dbmsId} modelId={model.modelId} />
+          <ErdCanvas canEdit={canEdit} nameDisplay={nameDisplay} columnDisplay={columnDisplay} dbmsId={dbmsId} modelId={model.modelId} />
         ) : null}
       </main>
 

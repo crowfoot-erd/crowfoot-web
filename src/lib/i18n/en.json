@@ -574,6 +574,11 @@
           "logical": "Logical only",
           "both": "Physical + logical"
         },
+        "columnMode": {
+          "label": "Column display",
+          "all": "All columns",
+          "keys": "Keys only (PK·FK)"
+        },
         "dbmsLocked": "Target DBMS — fixed at document creation",
         "autoLayout": "Auto layout",
         "autoLayoutFailed": "Auto layout failed",

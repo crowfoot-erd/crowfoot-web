@@ -574,6 +574,11 @@
           "logical": "논리명만",
           "both": "물리명 + 논리명"
         },
+        "columnMode": {
+          "label": "컬럼 표시",
+          "all": "전체 컬럼",
+          "keys": "키만 (PK·FK)"
+        },
         "dbmsLocked": "문서 대상 DBMS — 문서 생성 시점에 고정됩니다",
         "autoLayout": "자동 배치",
         "autoLayoutFailed": "자동 배치에 실패했습니다",

@@ -156,7 +156,14 @@ check('팬 — 콘텐츠 오른쪽 끝+800px에서 멈춤', visibleRight <= pann
 await pan(700, 0)
 vp = await readViewport()
 let visibleLeft = -vp.tx / vp.zoom
-check('팬 — 콘텐츠 왼쪽 끝-800px에서 멈춤', visibleLeft >= panned.minX - MARGIN - 1, `보이는 왼쪽 끝 ${visibleLeft.toFixed(0)} ≥ ${panned.minX - MARGIN}`)
+// 왼쪽 한계는 세션 high-water mark — 진입 당시 콘텐츠 minX(드래그 전 bounds.minX=0)에서
+// 800px 여유까지였던 한계는, 노드를 오른쪽으로 옮겨 콘텐츠 minX가 줄어도 그대로 유지된다.
+// 한계가 콘텐츠를 따라 줄면 지금 보고 있는 뷰가 클램프되며 화면이 뚝 끌려오는 스냅이 생긴다.
+check(
+  '팬 — 왼쪽 한계는 세션 폭 유지(콘텐츠가 준 뒤에도 줄지 않는다)',
+  visibleLeft >= bounds.minX - MARGIN - 1,
+  `보이는 왼쪽 끝 ${visibleLeft.toFixed(0)} ≥ 세션 한계 ${bounds.minX - MARGIN}`,
+)
 
 await pan(0, -700)
 vp = await readViewport()
