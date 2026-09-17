@@ -11,7 +11,7 @@
  * 들어오는 테이블이 그때그때 마운트되며 끊기고(100테이블 문서에서 롱태스크 1초+ 실측),
  * 전부 렌더해 두면 팬·줌·드래그 전부 60fps가 나온다(마운트 체인이 없으니 이동은 GPU 합성뿐).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -70,6 +70,7 @@ import { RelationPickerOverlay, type RelationPick } from './canvas/RelationPicke
 import { handleAnchors, shortestHandlePair } from './canvas/edge-router'
 import { RelationshipEdge, type RelationshipEdgeType } from './canvas/RelationshipEdge'
 import { TableNode, estimateTableHeight, tableRenderWidth, type TableNodeType } from './canvas/TableNode'
+import { tableColorHex } from './canvas/table-skin'
 import { RelationshipDialog } from './RelationshipDialog'
 import { TableInfoDialog } from './TableInfoDialog'
 
@@ -89,6 +90,28 @@ function uniqueTableName(existingPhysicalNames: string[]): string {
     const candidate = `table_${i}`
     if (!existing.has(candidate)) return candidate
   }
+}
+
+/* ---------- 미니맵 — 테이블 강조색 반영 ---------- */
+
+type MiniMapProps = ComponentProps<typeof MiniMap>
+
+/** 색 시그니처(id:color 조인)를 구독해 색이 바뀔 때만 이 래퍼가 리렌더된다(캔버스 본체와 분리).
+ *  노드 색은 콜백 시점 스토어에서 읽는다 — 표시 레이어 노드 배열에는 색이 실리지 않는다 */
+function TableColorMiniMap(props: MiniMapProps) {
+  const colorSignature = useEditorStore((s) =>
+    Object.entries(s.present.diagram.nodes)
+      .map(([id, layout]) => `${id}:${layout.color}`)
+      .join(';'),
+  )
+  const nodeColor = useCallback<NonNullable<MiniMapProps['nodeColor']>>(
+    (node) => {
+      const layout = useEditorStore.getState().present.diagram.nodes[node.id]
+      return tableColorHex(layout?.color ?? 'default') ?? undefined
+    },
+    [colorSignature],
+  )
+  return <MiniMap nodeColor={nodeColor} {...props} />
 }
 
 /* ---------- 스토어 문서 → 표시 레이어 (마운트 초기 상태·빌드 이펙트 공용) ---------- */
@@ -789,6 +812,12 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
     [infoTableId, present.model.tables],
   )
 
+  /** 정보 다이얼로그 대상 테이블 강조색 — 즉시 커밋이라 present에서 실시간으로 읽는다 */
+  const infoTableColor = useMemo(
+    () => (infoTableId ? (present.diagram.nodes[infoTableId]?.color ?? 'default') : 'default'),
+    [infoTableId, present.diagram.nodes],
+  )
+
   const infoColumn = useMemo(
     () =>
       infoColumnRef
@@ -1018,7 +1047,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         connectionRadius={24}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
-        <MiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2" />
+        <TableColorMiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2" />
       </ReactFlow>
 
       {/* 진행 중 관계 — 소스 핸들에서 포인터를 따라다니는 임시 선 (시작점=화면좌표 → 래퍼 기준 보정) */}
@@ -1084,6 +1113,8 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
           if (!open) setInfoTableId(null)
         }}
         table={infoTable}
+        color={infoTableColor}
+        onColorChange={(tableId, color) => commit({ type: 'node/color', tableId, color })}
         onCommit={(tableId, patch) => commit({ type: 'table/patch', tableId, patch })}
         isDuplicateName={(tableId, physicalName) =>
           isDuplicateTableName(useEditorStore.getState().present.model, tableId, physicalName)}

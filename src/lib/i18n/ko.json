@@ -695,7 +695,9 @@
         "logicalNamePlaceholder": "예: 주문",
         "comment": "설명",
         "commentPlaceholder": "테이블 설명",
-        "nameRequired": "물리명을 입력하세요"
+        "nameRequired": "물리명을 입력하세요",
+        "color": "색상",
+        "colorDefault": "기본"
       },
       "savedToast": "문서를 저장했습니다",
       "conflict": {

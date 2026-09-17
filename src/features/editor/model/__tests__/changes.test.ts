@@ -28,7 +28,7 @@ describe('applyChange — 테이블', () => {
     const next = applyChange(doc(), { type: 'table/create', table, position: { x: 10, y: 20 } })
 
     expect(next.model.tables).toHaveLength(1)
-    expect(next.diagram.nodes[table.id]).toEqual({ x: 10, y: 20, width: null })
+    expect(next.diagram.nodes[table.id]).toEqual({ x: 10, y: 20, width: null, color: 'default' })
     // 원본 불변
     expect(doc().model.tables).toHaveLength(0)
   })
@@ -214,10 +214,16 @@ describe('applyChange — 관계·메모·노드', () => {
     const table = createTable('t')
     d = applyChange(d, { type: 'table/create', table, position: { x: 0, y: 0 } })
     d = applyChange(d, { type: 'node/move', positions: { [table.id]: { x: 111, y: 222 } } })
-    expect(d.diagram.nodes[table.id]).toEqual({ x: 111, y: 222, width: null })
+    expect(d.diagram.nodes[table.id]).toEqual({ x: 111, y: 222, width: null, color: 'default' })
 
     d = applyChange(d, { type: 'node/resize', tableId: table.id, width: 320 })
     expect(d.diagram.nodes[table.id].width).toBe(320)
+
+    // 강조색 지정·해제 — 레이아웃(위치·폭)은 그대로
+    d = applyChange(d, { type: 'node/color', tableId: table.id, color: 'sky' })
+    expect(d.diagram.nodes[table.id]).toEqual({ x: 111, y: 222, width: 320, color: 'sky' })
+    d = applyChange(d, { type: 'node/color', tableId: table.id, color: 'default' })
+    expect(d.diagram.nodes[table.id].color).toBe('default')
 
     d = applyChange(d, { type: 'note/remove', noteId: 'N1' })
     expect(d.diagram.notes).toHaveLength(0)

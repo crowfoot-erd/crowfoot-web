@@ -62,7 +62,7 @@ describe('content-io', () => {
         relationships: [],
       },
       diagram: {
-        nodes: { t1: { x: 120, y: 80, width: null } },
+        nodes: { t1: { x: 120, y: 80, width: null, color: 'default' } },
         notes: [],
         viewport: null,
       },
@@ -81,6 +81,19 @@ describe('content-io', () => {
       }),
     )
     expect(parsed.model.tables).toEqual([])
+  })
+
+  it('노드 강조색이 없는 레거시 문서는 default로 정규화된다 — 프리셋 외 값은 거부', () => {
+    const docWithNode = (node: Record<string, unknown>) =>
+      JSON.stringify({
+        schemaVersion: 1,
+        model: { tables: [], relationships: [] },
+        diagram: { nodes: { t1: node }, notes: [], viewport: null },
+      })
+    expect(parseContent(docWithNode({ x: 0, y: 0, width: null })).diagram.nodes.t1?.color).toBe('default')
+    expect(parseContent(docWithNode({ x: 0, y: 0, width: null, color: 'sky' })).diagram.nodes.t1?.color).toBe('sky')
+    // 테이블 색은 프리셋 10색만 있다 — 자유 색(hex)은 메모와 달리 스키마 밖 값이라 수화 거부
+    expect(() => parseContent(docWithNode({ x: 0, y: 0, width: null, color: '#7c3aed' }))).toThrow()
   })
 
   it('PK 컬럼은 항상 일반 컬럼보다 위로 정규화된다 — 같은 영역 안 순서는 유지', () => {

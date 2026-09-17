@@ -695,7 +695,9 @@
         "logicalNamePlaceholder": "e.g. Order",
         "comment": "Description",
         "commentPlaceholder": "Table description",
-        "nameRequired": "Physical name is required"
+        "nameRequired": "Physical name is required",
+        "color": "Color",
+        "colorDefault": "Default"
       },
       "savedToast": "Document saved",
       "conflict": {

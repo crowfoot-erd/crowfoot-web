@@ -142,11 +142,35 @@ export const relationshipSchema = z.object({
 })
 export type ErdRelationship = z.infer<typeof relationshipSchema>
 
+/** 테이블 강조색 프리셋 팔레트 — 정보 다이얼로그의 스와치 10색. 자유 색(hex)은 제공하지 않는다 */
+export const TABLE_COLORS = ['red', 'orange', 'amber', 'yellow', 'green', 'teal', 'sky', 'blue', 'violet', 'pink'] as const
+export type TableColor = (typeof TABLE_COLORS)[number]
+
+/** 프리셋 대표색(Tailwind 500 계열) — 렌더 틴트·미니맵·스와치의 원색 */
+export const TABLE_COLOR_HEX: Record<TableColor, string> = {
+  red: '#ef4444',
+  orange: '#f97316',
+  amber: '#f59e0b',
+  yellow: '#eab308',
+  green: '#22c55e',
+  teal: '#14b8a6',
+  sky: '#0ea5e9',
+  blue: '#3b82f6',
+  violet: '#8b5cf6',
+  pink: '#ec4899',
+}
+
+/** 'default'(무색) 또는 프리셋 10색 */
+export const tableColorSchema = z.union([z.literal('default'), z.enum(TABLE_COLORS)])
+export type TableColorValue = 'default' | TableColor
+
 export const nodeLayoutSchema = z.object({
   x: z.number(),
   y: z.number(),
   /** null = 자동 폭 */
   width: z.number().nullable(),
+  /** 강조색 — 표현이므로 model이 아닌 diagram 쪽. 이전 문서는 default(무색)로 정규화된다 */
+  color: tableColorSchema.default('default'),
 })
 export type ErdNodeLayout = z.infer<typeof nodeLayoutSchema>
 

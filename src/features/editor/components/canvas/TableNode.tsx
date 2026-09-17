@@ -18,6 +18,8 @@
  * 축소(줌아웃) 렌더 — 배율이 TABLE_COMPACT_ZOOM보다 작으면 노드 상단에 논리명·물리명
  * 불투명 라벨 판을 헤더처럼 붙인다(아래 컬럼·키 상세는 그대로 보인다). 노드 크기(footprint)는
  * 그대로라 팬 한계·미니맵·엣지 앵커가 흔들리지 않는다.
+ * 강조색 — 정보 다이얼로그에서 프리셋 10색 중 선택(node/color). 헤더 밴드·상자 테두리·축소
+ * 라벨 판에 틴트로 얹고 미니맵에도 같은 색이 들어간다. 색은 diagram.nodes에 저장(표현).
  */
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
@@ -30,9 +32,11 @@ import { createColumn, pkToggleChanges, type ColumnPatch } from '@/features/edit
 import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
 import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
+import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
+import { tableSkin } from './table-skin'
 import { CommitInput, CommitSelect } from './inline-inputs'
 
 export type TableNodeData = Record<string, never>
@@ -446,20 +450,28 @@ function CompactNameOverlay({
   logicalName,
   physicalName,
   grab,
+  color,
 }: {
   logicalName: string
   physicalName: string
   /** 이동 가능 계정 — 그립 커서 표시 (드래그 자체는 레이어가 항상 받는다) */
   grab: boolean
+  /** 강조색 — 라벨 판 배경 틴트. 'default'면 기본 회색 판 */
+  color: TableColorValue
 }) {
   const zoom = useStore((s) => s.transform[2])
+  const plate = tableSkin(color).plateStyle
   return (
     <div
       data-compact-table
       className={cn('absolute inset-0 z-30 flex select-none flex-col text-left', grab && 'cursor-grab active:cursor-grabbing')}
     >
-      {/* 라벨 판 — 불투명 헤더(#ccc보다 연한 밝은 회색 #e5e5e5·다크 #333). 컨테이너가 stretch라 노드 폭 전체를 쓴다 */}
-      <div className="flex flex-col items-start gap-0.5 rounded-t-md border-b bg-[#e5e5e5] px-3 py-2 dark:bg-[#333]">
+      {/* 라벨 판 — 불투명 헤더(#ccc보다 연한 밝은 회색 #e5e5e5·다크 #333). 컨테이너가 stretch라 노드 폭 전체를 쓴다.
+          색이 지정되면 테마 --card와 혼합한 틴트 판으로 바뀐다(줌아웃에서도 테이블 색이 구분된다) */}
+      <div
+        className="flex flex-col items-start gap-0.5 rounded-t-md border-b bg-[#e5e5e5] px-3 py-2 dark:bg-[#333]"
+        style={plate}
+      >
         {logicalName.length > 0 ? (
           <div className="max-w-full truncate font-semibold text-primary" style={{ fontSize: compactLabelFontSize(COMPACT_LOGICAL_SCREEN_PX, zoom) }}>
             {logicalName}
@@ -492,6 +504,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   } = useEditorCanvas()
   const table = useEditorStore((s) => s.present.model.tables.find((tb) => tb.id === id))
   const width = useEditorStore((s) => s.present.diagram.nodes[id]?.width ?? null)
+  const color = useEditorStore((s) => s.present.diagram.nodes[id]?.color ?? 'default')
   const dbmsId = useEditorCanvas().dbmsId
   const fkKey = useEditorStore((s) =>
     s.present.model.relationships
@@ -651,6 +664,9 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
 
   if (!table) return null
 
+  /** 강조색 스킨 — 헤더 밴드·테두리·축소 라벨 판에 얹는다. 'default'면 스타일 없음(기본 렌더) */
+  const skin = tableSkin(color)
+
   const addColumn = () => {
     const column = createColumn({ physicalName: nextColumnName(table.columns) })
     commit({ type: 'column/add', tableId: id, column })
@@ -692,7 +708,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         // 진행 중 관계의 소스 — 하늘색 강조
         isPendingSource && 'border-sky-500 ring-2 ring-sky-500/60',
       )}
-      style={{ width: displayWidth }}
+      style={{ width: displayWidth, ...skin.borderStyle }}
       // 버튼·셀렉트의 연속 클릭(NN 토글 등)이 노드 더블클릭(테이블 정보)로 새지 않게 차단.
       // 이름 더블클릭(컬럼 정보)은 input이라 그대로 통과시킨다.
       onDoubleClickCapture={(event) => {
@@ -752,13 +768,16 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         </span>
       ) : null}
 
-      {/* 드래그 핸들 밴드 — 논리명 상시 표시(보기 옵션과 무관·표시 전용, 수정은 정보 다이얼로그) + 이동 그립 */}
+      {/* 드래그 핸들 밴드 — 논리명 상시 표시(보기 옵션과 무관·표시 전용, 수정은 정보 다이얼로그) + 이동 그립.
+          강조색이 지정되면 밴드 배경을 색 틴트로 덮는다(선택 강조 bg-primary/25 대신 링이 선택을 알린다) */}
       <div
         className={cn(
-          'flex h-7 items-center gap-1 rounded-t-md bg-primary/15 px-2',
-          selected && 'bg-primary/25',
+          'flex h-7 items-center gap-1 rounded-t-md px-2',
+          color === 'default' && 'bg-primary/15',
+          color === 'default' && selected && 'bg-primary/25',
           canEdit && 'cursor-grab active:cursor-grabbing',
         )}
+        style={skin.bandStyle}
         title={t('model.editor.table.dragHandle')}
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-primary/80">{table.logicalName}</span>
@@ -900,7 +919,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       {/* 축소 렌더 — 노드 상단에 논리명·물리명 불투명 판, 아래 상세엔 반투명 베일(z-30).
           레이어가 클릭을 받아 이 노드가 선택·이동된다 — 겹친 뒤 객체 오선택 방지 */}
       {compact ? (
-        <CompactNameOverlay grab={canEdit} logicalName={table.logicalName} physicalName={table.physicalName} />
+        <CompactNameOverlay grab={canEdit} logicalName={table.logicalName} physicalName={table.physicalName} color={color} />
       ) : null}
 
       {/* 관계 시작 — 점 근처 밴드 클릭으로 캔버스 오버레이 선택기를 연다. 진행 중 관계가 있으면 치운다(클릭 확정 방해 없게) */}

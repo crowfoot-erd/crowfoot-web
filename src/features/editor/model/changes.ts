@@ -17,6 +17,7 @@ import {
   type ErdTable,
   type ErdUniqueKey,
   type EditorDocument,
+  type TableColorValue,
 } from '@/features/editor/model/content-schema'
 import { defaultKeyName } from '@/features/editor/model/keys'
 
@@ -56,6 +57,7 @@ export type ErdChange =
   | { type: 'note/remove'; noteId: string }
   | { type: 'node/move'; positions: Record<string, { x: number; y: number }> }
   | { type: 'node/resize'; tableId: string; width: number | null }
+  | { type: 'node/color'; tableId: string; color: TableColorValue }
 /* ---------- 팩토리 — 신규 객체 기본값 ---------- */
 
 export function newId(): string {
@@ -403,7 +405,7 @@ export function applyChange(doc: EditorDocument, change: ErdChange): EditorDocum
         model: { ...doc.model, tables: [...doc.model.tables, change.table] },
         diagram: {
           ...doc.diagram,
-          nodes: { ...doc.diagram.nodes, [change.table.id]: { x: change.position.x, y: change.position.y, width: null } },
+          nodes: { ...doc.diagram.nodes, [change.table.id]: { x: change.position.x, y: change.position.y, width: null, color: 'default' } },
         },
       }
     case 'table/remove':
@@ -474,6 +476,14 @@ export function applyChange(doc: EditorDocument, change: ErdChange): EditorDocum
         diagram: {
           ...doc.diagram,
           nodes: { ...doc.diagram.nodes, [change.tableId]: { ...doc.diagram.nodes[change.tableId], width: change.width } },
+        },
+      }
+    case 'node/color':
+      return {
+        ...doc,
+        diagram: {
+          ...doc.diagram,
+          nodes: { ...doc.diagram.nodes, [change.tableId]: { ...doc.diagram.nodes[change.tableId], color: change.color } },
         },
       }
   }
