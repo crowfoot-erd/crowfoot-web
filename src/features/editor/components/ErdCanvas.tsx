@@ -11,7 +11,7 @@
  * 들어오는 테이블이 그때그때 마운트되며 끊기고(100테이블 문서에서 롱태스크 1초+ 실측),
  * 전부 렌더해 두면 팬·줌·드래그 전부 60fps가 나온다(마운트 체인이 없으니 이동은 GPU 합성뿐).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -28,6 +28,7 @@ import {
   type OnNodesChange,
   type ReactFlowInstance,
   type Viewport,
+  type XYPosition,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useTranslation } from 'react-i18next'
@@ -35,6 +36,12 @@ import { toast } from 'sonner'
 
 import { cn } from 'cn'
 
+import {
+  canvasExtent,
+  contentBounds,
+  viewportCenteredOn,
+  type CanvasExtent,
+} from '@/features/editor/model/canvas-bounds'
 import { createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
 import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
@@ -180,46 +187,24 @@ function edgesEqual(a: AppEdge[], b: AppEdge[]): boolean {
   return true
 }
 
-/** 메모 노드 추정 높이 — 헤더 + 본문 2줄 여유 (전체 맞춤 추정용) */
-const NOTE_ESTIMATED_HEIGHT = 120
-
 /** 문서만으로 전체 맞춤 뷰포트를 추정 — 노드가 그려지기 전 첫 프레임에 줄 화면이다.
  *  실제 노드 크기와 어긋나면 마운트 후 fit 이펙트가 정확한 화면으로 보정한다. */
 function estimatedFitViewport(doc: EditorDocument): Viewport {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const table of doc.model.tables) {
-    const layout = doc.diagram.nodes[table.id]
-    if (!layout) continue
-    const w = tableRenderWidth(layout.width ?? null, 0)
-    const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
-    minX = Math.min(minX, layout.x)
-    minY = Math.min(minY, layout.y)
-    maxX = Math.max(maxX, layout.x + w)
-    maxY = Math.max(maxY, layout.y + h)
-  }
-  for (const note of doc.diagram.notes) {
-    minX = Math.min(minX, note.x)
-    minY = Math.min(minY, note.y)
-    maxX = Math.max(maxX, note.x + note.width)
-    maxY = Math.max(maxY, note.y + NOTE_ESTIMATED_HEIGHT)
-  }
-  if (minX === Infinity) return { x: 0, y: 0, zoom: 1 }
+  const bounds = contentBounds(doc)
+  if (!bounds) return { x: 0, y: 0, zoom: 1 }
   const width = window.innerWidth || 1200
   const height = window.innerHeight || 800
   const padding = 0.25
-  const boxWidth = Math.max(maxX - minX, 1)
-  const boxHeight = Math.max(maxY - minY, 1)
+  const boxWidth = Math.max(bounds.maxX - bounds.minX, 1)
+  const boxHeight = Math.max(bounds.maxY - bounds.minY, 1)
   const zoom = Math.max(
     0.1,
     Math.min((width * (1 - padding)) / boxWidth, (height * (1 - padding)) / boxHeight, 1),
   )
   // 콘텐츠 중심을 화면 중심으로 이동
   return {
-    x: width / 2 - ((minX + maxX) / 2) * zoom,
-    y: height / 2 - ((minY + maxY) / 2) * zoom,
+    x: width / 2 - ((bounds.minX + bounds.maxX) / 2) * zoom,
+    y: height / 2 - ((bounds.minY + bounds.maxY) / 2) * zoom,
     zoom,
   }
 }
@@ -281,6 +266,19 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
     sizeReportsRef.current = { ...sizeReportsRef.current, [tableId]: { w, h } }
     setSizeReports(sizeReportsRef.current)
   }, [])
+
+  /* 팬·드래그 한계 — 최외곽 객체(테이블·메모)의 사방 좌표에서 CANVAS_MARGIN까지만 캔버스가
+     늘어난다(canvas-bounds 참조). 문서·측정 크기가 바뀔 때마다 다시 계산하므로 객체를 경계
+     밖으로 옮기면 한계도 그 객체를 감싸도록 따라 자란다. 빈 문서는 첫 화면(zoom 1 · 원점)
+     영역만 팬할 수 있다 — 콘텐츠가 생기면 곧 한계도 생긴다 */
+  const extent = useMemo<CanvasExtent>(() => {
+    const bounds = canvasExtent(present, sizeReports)
+    if (bounds) return bounds
+    return [
+      [0, 0],
+      [window.innerWidth || 1200, window.innerHeight || 800],
+    ]
+  }, [present, sizeReports])
 
   /**
    * 겹침 해소 — 크기 보고가 바뀔 때만 실행(드래그로 사용자가 놓은 위치는 존중).
@@ -860,6 +858,24 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
   )
 
   const wrapperRef = useRef<HTMLDivElement | null>(null)
+
+  /* 미니맵 클릭 — 클릭한 지점을 화면 중심으로 이동. 드래그 팬(pannable)과 겹치지 않는다:
+     d3-zoom이 이동이 있던 누름의 click 이벤트를 억제하므로 이 콜백은 순수 클릭에만 발생한다.
+     프로그램 setViewport는 translateExtent 적용(제스처 전용)을 우회하므로 클램프를 직접 한다 */
+  const handleMinimapClick = useCallback(
+    (_event: ReactMouseEvent, position: XYPosition) => {
+      const rf = rfRef.current
+      const rect = wrapperRef.current?.getBoundingClientRect()
+      if (!rf || !rect) return
+      const { zoom } = rf.getViewport()
+      rf.setViewport(
+        viewportCenteredOn(position, zoom, { width: rect.width, height: rect.height }, extent),
+        { duration: 200 },
+      )
+    },
+    [extent],
+  )
+
   const flow = (
     <div
       ref={wrapperRef}
@@ -909,10 +925,12 @@ export function ErdCanvas({ canEdit, nameDisplay, dbmsId, modelId }: ErdCanvasPr
         deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
         minZoom={0.1}
         maxZoom={2.5}
+        translateExtent={extent}
+        nodeExtent={extent}
         connectionRadius={24}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
-        <MiniMap pannable zoomable className="!bottom-2 !right-2" />
+        <MiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2" />
       </ReactFlow>
 
       {/* 진행 중 관계 — 소스 핸들에서 포인터를 따라다니는 임시 선 (시작점=화면좌표 → 래퍼 기준 보정) */}
