@@ -7,13 +7,12 @@
  */
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home } from 'lucide-react'
+import { Home, Loader2 } from 'lucide-react'
 
 import type { Model, PublicShare } from '@/api/types'
 import { isApiError } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { EditorShell } from '@/features/editor'
 import { useSharedDocument } from '@/features/models'
 import { resultCodeMessage } from '@/lib/result-code'
@@ -43,9 +42,15 @@ export function ShareViewerPage() {
   return (
     <div className="flex h-dvh flex-col bg-background">
       {share.isPending ? (
-        <div className="flex flex-1 flex-col gap-3 p-6">
-          <Skeleton className="h-8 w-72" />
-          <Skeleton className="flex-1" />
+        // 공유 문서 조회 — 전체 화면 중앙 스피너 (model-viewer와 같은 관례)
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="editor-loading"
+          className="flex flex-1 flex-col items-center justify-center gap-4"
+        >
+          <Loader2 aria-hidden className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
         </div>
       ) : share.isError || !share.data ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3">

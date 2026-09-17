@@ -8,12 +8,11 @@
  */
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/error-state'
 import { formatDateTime } from '@/lib/format'
 import { EditorShell } from '@/features/editor'
@@ -35,9 +34,15 @@ export function ModelViewerPage() {
   return (
     <div className="flex h-dvh flex-col bg-background">
       {model.isPending ? (
-        <div className="flex flex-1 flex-col gap-3 p-6">
-          <Skeleton className="h-8 w-72" />
-          <Skeleton className="flex-1" />
+        // 문서 상세(content 포함) 조회 — 셸 없는 전체 화면이라 중앙 스피너로 로딩을 알린다
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="editor-loading"
+          className="flex flex-1 flex-col items-center justify-center gap-4"
+        >
+          <Loader2 aria-hidden className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
         </div>
       ) : model.isError || !model.data ? (
         <div className="flex flex-1 items-center justify-center">

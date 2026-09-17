@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 import { isApiError } from '@/api/client'
 import type { Model } from '@/api/types'
 import { Button } from '@/components/ui/button'
-import { Users } from 'lucide-react'
+import { Loader2, Users } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -353,7 +353,18 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         )}
         {hydrated ? (
           <ErdCanvas canEdit={canEdit} nameDisplay={nameDisplay} columnDisplay={columnDisplay} dbmsId={dbmsId} modelId={model.modelId} />
-        ) : null}
+        ) : (
+          // 수화 게이트 — 문서 파싱·hydrate가 끝나기 전 캔버스 자리에 로딩을 보여준다
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="editor-loading"
+            className="flex h-full flex-col items-center justify-center gap-4"
+          >
+            <Loader2 aria-hidden className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+          </div>
+        )}
       </main>
 
       <Dialog open={conflictOpen} onOpenChange={setConflictOpen}>
