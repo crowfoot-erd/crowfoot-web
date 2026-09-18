@@ -60,6 +60,10 @@ export interface Me {
   userId: string
   email: string
   name: string
+  /** 제공자 프로필 사진 — GitHub 계정만 도출되는 URL, 그 외 null(이니셜 폴백) */
+  avatarUrl?: string | null
+  /** GitHub 핸들(login) — 로그인 시 저장된 값. Google 계정은 null(@표시 생략) */
+  githubLogin?: string | null
   providers: string[]
   admin: boolean
   createdAt: string

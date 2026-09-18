@@ -6,6 +6,7 @@
 import { ChevronDown, LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,12 +36,11 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" className="gap-2 px-2">
-          <span
-            aria-hidden
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-          >
-            {profile.name.charAt(0)}
-          </span>
+          <Avatar
+            name={profile.name}
+            avatarUrl={profile.avatarUrl}
+            className="h-6 w-6 bg-primary/10 text-xs text-primary"
+          />
           <span className="hidden max-w-32 truncate text-sm md:inline">{profile.name}</span>
           <ChevronDown aria-hidden className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>

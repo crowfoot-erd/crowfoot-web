@@ -722,6 +722,13 @@
       "presence": {
         "label": "Watching now"
       },
+      "chat": {
+        "label": "Document chat",
+        "inputPlaceholder": "Send a message",
+        "send": "Send",
+        "empty": "No conversation yet",
+        "close": "Close"
+      },
       "parentNoPk": "Table {{name}} has no primary key — it cannot be the parent (1) side",
       "parseError": "Cannot parse the document content.",
       "columnInfo": {

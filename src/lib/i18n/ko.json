@@ -722,6 +722,13 @@
       "presence": {
         "label": "함께 보는 사람"
       },
+      "chat": {
+        "label": "문서 채팅",
+        "inputPlaceholder": "메시지 보내기",
+        "send": "보내기",
+        "empty": "아직 대화가 없습니다",
+        "close": "닫기"
+      },
       "parentNoPk": "테이블 {{name}}에 기본 키가 없어 부모(1) 쪽으로 쓸 수 없습니다",
       "parseError": "문서 내용을 해석할 수 없습니다",
       "columnInfo": {

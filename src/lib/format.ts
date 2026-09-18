@@ -9,6 +9,7 @@ function locale(): string {
 
 const dateFormatters = new Map<string, Intl.DateTimeFormat>()
 const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>()
+const timeFormatters = new Map<string, Intl.DateTimeFormat>()
 
 /** YYYY-MM-DD (ko) / M/D/YYYY (en) — 생성일·부여일 등 */
 export function formatDate(iso: string | null | undefined): string {
@@ -40,4 +41,18 @@ export function formatDateTime(iso: string | null | undefined): string {
 
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat(locale()).format(value)
+}
+
+/** 채팅 발언 시각 등 시각만 — 오전/오후 포함 언어권 표기 */
+export function formatTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const key = locale()
+  let formatter = timeFormatters.get(key)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(key, { timeStyle: 'short' })
+    timeFormatters.set(key, formatter)
+  }
+  return formatter.format(date)
 }
