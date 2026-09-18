@@ -9,6 +9,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { toPng } from 'html-to-image'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ReactElement } from 'react'
 
 import type { Model } from '@/api/types'
 import { fail, fixtures, ok } from '@/api/mocks/handlers'
@@ -19,32 +20,71 @@ import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { modelKeys, useModel } from '@/features/models/hooks'
-import { renderWithProviders } from '@/test/test-app'
+import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
 
 // 캡처 라이브러리 — 브라우저 렌더링이 필요해 실동작은 검증 대상 아님, dataURL만 흘려준다
 vi.mock('html-to-image', () => ({ toPng: vi.fn() }))
 
 // 협업 2차 채널 — 훅 전체를 갈아끼운다(실제 WebSocket은 별도 훅 테스트에서 검증)
 const collabMock = vi.hoisted(() => ({
-  participants: [] as Array<{ userId: string; name: string }>,
+  participants: [] as Array<{ userId: string; name: string; avatarUrl?: string | null }>,
   publishSaved: vi.fn(),
+  messages: [] as Array<{
+    seq: number
+    userId: string
+    name: string
+    avatarUrl?: string | null
+    userLogin?: string | null
+    message: string
+    at: string
+  }>,
+  sendMessage: vi.fn(),
+  connected: true,
   options: undefined as
     | undefined
-    | { onRemoteSaved?: (event: { version: number; savedBy: string; savedByName: string; at: string }) => void },
+    | {
+        avatarUrl?: string
+        githubLogin?: string | null
+        onRemoteSaved?: (event: { version: number; savedBy: string; savedByName: string; at: string }) => void
+        onIncomingChat?: (message: { seq: number; userId: string; name: string; message: string; at: string; avatarUrl?: string | null; userLogin?: string | null }) => void
+      },
 }))
 vi.mock('@/features/editor/collab', () => ({
   useModelCollab: (options: typeof collabMock.options) => {
     collabMock.options = options
-    return { participants: collabMock.participants, publishSaved: collabMock.publishSaved }
+    return {
+      participants: collabMock.participants,
+      publishSaved: collabMock.publishSaved,
+      messages: collabMock.messages,
+      sendMessage: collabMock.sendMessage,
+      connected: collabMock.connected,
+    }
   },
 }))
 
+// sonner 토스트 — 토스트 발화 자체가 검증 대상(채팅 알림). 렌더러는 클릭 동작 검증에 직접 쓴다
+const toastMock = vi.hoisted(() => ({
+  custom: vi.fn(),
+  dismiss: vi.fn(),
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+}))
+vi.mock('sonner', () => ({ toast: toastMock }))
+
 afterEach(() => {
   resetEditorStore()
+  resetSessionState() // 일부 채팅 테스트가 asAuthenticated로 세션을 시딩한다
+  // 임시 저장(draft) 키가 테스트 사이에 새어 들어가면 다음 수화가 임시본을 복원해 버린다
+  window.localStorage.clear()
   vi.restoreAllMocks()
   collabMock.participants.length = 0
+  collabMock.messages.length = 0
   collabMock.options = undefined
   collabMock.publishSaved.mockClear()
+  collabMock.sendMessage.mockClear()
+  toastMock.custom.mockClear()
+  toastMock.dismiss.mockClear()
 })
 
 function modelFixture(overrides: Partial<Model> = {}): Model {
@@ -105,6 +145,8 @@ describe('EditorShell — 읽기 전용', () => {
 
     expect(screen.getByText('읽기 전용')).toBeVisible()
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+    // 테마 토글 — 에디터는 앱 셸 밖 전체 화면이라 툴바가 제공한다(읽기 전용도 보기 옵션)
+    expect(screen.getByRole('button', { name: '테마' })).toBeVisible()
   })
 })
 
@@ -247,6 +289,87 @@ describe('EditorShell — 협업 2차 실시간 채널(WebSocket)', () => {
       { timeout: 5000 },
     )
   }, 15000)
+
+  it('접속자 칩 — 프로필 사진이 있는 참가자는 <img>, 없으면 이니셜 원', async () => {
+    collabMock.participants.push(
+      { userId: 'u1', name: '앨리스', avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4' },
+      { userId: 'u2', name: '밥', avatarUrl: null },
+    )
+    await renderEditor()
+
+    const chip = await screen.findByTestId('presence-chip')
+    const image = chip.querySelector('img')
+    expect(image).not.toBeNull()
+    expect(image).toHaveAttribute('src', 'https://avatars.githubusercontent.com/u/1?v=4')
+    expect(chip).toHaveTextContent('밥') // 아바타 없는 참가자는 이니셜 폴백
+  })
+})
+
+describe('EditorShell — 문서 채팅', () => {
+  it('채팅 도크 — 토글로 패널을 열고 내/남의 발언을 구분해 그린다', async () => {
+    asAuthenticated() // useMe 활성화 — 내 발언 판별(myUserId)에 me 픽스처(userId '2')가 필요하다
+    // 내 발언의 userId는 MSW me 픽스처(userId '2')와 같아야 ChatDock이 '내 발언'으로 구분한다
+    collabMock.messages.push(
+      { seq: 1, userId: 'u2', name: '밥', avatarUrl: null, userLogin: 'octocat', message: '남의 발언', at: '2026-09-18T00:00:00Z' },
+      { seq: 2, userId: '2', name: '나', avatarUrl: null, message: '내 발언', at: '2026-09-18T00:00:01Z' },
+    )
+    await renderEditor()
+
+    fireEvent.click(screen.getByTestId('chat-toggle'))
+
+    expect(screen.getByRole('region', { name: '문서 채팅' })).toBeVisible()
+    expect(screen.getByTestId('chat-bubble-other')).toHaveTextContent('남의 발언')
+    expect(screen.getByTestId('chat-bubble-mine')).toHaveTextContent('내 발언')
+    expect(screen.getByText('@octocat')).toBeVisible() // 남의 발언은 GitHub 핸들 노출
+  })
+
+  it('패널 닫힘 중 남의 메시지 → 토스트(이름·미리보기), 클릭하면 패널이 열린다', async () => {
+    await renderEditor()
+    expect(screen.getByTestId('chat-toggle')).toBeVisible()
+
+    act(() => {
+      collabMock.options?.onIncomingChat?.({
+        seq: 1,
+        userId: 'u2',
+        name: '밥',
+        avatarUrl: null,
+        userLogin: 'octocat',
+        message: 'ERD 다 그렸나요?',
+        at: '2026-09-18T00:00:00Z',
+      })
+    })
+    expect(toastMock.custom).toHaveBeenCalledTimes(1)
+    expect(await screen.findByTestId('chat-unread')).toHaveTextContent('1') // 라이브 수신 1건 배지
+
+    // 토스트 렌더러를 실제 DOM에 그려 클릭 동작(패널 오픈)을 검증
+    const renderToast = toastMock.custom.mock.calls[0][0] as (id: string | number) => ReactElement
+    renderWithProviders(<>{renderToast(7)}</>, { wrapRoutes: false })
+    expect(screen.getByText('@octocat')).toBeVisible() // 토스트도 이름 옆 @핸들
+    // 아바타 이니셜('밥')과 이름('밥')이 같아 텍스트로는 중복 — 버튼 role로 잡는다
+    fireEvent.click(screen.getByRole('button', { name: /ERD 다 그렸나요/ }))
+
+    expect(toastMock.dismiss).toHaveBeenCalledWith(7)
+    expect(await screen.findByRole('region', { name: '문서 채팅' })).toBeVisible()
+  })
+
+  it('패널 열림 상태에서 남의 메시지가 와도 토스트는 없다 — 목록 갱신으로 충분', async () => {
+    await renderEditor()
+    fireEvent.click(screen.getByTestId('chat-toggle'))
+
+    act(() => {
+      collabMock.options?.onIncomingChat?.({
+        seq: 1, userId: 'u2', name: '밥', avatarUrl: null, message: '안녕', at: 'T',
+      })
+    })
+    expect(toastMock.custom).not.toHaveBeenCalled()
+  })
+
+  it('publicView(공개 뷰어)는 게스트라 채팅 도크를 렌더하지 않는다', async () => {
+    renderWithProviders(<EditorShell model={modelFixture()} canEdit={false} publicView />, { wrapRoutes: false })
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+
+    expect(screen.queryByTestId('chat-dock')).toBeNull()
+  })
 })
 
 describe('EditorShell — 우클릭 컨텍스트 메뉴', () => {
@@ -690,8 +813,9 @@ describe('EditorShell — 키(유니크·인덱스)', () => {
       const orders = useEditorStore.getState().present.model.tables[0]
       expect(orders.indexes).toEqual([{ id: expect.any(String), name: 'idx_orders_email', columns: [{ columnId: email.id, order: 'DESC' }] }])
     })
-    // 노드 키 영역 표시 — 측정 미러(은신)와 행 2곳에서 발견된다
-    expect((await screen.findAllByText(/email DESC/)).length).toBeGreaterThanOrEqual(2)
+    // 노드 키 영역 표시 — 행 1곳만 발견된다(키 이름은 자동 폭 측정 미러에 없다 —
+    // 긴 키 이름이 상자를 부풀려 컬럼 이름↔타입 사이 빈칸을 만드는 일을 막는다)
+    expect((await screen.findAllByText(/email DESC/)).length).toBe(1)
   })
 })
 
@@ -854,6 +978,85 @@ describe('EditorShell — 자동 저장', () => {
       { timeout: 5000 },
     )
   }, 15000)
+})
+
+describe('EditorShell — 임시 저장(배포·이탈 편집 복원)', () => {
+  const DRAFT_KEY = 'crowfoot:editor-draft:101:501'
+
+  /** 서버 PUT을 잡아 본문을 기록하는 핸들러 — 버전 3 → 4 성공 */
+  function capturePuts() {
+    const puts: Array<{ baseVersion: number; content: string }> = []
+    server.use(
+      http.put('/api/v1/core/workspaces/101/models/501/content', async ({ request }) => {
+        puts.push((await request.json()) as { baseVersion: number; content: string })
+        return HttpResponse.json(ok({ response: { version: 4, updatedAt: '2026-09-18T00:00:00Z' } }))
+      }),
+    )
+    return puts
+  }
+
+  it('baseVersion이 같은 임시본이면 복원해 즉시 저장한다 — 성공 후 임시본 폐기', async () => {
+    // 직전 세션에서 저장이 못 끝난 편집 — 서버 version 3에서 시작된 임시본
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ baseVersion: 3, content: remoteContent(), savedAt: 0 }),
+    )
+    const puts = capturePuts()
+    await renderEditor()
+
+    // 임시본(remote_orders)으로 수화 — 서버 빈 본문이 아니라 복원본이 그려진다
+    await waitFor(() =>
+      expect(useEditorStore.getState().present.model.tables.map((t) => t.physicalName)).toEqual(['remote_orders']),
+    )
+    expect(toastMock.info).toHaveBeenCalledWith('저장되지 않은 편집을 복구했습니다')
+
+    // 즉시 플러시 — 자동 저장(2s)을 기다리지 않고 PUT
+    await waitFor(() => expect(puts).toHaveLength(1))
+    expect(puts[0]).toMatchObject({ baseVersion: 3 })
+    expect(puts[0].content).toContain('remote_orders')
+    await waitFor(() => expect(useEditorStore.getState().baseVersion).toBe(4))
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull() // 서버가 원천 — 폐기
+  })
+
+  it('baseVersion이 어긋난 임시본은 폐기하고 서버 본문으로 연다', async () => {
+    // 남이 이미 저장해 서버가 version 3까지 앞선 상황 — 임시본은 version 2 기준이라 못 쓴다
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ baseVersion: 2, content: remoteContent(), savedAt: 0 }),
+    )
+    const puts = capturePuts()
+    await renderEditor()
+
+    await waitFor(() => expect(useEditorStore.getState().present.model.tables).toHaveLength(0))
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull() // 폐기
+    expect(puts).toHaveLength(0) // 복원 플러시도 없다
+    expect(toastMock.info).not.toHaveBeenCalled()
+  })
+
+  it('pagehide에서 dirty 편집을 임시 저장 + keepalive PUT으로 남긴다', async () => {
+    const puts = capturePuts()
+    await renderEditor()
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+
+    fireEvent.pageHide(window)
+
+    const draft = JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? 'null') as
+      | { baseVersion: number; content: string }
+      | null
+    expect(draft).toMatchObject({ baseVersion: 3 })
+    expect(draft?.content).toContain('orders')
+    await waitFor(() => expect(puts).toHaveLength(1)) // saveModelContentOnUnload — keepalive PUT
+  })
+
+  it('깨끗한 상태의 pagehide는 아무것도 남기지 않는다', async () => {
+    const puts = capturePuts()
+    await renderEditor()
+
+    fireEvent.pageHide(window)
+
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull()
+    expect(puts).toHaveLength(0)
+  })
 })
 
 describe('EditorShell — 복합 PK와 자동 증가', () => {

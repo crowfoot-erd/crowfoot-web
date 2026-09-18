@@ -1,8 +1,9 @@
 /**
- * 에디터 툴바 — 저장·undo/redo·자동 배치·보기 메뉴·줌·fit·읽기 전용 배지 (storyboard 02-user §5A [6])
+ * 에디터 툴바 — 저장·undo/redo·자동 배치·보기 메뉴·줌·fit·테마·읽기 전용 배지 (storyboard 02-user §5A [6])
  *
  * ReactFlowProvider 안에서 렌더된다(zoom/fitView 접근). undo/redo/dirty는 스토어 셀렉터 구독.
  * 보기 메뉴 — 이름 표시 모드(물리명/논리명/둘 다) 등 뷰 옵션. 편집 권한과 무관하게 항상 사용 가능.
+ * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
 import { ChevronDown, Database, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
@@ -12,6 +13,7 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { ShareDialog } from '@/features/models/components/share-dialog'
 import {
   DropdownMenu,
@@ -24,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { downloadDataUrl, downloadTextFile, safeFilename } from '@/lib/download'
-import { layoutTablePositions, positionNotes, type TableSizes } from '@/features/editor/model/auto-layout'
+import { layoutTablePositions, orderFkColumns, positionNotes, type TableSizes } from '@/features/editor/model/auto-layout'
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
@@ -131,6 +133,7 @@ export function EditorToolbar({
         onColumnDisplayChange={onColumnDisplayChange}
       />
       <ZoomControls />
+      <ThemeToggle />
     </div>
   )
 }
@@ -201,7 +204,8 @@ function ViewMenu({
 }
 
 /** 자동 배치 — elkjs 계층형(부모가 위)으로 테이블 좌표만 재계산한다(05-editor/02-ui.md §5.1).
- *  관계선은 자체 라우터가 다시 그리고, 결과는 node/move 단일 커밋이라 Undo 1회로 되돌아간다. */
+ *  관계선은 자체 라우터가 다시 그리고, FK 컬럼은 부모 위치 순으로 정렬해 선이 좌→우로 펴지게
+ *  한다. 결과는 묶음 단일 커밋이라 Undo 1회로 되돌아간다. */
 function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
   const { t } = useTranslation()
   const { fitView, getNodes } = useReactFlow()
@@ -222,11 +226,13 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       }
       const positions = await layoutTablePositions(doc, { sizes })
       if (Object.keys(positions).length > 0) {
-        // 노트가 테이블 위에 포개지지 않게 위치를 잡는다 — 묶음 커밋이라 Undo 1회
+        // FK 컬럼을 부모 테이블 위치 순으로 정렬한다 — 선 부착 순서가 좌→우로 정렬돼 겹침이 줄고,
+        // 노트는 테이블 위에 포개지지 않게 위치를 잡는다. 묶음 커밋이라 Undo 1회
+        const fkMoves = orderFkColumns(doc, positions, sizes)
         const noteChanges = Object.entries(positionNotes(doc, positions, sizes)).map(
           ([noteId, xy]) => ({ type: 'note/patch', noteId, patch: xy }) as ErdChange,
         )
-        commitAll([{ type: 'node/move', positions }, ...noteChanges])
+        commitAll([{ type: 'node/move', positions }, ...fkMoves, ...noteChanges])
         // ErdCanvas 노드 재빌드 직후 새 좌표 기준으로 뷰를 맞춘다
         setTimeout(() => void fitView({ padding: 0.25, duration: 200 }), 0)
       }

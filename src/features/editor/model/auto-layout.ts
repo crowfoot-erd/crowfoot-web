@@ -13,6 +13,7 @@
 import type { ELK, ElkNode } from 'elkjs/lib/elk.bundled.js'
 
 import type { EditorDocument, ErdTable } from './content-schema'
+import type { ErdChange } from './changes'
 import { estimateTableHeight, tableRenderWidth } from '../components/canvas/TableNode'
 
 /** 테이블 렌더 크기 추정치 — ELK 노드 크기와 노트 오프셋이 같은 식을 쓴다 */
@@ -33,7 +34,9 @@ function sizeOf(table: ErdTable, storedWidth: number | null, sizes?: TableSizes)
 }
 
 /** 배치 여백 — 레이어 간은 까마귀발 글리프(최대 32px)가 들어갈 여유를 포함한다.
- *  엣지 간격을 넉넉히 둔다 — 인접 테이블의 관계선이 포개지면 어느 관계인지 읽기 어렵다 */
+ *  엣지 간격을 넉넉히 둔다 — 인접 테이블의 관계선이 포개지면 어느 관계인지 읽기 어렵다.
+ *  관계선이 테이블에 붙어 지나가지 않게 노드 간격도 충분히 띄운다(2026-09-18 사용자
+ *  요청 — 간격이 좁으면 통로 레인이 압축·점프하며 선끼리 겹치고 테이블에 밀착한다) */
 export interface LayoutSpacing {
   nodeNode: number
   betweenLayers: number
@@ -46,12 +49,12 @@ export interface LayoutSpacing {
 }
 
 export const DEFAULT_LAYOUT_SPACING: LayoutSpacing = {
-  nodeNode: 100,
-  betweenLayers: 130,
-  component: 120,
-  padding: 60,
-  edgeEdge: 24,
-  edgeNode: 32,
+  nodeNode: 140,
+  betweenLayers: 170,
+  component: 160,
+  padding: 80,
+  edgeEdge: 28,
+  edgeNode: 44,
 }
 
 /** ELK 인스턴스 지연 싱글턴 — 첫 자동 배치 실행 시에만 청크를 로드한다 */
@@ -193,4 +196,90 @@ export function positionNotes(
     }
   }
   return out
+}
+
+/** 부모가 위치한 면의 정렬 우선순위 — 계층형(DOWN) 배치라 대부분 위, 다음 좌·우 */
+const SIDE_RANK: Record<'above' | 'left' | 'right' | 'below', number> = { above: 0, left: 1, right: 2, below: 3 }
+
+/**
+ * 자동 배치 후 FK 컬럼 순서 정렬 — 연결되는 부모 테이블 **위치** 기준(사용자 요청).
+ * FK 행 순서가 곧 관계선 부착 순서라, 같은 자식에 붙는 부모들이 좌→우로 늘어서 있으면
+ * FK 행도 그 순서로 정렬해야 선들이 부채꼴로 펴지며 겹치지 않는다.
+ * 정렬 키: ① 부모가 있는 면(위·왼쪽·오른쪽·아래), ② 면을 따르는 좌표(위/아래 면은 부모 x,
+ * 좌/우 면은 부모 y — 오름차순), ③ 동률은 부모-자식 중심 거리(가까운 쪽 먼저).
+ * 점-점 거리 단일 기준과 달리 면·좌표 우선이라 방향이 읽히고, 같은 레이어 형제에서도
+ * 좌표가 갈라 거리 동률이 잘 안 생긴다.
+ * · PK에 속한 FK(식별 관계)는 PK 순서가 의미를 갖는다 — 정렬에서 제외한다.
+ * · 자기 참조·위치를 모르는 부모는 현 순서를 유지한다(끝에 안정 정렬).
+ * 결과는 column/move 변경 목록 — 호출부가 node/move와 한 커밋으로 묶으면 Undo 1회로 되돌아간다.
+ * 순서가 이미 같으면 빈 배열(커밋도 생기지 않는다).
+ */
+export function orderFkColumns(
+  doc: EditorDocument,
+  positions: Record<string, { x: number; y: number }>,
+  sizes?: TableSizes,
+): Extract<ErdChange, { type: 'column/move' }>[] {
+  const changes: Extract<ErdChange, { type: 'column/move' }>[] = []
+  if (Object.keys(positions).length === 0) return changes
+
+  const tableById = new Map(doc.model.tables.map((table) => [table.id, table]))
+  // FK 컬럼 → 관계 — 컬럼은 관계 생성 시 부모 PK를 향해 하나의 관계에만 속한다
+  const relByChildColumn = new Map<string, { parentTableId: string }>()
+  for (const rel of doc.model.relationships) {
+    if (rel.parentTableId === rel.childTableId) continue
+    for (const mapping of rel.columnMappings) {
+      relByChildColumn.set(mapping.childColumnId, { parentTableId: rel.parentTableId })
+    }
+  }
+
+  for (const table of doc.model.tables) {
+    const pos = positions[table.id]
+    if (!pos) continue
+    const pkIds = new Set(table.primaryKey?.columnIds ?? [])
+    const entries = table.columns
+      .map((column, index) => ({ column, index, rel: relByChildColumn.get(column.id) ?? null }))
+      .filter((entry) => entry.rel && !pkIds.has(entry.column.id))
+    if (entries.length < 2) continue
+
+    const size = sizeOf(table, doc.diagram.nodes[table.id]?.width ?? null, sizes)
+    const centerX = pos.x + size.w / 2
+    const centerY = pos.y + size.h / 2
+    // 부모별 정렬 키 — 위치를 모르면 rank 맨 끝(원순)으로 빠진다
+    const keyed = entries.map((entry) => {
+      const parent = tableById.get(entry.rel!.parentTableId)
+      const parentPos = parent && positions[entry.rel!.parentTableId]
+      if (!parent || !parentPos) return { entry, key: null }
+      const parentSize = sizeOf(parent, doc.diagram.nodes[parent.id]?.width ?? null, sizes)
+      const dx = parentPos.x + parentSize.w / 2 - centerX
+      const dy = parentPos.y + parentSize.h / 2 - centerY
+      const side: 'above' | 'left' | 'right' | 'below' =
+        Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'above' : 'below'
+      return {
+        entry,
+        key: { rank: SIDE_RANK[side], along: side === 'above' || side === 'below' ? parentPos.x + parentSize.w / 2 : parentPos.y + parentSize.h / 2, dist: dx * dx + dy * dy },
+      }
+    })
+    keyed.sort((a, b) => {
+      if (!a.key || !b.key) return (a.key ? 0 : 1) - (b.key ? 0 : 1) || a.entry.index - b.entry.index
+      return a.key.rank - b.key.rank || a.key.along - b.key.along || a.key.dist - b.key.dist || a.entry.index - b.entry.index
+    })
+
+    // FK 멤버가 차지한 슬롯(인덱스)에 원하는 순서를 채운다 — 비멤버(PK·일반)는 그대로
+    const memberIds = new Set(entries.map((entry) => entry.column.id))
+    const slots: number[] = []
+    const work = table.columns.map((column) => column.id)
+    work.forEach((id, index) => {
+      if (memberIds.has(id)) slots.push(index)
+    })
+    keyed.forEach((item, k) => {
+      const want = item.entry.column.id
+      const from = work.indexOf(want)
+      const to = slots[k]
+      if (from === to) return
+      changes.push({ type: 'column/move', tableId: table.id, columnId: want, toIndex: to })
+      work.splice(from, 1)
+      work.splice(to, 0, want)
+    })
+  }
+  return changes
 }

@@ -461,13 +461,14 @@ export function offsetAlongFace(point: RouterPoint, face: string, offset: number
   return { x: point.x + d, y: point.y }
 }
 
-/** 관계의 한쪽 끝 — 어떤 관계가 어느 테이블의 어느 면에 붙는지. distance는 이 관계가
- *  잇는 두 테이블의 거리(맨해튼)로, 같은 면에 붙은 관계들의 위·아래 순서를 정한다. */
+/** 관계의 한쪽 끝 — 어떤 관계가 어느 테이블의 어느 면에 붙는지. along은 **연결 대상**
+ *  테이블 중심의 면 따라 좌표(상/하 면은 x, 좌/우 면은 y)로, 같은 면에 붙은 관계들의
+ *  앵커 순서를 정한다 — 대상이 면의 왼쪽(위)에 있으면 앵커도 왼쪽(위)에 온다. */
 export interface RelationEndpoint {
   relId: string
   tableId: string
   face: string
-  distance: number
+  along: number
 }
 
 /** 통로 레인 배정 계산의 입력 — 관계의 양 끝 앵커(면 분산 적용)와 면 방향 */
@@ -482,24 +483,30 @@ export interface CorridorEndpoint {
   targetTableId?: string
 }
 
-/** 통로 레인을 벌리는 간격 — 인접 관계가 나란히 놓여 서로 구별되는 최소 폭 */
-const CORRIDOR_SPACING = 20
+/** 통로 레인을 벌리는 간격 — 인접 관계가 나란히 놓여 서로 구별되는 최소 폭.
+ *  오토레이아웃의 관계선 간격(edgeEdge 28px)과 같은 값으로 맞췄다(2026-09-18). */
+const CORRIDOR_SPACING = 28
 /** 통로가 좁아 클러스터가 다 안 들어갈 때 허용하는 최소 압축 간격 — 이보다 좁으면 포개져 보인다 */
-const CORRIDOR_SPACING_MIN = 10
+const CORRIDOR_SPACING_MIN = 12
 /** 두 관계의 통로 레인이 이 값 이내로 가까우면 포개질 위험이 있다 */
 const CORRIDOR_TOLERANCE = 28
-/** 레인 통로가 장애물에서 물러나는 여백 — 선 굵기·시각 여유 */
-const LANE_MARGIN = 6
+/** 레인 통로가 장애물에서 물러나는 여백 — 선 굵기·시각 여유. 6px는 테이블에 붙어
+ *  지나가는 것처럼 보여 12px로 넓혔고, 12px에도 우측 표기 배지(NN·AI) 바로 옆을
+ *  스치듯 지나는 것처럼 보인다는 피드백으로 20px로 넓혔다(2026-09-18 사용자 요청) */
+const LANE_MARGIN = 20
 
 /**
  * 관계별 중간 통로 레인 — 마주 보는 면(위↔아래·좌↔우)으로 잇는 관계들이 같은 통로를
- * 나눠 써 선이 포개지지 않게 등간격으로 벌린 레인을 배정한다. 묶음(클러스터)은 두 조건:
+ * 나눠 쓸 때 서로 포개지지 않게 벌린 레인을 배정한다. 묶음(클러스터)은 두 조건:
  * ① 같은 (테이블, 면)에 붙는 관계들 — 레인 차이와 무관하게 무조건 묶는다. 장애물 회피
  * 라우팅(다익스트라)이 면 바로 앞 통로로 수렴하는 성질 때문에, 면을 공유하면 자연 레인이
  * 멀어도 결국 같은 줄에 포개진다. ② 서로 다른 면이어도 레인이 근접하고 이동 범위가
- * 겹치는 이웃. 혼자 쓰는 통로는 배정 없음 — 기존 장애물 회피 라우팅을 그대로 쓴다.
- * 모든 엣지가 같은 입력으로 같은 결과를 내는 결정론 계산이라 각 엣지가 따로 불러도
- * 결과가 일치한다 (faceShareOffset과 같은 패턴).
+ * 겹치는 이웃. 배정은 클러스터 안에서 멤버 각각의 자연 레인 순서로, 각자의 이동 범위가
+ * 스치는 장애물만으로 계산한 자유 구간에 놓고 포개지는 만큼 위로 민다 — 클러스터 전체를
+ * 한 통로에 등간격으로 묶으면 지나가지도 않는 박스가 만드는 좁은 구간으로 전원이 몰려
+ * 압축된다(모델 17 sensor_types 아래 통로 사례). 혼자 쓰는 통로는 배정 없음 — 기존
+ * 장애물 회피 라우팅을 그대로 쓴다. 모든 엣지가 같은 입력으로 같은 결과를 내는 결정론
+ * 계산이라 각 엣지가 따로 불러도 결과가 일치한다 (faceShareOffset과 같은 패턴).
  */
 export function corridorLanes(
   endpoints: CorridorEndpoint[],
@@ -530,9 +537,9 @@ export function corridorLanes(
         // 면 키 — 도착(부모) 테이블의 면. 한 면에 붙는 관계들은 장애물 회피 라우팅이
         // 그 면 바로 앞 통로로 수렴하므로 레인 차이와 무관하게 묶는다. 출발(자식) 면은
         // faceShareOffset(앵커 분산)·레인 근접 조건이 이미 담당하므로 키에 넣지 않는다 —
-        // 한 테이블이 여러 방향으로 뻗는 관계를 묶으면 레인 평균이 각 방향을 왜곡한다.
-        // tableId가 없는 호출(테스트 조각)은 좌표 폴백 대신 병합 자체를 생략한다 — 좌표 키는
-        // 나란히 놓인 다른 테이블의 같은 행 면까지 묶는다
+        // 출발 면까지 묶으면 서로 다른 통로를 쓰는 관계까지 한데 묶여 레인을 불필요하게
+        // 민다. tableId가 없는 호출(테스트 조각)은 좌표 폴백 대신 병합 자체를 생략한다 —
+        // 좌표 키는 나란히 놓인 다른 테이블의 같은 행 면까지 묶는다
         faceKeys: e.targetTableId ? [`${e.targetFace[0]}${e.targetTableId}`] : [],
       })
     } else {
@@ -589,79 +596,90 @@ export function corridorLanes(
         else union(existing, mine)
       }
     }
-    // 3단계 — 병합된 클러스터별 등간격 배정 (레인 순서는 클러스터 내 정렬로 유지)
+    // 3단계 — 병합된 클러스터 내 멤버별 배정 (자연 레인 순서)
     const clusters = new Map<number, Candidate[]>()
     for (const c of group) {
       const root = find(clusterOf.get(c.relId)!)
       if (!clusters.has(root)) clusters.set(root, [])
       clusters.get(root)!.push(c)
     }
+    const laneBounds = (b: RouterBox): { low: number; high: number } =>
+      axis === 'h'
+        ? { low: b.y - LANE_MARGIN, high: b.y + b.h + LANE_MARGIN }
+        : { low: b.x - LANE_MARGIN, high: b.x + b.w + LANE_MARGIN }
+    /** 멤버의 자유 구간 — 이 멤버의 이동 범위가 스치는 박스의 여유 띠 바깥 구간.
+     *  기준 좌표(at)의 위·아래로 박스를 분류하므로, 자연 레인이 띠 안에 있으면
+     *  구간이 퇴화(아래한 > 위한)한다 — 점프 판단에 쓴다 */
+    const freeInterval = (m: Candidate, at: number): { lo: number; hi: number } => {
+      let lo = -Infinity
+      let hi = Infinity
+      for (const b of obstacles) {
+        const hit = axis === 'h' ? m.hi > b.x && m.lo < b.x + b.w : m.hi > b.y && m.lo < b.y + b.h
+        if (!hit) continue
+        const e = laneBounds(b)
+        if (e.high <= at) lo = Math.max(lo, e.high)
+        else if (e.low >= at) hi = Math.min(hi, e.low)
+        else {
+          // 기준 좌표가 박스 여유 띠 안 — 양쪽 가장자리로 구간이 좁아진다
+          lo = Math.max(lo, e.high)
+          hi = Math.min(hi, e.low)
+        }
+      }
+      return { lo, hi }
+    }
     for (const cluster of clusters.values()) {
       if (cluster.length < 2) continue
       cluster.sort((a, b) => a.lane - b.lane || (a.relId < b.relId ? -1 : 1))
-      const center = cluster.reduce((sum, c) => sum + c.lane, 0) / cluster.length
-      let base = center
-      let spacing = CORRIDOR_SPACING
-      // 배정 레인의 통로 확보 — 자연 중심이 놓인 자유 구간(위·아래 가장 가까운 장애물
-      // 사이)에 등간격 클러스터를 통째로 넣는다. 구간이 다 넓으면 중심을 clamp하고, 좁으면
-      // 간격을 최소(CORRIDOR_SPACING_MIN)까지 압축해서라도 안에 넣는다 — 레인을 잃고
-      // 다익스트라로 폭백하면 폴백들이 면 바로 앞 통로로 수렴해 다시 포개지기 때문.
-      // 최소 압축에도 못 들어가면(중심이 박스 안·간극이 극단적으로 좁은 배치) 클러스터째
-      // 위·아래로 점프해 피한다
-      const laneBounds = (b: RouterBox): { low: number; high: number } =>
-        axis === 'h'
-          ? { low: b.y - LANE_MARGIN, high: b.y + b.h + LANE_MARGIN }
-          : { low: b.x - LANE_MARGIN, high: b.x + b.w + LANE_MARGIN }
-      const blocks = (b: RouterBox, lane: number): boolean => {
-        if (axis === 'h') return lane > b.y - LANE_MARGIN && lane < b.y + b.h + LANE_MARGIN
-        return lane > b.x - LANE_MARGIN && lane < b.x + b.w + LANE_MARGIN
-      }
-      if (obstacles.length > 0) {
-        const lo = Math.min(...cluster.map((c) => c.lo))
-        const hi = Math.max(...cluster.map((c) => c.hi))
-        const rangeHits = (b: RouterBox): boolean => (axis === 'h' ? hi > b.x && lo < b.x + b.w : hi > b.y && lo < b.y + b.h)
-        let freeLo = -Infinity
-        let freeHi = Infinity
-        for (const b of obstacles) {
-          if (!rangeHits(b)) continue
-          const e = laneBounds(b)
-          if (e.high <= center) freeLo = Math.max(freeLo, e.high)
-          else if (e.low >= center) freeHi = Math.min(freeHi, e.low)
-          else {
-            // 중심이 박스(여유 포함) 안 — 자유 구간이 퇴화한다
-            freeLo = Math.max(freeLo, e.high)
-            freeHi = Math.min(freeHi, e.low)
+      const placed: Array<{
+        relId: string
+        lane: number
+        free: { lo: number; hi: number }
+      }> = []
+      for (const c of cluster) {
+        let free = freeInterval(c, c.lane)
+        let desired = c.lane
+        if (free.lo > free.hi) {
+          // 자연 레인이 박스 여유 띠 안 — 가까운(같으면 아래) 가장자리로 점프하고 그
+          // 기준으로 구간을 다시 계산한다(위·아래 박스 분류가 바뀐다)
+          desired = c.lane - free.hi < free.lo - c.lane ? free.hi : free.lo
+          free = freeInterval(c, desired)
+        }
+        desired = Math.min(Math.max(desired, free.lo), free.hi)
+        // 먼저 배정된 멤버와 포개질 것 같으면(레인 근접) 그 위로 CORRIDOR_SPACING씩 민다
+        let lane = desired
+        let overflow = false
+        for (let guard = 0; guard < 1000; guard += 1) {
+          if (lane > free.hi) {
+            overflow = true
+            break
+          }
+          const blocker = placed.find((p) => Math.abs(lane - p.lane) < CORRIDOR_SPACING_MIN)
+          if (!blocker) break
+          lane = blocker.lane + CORRIDOR_SPACING
+        }
+        if (overflow && placed.length > 0) {
+          // 구간이 좁아 위로 밀 자리가 없다 — 같은 구간을 쓰는 멤버들을 최소 간격(12px)까지
+          // 압축해 등간격으로 다시 편다. 그래도 못 들어가면 이 관계만 레인을 포기하고
+          // 다익스트라 폴백(통로 회피 비용으로 서로 피해 간다)에 맡긴다
+          const mates = placed.filter((p) => p.free.lo === free.lo && p.free.hi === free.hi)
+          const gaps = mates.length
+          const available = free.hi - free.lo
+          if (gaps === 0) {
+            lane = free.hi
+            overflow = false
+          } else if (available >= gaps * CORRIDOR_SPACING_MIN) {
+            const spacing = available / gaps
+            mates.forEach((p, i) => {
+              p.lane = free.lo + i * spacing
+            })
+            lane = free.lo + gaps * spacing
+            overflow = false
           }
         }
-        const gaps = cluster.length - 1
-        const available = freeHi - freeLo
-        if (available >= gaps * CORRIDOR_SPACING) {
-          const half = (gaps * CORRIDOR_SPACING) / 2
-          base = Math.min(Math.max(center, freeLo + half), freeHi - half)
-        } else if (available >= gaps * CORRIDOR_SPACING_MIN) {
-          // 통로가 좁아 등간격을 압축한다 — 최소 간격(12px)만 유지되면 나란히 구별된다
-          spacing = available / gaps
-          base = (freeLo + freeHi) / 2
-        } else {
-          for (let guard = 0; guard <= obstacles.length; guard += 1) {
-            const spread = ((cluster.length - 1) / 2) * spacing
-            const laneTop = base - spread
-            const laneBottom = base + spread
-            const blockers = obstacles.filter(
-              (b) => rangeHits(b) && laneBottom > laneBounds(b).low && laneTop < laneBounds(b).high
-                && cluster.some((_, i) => blocks(b, base + (i - (cluster.length - 1) / 2) * spacing)),
-            )
-            if (blockers.length === 0) break
-            // 위(-)·아래(+) 중 이동이 짧은 쪽으로 클러스터째 피한다
-            const up = Math.max(...blockers.map((b) => laneBottom - laneBounds(b).low))
-            const down = Math.max(...blockers.map((b) => laneBounds(b).high - laneTop))
-            base += down <= up ? down : -up
-          }
-        }
+        if (overflow) continue
+        placed.push({ relId: c.relId, lane: Math.round(lane), free })
       }
-      cluster.forEach((c, i) => {
-        lanes.set(c.relId, Math.round(base + (i - (cluster.length - 1) / 2) * spacing))
-      })
+      for (const p of placed) lanes.set(p.relId, p.lane)
     }
   }
   return lanes
@@ -723,10 +741,11 @@ const FACE_SPACING = 48
 
 /**
  * 같은 테이블의 같은 면에 붙은 관계들의 면 따라 오프셋 — 앵커는 면 중심 하나라 한 면에
- * 관계가 여럿이면 선이 포개져 읽을 수 없다. 같은 (테이블, 면) 그룹을 **연결 대상과 먼
- * 순서**(distance 내림차순, 같으면 relId)로 정렬해 그룹 중심 대칭 등간격 배치한다 —
- * 먼 관계가 면의 위(좌) 끝, 가까운 관계가 아래(우) 끝에 와서 선이 엉키지 않는다.
- * 상호 참조(A↔B)가 대칭 면에 포개지는 것도 이 규칙으로 흡수된다(별도 케이스가 아니다).
+ * 관계가 여럿이면 선이 포개져 읽을 수 없다. 같은 (테이블, 면) 그룹을 **연결 대상의 면
+ * 따라 좌표 순서**(along 오름차순, 같으면 relId)로 정렬해 그룹 중심 대칭 등간격 배치한다 —
+ * 대상이 왼쪽(위)에 있는 관계부터 면의 왼쪽(위) 끝에 오므로 선이 부채꼴로 펴지고 교차하지
+ * 않는다(거리 순서 heuristics는 대상들이 좌·우로 늘어선 경우 위치와 어긋나 선을 교차시켰다).
+ * 상호 참조(A↔B)는 대상이 같아 along이 같다 — relId 순서로 흡수된다(별도 케이스가 아니다).
  * 자기 참조는 오른쪽 면 루프 고정이라 호출자가 끝 목록에서 빼준다.
  */
 export function faceShareOffset(endpoints: RelationEndpoint[], relId: string, tableId: string): number {
@@ -734,7 +753,7 @@ export function faceShareOffset(endpoints: RelationEndpoint[], relId: string, ta
   if (!mine) return 0
   const group = endpoints
     .filter((e) => e.tableId === mine.tableId && e.face === mine.face)
-    .sort((a, b) => b.distance - a.distance || (a.relId < b.relId ? -1 : a.relId > b.relId ? 1 : 0))
+    .sort((a, b) => a.along - b.along || (a.relId < b.relId ? -1 : a.relId > b.relId ? 1 : 0))
   if (group.length < 2) return 0
   const index = group.findIndex((e) => e.relId === relId && e.tableId === tableId)
   return (index - (group.length - 1) / 2) * FACE_SPACING

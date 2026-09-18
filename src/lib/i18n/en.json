@@ -708,6 +708,7 @@
         "colorDefault": "Default"
       },
       "savedToast": "Document saved",
+      "draftRestored": "Recovered unsaved edits",
       "conflict": {
         "title": "Version conflict",
         "description": "Another client saved first. Reloading discards your unsaved local changes.",

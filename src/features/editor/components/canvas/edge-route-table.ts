@@ -84,8 +84,12 @@ export function relationshipSharedRoutes(
     if (b) obstacles.push(b)
   }
 
-  // 1패스 — 관계별 양 끝 박스·연결면·거리. 거리는 같은 면 그룹의 위·아래 순서(연결 대상이
-  // 먼 관계가 위에 온다)라 면 분산 계산 전에 전체가 모여야 한다
+  // 1패스 — 관계별 양 끝 박스·연결면·면 따라 좌표. along(연결 대상 중심의 면 따라 좌표)은
+  // 같은 면 그룹의 앵커 순서(대상이 왼쪽·위에 있는 관계가 먼저)라 면 분산 계산 전에
+  // 전체가 모여야 한다
+  /** 면의 평행축 좌표 — 상/하 면은 x, 좌/우 면은 y */
+  const alongOf = (face: FaceSide, counterpart: RouterBox) =>
+    face === 'left' || face === 'right' ? counterpart.y + counterpart.h / 2 : counterpart.x + counterpart.w / 2
   interface Ends {
     rel: ErdRelationship
     child: RouterBox
@@ -100,12 +104,9 @@ export function relationshipSharedRoutes(
     const parent = box(rel.parentTableId)
     if (!child || !parent) continue
     const sides = shortestHandlePair(child, parent, child, parent)
-    const distance =
-      Math.abs(child.x + child.w / 2 - (parent.x + parent.w / 2)) +
-      Math.abs(child.y + child.h / 2 - (parent.y + parent.h / 2))
     endsList.push({ rel, child, parent, sides })
-    endpoints.push({ relId: rel.id, tableId: rel.childTableId, face: sides.child, distance })
-    endpoints.push({ relId: rel.id, tableId: rel.parentTableId, face: sides.parent, distance })
+    endpoints.push({ relId: rel.id, tableId: rel.childTableId, face: sides.child, along: alongOf(sides.child, parent) })
+    endpoints.push({ relId: rel.id, tableId: rel.parentTableId, face: sides.parent, along: alongOf(sides.parent, child) })
   }
 
   // 2패스 — 면 분산 앵커를 글리프 폭만큼 면 바깥으로 민 라우팅 앵커. sharedRoutes가 통로

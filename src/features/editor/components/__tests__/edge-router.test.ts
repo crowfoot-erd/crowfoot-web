@@ -144,13 +144,13 @@ describe('edge-router — 면 공유 분산(같은 면 관계선 간격 벌리�
     expect(offsetAlongFace({ x: 0, y: 50 }, 'right', 99, 40)).toEqual({ x: 0, y: 58 }) // 40/2−12 = 8
   })
 
-  it('faceShareOffset — 같은 (테이블, 면)에 관계 3개가 붙으면 연결 대상과 먼 순서로 −48/0/+48', () => {
-    // 한 부모의 오른쪽 면에 자식 3개 — 대상 거리 r-a(멀음) > r-b > r-c(가까움)면
-    // 먼 관계가 면의 위(음수 오프셋)에 와서 선이 엉키지 않는다
+  it('faceShareOffset — 같은 (테이블, 면)에 관계 3개가 붙으면 연결 대상의 면 따라 좌표 순서로 −48/0/+48', () => {
+    // 한 부모의 오른쪽 면에 자식 3개 — 대상의 y(면 따라 좌표)가 r-a(위) < r-b < r-c(아래)면
+    // 위에 있는 대소 관계가 앵커도 위(음수 오프셋)에 와서 선이 교차하지 않는다
     const endpoints: RelationEndpoint[] = [
-      { relId: 'r-c', tableId: 'P', face: 'right', distance: 100 },
-      { relId: 'r-a', tableId: 'P', face: 'right', distance: 900 },
-      { relId: 'r-b', tableId: 'P', face: 'right', distance: 500 },
+      { relId: 'r-c', tableId: 'P', face: 'right', along: 900 },
+      { relId: 'r-a', tableId: 'P', face: 'right', along: 100 },
+      { relId: 'r-b', tableId: 'P', face: 'right', along: 500 },
     ]
     expect(faceShareOffset(endpoints, 'r-a', 'P')).toBe(-48)
     expect(faceShareOffset(endpoints, 'r-b', 'P')).toBe(0)
@@ -159,9 +159,9 @@ describe('edge-router — 면 공유 분산(같은 면 관계선 간격 벌리�
 
   it('faceShareOffset — 그룹에 혼자면(다른 면·다른 테이블) 분산하지 않는다', () => {
     const endpoints: RelationEndpoint[] = [
-      { relId: 'r-1', tableId: 'P', face: 'right', distance: 100 },
-      { relId: 'r-2', tableId: 'P', face: 'bottom', distance: 100 }, // 같은 테이블, 다른 면
-      { relId: 'r-3', tableId: 'Q', face: 'right', distance: 100 }, // 다른 테이블, 같은 면
+      { relId: 'r-1', tableId: 'P', face: 'right', along: 100 },
+      { relId: 'r-2', tableId: 'P', face: 'bottom', along: 100 }, // 같은 테이블, 다른 면
+      { relId: 'r-3', tableId: 'Q', face: 'right', along: 100 }, // 다른 테이블, 같은 면
     ]
     expect(faceShareOffset(endpoints, 'r-1', 'P')).toBe(0)
     expect(faceShareOffset(endpoints, 'r-2', 'P')).toBe(0)
@@ -169,12 +169,12 @@ describe('edge-router — 면 공유 분산(같은 면 관계선 간격 벌리�
   })
 
   it('faceShareOffset — 상호 참조 두 관계가 같은 면에 포개지면 간격의 절반씩 벌린다', () => {
-    // A→B와 B→A가 모두 B의 같은 면에 붙는 상호 참조 — 예전 평행 분리 규칙이 흡수된다
+    // A→B와 B→A가 모두 B의 같은 면에 붙는 상호 참조 — 대상이 같아 along도 같다
     const endpoints: RelationEndpoint[] = [
-      { relId: 'r-b', tableId: 'B', face: 'left', distance: 300 },
-      { relId: 'r-a', tableId: 'B', face: 'left', distance: 300 },
+      { relId: 'r-b', tableId: 'B', face: 'left', along: 300 },
+      { relId: 'r-a', tableId: 'B', face: 'left', along: 300 },
     ]
-    // 같은 거리면 relId 순서로tie-break — r-a가 위(−)
+    // 같은 좌표면 relId 순서로 tie-break — r-a가 위(−)
     expect(faceShareOffset(endpoints, 'r-a', 'B')).toBe(-24)
     expect(faceShareOffset(endpoints, 'r-b', 'B')).toBe(24)
   })
@@ -182,11 +182,11 @@ describe('edge-router — 면 공유 분산(같은 면 관계선 간격 벌리�
   it('faceShareOffset — 한 관계의 자식 끝·부모 끝은 각각 독립적으로 분산한다', () => {
     // r-1의 자식 끝은 P right(다른 관계와 겹침), 부모 끝은 Q left(혼자)
     const endpoints: RelationEndpoint[] = [
-      { relId: 'r-1', tableId: 'P', face: 'right', distance: 200 },
-      { relId: 'r-1', tableId: 'Q', face: 'left', distance: 200 },
-      { relId: 'r-2', tableId: 'P', face: 'right', distance: 800 },
+      { relId: 'r-1', tableId: 'P', face: 'right', along: 800 },
+      { relId: 'r-1', tableId: 'Q', face: 'left', along: 800 },
+      { relId: 'r-2', tableId: 'P', face: 'right', along: 200 },
     ]
-    expect(faceShareOffset(endpoints, 'r-2', 'P')).toBe(-24) // r-2가 더 멀다 → 위
+    expect(faceShareOffset(endpoints, 'r-2', 'P')).toBe(-24) // r-2 대상이 위(작은 along) → 위
     expect(faceShareOffset(endpoints, 'r-1', 'P')).toBe(24)
     expect(faceShareOffset(endpoints, 'r-1', 'Q')).toBe(0)
     expect(faceShareOffset(endpoints, 'r-1', 'Q')).toBe(0)
@@ -441,11 +441,11 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
     targetFace: 'top',
   })
 
-  it('같은 통로를 쓰는 관계들은 그룹 중심에서 등간격으로 벌어진다', () => {
-    // 둘 다 레인 150, 이동 범위가 겹친다 → 140/160으로 분리
+  it('같은 통로를 쓰는 관계들은 첫 관계의 자연 레인에서 위로 28px씩 벌어진다', () => {
+    // 둘 다 자연 레인 150, 이동 범위가 겹친다 → 먼저 배정된 a가 150을 유지하고 b가 위로 178
     const lanes = corridorLanes([bottomTop('a', 0, 40), bottomTop('b', 20, 60)])
-    expect(lanes.get('a')).toBe(140)
-    expect(lanes.get('b')).toBe(160)
+    expect(lanes.get('a')).toBe(150)
+    expect(lanes.get('b')).toBe(178)
   })
 
   it('이동 범위가 겹치지 않으면 같은 레인이라도 벌리지 않는다', () => {
@@ -454,11 +454,11 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
     expect(lanes.has('b')).toBe(false)
   })
 
-  it('세 관계가 한 통로를 쓰면 -20/0/+20으로 펴진다', () => {
+  it('세 관계가 한 통로를 쓰면 자연 레인부터 28px씩 펴진다', () => {
     const lanes = corridorLanes([bottomTop('a', 0, 40), bottomTop('b', 10, 50), bottomTop('c', 20, 60)])
-    expect(lanes.get('a')).toBe(130)
-    expect(lanes.get('b')).toBe(150)
-    expect(lanes.get('c')).toBe(170)
+    expect(lanes.get('a')).toBe(150)
+    expect(lanes.get('b')).toBe(178)
+    expect(lanes.get('c')).toBe(206)
   })
 
   it('마주 보지 않는 면은 배정 대상이 아니다', () => {
@@ -468,9 +468,10 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
     expect(lanes.size).toBe(0)
   })
 
-  it('같은 (부모 테이블, 면)에 붙는 관계들은 자연 레인이 달라도 묶여 벌린다', () => {
+  it('같은 (부모 테이블, 면)에 붙는 관계들은 자연 레인이 달라도 묶는다 — 레인을 받아 수렴을 막는다', () => {
     // 자연 레인 150과 250 — 근접도·범위 겹침 조건은 아니지만 장애물 회피 라우팅이
-    // 같은 부모 면 앞으로 수렴하므로 면 키로 묶는다
+    // 같은 부모 면 앞으로 수렴하므로 면 키로 묶는다. 배정은 각자의 자연 레인을
+    // 그대로 쓴다(포개지지 않으니 밀 필요가 없다)
     const e = (relId: string, sy: number, ty: number): CorridorEndpoint => ({
       relId,
       source: { x: 40, y: sy },
@@ -481,13 +482,40 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
       targetTableId: 'P',
     })
     const lanes = corridorLanes([e('a', 200, 100), e('b', 300, 200)])
-    expect(lanes.get('a')).toBe(190)
-    expect(lanes.get('b')).toBe(210)
+    expect(lanes.get('a')).toBe(150)
+    expect(lanes.get('b')).toBe(250)
   })
 
-  it('통로가 좁으면 등간격을 압축해서라도 클러스터 전체를 통로 안에 넣는다', () => {
-    // 부모 행(바닥 60)과 자식 행(천장 160) 사이 88px 통로에 6개 레인 — 20px 등간격(100px)은
-    // 안 들어가므로 최소 10px까지 압축한다. 못 들어가면 클러스터째 밀려나 레인을 잃는다
+  it('같은 면이라도 이동 범위가 스치는 장애물이 다르면 각자의 통로에 놓인다 — 좁은 통로로 전원이 몰리지 않는다', () => {
+    // 모델 17 sensor_types 사례 재현 — 부모 P 아래 면에 4개 관계가 붙는다. 왼쪽 2개(a·b)는
+    // 통로 중간에 끼어든 이웃 테이블 S를 스치는 좁은 구간(200~220)만 쓸 수 있고, 오른쪽
+    // 2개(c·d)는 S를 스치지 않아 넓은 구간(80~220)의 자연 레인 부근에 놓인다. 클러스터
+    // 전체를 한 구간에 등간격으로 묶으면 4개 전원이 좁은 구간으로 몰려 12px까지 압축된다
+    const P: RouterBox = { x: 0, y: 0, w: 800, h: 60 } // 부모 — 아래 면 y=60
+    const S: RouterBox = { x: 100, y: 120, w: 160, h: 60 } // 왼쪽 통로에 끼어든 이웃 테이블
+    const row: RouterBox = { x: 0, y: 240, w: 800, h: 60 } // 자식 행 — 윗면 y=240
+    const child = (relId: string, x: number): CorridorEndpoint => ({
+      relId,
+      source: { x, y: 240 },
+      target: { x, y: 60 },
+      sourceFace: 'top',
+      targetFace: 'bottom',
+      sourceTableId: `child-${relId}`,
+      targetTableId: 'P',
+    })
+    const lanes = corridorLanes([child('a', 140), child('b', 180), child('c', 500), child('d', 540)], [P, S, row])
+    // S를 스치는 a·b는 S 아래 좁은 구간에 최소 간격으로 놓인다
+    expect(lanes.get('a')).toBe(200)
+    expect(lanes.get('b')).toBe(220)
+    // 스치지 않는 c·d는 자연 레인(150)부터 28px 간격 — 좁은 구간과 30px 이상 떨어진다
+    expect(lanes.get('c')).toBe(150)
+    expect(lanes.get('d')).toBe(178)
+    expect(Math.abs(lanes.get('c')! - lanes.get('a')!)).toBeGreaterThanOrEqual(28)
+  })
+
+  it('통로가 좁으면 등간격을 압축해서라도 통로 안에 넣는다', () => {
+    // 부모 행(바닥 60)과 자식 행(천장 160) 사이 통로(레인 여유 20px를 빼면 60px)에 6개 레인 —
+    // 28px 등간격(140px)은 안 들어가므로 최소 12px까지 압축한다. 그래도 못 들어가면 그 관계만 레인을 잃는다
     const obstacles: RouterBox[] = [
       { x: 0, y: 0, w: 900, h: 60 },
       { x: 0, y: 160, w: 900, h: 120 },

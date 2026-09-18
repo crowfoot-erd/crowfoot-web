@@ -37,7 +37,9 @@ export const DATA_TYPES: DataTypeSpec[] = [
   { code: 'INT', category: 'integer' },
   { code: 'BIGINT', category: 'integer' },
   { code: 'SMALLINT', category: 'integer' },
+  { code: 'TINYINT', category: 'integer' },
   { code: 'DECIMAL', category: 'decimal', precision: true },
+  { code: 'NUMERIC', category: 'decimal', precision: true },
   { code: 'FLOAT', category: 'float' },
   { code: 'DOUBLE', category: 'float' },
   { code: 'CHAR', category: 'character', length: true },
@@ -100,7 +102,11 @@ export const DBMS_TEMPLATES: DbmsTemplate[] = [
     label: 'PostgreSQL',
     types: {
       INT: 'INTEGER',
+      TINYINT: 'SMALLINT', // PG에 tinyint는 없다 — SMALLINT가 같은 역할(라벨 중복은 옵션에서 제거된다)
+      // 시각표기 타입 2종 — DATETIME=TIMESTAMP(타임존 없음), TIMESTAMP=TIMESTAMPTZ(UTC 순간)로
+      // 의미가 대응한다. 라벨이 서로 달라 PG 드롭다운에서 중복이 없다
       DATETIME: 'TIMESTAMP',
+      TIMESTAMP: 'TIMESTAMPTZ',
       DOUBLE: 'DOUBLE PRECISION',
       FLOAT: 'REAL',
       BLOB: 'BYTEA',
@@ -113,6 +119,9 @@ export const DBMS_TEMPLATES: DbmsTemplate[] = [
     types: {
       BIGINT: 'NUMBER(19)',
       SMALLINT: 'NUMBER(5)',
+      TINYINT: 'NUMBER(3)',
+      DECIMAL: 'NUMBER',
+      NUMERIC: 'NUMBER',
       VARCHAR: 'VARCHAR2',
       TEXT: 'CLOB',
       BOOLEAN: 'NUMBER(1)',

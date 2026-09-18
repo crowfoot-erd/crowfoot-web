@@ -42,18 +42,32 @@ import { CommitInput, CommitSelect } from './inline-inputs'
 export type TableNodeData = Record<string, never>
 export type TableNodeType = Node<TableNodeData, 'table'>
 
-const DEFAULT_WIDTH = 340
-/** 컬럼 그리드 고정 칸(타입·길이·NN·AI·삭제 ≈ 190px)을 감당하는 렌더 하한 —
+const DEFAULT_WIDTH = 370
+/** 컬럼 그리드 고정 칸(그립·PK·사이즈·NN·AI·삭제 ≈ 172px + 간격·행 패딩)을 감당하는 렌더 하한 —
  *  과거에 좁게 저장된 width도 이름 칸이 안 눌리게 한다 */
-const MIN_WIDTH = 300
-/** 콘텐츠 자동 폭 — 측정한 텍스트 폭에 더하는 각 행의 고정 칸(그립·PK·타입·길이·NN·AI·삭제·FK 배지) */
-const ROW_EXTRAS = 250
+const MIN_WIDTH = 330
+/** 타입 칸을 뺀 행 고정 칸 — 그립36·PK16·사이즈64·NN28·AI28·삭제16 + 간격28 + 행 패딩8.
+ *  타입 칸은 표가 실제로 쓰는 가장 긴 라벨에 맞춰 가변이라 이름 폭 계산에서는 뺀다. */
+const ROW_FIXED_EXTRAS = 224
+/** 타입 칸 폭 경계 — 하한은 일반 라벨(TIMESTAMPTZ급), 상한은 UNIQUEIDENTIFIER급 긴 라벨 */
+const TYPE_MIN_WIDTH = 74
+const TYPE_MAX_WIDTH = 132
 const HEADER_EXTRAS = 64
 const BAND_EXTRAS = 60
-/** 키 행 고정 칸 — UK/IX 배지·삭제 버튼·여백 */
-const KEY_EXTRAS = 64
-/** 컬럼 그리드 — 그립·PK·이름·타입·길이·NN·AI·삭제 */
-const ROW_GRID = '36px 16px minmax(0,1fr) 62px 44px 20px 20px 16px'
+/** 컬럼 그리드 — 그립·PK·이름·타입(가변)·사이즈·NN·AI·삭제. 사이즈(64px) 칸은
+ *  DECIMAL(p,s) 두 숫자가 온전히 들어가는 폭이다 */
+const rowGridOf = (typeWidth: number) =>
+  `36px 16px minmax(0,1fr) ${typeWidth}px 64px 28px 28px 16px`
+
+/** 설정 칸(타입·사이즈·NN) 왼쪽 세로 구분선 — 행마다 이어져 설정 영역을 식별하게 한다.
+ *  배경은 실제 입력 상자(사이즈 숫자)에만 준다 — 입력하지 않는 칸까지 물들이지 않는다.
+ *  self-stretch + -my-0.5(행 py 보정)로 행 높이를 꽉 채워 위아래 행과 선이 맞닿는다. */
+const SETTING_CELL_RULE = 'self-stretch -my-0.5 rounded-none border-l border-border/60'
+/** 사이즈 숫자 입력 — 옅은 회색 배경·테두리로 입력란임을 읽히게 하고, number 스피너를 지워
+ *  두 자리 숫자가 칸 폭을 다 쓰게 한다. flex-1+min-w-0 — (p,s) 두 상자가 콘텐츠와 무관하게
+ *  칸을 정확히 균등 분할한다(입력 요소 고유 폭이 수축을 비틀지 않게). 칸 안 여백은 래퍼가 준다. */
+const SIZE_INPUT_RULE =
+  'min-w-0 flex-1 rounded-sm border border-border/60 bg-muted/50 text-center text-[10px] text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
 /** 축소 렌더 진입 배율 — 이보다 작으면 컬럼·키 목록을 감추고 논리명·물리명 라벨만 표시한다 */
 export const TABLE_COMPACT_ZOOM = 0.5
@@ -71,9 +85,10 @@ export function compactLabelFontSize(screenPx: number, zoom: number): number {
   return screenPx / Math.max(zoom, COMPACT_LABEL_ZOOM_FLOOR)
 }
 
-/** 노드 렌더 폭 — 저장 폭·측정 콘텐츠 폭·하한 중 최대 (ErdCanvas 겹침 해소도 같은 값 사용) */
-export function tableRenderWidth(stored: number | null, contentWidth: number): number {
-  return Math.max(stored ?? DEFAULT_WIDTH, contentWidth, MIN_WIDTH)
+/** 노드 렌더 폭 — 저장 폭·측정 콘텐츠 폭·하한 중 최대 (ErdCanvas 겹침 해소도 같은 값 사용).
+ *  하한은 기본 MIN_WIDTH — 타입 칸이 넓게 측정된 표는 노드가 더 큰 하한을 넘긴다. */
+export function tableRenderWidth(stored: number | null, contentWidth: number, minWidth = MIN_WIDTH): number {
+  return Math.max(stored ?? DEFAULT_WIDTH, contentWidth, minWidth)
 }
 
 /** 겹침 판정용 높이 추정 — Chrome 실측 기준(컬럼 행 47, 키 행 25):
@@ -185,6 +200,8 @@ interface ColumnRowProps {
   canEdit: boolean
   autoFocus: boolean
   onFocusedAuto: () => void
+  /** 컬럼 그리드 — 타입 칸 폭은 표가 쓰는 가장 긴 라벨에 맞춘 값 */
+  rowGrid: string
   /** 드래그 재정렬 상태 — TableNode가 홀딩. 삽입 위치는 행 위/아래 경계 라인으로 표시한다 */
   isDragging: boolean
   isInsertAbove: boolean
@@ -209,6 +226,7 @@ function ColumnRow({
   canEdit,
   autoFocus,
   onFocusedAuto,
+  rowGrid,
   isDragging,
   isInsertAbove,
   isInsertBelow,
@@ -261,7 +279,7 @@ function ColumnRow({
         isInsertBelow && 'shadow-[inset_0_-2px_0_0_var(--color-blue-500)]',
         isDragging && 'opacity-40',
       )}
-      style={{ gridTemplateColumns: ROW_GRID }}
+      style={{ gridTemplateColumns: rowGrid }}
       onDragOver={(event) => onRowDragOver(index, event)}
       onDrop={(event) => onRowDrop(index, event)}
     >
@@ -337,7 +355,7 @@ function ColumnRow({
       )}
 
       <CommitSelect
-        className="w-full truncate text-[10px] text-muted-foreground"
+        className={cn(SETTING_CELL_RULE, 'w-full truncate text-[10px] text-muted-foreground')}
         value={column.dataType}
         options={typeOptions}
         onCommit={(value) =>
@@ -355,55 +373,63 @@ function ColumnRow({
       />
 
       {spec?.precision ? (
-        <span className="flex items-center justify-center gap-px">
+        <span className={cn('flex items-center gap-1 px-1', SETTING_CELL_RULE)}>
           <CommitInput
-            className="w-full text-center text-[10px] text-muted-foreground"
+            className={SIZE_INPUT_RULE}
             type="number"
             value={toDisplay(column.precision)}
             onCommit={(value) => patch({ precision: toNumberOrNull(value) })}
             ariaLabel={`${t('model.editor.table.precision')} — ${column.physicalName}`}
+            placeholder="10" /* 예시 — DECIMAL(10,2) */
             disabled={!canEdit}
           />
           <CommitInput
-            className="w-full text-center text-[10px] text-muted-foreground"
+            className={SIZE_INPUT_RULE}
             type="number"
             value={toDisplay(column.scale)}
             onCommit={(value) => patch({ scale: toNumberOrNull(value) })}
             ariaLabel={`${t('model.editor.table.scale')} — ${column.physicalName}`}
+            placeholder="2" /* 예시 — DECIMAL(10,2) */
             disabled={!canEdit}
           />
         </span>
       ) : spec?.length ? (
-        <CommitInput
-          className="w-full text-center text-[10px] text-muted-foreground"
-          type="number"
-          value={toDisplay(column.length)}
-          onCommit={(value) => patch({ length: toNumberOrNull(value) })}
-          ariaLabel={`${t('model.editor.table.length')} — ${column.physicalName}`}
-          disabled={!canEdit}
-        />
+        <span className={cn('flex items-center px-1', SETTING_CELL_RULE)}>
+          <CommitInput
+            className={SIZE_INPUT_RULE}
+            type="number"
+            value={toDisplay(column.length)}
+            onCommit={(value) => patch({ length: toNumberOrNull(value) })}
+            ariaLabel={`${t('model.editor.table.length')} — ${column.physicalName}`}
+            placeholder="255" /* 예시 — VARCHAR(255) */
+            disabled={!canEdit}
+          />
+        </span>
       ) : (
-        <span aria-hidden />
+        // 사이즈 없는 타입도 자리는 지킨다 — 설정 영역 배경·구분선이 행마다 이어진다
+        <span aria-hidden className={SETTING_CELL_RULE} />
       )}
 
-      <button
-        type="button"
-        className={cn(
-          'nodrag flex h-5 -my-1 items-center justify-center rounded-sm px-1 text-[9px] font-semibold leading-none transition-colors',
-          !column.nullable
-            ? 'bg-primary/15 text-primary'
-            : 'text-muted-foreground/35 hover:bg-accent hover:text-muted-foreground',
-        )}
-        onClick={() => patch({ nullable: !column.nullable })}
-        disabled={!canEdit || isPk}
-        aria-pressed={!column.nullable}
-        aria-label={`${t('model.editor.table.nullable')} — ${column.physicalName}`}
-        title={isPk ? t('model.editor.table.nnPkLocked') : t('model.editor.table.nullable')}
-      >
-        NN
-      </button>
+      <span className={cn('flex items-center justify-center', SETTING_CELL_RULE)}>
+        <button
+          type="button"
+          className={cn(
+            'nodrag flex h-5 -my-1 items-center justify-center rounded-sm px-1 text-[9px] font-semibold leading-none transition-colors',
+            !column.nullable
+              ? 'bg-primary/15 text-primary'
+              : 'text-muted-foreground/35 hover:bg-accent hover:text-muted-foreground',
+          )}
+          onClick={() => patch({ nullable: !column.nullable })}
+          disabled={!canEdit || isPk}
+          aria-pressed={!column.nullable}
+          aria-label={`${t('model.editor.table.nullable')} — ${column.physicalName}`}
+          title={isPk ? t('model.editor.table.nnPkLocked') : t('model.editor.table.nullable')}
+        >
+          NN
+        </button>
+      </span>
       {aiAvailable ? (
-        <span className="flex" title={t('model.editor.table.autoIncrement')}>
+        <span className={cn('flex items-center justify-center', SETTING_CELL_RULE)} title={t('model.editor.table.autoIncrement')}>
           <button
             type="button"
             className={cn(
@@ -421,7 +447,8 @@ function ColumnRow({
           </button>
         </span>
       ) : (
-        <span aria-hidden />
+        // AI 없는 타입도 자리는 지킨다 — 구분선이 행마다 이어진다
+        <span aria-hidden className={SETTING_CELL_RULE} />
       )}
 
       <button
@@ -521,32 +548,49 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   const [lastAddedId, setLastAddedId] = useState<string | null>(null)
   const fkColumnIds = useMemo(() => new Set(fkKey.length > 0 ? fkKey.split(' ') : []), [fkKey])
 
-  /** 타입 옵션 — 값은 공용 논리 코드 그대로 두고(저장 계약) 라벨만 대상 DBMS 물리 표기로 */
-  const typeOptions = useMemo(
-    () => DATA_TYPES.map((type) => ({ value: type.code, label: physicalType(type.code, dbmsId) })),
-    [dbmsId],
-  )
+  /** 타입 옵션 — 값은 공용 논리 코드 그대로 두고(저장 계약) 라벨만 대상 DBMS 물리 표기로.
+   *  매핑이 같은 물리 표기로 겹치면(PG의 SMALLINT←TINYINT, Oracle의 TIMESTAMP←TIME·DATETIME)
+   *  먼저 등장한 공용 코드만 노출한다 — 같은 타입이므로 선택 결과는 동일하고 드롭다운에
+   *  같은 라벨이 두 번 보이지 않는다. */
+  const typeOptions = useMemo(() => {
+    const seen = new Set<string>()
+    return DATA_TYPES
+      .map((type) => ({ value: type.code, label: physicalType(type.code, dbmsId) }))
+      .filter((option) => (seen.has(option.label) ? false : seen.add(option.label)))
+  }, [dbmsId])
 
   /* 콘텐츠 자동 폭 — 이름이 잘리지 않게 은신 미러로 텍스트 폭을 재고 노드 폭에 반영한다.
      문서는 커밋(blur) 시에만 바뀌되, 헤더 물리명 초안(nameDraft)은 타이핑 중에도 미러에
-     반영해 노드 폭이 즉시 늘어나게 한다(스토어 쓰기는 없음 — 로컬 상태). */
+     반영해 노드 폭이 즉시 늘어나게 한다(스토어 쓰기는 없음 — 로컬 상태).
+     타입 칸 폭도 같은 미러로 잰다 — 표가 실제로 쓰는 가장 긴 물리 라벨에 맞춰 늘어나므로
+     라벨(TIMESTAMPTZ·UNIQUEIDENTIFIER…)이 잘리지 않는다. */
   const [nameDraft, setNameDraft] = useState<string | null>(null)
   const [contentWidth, setContentWidth] = useState(0)
+  const [typeWidth, setTypeWidth] = useState(TYPE_MIN_WIDTH)
   const measureRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
     const root = measureRef.current
     if (!root) return
-    let max = 0
+    let max = 0 // 이름(고정 칸만 더함)·헤더·밴드 폭 후보 — 타입 칸은 아래에서 합친다
+    let label = 0 // 타입 라벨 최대 폭(px-1 select 패딩 포함 span)
     for (const child of Array.from(root.children)) {
       const el = child as HTMLElement
+      if (el.dataset.kind === 'type') {
+        label = Math.max(label, el.offsetWidth)
+        continue
+      }
       max = Math.max(max, el.offsetWidth + Number(el.dataset.extras ?? 0))
     }
-    setContentWidth(max)
-  }, [table, nameDisplay, nameDraft])
+    const nextTypeWidth = Math.min(TYPE_MAX_WIDTH, Math.max(TYPE_MIN_WIDTH, label + 2))
+    setTypeWidth((prev) => (prev === nextTypeWidth ? prev : nextTypeWidth))
+    setContentWidth(max + nextTypeWidth)
+  }, [table, nameDisplay, nameDraft, dbmsId])
 
   // 렌더 크기(폭·높이)를 캔버스에 보고 — 겹침 해소 트리거. 높이는 실측(모드 전환·컬럼 증감 반영).
-  // 조기 return 전에 훅을 둬 순서를 지킨다
-  const renderWidth = tableRenderWidth(width, contentWidth)
+  // 조기 return 전에 훅을 둬 순서를 지킨다. 타입 칸이 넓은 표는 이름 칸 최소 폭을 지키려고
+  // 하한도 함께 올린다(리사이저 하한·렌더 폭이 같은 기준을 쓰게).
+  const effectiveMinWidth = Math.max(MIN_WIDTH, ROW_FIXED_EXTRAS + typeWidth + 50)
+  const renderWidth = tableRenderWidth(width, contentWidth, effectiveMinWidth)
   const rootRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
     reportSize(id, renderWidth, rootRef.current?.offsetHeight ?? 0)
@@ -674,9 +718,6 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   }
 
   const columnById = new Map(table.columns.map((c) => [c.id, c]))
-  /** 키 컬럼 물리명 나열 — cascade가 참조를 항상 정리하므로 못 찾는 id는 없다(방어적으로 ?) */
-  const namesOf = (columnIds: string[]) =>
-    columnIds.map((cid) => columnById.get(cid)?.physicalName ?? '?').join(', ')
 
   const pkIds = new Set(table.primaryKey?.columnIds ?? [])
   /** 영역별 행 분류 — 표시 순서 = PK → FK(PK 바로 밑) → 일반. index는 원본 배열 기준(드래그 드롭 위치).
@@ -726,34 +767,33 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         {table.columns.map((column) => (
           <Fragment key={column.id}>
             {nameDisplay === 'logical' ? (
-              <span data-extras={ROW_EXTRAS} className="px-1 text-sm font-medium">{column.logicalName}</span>
+              <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-sm font-medium">{column.logicalName}</span>
             ) : (
               <>
-                {/* 컬럼명 span은 실제 input(text-sm font-medium)과 같은 폰트로 재고, FK 배지 폭도 함께 계산한다 */}
-                <span data-extras={ROW_EXTRAS} className="px-1 text-sm font-medium">
+                {/* 컬럼명 span은 실제 input(text-sm font-medium)과 같은 폰트로 재고, FK 배지 폭도 함께 계산한다.
+                    extras는 타입 칸을 뺀 고정 칸 — 타입 칸 폭은 effect에서 합친다 */}
+                <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-sm font-medium">
                   {column.physicalName}
                   {fkColumnIds.has(column.id) ? <span className="ml-0.5 px-0.5 text-[9px] font-semibold">FK</span> : null}
                 </span>
                 {nameDisplay === 'both' ? (
-                  <span data-extras={ROW_EXTRAS} className="px-1 text-[9px]">{column.logicalName}</span>
+                  <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-[9px]">{column.logicalName}</span>
                 ) : null}
               </>
             )}
+            {/* 타입 라벨 폭 — select(px-1·text-[10px])와 같은 꾸밈. 표에서 가장 긴 라벨에
+                타입 칸을 맞춘다(TIMESTAMPTZ·UNIQUEIDENTIFIER가 잘리지 않게) */}
+            <span data-kind="type" className="px-1 text-[10px]">{physicalType(column.dataType, dbmsId)}</span>
           </Fragment>
         ))}
-        {table.uniques.map((unique) => (
-          <span key={unique.id} data-extras={KEY_EXTRAS} className="px-1 text-[10px]">{`${unique.name} (${namesOf(unique.columnIds)})`}</span>
-        ))}
-        {table.indexes.map((index) => (
-          <span key={index.id} data-extras={KEY_EXTRAS} className="px-1 text-[10px]">
-            {`${index.name} (${index.columns.map((e) => `${columnById.get(e.columnId)?.physicalName ?? '?'} ${e.order}`).join(', ')})`}
-          </span>
-        ))}
+        {/* UK·IX 이름은 자동 폭 계산에서 뺀다 — 긴 키 이름(예: uk_a_b_c (col1, col2, col3))이
+            상자 폭을 실제 컬럼보다 훨씬 크게 부풀려, 모든 행의 이름↔타입 사이에 커다란 빈칸을
+            만든다. KeyRow는 truncate + title 툴팁이라 좁아도 정보를 잃지 않는다. */}
       </div>
       {canEdit ? (
         <NodeResizer
           isVisible={selected}
-          minWidth={MIN_WIDTH}
+          minWidth={effectiveMinWidth}
           onResize={(_, params) => setResizingWidth(Math.round(params.width))}
           onResizeEnd={(_, params) => {
             commit({ type: 'node/resize', tableId: id, width: Math.round(params.width) })
@@ -838,6 +878,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
               canEdit={canEdit}
               autoFocus={lastAddedId === column.id}
               onFocusedAuto={() => setLastAddedId(null)}
+              rowGrid={rowGridOf(typeWidth)}
               isDragging={dragColumnId === column.id}
               isInsertAbove={dropAt === index}
               isInsertBelow={dropAt === index + 1}

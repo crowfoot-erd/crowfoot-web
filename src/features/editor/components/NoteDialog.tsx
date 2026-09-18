@@ -125,7 +125,8 @@ export function NoteDialog({
               placeholder={t('model.editor.note.title')}
               onChange={(event) => setTitle(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') save()
+                // 조립(IME) 중 Enter는 확정으로 소비된다 — 여기서 저장하면 미완성 글자로 저장된다
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229) save()
               }}
               autoFocus
             />

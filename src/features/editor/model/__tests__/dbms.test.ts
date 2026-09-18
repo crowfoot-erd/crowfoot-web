@@ -27,14 +27,17 @@ describe('dbms — 공용 타입 카탈로그', () => {
     expect(isAutoIncrementType('INT')).toBe(true)
     expect(isAutoIncrementType('BIGINT')).toBe(true)
     expect(isAutoIncrementType('SMALLINT')).toBe(true)
+    expect(isAutoIncrementType('TINYINT')).toBe(true)
     expect(isAutoIncrementType('VARCHAR')).toBe(false)
     expect(isAutoIncrementType('DECIMAL')).toBe(false)
+    expect(isAutoIncrementType('NUMERIC')).toBe(false)
     expect(isAutoIncrementType('UNKNOWN_TYPE')).toBe(false)
   })
 
   it('매핑 없는 코드는 공용 코드로 폴백한다', () => {
     expect(dataTypeSpec('VARCHAR')?.length).toBe(true)
     expect(dataTypeSpec('DECIMAL')?.precision).toBe(true)
+    expect(dataTypeSpec('NUMERIC')?.precision).toBe(true) // NUMERIC도 DECIMAL과 같은 (p,s)
   })
 })
 
@@ -62,6 +65,23 @@ describe('dbms — DBMS 템플릿', () => {
     expect(physicalType('TIMESTAMP', 'mssql')).toBe('DATETIME2')
     // 매핑이 없으면 공용 코드 폴백 — common 템플릿은 전부 폴백
     expect(physicalType('VARCHAR', 'common')).toBe('VARCHAR')
+  })
+
+  it('PG 시각 타입은 두 공용 코드가 서로 다른 물리 표기로 갈라진다 — 드롭다운 라벨 중복 없음', () => {
+    expect(physicalType('DATETIME', 'postgres')).toBe('TIMESTAMP') // 타임존 없는 시각
+    expect(physicalType('TIMESTAMP', 'postgres')).toBe('TIMESTAMPTZ') // UTC 순간
+  })
+
+  it('PG의 TINYINT→SMALLINT는 SMALLINT와 같은 라벨이 된다 — 드롭다운은 첫 코드(SMALLINT)만 노출한다', () => {
+    expect(physicalType('TINYINT', 'postgres')).toBe(physicalType('SMALLINT', 'postgres'))
+  })
+
+  it('NUMERIC·TINYINT의 DBMS별 매핑 — Oracle 숫자는 NUMBER로 모은다', () => {
+    expect(physicalType('NUMERIC', 'postgres')).toBe('NUMERIC') // identity 폴백
+    expect(physicalType('NUMERIC', 'oracle')).toBe('NUMBER')
+    expect(physicalType('DECIMAL', 'oracle')).toBe('NUMBER')
+    expect(physicalType('TINYINT', 'oracle')).toBe('NUMBER(3)')
+    expect(physicalType('TINYINT', 'mysql')).toBe('TINYINT') // identity 폴백
   })
 
   it('미등록 id는 common 템플릿으로 폴백한다', () => {

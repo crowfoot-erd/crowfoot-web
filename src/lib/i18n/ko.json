@@ -708,6 +708,7 @@
         "colorDefault": "기본"
       },
       "savedToast": "문서를 저장했습니다",
+      "draftRestored": "저장되지 않은 편집을 복구했습니다",
       "conflict": {
         "title": "버전 충돌",
         "description": "다른 클라이언트가 먼저 저장했습니다. 다시 불러오면 저장하지 않은 로컬 변경은 사라집니다.",

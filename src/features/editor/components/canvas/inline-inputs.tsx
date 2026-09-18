@@ -4,6 +4,11 @@
  * 키 입력마다 스토어를 쓰지 않는다: 타수당 스냅샷·리렌더 0, blur(또는 Enter) 시 1커밋.
  * Esc는 초안 폐기. 외부 값 갱신(undo 등)은 포커스가 없을 때만 반영해 입력 중 덮어쓰지 않는다.
  * 모든 요소에 nodrag — 캔버스 드래그와 입력 클릭을 분리한다.
+ *
+ * IME(한글 등): 조립 중 Enter는 조립 확정으로 소비된다 — 여기서 blur하면 확정 처리와
+ * 겹쳐 마지막 글자가 두 번 삽입된다(안녕 → 안녕녕). compositionend 이후(값이 확정된 뒤)
+ * 커밋한다. Safari는 keydown의 isComposing을 거짓으로 알리는 경우가 있어 조립 상태를
+ * 직접 추적한다.
  */
 import { useEffect, useRef, useState } from 'react'
 
@@ -43,6 +48,8 @@ export function CommitInput({
 }: CommitInputProps) {
   const [draft, setDraft] = useState(value)
   const focused = useRef(false)
+  const composing = useRef(false)
+  const enterDuringComposition = useRef(false)
 
   useEffect(() => {
     if (!focused.current) setDraft(value)
@@ -74,6 +81,7 @@ export function CommitInput({
       }}
       onBlur={() => {
         focused.current = false
+        enterDuringComposition.current = false // 조립 취소 등으로 흘러넘친 플래그 청소
         onDraftChange?.(null)
         commit()
       }}
@@ -81,13 +89,33 @@ export function CommitInput({
         setDraft(event.target.value)
         onDraftChange?.(event.target.value)
       }}
+      onCompositionStart={() => {
+        composing.current = true
+      }}
+      onCompositionEnd={(event) => {
+        composing.current = false
+        // 조립을 확정한 Enter — 브라우저의 최종 input 이벤트(브라우저마다 compositionend
+        // 앞뒤로 온다)까지 반영된 뒤 일반 blur 경로로 커밋한다
+        if (enterDuringComposition.current) {
+          enterDuringComposition.current = false
+          // currentTarget은 핸들러 반환 후 null이 된다 — 유지되는 target으로 잡는다
+          const input = event.target as HTMLInputElement
+          requestAnimationFrame(() => input.blur())
+        }
+      }}
       onKeyDown={(event) => {
+        const imeComposing = composing.current || event.nativeEvent.isComposing || event.keyCode === 229
         if (event.key === 'Enter') {
+          if (imeComposing) {
+            enterDuringComposition.current = true
+            return // 이 Enter는 IME 조립 확정 — 여기서 blur하면 글자가 중복된다
+          }
           event.preventDefault()
           event.currentTarget.blur()
         }
         if (event.key === 'Escape') {
           event.preventDefault()
+          enterDuringComposition.current = false
           setDraft(value)
           event.currentTarget.blur()
         }

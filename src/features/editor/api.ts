@@ -1,7 +1,7 @@
 /**
  * 에디터 API — 문서 본체 저장(§1.5)·DDL 생성(§1.7)·배포(§1.8)
  */
-import { apiGet, apiPost, apiPut } from '@/api/client'
+import { API_BASE_URL, apiGet, apiPost, apiPut, getAccessToken } from '@/api/client'
 
 export interface SaveModelContentInput {
   baseVersion: number
@@ -32,6 +32,32 @@ export function saveModelContent(
   body: SaveModelContentInput,
 ): Promise<SaveModelContentResult | undefined> {
   return apiPut<SaveModelContentResult>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/content`, body)
+}
+
+/** keepalive 본문 상한(브라우저 64KB)보다 여유 있게 — 이 값을 넘으면 서버 플러시를 건너뛴다 */
+const KEEPALIVE_BODY_LIMIT = 60_000
+
+/** 페이지 이탈(pagehide) 최선 저장 — fetch keepalive로 언로드 이후에도 요청이 살아있게 한다.
+ *  응답은 소비할 수 없어 결과를 알 수 없다: 실패해도 임시 저장(localStorage)이 다음 열기에서
+ *  복원한다. 본문이 keepalive 상한을 넘는 큰 문서는 건너뛴다 — 임시 저장에만 맡긴다.
+ *  Access 토큰 만료 응답도 무시된다(재발급 절차를 언로드 중에 수행할 수 없다). */
+export function saveModelContentOnUnload(
+  workspaceId: string,
+  modelId: string,
+  body: SaveModelContentInput,
+): void {
+  const payload = JSON.stringify(body)
+  if (payload.length > KEEPALIVE_BODY_LIMIT) return
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getAccessToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  void fetch(`${API_BASE_URL}/api/v1/core/workspaces/${workspaceId}/models/${modelId}/content`, {
+    method: 'PUT',
+    headers,
+    credentials: 'include',
+    keepalive: true,
+    body: payload,
+  }).catch(() => undefined) // 언로드 중 실패 — 임시 저장이 복원 경로
 }
 
 /** DDL 스크립트 생성 — 서버가 content를 해석해 문서 DB 타입 방언으로 조립한다.
