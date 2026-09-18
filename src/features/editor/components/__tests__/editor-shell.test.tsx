@@ -60,7 +60,7 @@ function remoteContent() {
   return serializeContent({
     schemaVersion: 1,
     model: { tables: [table], relationships: [] },
-    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null } }, notes: [], viewport: null },
+    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], viewport: null },
   })
 }
 

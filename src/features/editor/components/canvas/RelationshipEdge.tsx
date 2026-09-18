@@ -110,7 +110,8 @@ function RelationshipEdgeComponent({
     let sig = ''
     for (const node of s.nodeLookup.values()) {
       const m = node.measured
-      sig += `${node.id}:${Math.round(node.internals.positionAbsolute.x)},${Math.round(node.internals.positionAbsolute.y)}:${m ? `${Math.round(m.width)}x${Math.round(m.height)}` : '?'};`
+      // positionAbsolute는 RF 타입상 undefined 가능 — 미측정 노드는 0으로 식별(측정 크기 '?'와 함께 판별)
+      sig += `${node.id}:${Math.round(node.internals.positionAbsolute.x ?? 0)},${Math.round(node.internals.positionAbsolute.y ?? 0)}:${m ? `${Math.round(m.width ?? 0)}x${Math.round(m.height ?? 0)}` : '?'};`
     }
     return sig
   })

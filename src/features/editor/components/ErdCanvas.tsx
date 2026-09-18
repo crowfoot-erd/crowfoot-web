@@ -96,6 +96,9 @@ function uniqueTableName(existingPhysicalNames: string[]): string {
 
 type MiniMapProps = ComponentProps<typeof MiniMap>
 
+/** nodeColor 프롭의 함수형만 뽑는다 — 원 타입은 string | 함수 유니언이라 useCallback 제약(Function)에 못 쓴다 */
+type MiniMapNodeColorFn = Extract<NonNullable<MiniMapProps['nodeColor']>, (node: never) => string>
+
 /** 색 시그니처(id:color 조인)를 구독해 색이 바뀔 때만 이 래퍼가 리렌더된다(캔버스 본체와 분리).
  *  노드 색은 콜백 시점 스토어에서 읽는다 — 표시 레이어 노드 배열에는 색이 실리지 않는다 */
 function TableColorMiniMap(props: MiniMapProps) {
@@ -104,10 +107,11 @@ function TableColorMiniMap(props: MiniMapProps) {
       .map(([id, layout]) => `${id}:${layout.color}`)
       .join(';'),
   )
-  const nodeColor = useCallback<NonNullable<MiniMapProps['nodeColor']>>(
+  const nodeColor = useCallback<MiniMapNodeColorFn>(
     (node) => {
       const layout = useEditorStore.getState().present.diagram.nodes[node.id]
-      return tableColorHex(layout?.color ?? 'default') ?? undefined
+      // 기본(무색)은 빈 문자열 — RF가 클래스 기본색으로 폴백한다
+      return tableColorHex(layout?.color ?? 'default') ?? ''
     },
     [colorSignature],
   )
@@ -302,7 +306,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
      한계는 세션 동안 줄지 않는다(high-water mark) — 객체를 안쪽으로 옮겨 AABB가 줄어들 때
      한계가 따라 줄면 현재 뷰가 클램프되며 화면이 뚝 끌려온다. 늘어난 방향(좌우상하 모두)은
      유지하고 넓어지는 쪽으로만 갱신한다. 문서를 바꾸면 처음부터 다시 잡는다. */
-  const sessionExtentRef = useRef<{ modelId: string; extent: CanvasExtent } | null>(null)
+  const sessionExtentRef = useRef<{ modelId: string | null; extent: CanvasExtent } | null>(null)
   const extent = useMemo<CanvasExtent>(() => {
     const next: CanvasExtent = canvasExtent(present, sizeReports) ?? [
       [0, 0],
