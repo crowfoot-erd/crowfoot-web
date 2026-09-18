@@ -1073,6 +1073,50 @@ export const handlers = [
     )
   }),
 
+  // 공개 최근 릴리스 노트 — 무인증(랜딩 위젯). RELEASE_NOTE만, DB 단계 필터 계약 반영
+  http.get(`${BASE}/api/v1/core/community/release-notes/recent`, ({ request }) => {
+    const url = new URL(request.url)
+    const limit = Math.min(20, Math.max(1, Number(url.searchParams.get('limit') ?? '5') || 5))
+    const releaseNotes = fixtures.communityPosts.responses
+      .filter((post) => post.board === 'RELEASE_NOTE')
+      .map(({ postId, board, title, author, commentCount, createdAt }) => ({
+        postId,
+        board,
+        title,
+        author,
+        commentCount,
+        createdAt,
+      }))
+    return HttpResponse.json(
+      ok({
+        responses: releaseNotes.slice(0, limit),
+        totalCount: Math.min(releaseNotes.length, limit),
+      }),
+    )
+  }),
+
+  // 공개 릴리스 노트 상세 — 무인증. RELEASE_NOTE가 아니면(802 등) 존재 은닉 404
+  http.get(`${BASE}/api/v1/core/community/release-notes/:postId`, ({ params }) => {
+    const summary = fixtures.communityPosts.responses.find(
+      (post) => post.board === 'RELEASE_NOTE' && post.postId === params.postId,
+    )
+    if (!summary) return fail('COMMUNITY_POST_NOT_FOUND', 404)
+    return HttpResponse.json(
+      ok({
+        response: {
+          postId: summary.postId,
+          board: summary.board,
+          title: summary.title,
+          content:
+            '# 개요\n\n이번 릴리스의 주요 변경 사항입니다.\n\n| 항목 | 내용 |\n| --- | --- |\n| 기능 | 커뮤니티 |\n\n- 릴리스 노트는 관리자가 작성합니다',
+          author: summary.author,
+          createdAt: summary.createdAt,
+          updatedAt: summary.updatedAt,
+        },
+      }),
+    )
+  }),
+
   // 게시글 상세 — content(마크다운) 포함. 999는 존재하지 않는 글(404 계약)
   http.get(`${BASE}/api/v1/core/community/posts/:postId`, ({ params }) => {
     const summary = fixtures.communityPosts.responses.find((post) => post.postId === params.postId)

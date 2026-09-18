@@ -11,6 +11,8 @@ import {
   fetchCommunityComments,
   fetchCommunityPost,
   fetchCommunityPosts,
+  fetchPublicReleaseNote,
+  fetchPublicReleaseNotes,
   fetchRecentCommunityPosts,
   updateCommunityComment,
   updateCommunityPost,
@@ -25,6 +27,9 @@ export const communityKeys = {
   recent: (limit: number) => ['community', 'recent', limit] as const,
   detail: (postId: string) => ['community', 'post', postId] as const,
   comments: (postId: string) => ['community', 'post', postId, 'comments'] as const,
+  /** 공개(무인증) 릴리스 노트 — 인증 조회 키와 분리된 서브트리 */
+  releaseNotesRecent: (limit: number) => ['community', 'release-notes', 'recent', limit] as const,
+  releaseNoteDetail: (postId: string) => ['community', 'release-notes', 'post', postId] as const,
 }
 
 export function useCommunityPosts(
@@ -50,6 +55,25 @@ export function useCommunityPost(postId: string) {
     queryKey: communityKeys.detail(postId),
     queryFn: ({ signal }) => fetchCommunityPost(postId, signal),
     enabled: postId.length > 0,
+  })
+}
+
+/** 공개 최근 릴리스 노트(랜딩 위젯) — 게스트 조회라 retry 없이(useSharedGallery 관례) */
+export function usePublicReleaseNotes(limit = 3) {
+  return useQuery({
+    queryKey: communityKeys.releaseNotesRecent(limit),
+    queryFn: ({ signal }) => fetchPublicReleaseNotes(limit, signal),
+    retry: false,
+  })
+}
+
+/** 공개 릴리스 노트 상세(공개 뷰어) — 게스트 조회라 retry 없이 */
+export function usePublicReleaseNote(postId: string) {
+  return useQuery({
+    queryKey: communityKeys.releaseNoteDetail(postId),
+    queryFn: ({ signal }) => fetchPublicReleaseNote(postId, signal),
+    enabled: postId.length > 0,
+    retry: false,
   })
 }
 

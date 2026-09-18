@@ -841,6 +841,11 @@
     "home": "Home",
     "notFound": "Shared document not found."
   },
+  "releaseNoteViewer": {
+    "badge": "Release note",
+    "home": "Home",
+    "notFound": "Release note not found."
+  },
   "connection": {
     "list": {
       "description": "Manage database credentials for reverse engineering and deployment. Passwords are stored encrypted.",
@@ -1008,6 +1013,9 @@
     },
     "gallery": {
       "heading": "Documents being shared right now"
+    },
+    "releaseNotes": {
+      "heading": "Latest releases"
     }
   },
   "terms": {

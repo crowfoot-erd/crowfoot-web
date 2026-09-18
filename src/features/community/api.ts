@@ -50,6 +50,18 @@ export function deleteCommunityPost(postId: string) {
   return apiDelete<void>(`/api/v1/core/community/posts/${postId}`)
 }
 
+/* ---------- 릴리스 노트 공개 조회 (§3.11 — 무인증, 랜딩·공개 뷰어 전용) ---------- */
+
+/** 공개 최근 릴리스 노트 — RELEASE_NOTE만 최신순(랜딩 위젯) */
+export function fetchPublicReleaseNotes(limit = 3, signal?: AbortSignal) {
+  return apiGetList<CommunityRecentPost>('/api/v1/core/community/release-notes/recent', { limit }, signal)
+}
+
+/** 공개 릴리스 노트 상세 — RELEASE_NOTE가 아니면 404(존재 은닉) */
+export function fetchPublicReleaseNote(postId: string, signal?: AbortSignal) {
+  return apiGet<CommunityPostDetail>(`/api/v1/core/community/release-notes/${postId}`, undefined, signal)
+}
+
 /* ---------- 코멘트 (FEEDBACK 전용) ---------- */
 
 export function fetchCommunityComments(postId: string, signal?: AbortSignal) {

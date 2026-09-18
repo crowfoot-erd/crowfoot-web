@@ -841,6 +841,11 @@
     "home": "홈으로",
     "notFound": "공유 문서를 찾을 수 없습니다."
   },
+  "releaseNoteViewer": {
+    "badge": "릴리스 노트",
+    "home": "홈으로",
+    "notFound": "릴리스 노트를 찾을 수 없습니다."
+  },
   "connection": {
     "list": {
       "description": "리버스 엔지니어링·배포에 쓸 데이터베이스 접속 정보를 관리합니다. 비밀번호는 암호화되어 저장됩니다.",
@@ -1008,6 +1013,9 @@
     },
     "gallery": {
       "heading": "지금 공유되고 있는 문서"
+    },
+    "releaseNotes": {
+      "heading": "최근 릴리스"
     }
   },
   "terms": {

@@ -2,7 +2,8 @@
  * 라우팅 (storyboard 00-common §2.3 — 직접 URL 접근 규칙)
  *
  * /·/login·/auth/callback·/terms 공개(게스트 랜딩·로그인·콜백·이용약관) /share/{token} 공개(공유 문서
- * 읽기 전용 뷰어 — 토큰이 자격) / 나머지 ProtectedRoute → AppLayout 셸 / /admin/* AdminRoute /
+ * 읽기 전용 뷰어 — 토큰이 자격) /release-notes/{postId} 공개(릴리스 노트 읽기 전용 뷰어) /
+ * 나머지 ProtectedRoute → AppLayout 셸 / /admin/* AdminRoute /
  * catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
@@ -15,6 +16,7 @@ import { DashboardPage } from '@/pages/dashboard'
 import { LandingPage } from '@/pages/landing'
 import { LoginPage } from '@/pages/login'
 import { ShareViewerPage } from '@/pages/share-viewer'
+import { ReleaseNoteViewerPage } from '@/pages/release-note-viewer'
 import { TermsPage } from '@/pages/terms'
 import { ModelViewerPage } from '@/pages/model-viewer'
 import { NotFoundPage } from '@/pages/not-found'
@@ -41,6 +43,8 @@ export function AppRoutes() {
       <Route path="/terms" element={<TermsPage />} />
       {/* 공유 문서 공개 뷰어 — 토큰을 아는 누구나 (기간 내) */}
       <Route path="/share/:token" element={<ShareViewerPage />} />
+      {/* 릴리스 노트 공개 뷰어 — 누구나(랜딩 최근 릴리스·docs README 링크의 행선지) */}
+      <Route path="/release-notes/:postId" element={<ReleaseNoteViewerPage />} />
 
       {/* 보호 — 앱 셸 4분할 */}
       <Route element={<ProtectedRoute />}>

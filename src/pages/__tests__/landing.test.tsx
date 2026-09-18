@@ -1,9 +1,9 @@
 /**
  * 랜딩/소개 페이지 컴포넌트 테스트 (frontend-testing.md B2)
  *
- * given: 게스트/인증 세션 상태, 공유 갤러리 공개 API 응답(MSW)
+ * given: 게스트/인증 세션 상태, 공유 갤러리·최근 릴리스 공개 API 응답(MSW)
  * when: 렌더
- * then: 특징 카드·갤러리·CTA 링크 노출, 빈 갤러리 숨김과 /dashboard 리다이렉트 규칙 검증
+ * then: 특징 카드·갤러리·릴리스·CTA 링크 노출, 빈 섹션 숨김과 /dashboard 리다이렉트 규칙 검증
  */
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -79,6 +79,36 @@ describe('랜딩 페이지', () => {
     await screen.findByRole('heading', { name: '주요 기능' })
     await expect
       .poll(() => screen.queryByRole('heading', { name: '지금 공유되고 있는 문서' }))
+      .toBeNull()
+  })
+
+  it('게스트 — 최근 릴리스를 나열하고 공개 뷰어로 연결한다 (FEEDBACK 미노출)', async () => {
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+
+    // then: 릴리스 헤딩 + fixture 릴리스 노트(RELEASE_NOTE만) — 인증 없는 공개 API
+    expect(await screen.findByRole('heading', { name: '최근 릴리스' })).toBeVisible()
+    const link = screen.getByRole('link', { name: /v1\.4\.0 — 커뮤니티 게시판/ })
+    expect(link).toHaveAttribute('href', '/release-notes/902')
+    expect(screen.getByRole('link', { name: /v1\.3\.0 — 관리형 데이터베이스/ })).toHaveAttribute(
+      'href',
+      '/release-notes/901',
+    )
+    // 공개 API 누수 방어 — FEEDBACK 제안 글은 랜딩에 없다
+    expect(screen.queryByText('ERD 내보내기 포맷 제안')).not.toBeInTheDocument()
+  })
+
+  it('게스트 — 공개 릴리스 노트가 없으면 릴리스 섹션을 숨긴다', async () => {
+    server.use(
+      // 공개 recent 응답을 빈 목록으로 — 섹션 자체가 없어야 한다
+      http.get('/api/v1/core/community/release-notes/recent', () =>
+        HttpResponse.json(ok({ totalCount: 0, responses: [] })),
+      ),
+    )
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+
+    await screen.findByRole('heading', { name: '주요 기능' })
+    await expect
+      .poll(() => screen.queryByRole('heading', { name: '최근 릴리스' }))
       .toBeNull()
   })
 

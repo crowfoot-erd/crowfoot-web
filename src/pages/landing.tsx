@@ -1,7 +1,7 @@
 /**
  * 랜딩/소개 페이지 — 게스트의 / 첫 화면 (오픈소스 공개 대응, 2026-09-15)
  *
- * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 공유 문서 갤러리(새 창) + CTA
+ * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 최근 릴리스(공개) + 공유 문서 갤러리(새 창) + CTA
  * - 인증 상태로 접속하면 /dashboard로 보낸다 (사용자의 앱 홈)
  * - 우하단 언어·테마 토글 — 로그인 페이지와 동일 배치
  */
@@ -14,6 +14,7 @@ import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
 import { formatDate } from '@/lib/format'
 import { useSessionStore } from '@/stores/session'
@@ -33,6 +34,8 @@ export function LandingPage() {
   const status = useSessionStore((state) => state.status)
   const { data: gallery } = useSharedGallery()
   const galleryItems = gallery?.items ?? []
+  const { data: releaseNotes } = usePublicReleaseNotes()
+  const releaseNoteItems = releaseNotes?.items ?? []
 
   // 이미 로그인한 사용자 — 소개 대신 앱 홈으로
   if (status === 'authenticated') {
@@ -125,6 +128,28 @@ export function LandingPage() {
             ))}
           </div>
         </section>
+
+        {/* 최근 릴리스 — 공개 릴리스 노트가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙) */}
+        {releaseNoteItems.length > 0 && (
+          <section aria-labelledby="landing-release-notes" className="w-full" data-testid="landing-release-notes">
+            <h2 id="landing-release-notes" className="mb-6 text-center text-2xl font-semibold">
+              {t('landing.releaseNotes.heading')}
+            </h2>
+            <div className="mx-auto flex max-w-2xl flex-col divide-y rounded-lg border">
+              {/* 공개 뷰어로 같은 탭 이동 — 뷰어의 홈 링크·브라우저 뒤로가기로 랜딩 복귀 */}
+              {releaseNoteItems.map(({ postId, title, createdAt }) => (
+                <Link
+                  key={postId}
+                  to={`/release-notes/${postId}`}
+                  className="flex items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-muted/50"
+                >
+                  <span className="font-medium">{title}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{formatDate(createdAt)}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 공유된 문서 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김) */}
         {galleryItems.length > 0 && (
