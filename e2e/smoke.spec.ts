@@ -76,6 +76,21 @@ test.describe('스모크 — 로그인 → 대시보드 → 워크스페이스 �
       }),
     )
 
+    // 대시보드 커뮤니티 최근글 위젯(08-community) — 목킹이 없으면 실물 gateway로 나가
+    // 가짜 토큰 401 → 세션이 폐기된다. 쿼리 유무 두 패턴 모두 흡수(teams·models 관례)
+    await page.route('**/api/v1/core/community/posts/recent?*', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(envelope({ totalCount: 0, responses: [] })),
+      }),
+    )
+    await page.route('**/api/v1/core/community/posts/recent', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(envelope({ totalCount: 0, responses: [] })),
+      }),
+    )
+
     // 생성 → 201 + 본문(워크스페이스) → 목록에 반영
     let created = false
     await page.route('**/api/v1/core/workspaces', async (route) => {
@@ -175,6 +190,10 @@ test.describe('스모크 — 로그인 → 대시보드 → 워크스페이스 �
 
     // 대시보드 진입 — 인사·요약
     await expect(page.getByRole('heading', { name: /부트스트랩 관리자/ })).toBeVisible({ timeout: 10_000 })
+
+    // 커뮤니티 최근글 위젯 — 빈 목록 응답의 빈 상태 렌더(08-community)
+    await expect(page.getByTestId('dashboard-recent-posts')).toBeVisible()
+    await expect(page.getByText('아직 게시글이 없습니다.')).toBeVisible()
 
     // ---------- 워크스페이스 생성 (다이얼로그) ----------
     await page.getByRole('button', { name: '새 워크스페이스' }).first().click()

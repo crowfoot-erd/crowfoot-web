@@ -67,7 +67,8 @@
       "github": "GitHub",
       "google": "Google"
     },
-    "system": "System"
+    "system": "System",
+    "edit": "Edit"
   },
   "errors": {
     "message": {
@@ -108,7 +109,10 @@
       "MANAGED_PROVISION_FAILED": "Provisioning failed. Please try again shortly.",
       "MANAGED_DATABASE_NOT_FOUND": "Issued database not found.",
       "SHARE_NOT_FOUND": "Share link not found.",
-      "SHARE_INACTIVE": "This share link is not active yet or has expired."
+      "SHARE_INACTIVE": "This share link is not active yet or has expired.",
+      "COMMUNITY_POST_NOT_FOUND": "Post not found.",
+      "COMMUNITY_COMMENT_NOT_FOUND": "Comment not found. Refreshing the list.",
+      "COMMUNITY_COMMENT_NOT_ALLOWED": "Comments are not available on this board."
     },
     "loadFailed": "Failed to load",
     "bootstrapFailed": "Could not reach the server."
@@ -144,7 +148,8 @@
     "nav": {
       "workspaces": "Workspaces",
       "teams": "Teams",
-      "admin": "Admin"
+      "admin": "Admin",
+      "community": "Community"
     },
     "sidebar": {
       "title": "Workspaces",
@@ -159,7 +164,10 @@
       "newTeam": "New team",
       "ownedTeams": "Teams I own",
       "joinedTeams": "Teams I'm in",
-      "noTeams": "You're not in any teams."
+      "noTeams": "You're not in any teams.",
+      "communityTitle": "Community",
+      "communityReleaseNotes": "Release notes",
+      "communityFeedback": "Feedback"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -1027,5 +1035,67 @@
         ]
       }
     ]
+  },
+  "community": {
+    "board": {
+      "intro": "Share feature ideas or report bugs you found. An administrator will review and respond.",
+      "newPost": "New post",
+      "searchPlaceholder": "Search titles",
+      "table": {
+        "title": "Title",
+        "author": "Author",
+        "comments": "Comments",
+        "createdAt": "Created"
+      },
+      "empty": {
+        "all": "No posts yet.",
+        "search": "No results found."
+      }
+    },
+    "boardName": {
+      "RELEASE_NOTE": "Release notes",
+      "FEEDBACK": "Feedback"
+    },
+    "detail": {
+      "back": "Back to list",
+      "comments": "Comments",
+      "confirmDeleteTitle": "Delete post",
+      "confirmDeleteDescription": "This post and all of its comments will be deleted.",
+      "deletedToast": "Post deleted."
+    },
+    "form": {
+      "createTitle": "New post",
+      "editTitle": "Edit post",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Enter a title",
+      "titleRequired": "Enter a title.",
+      "contentLabel": "Content",
+      "contentRequired": "Enter content.",
+      "submitCreate": "Submit",
+      "submitEdit": "Save",
+      "createdToast": "Post created.",
+      "updatedToast": "Post updated.",
+      "imageTooLarge": "The image is too large. Only images up to 512KB can be attached.",
+      "imageFailed": "Failed to add the image."
+    },
+    "comment": {
+      "placeholder": "Write a comment",
+      "submit": "Submit",
+      "empty": "Be the first to comment.",
+      "edit": "Edit comment",
+      "createdToast": "Comment created.",
+      "updatedToast": "Comment updated.",
+      "deletedToast": "Comment deleted.",
+      "confirmDeleteTitle": "Delete comment",
+      "confirmDeleteDescription": "This comment will be deleted."
+    },
+    "recent": {
+      "title": "Recent posts",
+      "commentCount": "{{count}} comments",
+      "empty": {
+        "title": "No posts yet",
+        "description": "Release notes and feedback will appear here."
+      }
+    }
   }
 }

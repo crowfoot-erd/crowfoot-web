@@ -391,6 +391,108 @@ export const fixtures = {
       { code: 'VIEWER', displayName: '조회자', level: 10 },
     ],
   },
+  /** 커뮤니티 게시글 — RELEASE_NOTE(관리자=me 작성) 2 + FEEDBACK(kim 작성) 2, id 역순=최신순 */
+  communityPosts: {
+    totalCount: 4,
+    responses: [
+      {
+        postId: '902',
+        board: 'RELEASE_NOTE',
+        title: 'v1.4.0 — 커뮤니티 게시판',
+        author: { userId: '2', name: '부트스트랩 관리자' },
+        commentCount: 0,
+        createdAt: '2026-09-16T10:00:00Z',
+        updatedAt: '2026-09-16T10:00:00Z',
+      },
+      {
+        postId: '901',
+        board: 'RELEASE_NOTE',
+        title: 'v1.3.0 — 관리형 데이터베이스',
+        author: { userId: '2', name: '부트스트랩 관리자' },
+        commentCount: 0,
+        createdAt: '2026-09-10T09:00:00Z',
+        updatedAt: '2026-09-10T09:00:00Z',
+      },
+      {
+        postId: '802',
+        board: 'FEEDBACK',
+        title: 'ERD 내보내기 포맷 제안',
+        author: { userId: '3', name: 'kim' },
+        commentCount: 2,
+        createdAt: '2026-09-15T14:00:00Z',
+        updatedAt: '2026-09-15T14:00:00Z',
+      },
+      {
+        postId: '801',
+        board: 'FEEDBACK',
+        title: '편집기 버그 신고',
+        author: { userId: '3', name: 'kim' },
+        commentCount: 1,
+        createdAt: '2026-09-12T11:00:00Z',
+        updatedAt: '2026-09-12T11:00:00Z',
+      },
+    ],
+  },
+  /** 대시보드 통합 최근글 — 게시판 무관 최신 5건(id desc) */
+  recentCommunityPosts: {
+    totalCount: 4,
+    responses: [
+      {
+        postId: '902',
+        board: 'RELEASE_NOTE',
+        title: 'v1.4.0 — 커뮤니티 게시판',
+        author: { userId: '2', name: '부트스트랩 관리자' },
+        commentCount: 0,
+        createdAt: '2026-09-16T10:00:00Z',
+      },
+      {
+        postId: '802',
+        board: 'FEEDBACK',
+        title: 'ERD 내보내기 포맷 제안',
+        author: { userId: '3', name: 'kim' },
+        commentCount: 2,
+        createdAt: '2026-09-15T14:00:00Z',
+      },
+      {
+        postId: '801',
+        board: 'FEEDBACK',
+        title: '편집기 버그 신고',
+        author: { userId: '3', name: 'kim' },
+        commentCount: 1,
+        createdAt: '2026-09-12T11:00:00Z',
+      },
+      {
+        postId: '901',
+        board: 'RELEASE_NOTE',
+        title: 'v1.3.0 — 관리형 데이터베이스',
+        author: { userId: '2', name: '부트스트랩 관리자' },
+        commentCount: 0,
+        createdAt: '2026-09-10T09:00:00Z',
+      },
+    ],
+  },
+  /** 코멘트 — FEEDBACK 802번 글 2건(오래된 순). RELEASE_NOTE 901/902는 코멘트 없음 */
+  communityComments: {
+    totalCount: 2,
+    responses: [
+      {
+        commentId: '851',
+        postId: '802',
+        content: '좋은 제안입니다. PostgreSQL 우선 지원을 검토하겠습니다.',
+        author: { userId: '2', name: '부트스트랩 관리자' },
+        createdAt: '2026-09-15T15:00:00Z',
+        updatedAt: '2026-09-15T15:00:00Z',
+      },
+      {
+        commentId: '852',
+        postId: '802',
+        content: '저도 필요한 기능이에요.',
+        author: { userId: '3', name: 'kim' },
+        createdAt: '2026-09-16T08:00:00Z',
+        updatedAt: '2026-09-16T08:00:00Z',
+      },
+    ],
+  },
 }
 
 /* ---------- auth ---------- */
@@ -927,5 +1029,188 @@ export const handlers = [
         }),
       )
     },
+  ),
+
+  /* ---------- 커뮤니티 (08-core/08-community.md) ---------- */
+
+  // 게시글 목록 — board 필수 필터 + keyword(제목 대소문자 무시) + 오프셋 페이징
+  http.get(`${BASE}/api/v1/core/community/posts`, ({ request }) => {
+    const url = new URL(request.url)
+    const board = url.searchParams.get('board')
+    const keyword = (url.searchParams.get('keyword') ?? '').trim().toLowerCase()
+    if (board !== 'RELEASE_NOTE' && board !== 'FEEDBACK') {
+      return fail('INVALID_REQUEST', 400)
+    }
+    const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1)
+    const size = Math.min(100, Math.max(1, Number(url.searchParams.get('size') ?? '20') || 20))
+
+    const filtered = fixtures.communityPosts.responses
+      .filter((post) => post.board === board)
+      .filter((post) => keyword === '' || post.title.toLowerCase().includes(keyword))
+    const start = (page - 1) * size
+    const sliced = filtered.slice(start, start + size)
+
+    return HttpResponse.json(
+      ok({
+        responses: sliced,
+        totalCount: filtered.length,
+        page,
+        size,
+        totalPages: Math.max(1, Math.ceil(filtered.length / size)),
+      }),
+    )
+  }),
+
+  // 통합 최근글 — 대시보드 위젯(게시판 무관 id desc). /posts/:postId보다 먼저 등록
+  http.get(`${BASE}/api/v1/core/community/posts/recent`, ({ request }) => {
+    const url = new URL(request.url)
+    const limit = Math.min(20, Math.max(1, Number(url.searchParams.get('limit') ?? '5') || 5))
+    return HttpResponse.json(
+      ok({
+        responses: fixtures.recentCommunityPosts.responses.slice(0, limit),
+        totalCount: Math.min(fixtures.recentCommunityPosts.responses.length, limit),
+      }),
+    )
+  }),
+
+  // 게시글 상세 — content(마크다운) 포함. 999는 존재하지 않는 글(404 계약)
+  http.get(`${BASE}/api/v1/core/community/posts/:postId`, ({ params }) => {
+    const summary = fixtures.communityPosts.responses.find((post) => post.postId === params.postId)
+    if (!summary) return fail('COMMUNITY_POST_NOT_FOUND', 404)
+    return HttpResponse.json(
+      ok({
+        response: {
+          postId: summary.postId,
+          board: summary.board,
+          title: summary.title,
+          content:
+            summary.postId === '802'
+              ? '## 제안 배경\n\nERD 내보내기에 **PostgreSQL** 포맷이 필요합니다.\n\n- 현재 MySQL만 지원\n- 스키마 검증 통과'
+              : '# 개요\n\n이번 릴리스의 주요 변경 사항입니다.\n\n| 항목 | 내용 |\n| --- | --- |\n| 기능 | 커뮤니티 |\n\n- 릴리스 노트는 관리자가 작성합니다',
+          author: summary.author,
+          createdAt: summary.createdAt,
+          updatedAt: summary.updatedAt,
+        },
+      }),
+    )
+  }),
+
+  // 게시글 생성 — 201 + Location(외부 URI) + 상세 본문
+  http.post(`${BASE}/api/v1/core/community/posts`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      board?: string
+      title?: string
+      content?: string
+    }
+    if (body.board !== 'RELEASE_NOTE' && body.board !== 'FEEDBACK') {
+      return fail('INVALID_REQUEST', 400)
+    }
+    if (!body.title?.trim() || !body.content?.trim()) {
+      return fail('VALIDATION_ERROR', 400, [{ field: 'title', code: 'NotBlank', message: 'must not be blank' }])
+    }
+    const postId = String(1000 + fixtures.communityPosts.responses.length)
+    return HttpResponse.json(
+      ok({
+        response: {
+          postId,
+          board: body.board,
+          title: body.title,
+          content: body.content,
+          author: { userId: '2', name: '부트스트랩 관리자' },
+          createdAt: '2026-09-17T00:00:00Z',
+          updatedAt: '2026-09-17T00:00:00Z',
+        },
+      }),
+      { status: 201, headers: { Location: `/api/v1/core/community/posts/${postId}` } },
+    )
+  }),
+
+  // 게시글 수정 — board는 변경 불가(계약상 title·content만 수용)
+  http.patch(`${BASE}/api/v1/core/community/posts/:postId`, async ({ request, params }) => {
+    const summary = fixtures.communityPosts.responses.find((post) => post.postId === params.postId)
+    if (!summary) return fail('COMMUNITY_POST_NOT_FOUND', 404)
+    const body = (await request.json().catch(() => ({}))) as { title?: string; content?: string }
+    if (!body.title?.trim() || !body.content?.trim()) {
+      return fail('VALIDATION_ERROR', 400, [{ field: 'title', code: 'NotBlank', message: 'must not be blank' }])
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          postId: summary.postId,
+          board: summary.board,
+          title: body.title,
+          content: body.content,
+          author: summary.author,
+          createdAt: summary.createdAt,
+          updatedAt: '2026-09-17T01:00:00Z',
+        },
+      }),
+    )
+  }),
+
+  // 게시글 삭제 — 204
+  http.delete(`${BASE}/api/v1/core/community/posts/:postId`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+
+  // 코멘트 목록 — 오래된 순. RELEASE_NOTE 글도 빈 목록(계약: 조회는 허용, 작성만 제한)
+  http.get(`${BASE}/api/v1/core/community/posts/:postId/comments`, ({ params }) => {
+    const comments = fixtures.communityComments.responses.filter(
+      (comment) => comment.postId === params.postId,
+    )
+    return HttpResponse.json(ok({ responses: comments, totalCount: comments.length }))
+  }),
+
+  // 코멘트 작성 — FEEDBACK 글만 허용(계약: RELEASE_NOTE는 400 COMMENT_NOT_ALLOWED). 201 + Location
+  http.post(`${BASE}/api/v1/core/community/posts/:postId/comments`, async ({ request, params }) => {
+    const post = fixtures.communityPosts.responses.find((item) => item.postId === params.postId)
+    if (!post) return fail('COMMUNITY_POST_NOT_FOUND', 404)
+    if (post.board !== 'FEEDBACK') return fail('COMMUNITY_COMMENT_NOT_ALLOWED', 400)
+    const body = (await request.json().catch(() => ({}))) as { content?: string }
+    if (!body.content?.trim()) {
+      return fail('VALIDATION_ERROR', 400, [{ field: 'content', code: 'NotBlank', message: 'must not be blank' }])
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          commentId: '900',
+          postId: post.postId,
+          content: body.content,
+          author: { userId: '2', name: '부트스트랩 관리자' },
+          createdAt: '2026-09-17T02:00:00Z',
+          updatedAt: '2026-09-17T02:00:00Z',
+        },
+      }),
+      { status: 201, headers: { Location: '/api/v1/core/community/comments/900' } },
+    )
+  }),
+
+  // 코멘트 수정 — 작성자·관리자(권한은 서버 계약, 목업은 소유 여부만 반영)
+  http.patch(`${BASE}/api/v1/core/community/comments/:commentId`, async ({ request, params }) => {
+    const comment = fixtures.communityComments.responses.find(
+      (item) => item.commentId === params.commentId,
+    )
+    if (!comment) return fail('COMMUNITY_COMMENT_NOT_FOUND', 404)
+    const body = (await request.json().catch(() => ({}))) as { content?: string }
+    if (!body.content?.trim()) {
+      return fail('VALIDATION_ERROR', 400, [{ field: 'content', code: 'NotBlank', message: 'must not be blank' }])
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          commentId: comment.commentId,
+          postId: comment.postId,
+          content: body.content,
+          author: comment.author,
+          createdAt: comment.createdAt,
+          updatedAt: '2026-09-17T03:00:00Z',
+        },
+      }),
+    )
+  }),
+
+  // 코멘트 삭제 — 204
+  http.delete(`${BASE}/api/v1/core/community/comments/:commentId`, () =>
+    new HttpResponse(null, { status: 204 }),
   ),
 ]

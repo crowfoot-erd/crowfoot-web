@@ -11,6 +11,7 @@ import { cn } from 'cn'
 import { useMe } from '@/features/auth'
 import { CreateWorkspaceDialog } from '@/features/workspaces'
 import { AdminSidebar } from '@/layouts/components/admin-sidebar'
+import { CommunitySidebar } from '@/layouts/components/community-sidebar'
 import { TeamSidebar } from '@/layouts/components/team-sidebar'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { WorkspaceSidebar } from '@/layouts/components/workspace-sidebar'
@@ -20,9 +21,11 @@ export function AppLayout() {
   const me = useMe()
   const location = useLocation()
 
-  // 관리자 화면(/admin/*)은 관리자 메뉴로, 팀 화면(/teams/*)은 팀 리스트로 사이드바를 교체한다 (storyboard 00-common §3.1)
+  // 관리자 화면(/admin/*)은 관리자 메뉴로, 팀 화면(/teams/*)은 팀 리스트로,
+  // 커뮤니티 화면(/community/*)은 게시판 메뉴로 사이드바를 교체한다 (storyboard 00-common §3.1)
   const isAdminScreen = location.pathname.startsWith('/admin')
   const isTeamScreen = location.pathname.startsWith('/teams')
+  const isCommunityScreen = location.pathname.startsWith('/community')
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -46,6 +49,9 @@ export function AppLayout() {
             <NavLink to="/teams" className={navLinkClass}>
               {t('shell.nav.teams')}
             </NavLink>
+            <NavLink to="/community" className={navLinkClass}>
+              {t('shell.nav.community')}
+            </NavLink>
             {me.data?.admin ? (
               <NavLink to="/admin/users" className={navLinkClass}>
                 {t('shell.nav.admin')}
@@ -62,7 +68,15 @@ export function AppLayout() {
       </header>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1">
-        {isAdminScreen ? <AdminSidebar /> : isTeamScreen ? <TeamSidebar /> : <WorkspaceSidebar />}
+        {isAdminScreen ? (
+          <AdminSidebar />
+        ) : isTeamScreen ? (
+          <TeamSidebar />
+        ) : isCommunityScreen ? (
+          <CommunitySidebar />
+        ) : (
+          <WorkspaceSidebar />
+        )}
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8">
           <Outlet />
         </main>

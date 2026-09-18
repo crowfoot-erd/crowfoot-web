@@ -3,10 +3,10 @@
  *
  * - mount 병렬 2호출(me/workspaces·teams) — 한쪽 실패 시 전체 에러 상태
  * - 요약 카드 3개: 워크스페이스·팀·멤버로 참여(myRole!=='OWNER' 프론트 계산)
- * - 바로가기 6개 + 전체 보기, 내 팀 4개
+ * - 바로가기 6개 + 전체 보기, 내 팀 4개, 커뮤니티 최근글 5건(통합 — 08-community)
  */
 import { Link } from 'react-router-dom'
-import { Plus, Users } from 'lucide-react'
+import { MessageSquare, Plus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,9 @@ import { ErrorState } from '@/components/error-state'
 import { useMe } from '@/features/auth'
 import { useMyWorkspaces, useCreateWorkspaceDialog } from '@/features/workspaces'
 import { useMyTeams } from '@/features/teams'
+import { useRecentCommunityPosts } from '@/features/community'
 import { formatNumber } from '@/lib/format'
+import { timeAgo } from '@/lib/time-ago'
 
 const SHORTCUT_LIMIT = 6
 const TEAM_LIMIT = 4
@@ -42,6 +44,7 @@ export function DashboardPage() {
   const me = useMe()
   const workspaces = useMyWorkspaces()
   const teams = useMyTeams()
+  const recentPosts = useRecentCommunityPosts()
   const openCreateDialog = useCreateWorkspaceDialog((state) => state.openDialog)
 
   const isLoading = workspaces.isPending || teams.isPending
@@ -198,6 +201,52 @@ export function DashboardPage() {
                     </span>
                   </CardContent>
                 </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 커뮤니티 최근글 — 두 게시판 통합 최신 5건(08-core/08-community.md) */}
+      <section className="flex flex-col gap-3" data-testid="dashboard-recent-posts">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">{t('community.recent.title')}</h2>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/community">{t('dashboard.viewAll')}</Link>
+          </Button>
+        </div>
+        {recentPosts.isPending ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-14" />
+            <Skeleton className="h-14" />
+            <Skeleton className="h-14" />
+          </div>
+        ) : recentPosts.isError ? (
+          <ErrorState onRetry={() => void recentPosts.refetch()} />
+        ) : recentPosts.data.items.length === 0 ? (
+          <EmptyState
+            title={t('community.recent.empty.title')}
+            description={t('community.recent.empty.description')}
+          />
+        ) : (
+          <div className="flex flex-col divide-y rounded-lg border">
+            {recentPosts.data.items.map((post) => (
+              <Link key={post.postId} to={`/community/posts/${post.postId}`}>
+                <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+                  <Badge variant="outline" className="shrink-0 text-[10px]">
+                    {t(`community.boardName.${post.board}`)}
+                  </Badge>
+                  <span className="truncate text-sm font-medium">{post.title}</span>
+                  <span className="ml-auto flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+                    {post.board === 'FEEDBACK' ? (
+                      <span className="flex items-center gap-1">
+                        <MessageSquare aria-hidden className="h-3.5 w-3.5" />
+                        {formatNumber(post.commentCount)}
+                      </span>
+                    ) : null}
+                    <span>{timeAgo(post.createdAt)}</span>
+                  </span>
+                </div>
               </Link>
             ))}
           </div>

@@ -348,3 +348,50 @@ export interface ManagedDatabaseListResult {
   limitSummary: ManagedLimitSummary[]
 }
 
+/* ---------- 커뮤니티 (08-core/08-community.md) ---------- */
+
+/** 게시판 종류 — RELEASE_NOTE(릴리스 노트, 관리자 전용 쓰기)·FEEDBACK(제안 및 신고) */
+export type CommunityBoard = 'RELEASE_NOTE' | 'FEEDBACK'
+
+/** 게시글 요약(목록) — content 제외 */
+export interface CommunityPostSummary {
+  postId: string
+  board: CommunityBoard
+  title: string
+  author: UserRef
+  commentCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** 게시글 상세 — 마크다운 원문 포함 */
+export interface CommunityPostDetail {
+  postId: string
+  board: CommunityBoard
+  title: string
+  content: string
+  author: UserRef
+  createdAt: string
+  updatedAt: string
+}
+
+/** 최근글(대시보드 통합 위젯) */
+export interface CommunityRecentPost {
+  postId: string
+  board: CommunityBoard
+  title: string
+  author: UserRef
+  commentCount: number
+  createdAt: string
+}
+
+/** 코멘트 — FEEDBACK 게시글 전용, plain text */
+export interface CommunityComment {
+  commentId: string
+  postId: string
+  content: string
+  author: UserRef
+  createdAt: string
+  updatedAt: string
+}
+

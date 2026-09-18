@@ -11,6 +11,21 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // Toast UI Editor는 CJS 번들 — 개발 서버 사전 번들링 대상에 명시적으로 포함
+  optimizeDeps: {
+    include: ['@toast-ui/editor'],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        // 마크다운 에디터/뷰어는 React.lazy로만 로드 — lazy 청크가 메인 번들로 새는 것을 차단해
+        // 이미 1.2MB+인 메인 청크 비열화를 방지한다
+        manualChunks(id: string) {
+          return id.includes('@toast-ui/editor') ? 'toast-ui' : undefined
+        },
+      },
+    },
+  },
   server: {
     port: 8080,
     // 명시 없으면 Node DNS 순서에 따라 IPv6(::1)에만 바인딩되어

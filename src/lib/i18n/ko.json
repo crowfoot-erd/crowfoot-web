@@ -67,7 +67,8 @@
       "github": "GitHub",
       "google": "Google"
     },
-    "system": "시스템"
+    "system": "시스템",
+    "edit": "수정"
   },
   "errors": {
     "message": {
@@ -108,7 +109,10 @@
       "MANAGED_PROVISION_FAILED": "발급 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
       "MANAGED_DATABASE_NOT_FOUND": "발급을 찾을 수 없습니다.",
       "SHARE_NOT_FOUND": "공유 링크를 찾을 수 없습니다.",
-      "SHARE_INACTIVE": "공유 기간이 아니거나 만료된 링크입니다."
+      "SHARE_INACTIVE": "공유 기간이 아니거나 만료된 링크입니다.",
+      "COMMUNITY_POST_NOT_FOUND": "게시글을 찾을 수 없습니다.",
+      "COMMUNITY_COMMENT_NOT_FOUND": "코멘트를 찾을 수 없습니다. 목록을 새로고칩니다.",
+      "COMMUNITY_COMMENT_NOT_ALLOWED": "이 게시판에서는 코멘트를 사용할 수 없습니다."
     },
     "loadFailed": "불러오기에 실패했습니다",
     "bootstrapFailed": "서버에 연결하지 못했습니다."
@@ -144,7 +148,8 @@
     "nav": {
       "workspaces": "워크스페이스",
       "teams": "팀",
-      "admin": "관리자"
+      "admin": "관리자",
+      "community": "커뮤니티"
     },
     "sidebar": {
       "title": "워크스페이스",
@@ -159,7 +164,10 @@
       "newTeam": "새 팀",
       "ownedTeams": "내가 소유한 팀",
       "joinedTeams": "소속 팀",
-      "noTeams": "소속된 팀이 없습니다."
+      "noTeams": "소속된 팀이 없습니다.",
+      "communityTitle": "커뮤니티",
+      "communityReleaseNotes": "릴리스 노트",
+      "communityFeedback": "제안 및 신고"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -1027,5 +1035,67 @@
         ]
       }
     ]
+  },
+  "community": {
+    "board": {
+      "intro": "개선 제안이나 발견한 버그를 자유롭게 남겨 주세요. 관리자가 확인하고 답변드립니다.",
+      "newPost": "새 글",
+      "searchPlaceholder": "제목 검색",
+      "table": {
+        "title": "제목",
+        "author": "작성자",
+        "comments": "코멘트",
+        "createdAt": "작성일"
+      },
+      "empty": {
+        "all": "게시글이 없습니다.",
+        "search": "검색 결과가 없습니다."
+      }
+    },
+    "boardName": {
+      "RELEASE_NOTE": "릴리스 노트",
+      "FEEDBACK": "제안 및 신고"
+    },
+    "detail": {
+      "back": "목록으로",
+      "comments": "코멘트",
+      "confirmDeleteTitle": "게시글 삭제",
+      "confirmDeleteDescription": "이 게시글과 달린 코멘트가 모두 삭제됩니다.",
+      "deletedToast": "게시글을 삭제했습니다."
+    },
+    "form": {
+      "createTitle": "새 게시글",
+      "editTitle": "게시글 수정",
+      "titleLabel": "제목",
+      "titlePlaceholder": "제목을 입력하세요",
+      "titleRequired": "제목을 입력하세요.",
+      "contentLabel": "본문",
+      "contentRequired": "본문을 입력하세요.",
+      "submitCreate": "등록",
+      "submitEdit": "저장",
+      "createdToast": "게시글을 등록했습니다.",
+      "updatedToast": "게시글을 수정했습니다.",
+      "imageTooLarge": "이미지가 너무 큽니다. 512KB 이하만 첨부할 수 있습니다.",
+      "imageFailed": "이미지를 본문에 추가하지 못했습니다."
+    },
+    "comment": {
+      "placeholder": "코멘트를 입력하세요",
+      "submit": "등록",
+      "empty": "첫 코멘트를 남겨 보세요.",
+      "edit": "코멘트 수정",
+      "createdToast": "코멘트를 등록했습니다.",
+      "updatedToast": "코멘트를 수정했습니다.",
+      "deletedToast": "코멘트를 삭제했습니다.",
+      "confirmDeleteTitle": "코멘트 삭제",
+      "confirmDeleteDescription": "이 코멘트를 삭제합니다."
+    },
+    "recent": {
+      "title": "최근 게시글",
+      "commentCount": "댓글 {{count}}",
+      "empty": {
+        "title": "아직 게시글이 없습니다.",
+        "description": "릴리스 소식과 제안·신고가 이곳에 모입니다."
+      }
+    }
   }
 }

@@ -27,6 +27,9 @@ import { AdminCodesPage } from '@/pages/admin/codes'
 import { AdminManagedPage } from '@/pages/admin/managed'
 import { AdminUserDetailPage } from '@/pages/admin/user-detail'
 import { AdminUsersPage } from '@/pages/admin/users'
+import { CommunityBoardPage } from '@/pages/community/board'
+import { CommunityPostDetailPage } from '@/pages/community/post-detail'
+import { CommunityPostFormPage } from '@/pages/community/post-form'
 
 export function AppRoutes() {
   return (
@@ -51,6 +54,17 @@ export function AppRoutes() {
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:teamId" element={<TeamDetailPage />} />
+
+          {/* 커뮤니티 — 로그인 사용자 누구나(릴리스 노트 쓰기는 관리자, 서버 판정).
+              posts/new 정적 세그먼트가 :postId보다 우선한다(react-router 라우팅 순서 규칙) */}
+          <Route path="/community">
+            <Route index element={<Navigate to="/community/release-notes" replace />} />
+            <Route path="release-notes" element={<CommunityBoardPage board="RELEASE_NOTE" />} />
+            <Route path="feedback" element={<CommunityBoardPage board="FEEDBACK" />} />
+            <Route path="posts/new" element={<CommunityPostFormPage mode="create" />} />
+            <Route path="posts/:postId" element={<CommunityPostDetailPage />} />
+            <Route path="posts/:postId/edit" element={<CommunityPostFormPage mode="edit" />} />
+          </Route>
 
           {/* 관리자 — 비관리자는 404 렌더 */}
           <Route path="/admin" element={<AdminRoute />}>
