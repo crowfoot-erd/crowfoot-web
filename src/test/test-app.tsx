@@ -67,5 +67,5 @@ export function asAuthenticated(token = 'test-access-token'): void {
 
 /** 세션 상태 원복 */
 export function resetSessionState(): void {
-  useSessionStore.setState({ status: 'bootstrapping', sessionExpiredReason: null })
+  useSessionStore.setState({ status: 'bootstrapping', sessionExpiredReason: null, loggingOut: false })
 }

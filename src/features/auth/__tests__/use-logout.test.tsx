@@ -6,6 +6,8 @@
  * then: 로컬 세션 폐기 + 문서 단위 이동으로 /(시작 페이지) — /login이 아니다.
  *       가드(unauthenticated → /login?next=)가 SPA navigate을 가로채는 경쟁이
  *       있어 실제 구현은 window.location.assign('/')를 쓴다(가드를 타지 않는다).
+ *       문서 교체 직전 마지막 리렌더에서도 가드가 /login을 그리는 섬광이 남아
+ *       beginLogout() 플래그로 가드를 억제한다 — 이 테스트가 그 계약을 lock한다.
  */
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -65,7 +67,11 @@ describe('useLogout', () => {
 
     // 로컬 세션 폐기 + 시작 페이지(랜딩 /)로 문서 이동 — /login이 아니라 가드도 타지 않는다
     expect(useSessionStore.getState().status).toBe('unauthenticated')
+    expect(useSessionStore.getState().loggingOut).toBe(true)
     expect(assign).toHaveBeenCalledWith('/')
     expect(assign).not.toHaveBeenCalledWith(expect.stringContaining('/login'))
+
+    // 섬광 방어 — 문서 교체 직전 화면에 /login이 그려지지 않는다 (가드가 null을 렌더)
+    expect(screen.queryByText('login-stub')).not.toBeInTheDocument()
   })
 })

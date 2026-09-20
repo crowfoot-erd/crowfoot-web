@@ -37,6 +37,8 @@ export function useMe() {
  * 이동은 SPA navigate가 아니라 **문서 단위 이동**을 쓴다: 세션 폐기(긴급 리렌더)가 라우트
  * 이동(transition)보다 먼저 확정되어 보호 라우트 가드(unauthenticated → /login?next=보존)가
  * 목적지를 가로채기 때문이다. startOAuthLogin과 같은 전체 이동 관례.
+ * 문서 교체 직전의 마지막 리렌더에서도 가드가 /login을 그리는 섬광이 남아, 폐기 전에
+ * beginLogout() 플래그로 가드를 억제한다 (protected-route — 로그아웃 중엔 아무것도 그리지 않음).
  */
 export function useLogout() {
   const queryClient = useQueryClient()
@@ -44,6 +46,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSettled: () => {
+      useSessionStore.getState().beginLogout()
       resetSession()
       void queryClient.clear()
       window.location.assign('/')

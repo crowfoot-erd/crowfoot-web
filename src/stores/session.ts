@@ -21,6 +21,11 @@ interface SessionState {
   status: SessionStatus
   /** 세션 만료 오버레이 사유 resultCode — null이면 미표시 */
   sessionExpiredReason: string | null
+  /**
+   * 로그아웃 진행 중 — 세션 폐기 리렌더와 문서 이동(assign) 사이에 보호 라우트 가드가
+   * /login으로 보내는 섬광(flash)을 억제한다. 문서가 교체되면 초기값으로 돌아간다.
+   */
+  loggingOut: boolean
 
   /** Access 교환·부트스트랩 성공 */
   signIn: () => void
@@ -30,16 +35,19 @@ interface SessionState {
   expireSession: (resultCode: string) => void
   /** 로그아웃·오버레이 [다시 로그인] — 로컬 상태 폐기 */
   clearSession: () => void
+  /** 로그아웃 시작 선언 — 가드 억제 플래그 (useLogout) */
+  beginLogout: () => void
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
   status: 'bootstrapping',
   sessionExpiredReason: null,
+  loggingOut: false,
 
-  signIn: () => set({ status: 'authenticated' }),
+  signIn: () => set({ status: 'authenticated', loggingOut: false }),
 
   bootstrap: async () => {
-    set({ status: 'bootstrapping' })
+    set({ status: 'bootstrapping', loggingOut: false })
 
     // Access가 메모리에 있으면 refresh 불필요 — 그대로 인증 상태
     if (getAccessToken()) {
@@ -68,6 +76,8 @@ export const useSessionStore = create<SessionState>((set) => ({
   expireSession: (resultCode) => set({ sessionExpiredReason: resultCode }),
 
   clearSession: () => set({ status: 'unauthenticated', sessionExpiredReason: null }),
+
+  beginLogout: () => set({ loggingOut: true }),
 }))
 
 /** 테스트·초기화용 — 토큰까지 완전 폐기 */

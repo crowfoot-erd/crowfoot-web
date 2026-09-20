@@ -1,6 +1,9 @@
 /**
  * 인증 가드 (storyboard 00-common §3.1 §4.2)
  * - bootstrapping → 스플래시 / error → 재시도 / unauthenticated → /login?next= 보존
+ * - 단, 로그아웃 진행 중(loggingOut)에는 아무것도 그리지 않는다 — 세션 폐기 리렌더가
+ *   문서 이동(랜딩 /)보다 먼저 확정되는 순간 가드가 /login으로 보내 섬광처럼 로그인
+ *   화면이 스치는 경쟁을 끊는다 (§4.1, useLogout).
  */
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
@@ -9,6 +12,7 @@ import { useSessionStore } from '@/stores/session'
 
 export function ProtectedRoute() {
   const status = useSessionStore((state) => state.status)
+  const loggingOut = useSessionStore((state) => state.loggingOut)
   const location = useLocation()
 
   if (status === 'bootstrapping') {
@@ -20,6 +24,9 @@ export function ProtectedRoute() {
   }
 
   if (status === 'unauthenticated') {
+    // 로그아웃 중 — 문서가 곧 교체된다. 가드의 /login 리다이렉트가 그 사이 그려지지 않게 한다
+    if (loggingOut) return null
+
     const next = location.pathname + location.search
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
