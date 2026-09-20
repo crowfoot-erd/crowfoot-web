@@ -5,7 +5,7 @@
  * 1. 쿼리 파싱 — code·state 모두 없으면 조용히 /login
  * 2. provider = sessionStorage 읽고 즉시 제거 (없으면 무효 진입 오류)
  * 3. POST 교환 1회 (재시도 없음)
- * 4. 성공 → Access 메모리 저장 → replaceState로 쿼리 제거 → next||/
+ * 4. 성공 → Access 메모리 저장 → replaceState로 쿼리 제거 → next||/dashboard (앱 홈 — 랜딩은 인증 상태에서도 머무르므로)
  * 5. 실패 → resultCode별 오류 + 다시 로그인
  */
 import { useEffect, useRef, useState } from 'react'
@@ -47,7 +47,7 @@ export function AuthCallbackPage() {
       // code·state가 주소창·히스토리에 남지 않게
       window.history.replaceState(null, '', location.pathname)
       const next = consumeOAuthNext()
-      navigate(next && next.startsWith('/') ? next : '/', { replace: true })
+      navigate(next && next.startsWith('/') ? next : '/dashboard', { replace: true })
     }
 
     // 1. 무효 진입 — 조용히 로그인으로

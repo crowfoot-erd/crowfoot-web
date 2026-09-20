@@ -5,7 +5,7 @@
  * - 클릭 → sessionStorage에 provider·next 저장 → 풀페이지 이동(302, fetch 금지)
  * - 상태: 로딩(스켈레톤 2) / 실패(문구+재시도) / 0건 안내
  * - 이용약관 동의(최초 1회 — 브라우저 기록)까지 버튼 비활성
- * - 이미 인증 상태면 next||/ 로 이동
+ * - 이미 인증 상태면 next||/dashboard 로 이동 (앱 홈 — 랜딩은 인증 상태에서도 머무르므로)
  * - 우하단 언어·테마 토글
  */
 import { useState } from 'react'
@@ -39,7 +39,9 @@ export function LoginPage() {
 
   // 이미 로그인 상태 — 로그인 화면을 다시 보지 않는다
   if (status === 'authenticated') {
-    return <Navigate to={nextParam && nextParam.startsWith('/') ? nextParam : '/'} replace />
+    return (
+      <Navigate to={nextParam && nextParam.startsWith('/') ? nextParam : '/dashboard'} replace />
+    )
   }
 
   const handleClickProvider = (code: string) => {

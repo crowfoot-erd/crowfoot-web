@@ -20,7 +20,8 @@ function renderCallback(route: string) {
   return renderWithProviders(
     <>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
-      <Route path="/" element={<div>대시보드</div>} />
+      <Route path="/" element={<div>랜딩</div>} />
+      <Route path="/dashboard" element={<div>대시보드</div>} />
       <Route path="/login" element={<div>로그인 화면</div>} />
       <Route path="/workspaces" element={<div>워크스페이스 화면</div>} />
     </>,
@@ -55,12 +56,14 @@ describe('OAuth 콜백 화면', () => {
     expect(window.sessionStorage.getItem(OAUTH_NEXT_STORAGE_KEY)).toBeNull()
   })
 
-  it('moves to / as default when next is not stored', async () => {
+  it('moves to /dashboard as default when next is not stored', async () => {
     window.sessionStorage.setItem(OAUTH_PROVIDER_STORAGE_KEY, 'github')
 
     renderCallback('/auth/callback?code=abc&state=xyz')
 
+    // 기본 행선지는 앱 홈(/dashboard) — 랜딩(/)은 인증 상태에서도 머무르는 페이지가 됐다
     expect(await screen.findByText('대시보드')).toBeVisible()
+    expect(screen.queryByText('랜딩')).not.toBeInTheDocument()
   })
 
   it('shows the failure guidance when the exchange fails', async () => {

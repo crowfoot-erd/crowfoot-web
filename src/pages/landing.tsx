@@ -1,12 +1,12 @@
 /**
  * 랜딩/소개 페이지 — 게스트의 / 첫 화면 (오픈소스 공개 대응, 2026-09-15)
  *
- * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 최근 릴리스(공개) + 공유 문서 갤러리(새 창) + CTA
- * - 인증 상태로 접속하면 /dashboard로 보낸다 (사용자의 앱 홈)
+ * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 공유 문서 갤러리(새 창) + 최근 릴리스(공개 — 문서 하단, 새 창)
+ * - 인증 상태에서도 열람 가능(리다이렉트 없음) — CTA는 로그인/앱 진입으로 전환, 헤더에 앱 셸과 같은 사용자 메뉴(정보·로그아웃)
  * - 우하단 언어·테마 토글 — 로그인 페이지와 동일 배치
  */
-import { Navigate, Link } from 'react-router-dom'
-import { Cable, Code2, Database, Layers, ShieldCheck, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, Cable, Code2, Database, Layers, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { LanguageSelect } from '@/components/language-select'
@@ -14,6 +14,7 @@ import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
 import { formatDate } from '@/lib/format'
@@ -32,15 +33,12 @@ const FEATURES = [
 export function LandingPage() {
   const { t } = useTranslation()
   const status = useSessionStore((state) => state.status)
+  // 인증 상태에서도 랜딩 열람 가능 — CTA 행선지만 전환된다
+  const authenticated = status === 'authenticated'
   const { data: gallery } = useSharedGallery()
   const galleryItems = gallery?.items ?? []
   const { data: releaseNotes } = usePublicReleaseNotes()
   const releaseNoteItems = releaseNotes?.items ?? []
-
-  // 이미 로그인한 사용자 — 소개 대신 앱 홈으로
-  if (status === 'authenticated') {
-    return <Navigate to="/dashboard" replace />
-  }
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -50,9 +48,19 @@ export function LandingPage() {
           {t('common.appName')}
           <span className="text-sm font-normal text-muted-foreground">{t('common.appTagline')}</span>
         </div>
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/login">{t('landing.cta.login')}</Link>
-        </Button>
+        {/* 인증 상태 — 앱 셸과 같은 사용자 메뉴(정보·로그아웃)를 헤더에 둔다 */}
+        {authenticated ? (
+          <div className="flex items-center gap-1">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/dashboard">{t('landing.cta.dashboard')}</Link>
+            </Button>
+            <UserMenu />
+          </div>
+        ) : (
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/login">{t('landing.cta.login')}</Link>
+          </Button>
+        )}
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-20 px-4 py-16">
@@ -83,7 +91,9 @@ export function LandingPage() {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg">
-              <Link to="/login">{t('landing.cta.start')}</Link>
+              <Link to={authenticated ? '/dashboard' : '/login'}>
+                {authenticated ? t('landing.cta.goApp') : t('landing.cta.start')}
+              </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <a href="https://github.com/crowfoot-erd" target="_blank" rel="noreferrer">
@@ -129,28 +139,6 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* 최근 릴리스 — 공개 릴리스 노트가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙) */}
-        {releaseNoteItems.length > 0 && (
-          <section aria-labelledby="landing-release-notes" className="w-full" data-testid="landing-release-notes">
-            <h2 id="landing-release-notes" className="mb-6 text-center text-2xl font-semibold">
-              {t('landing.releaseNotes.heading')}
-            </h2>
-            <div className="mx-auto flex max-w-2xl flex-col divide-y rounded-lg border">
-              {/* 공개 뷰어로 같은 탭 이동 — 뷰어의 홈 링크·브라우저 뒤로가기로 랜딩 복귀 */}
-              {releaseNoteItems.map(({ postId, title, createdAt }) => (
-                <Link
-                  key={postId}
-                  to={`/release-notes/${postId}`}
-                  className="flex items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-muted/50"
-                >
-                  <span className="font-medium">{title}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{formatDate(createdAt)}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* 공유된 문서 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김) */}
         {galleryItems.length > 0 && (
           <section aria-labelledby="landing-gallery" className="w-full">
@@ -188,6 +176,37 @@ export function LandingPage() {
                 ),
               )}
             </div>
+          </section>
+        )}
+
+        {/* 최근 릴리스 — 문서 하단(갤러리 뒤). 공개 릴리스 노트가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙) */}
+        {releaseNoteItems.length > 0 && (
+          <section aria-labelledby="landing-release-notes" className="w-full" data-testid="landing-release-notes">
+            <h2 id="landing-release-notes" className="mb-6 text-center text-2xl font-semibold">
+              {t('landing.releaseNotes.heading')}
+            </h2>
+            <ul className="mx-auto flex max-w-2xl flex-col">
+              {/* 공개 뷰어는 새 창 — 랜딩 흐름 유지(갤러리 카드와 같은 규칙). 제목 → 날짜, 왼쪽 정렬 */}
+              {releaseNoteItems.map(({ postId, title, createdAt }) => (
+                <li key={postId}>
+                  <Link
+                    to={`/release-notes/${postId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <span className="font-medium group-hover:underline">{title}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {formatDate(createdAt)}
+                    </span>
+                    <ArrowUpRight
+                      aria-hidden
+                      className="ml-auto size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
       </main>

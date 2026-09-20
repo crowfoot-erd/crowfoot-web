@@ -3,7 +3,7 @@
  *
  * given: 게스트/인증 세션 상태, 공유 갤러리·최근 릴리스 공개 API 응답(MSW)
  * when: 렌더
- * then: 특징 카드·갤러리·릴리스·CTA 링크 노출, 빈 섹션 숨김과 /dashboard 리다이렉트 규칙 검증
+ * then: 특징 카드·갤러리·릴리스·CTA 링크 노출, 빈 섹션 숨김과 인증 상태 CTA 전환 규칙 검증
  */
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -82,13 +82,15 @@ describe('랜딩 페이지', () => {
       .toBeNull()
   })
 
-  it('게스트 — 최근 릴리스를 나열하고 공개 뷰어로 연결한다 (FEEDBACK 미노출)', async () => {
+  it('게스트 — 최근 릴리스를 나열하고 공개 뷰어를 새 창으로 연다 (FEEDBACK 미노출)', async () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    // then: 릴리스 헤딩 + fixture 릴리스 노트(RELEASE_NOTE만) — 인증 없는 공개 API
+    // then: 릴리스 라벨 + fixture 릴리스 노트(RELEASE_NOTE만) — 인증 없는 공개 API
     expect(await screen.findByRole('heading', { name: '최근 릴리스' })).toBeVisible()
     const link = screen.getByRole('link', { name: /v1\.4\.0 — 커뮤니티 게시판/ })
     expect(link).toHaveAttribute('href', '/release-notes/902')
+    // 새 창 — 랜딩 흐름 유지(갤러리 카드와 같은 규칙)
+    expect(link).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link', { name: /v1\.3\.0 — 관리형 데이터베이스/ })).toHaveAttribute(
       'href',
       '/release-notes/901',
@@ -112,7 +114,7 @@ describe('랜딩 페이지', () => {
       .toBeNull()
   })
 
-  it('인증 상태 — 소개 대신 /dashboard로 보낸다', () => {
+  it('인증 상태 — 랜딩을 그대로 보여주고 CTA는 앱 진입으로 전환된다', async () => {
     asAuthenticated()
     renderWithProviders(
       <>
@@ -121,6 +123,14 @@ describe('랜딩 페이지', () => {
       </>,
     )
 
-    expect(screen.getByText('dashboard-mock')).toBeInTheDocument()
+    // then: 리다이렉트 없이 랜딩이 렌더된다 — 인증 사용자도 열람 가능
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('한 장의 ERD가')
+    // 히어로 CTA·헤더 버튼 모두 앱(대시보드)으로 — 로그인 유도는 사라진다
+    expect(screen.getByRole('link', { name: '앱으로 이동' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: '대시보드' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.queryByRole('link', { name: '무료로 시작하기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument()
+    // 앱 셸과 같은 사용자 메뉴 — 정보·로그아웃 진입이 헤더에 있다
+    expect(await screen.findByRole('button', { name: /부트스트랩 관리자/ })).toBeVisible()
   })
 })

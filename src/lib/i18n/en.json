@@ -978,7 +978,9 @@
     "cta": {
       "start": "Start for free",
       "login": "Sign in",
-      "github": "GitHub"
+      "dashboard": "Dashboard",
+      "github": "GitHub",
+      "goApp": "Go to app"
     },
     "features": {
       "heading": "Features",
