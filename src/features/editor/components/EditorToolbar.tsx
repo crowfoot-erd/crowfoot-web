@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { ChevronDown, Database, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronDown, Database, History, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -36,6 +36,7 @@ import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/fea
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
 import { SyncDialog } from './SyncDialog'
+import { VersionHistoryDialog } from './VersionHistoryDialog'
 
 export interface EditorToolbarProps {
   canEdit: boolean
@@ -128,6 +129,9 @@ export function EditorToolbar({
       {!publicView && canEdit ? (
         <ShareButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} />
       ) : null}
+      {!publicView && (
+        <VersionHistoryButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} canEdit={canEdit} />
+      )}
       <ImageButton modelName={modelName} />
       <CrownButton modelName={modelName} databaseType={databaseType} modelDescription={modelDescription} />
 
@@ -392,6 +396,48 @@ function ShareButton({
         workspaceId={workspaceId}
         modelId={modelId}
         modelName={modelName}
+      />
+    </>
+  )
+}
+
+/** 버전 기록 (08-core/02-model.md §1.11) — 저장마다 남는 스냅샷 목록·메모·조회.
+ *  열람은 읽기 전용 뷰어도 가능(메모 편집은 Editor+ — 다이얼로그 안에서 게이트) */
+function VersionHistoryButton({
+  workspaceId,
+  modelId,
+  modelName,
+  canEdit,
+}: {
+  workspaceId: string
+  modelId: string
+  modelName: string
+  canEdit: boolean
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 px-2"
+        onClick={() => setOpen(true)}
+        aria-label={t('model.editor.toolbar.history')}
+        title={t('model.editor.toolbar.history')}
+      >
+        {t('model.editor.toolbar.history')}
+        <History aria-hidden className="size-3.5" />
+      </Button>
+      <VersionHistoryDialog
+        open={open}
+        onOpenChange={setOpen}
+        workspaceId={workspaceId}
+        modelId={modelId}
+        modelName={modelName}
+        canEdit={canEdit}
       />
     </>
   )

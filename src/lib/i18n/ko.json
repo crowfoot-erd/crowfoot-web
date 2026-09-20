@@ -595,7 +595,8 @@
         "sync": "DB 동기화",
         "image": "이미지 내보내기",
         "crown": "문서 파일 내보내기",
-        "share": "공유"
+        "share": "공유",
+        "history": "버전 기록"
       },
       "ddl": {
         "title": "SQL 스크립트",
@@ -644,6 +645,48 @@
           "add": "추가",
           "update": "변경",
           "remove": "삭제"
+        }
+      },
+      "history": {
+        "title": "버전 기록",
+        "description": "‘{{model}}’ 문서의 저장 기록 — 저장마다 버전이 남습니다",
+        "empty": "저장 기록이 없습니다",
+        "loadFailed": "버전 기록을 불러오지 못했습니다",
+        "current": "현재",
+        "view": "조회",
+        "editMemo": "메모 편집",
+        "memoPlaceholder": "이 버전에 남길 메모 (비우면 삭제)",
+        "saveMemo": "메모 저장",
+        "memoSaved": "메모를 저장했습니다",
+        "restore": "이 버전으로 되돌리기",
+        "restoreConfirmTitle": "버전 복원",
+        "restoreConfirmDescription": "버전 {{version}}의 문서를 새 버전으로 저장합니다. 현재 문서는 버전 기록에 그대로 남습니다.",
+        "restored": "버전 {{version}}로 되돌렸습니다",
+        "backToDoc": "문서로 돌아가기",
+        "notFound": "버전 기록을 찾을 수 없습니다",
+        "render": {
+          "created": "문서 생성",
+          "reverseCreated": "DB 가져오기로 생성 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
+          "restoredFrom": "버전 {{version}}에서 복원",
+          "layoutOnly": "레이아웃 변경만 있음",
+          "counts": "추가 {{add}} · 변경 {{update}} · 삭제 {{remove}} · 이동 {{move}}",
+          "truncated": "일부 변경 생략"
+        },
+        "kind": {
+          "table": "테이블",
+          "column": "컬럼",
+          "primaryKey": "기본 키",
+          "uniqueKey": "유니크 키",
+          "index": "인덱스",
+          "relationship": "관계",
+          "note": "메모",
+          "node": "노드"
+        },
+        "action": {
+          "add": "추가",
+          "update": "변경",
+          "remove": "삭제",
+          "move": "이동"
         }
       },
       "contextMenu": {

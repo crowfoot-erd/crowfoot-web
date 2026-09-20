@@ -19,6 +19,7 @@ import { ShareViewerPage } from '@/pages/share-viewer'
 import { ReleaseNoteViewerPage } from '@/pages/release-note-viewer'
 import { TermsPage } from '@/pages/terms'
 import { ModelViewerPage } from '@/pages/model-viewer'
+import { ModelVersionViewerPage } from '@/pages/model-version-viewer'
 import { NotFoundPage } from '@/pages/not-found'
 import { TeamDetailPage } from '@/pages/team-detail'
 import { TeamsPage } from '@/pages/teams'
@@ -50,6 +51,11 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         {/* 문서 열기 — 새 창 전체 화면(셸 없음), ERD 탭의 이름·돋보기로 진입 */}
         <Route path="/workspaces/:workspaceId/models/:modelId" element={<ModelViewerPage />} />
+        {/* 버전 기록 뷰어 — 해당 시점 스냅샷 읽기 전용(셸 없음), 버전 기록 다이얼로그의 조회 링크 */}
+        <Route
+          path="/workspaces/:workspaceId/models/:modelId/history/:version"
+          element={<ModelVersionViewerPage />}
+        />
 
         <Route element={<AppLayout />}>
           {/* 앱 홈 — 게스트 / 는 랜딩(소개) 페이지가 담당한다 */}

@@ -4,6 +4,8 @@
  * 기본(성공) 시나리오만 정의 — 개별 테스트는 server.use()로 실패 응답을 덧씌운다.
  * 데이터는 메모리 상수(불변) — 뮤테이션 후 상태 변화를 검증하는 테스트는
  * 핸들러를 재정의해 사용한다.
+ * 예외 — 문서 저장(§1.5)·버전 기록(§1.11)은 런타임 상태를 진행시킨다(연속 저장·메모·복원
+ * 시나리오가 가능하다). setup afterEach의 resetModelContentState()가 테스트마다 되돌린다.
  */
 import { HttpResponse, http } from 'msw'
 
@@ -130,6 +132,137 @@ function buildSyncPair() {
 const SYNC_PAIR = buildSyncPair()
 
 const BASE = ''
+
+/** 저장 성공 응답의 updatedAt(§1.5·§1.11 공통) — 목업 고정 시각 */
+const SAVED_AT = '2026-09-12T06:00:00Z'
+
+/** §1.9 버전 경량 조회의 초기 updatedAt — 저장이 일어나면 SAVED_AT로 진행된다 */
+const INITIAL_SEEN_AT = '2026-09-14T05:00:00Z'
+
+/** 버전 기록 스냅샷 1행(§1.11) — 목록 응답은 content를 뗀 나머지 필드만 내린다 */
+interface VersionRow {
+  version: number
+  /** 자동 변경 요약 JSON 원문 — null은 직접 생성 v0(요약 없음) */
+  changeSummary: string | null
+  memo: string | null
+  createdBy: { userId: string; name: string } | null
+  createdAt: string
+  content: string
+}
+
+/** 버전 기록 픽스처 — 501(리버스 문서, v0~v3)·502(직접 생성, v0~v1).
+ *  changeSummary는 웹 계약(doc-diff)과 특수형(리버스 created·복원 restoredFrom)의
+ *  실제 모양새를 담는다 — memo는 요약과 달리 사용자 자유 메모. */
+function buildVersionRows(): Record<string, VersionRow[]> {
+  const admin = { userId: '2', name: '부트스트랩 관리자' }
+  const kim = { userId: '3', name: 'kim' }
+  return {
+    '501': [
+      {
+        version: 0,
+        changeSummary: '{"created":true,"tables":2,"relationships":1}',
+        memo: null,
+        createdBy: admin,
+        createdAt: '2026-09-05T10:00:00Z',
+        content: SYNC_PAIR.documentContent,
+      },
+      {
+        version: 1,
+        changeSummary: JSON.stringify({
+          items: [
+            { kind: 'column', action: 'add', table: 'users', name: 'grade', detail: 'VARCHAR(10)' },
+            { kind: 'note', action: 'add', table: '', name: '배포 전 확인', detail: '' },
+          ],
+          layoutOnly: false,
+          truncated: false,
+        }),
+        memo: '등급 컬럼 추가',
+        createdBy: admin,
+        createdAt: '2026-09-08T02:00:00Z',
+        content: SYNC_PAIR.documentContent,
+      },
+      {
+        version: 2,
+        changeSummary: JSON.stringify({
+          items: [{ kind: 'note', action: 'move', table: '', name: '배포 전 확인', detail: 'x, y' }],
+          layoutOnly: true,
+          truncated: false,
+        }),
+        memo: null,
+        createdBy: kim,
+        createdAt: '2026-09-09T05:00:00Z',
+        content: SYNC_PAIR.documentContent,
+      },
+      {
+        version: 3,
+        changeSummary: '{"restoredFrom":1}',
+        memo: null,
+        createdBy: admin,
+        createdAt: '2026-09-10T08:30:00Z',
+        content: SYNC_PAIR.documentContent,
+      },
+    ],
+    '502': [
+      {
+        version: 0,
+        changeSummary: null,
+        memo: null,
+        createdBy: kim,
+        createdAt: '2026-09-08T02:00:00Z',
+        content: EMPTY_CONTENT,
+      },
+      {
+        version: 1,
+        changeSummary: JSON.stringify({
+          items: [{ kind: 'table', action: 'add', table: 'member', name: 'member', detail: 'columns 3' }],
+          layoutOnly: false,
+          truncated: false,
+        }),
+        memo: null,
+        createdBy: kim,
+        createdAt: '2026-09-08T03:00:00Z',
+        content: EMPTY_CONTENT,
+      },
+    ],
+  }
+}
+
+/** 문서별 저장 진행 상태 — PUT 저장·복원이 version·content를 진행시킨다.
+ *  지연 초기화(픽스처 version·빈 본문)라 바꾼 테스트가 없으면 픽스처 그대로다. */
+interface ContentState {
+  version: number
+  content: string
+  updatedAt: string
+}
+
+const contentStates = new Map<string, ContentState>()
+
+function contentStateOf(model: { modelId: string; version: number }): ContentState {
+  let state = contentStates.get(model.modelId)
+  if (!state) {
+    state = { version: model.version, content: EMPTY_CONTENT, updatedAt: INITIAL_SEEN_AT }
+    contentStates.set(model.modelId, state)
+  }
+  return state
+}
+
+/** 저장(§1.5)·복원(§1.11) 성공이 버전 기록에 스냅샷을 append 한다 — 서버 트랜잭션 계약 */
+function appendSnapshot(modelId: string, version: number, changeSummary: string | null, content: string): void {
+  ;(fixtures.versions[modelId] ??= []).push({
+    version,
+    changeSummary,
+    memo: null,
+    createdBy: { userId: '2', name: '부트스트랩 관리자' },
+    createdAt: SAVED_AT,
+    content,
+  })
+}
+
+/** 저장 진행 상태·버전 기록을 픽스처 기준으로 되돌린다 — setup afterEach가 호출(테스트 격리) */
+export function resetModelContentState(): void {
+  contentStates.clear()
+  fixtures.versions = buildVersionRows()
+}
 
 export function ok(data: Partial<ApiEnvelope>): ApiEnvelope {
   return {
@@ -311,6 +444,9 @@ export const fixtures = {
   },
   /** DB 동기화(§3.7) — 문서 측 content(테스트가 스토어 수화에 쓴다) + 스키마 조회 응답(DB 측) */
   sync: SYNC_PAIR,
+  /** 버전 기록 스냅샷(§1.11) — memo PATCH·복원·저장 append가 진행시키는 가변 상태.
+   *  resetModelContentState()가 원본 모양으로 되돌린다 */
+  versions: buildVersionRows(),
   /** 매니지드 루트 인스턴스 (08-core/07) — PostgreSQL·MySQL. MySQL은 database 생략(발급 시 생성).
    *  PG(401)는 노출 주소 분리 실측용, MySQL(403)은 publicHost null 폴백 커버 */
   managedInstances: {
@@ -674,12 +810,13 @@ export const handlers = [
     return HttpResponse.json(ok({ page: 1, size: 100, totalPages: 1, totalCount: matched.length, responses: matched }))
   }),
 
-  // 모델 상세(1.3) — content 포함 전체, 없으면 404
+  // 모델 상세(1.3) — content 포함 전체, 없으면 404. 본문·버전은 저장 진행 상태를 따른다
   http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId`, ({ params }) => {
     const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
     if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const state = contentStateOf(matched)
     return HttpResponse.json(
-      ok({ response: { ...matched, content: EMPTY_CONTENT } }),
+      ok({ response: { ...matched, content: state.content, version: state.version } }),
     )
   }),
 
@@ -687,9 +824,106 @@ export const handlers = [
   http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/version`, ({ params }) => {
     const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
     if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const state = contentStateOf(matched)
     return HttpResponse.json(
-      ok({ response: { version: matched.version, updatedAt: '2026-09-14T05:00:00Z' } }),
+      ok({ response: { version: state.version, updatedAt: state.updatedAt } }),
     )
+  }),
+
+  // 버전 기록 목록(§1.11) — 최신순 페이징, 행은 content 없는 요약(memo·자동 요약 포함)
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/versions`, ({ params, request }) => {
+    const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+    if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const url = new URL(request.url)
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1)
+    const size = Math.min(100, Math.max(1, Number(url.searchParams.get('size')) || 20))
+    const rows = [...(fixtures.versions[matched.modelId] ?? [])].sort((a, b) => b.version - a.version)
+    const slice = rows.slice((page - 1) * size, page * size)
+    return HttpResponse.json(
+      ok({
+        page,
+        size,
+        totalPages: Math.max(1, Math.ceil(rows.length / size)),
+        totalCount: rows.length,
+        responses: slice.map((row) => ({
+          version: row.version,
+          changeSummary: row.changeSummary,
+          memo: row.memo,
+          createdBy: row.createdBy,
+          createdAt: row.createdAt,
+        })),
+      }),
+    )
+  }),
+
+  // 버전 상세(§1.11) — 해당 시점 content 전문, 없는 버전은 404
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/versions/:version`, ({ params }) => {
+    const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+    if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const version = Number(params.version)
+    const row = (fixtures.versions[matched.modelId] ?? []).find((entry) => entry.version === version)
+    if (!row) return fail('MODEL_VERSION_NOT_FOUND', 404)
+    return HttpResponse.json(
+      ok({
+        response: {
+          version: row.version,
+          content: row.content,
+          changeSummary: row.changeSummary,
+          memo: row.memo,
+          createdBy: row.createdBy,
+          createdAt: row.createdAt,
+        },
+      }),
+    )
+  }),
+
+  // 버전 메모 편집(§1.11) — memo null은 삭제, 생략은 변경 없음, 빈 문자열·501자 이상은 400
+  http.patch(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/versions/:version/memo`, async ({ params, request }) => {
+    const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+    if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const version = Number(params.version)
+    const row = (fixtures.versions[matched.modelId] ?? []).find((entry) => entry.version === version)
+    if (!row) return fail('MODEL_VERSION_NOT_FOUND', 404)
+    const body = (await request.json().catch(() => ({}))) as { memo?: string | null }
+    if ('memo' in body) {
+      if (body.memo === null) {
+        row.memo = null // 명시적 null — 삭제
+      } else {
+        if (typeof body.memo !== 'string' || body.memo.trim().length === 0 || body.memo.length > 500) {
+          return fail('INVALID_REQUEST', 400)
+        }
+        row.memo = body.memo
+      }
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          version: row.version,
+          changeSummary: row.changeSummary,
+          memo: row.memo,
+          createdBy: row.createdBy,
+          createdAt: row.createdAt,
+        },
+      }),
+    )
+  }),
+
+  // 버전 복원(§1.11) — 과거 content를 새 버전으로 저장(과거는 불변), restoredFrom 스냅샷 기록
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/versions/:version/restore`, async ({ params, request }) => {
+    const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+    if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const version = Number(params.version)
+    const row = (fixtures.versions[matched.modelId] ?? []).find((entry) => entry.version === version)
+    if (!row) return fail('MODEL_VERSION_NOT_FOUND', 404)
+    const body = (await request.json().catch(() => ({}))) as { baseVersion?: unknown }
+    if (typeof body.baseVersion !== 'number' || body.baseVersion < 0) return fail('INVALID_REQUEST', 400)
+    const state = contentStateOf(matched)
+    if (body.baseVersion !== state.version) return fail('VERSION_CONFLICT', 409)
+    state.version += 1
+    state.content = row.content
+    state.updatedAt = SAVED_AT
+    appendSnapshot(matched.modelId, state.version, `{"restoredFrom":${row.version}}`, row.content)
+    return HttpResponse.json(ok({ response: { version: state.version, updatedAt: SAVED_AT } }))
   }),
 
   // 공유 링크 목록(§1.10) — 최근 발급순
@@ -772,18 +1006,26 @@ export const handlers = [
     )
   }),
 
-  // 문서 본체 저장(1.5) — baseVersion 불일치 409. 픽스처는 불변, 버전은 계산해 반환
+  // 문서 본체 저장(1.5) — baseVersion 불일치 409. 성공하면 version을 진행하고
+  // 버전 기록에 스냅샷을 append 한다(§1.11 계약 — 연속 저장 시나리오가 가능)
   http.put(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/content`, async ({ params, request }) => {
     const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
     if (!matched) return fail('MODEL_NOT_FOUND', 404)
-    const body = (await request.json()) as { baseVersion?: unknown; content?: unknown }
+    const body = (await request.json()) as { baseVersion?: unknown; content?: unknown; changeSummary?: unknown }
     if (typeof body.baseVersion !== 'number' || typeof body.content !== 'string' || body.content.length === 0) {
       return fail('INVALID_REQUEST', 400)
     }
-    if (body.baseVersion !== matched.version) return fail('VERSION_CONFLICT', 409)
-    return HttpResponse.json(
-      ok({ response: { version: matched.version + 1, updatedAt: '2026-09-12T06:00:00Z' } }),
-    )
+    // changeSummary 가드(§1.5) — 문자열이 아니거나 64KB 초과면 400
+    if (body.changeSummary != null && (typeof body.changeSummary !== 'string' || body.changeSummary.length > 64 * 1024)) {
+      return fail('INVALID_REQUEST', 400)
+    }
+    const state = contentStateOf(matched)
+    if (body.baseVersion !== state.version) return fail('VERSION_CONFLICT', 409)
+    state.version += 1
+    state.content = body.content
+    state.updatedAt = SAVED_AT
+    appendSnapshot(matched.modelId, state.version, (body.changeSummary as string | undefined) ?? null, body.content)
+    return HttpResponse.json(ok({ response: { version: state.version, updatedAt: SAVED_AT } }))
   }),
 
   // DDL 스크립트 생성(1.7) — 경고 분기가 필요한 테스트는 server.use()로 덧씌운다

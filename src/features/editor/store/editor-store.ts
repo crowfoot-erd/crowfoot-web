@@ -2,8 +2,12 @@
  * 에디터 문서 스토어 (zustand plain create — 관례)
  *
  * 모든 변경은 ErdChange → applyChange를 통과하고(§15 Command 경로), undo/redo 실행은
- * 문서 스냅샷 복원(하이브리드). 스냅샷은 구조 공유라 복사 비용이 O(변경분)이다.
+ * 문서 스냅샷 복원(하이브리드). 스냅샷은 구조 공유라 복사 비용은 O(변경분)이다.
  * dirty 판정: past.length !== savedDepth — 저장 지점 기준이므로 undo로 되돌아가도 정확하다.
+ *
+ * savedDocument는 마지막으로 저장된 문서(버전 기록 요약의 diff 기준점 — §13). 저장 성공 시점의
+ * present가 아니라 PUT한 본문을 포착한다: 요청 비행 중 편집이 들어와도 다음 요약이 그 편집을
+ * 놓치지 않게(그 편집은 다음 저장의 요약에 남는다).
  */
 import { create } from 'zustand'
 
@@ -21,6 +25,10 @@ export interface EditorHydrateInput {
   modelId: string
   baseVersion: number
   document: EditorDocument
+  /** 마지막 저장본(요약 diff 기준점). 생략하면 document이 곧 저장본(일반 로드).
+   *  임시 저장 복원 때만 다르다: document=임시본, savedDocument=서버 본문 — 플러시 저장의
+   *  요약이 임시본의 변경분만 말하도록. */
+  savedDocument?: EditorDocument
 }
 
 interface EditorState {
@@ -31,6 +39,8 @@ interface EditorState {
   future: EditorDocument[]
   /** 저장 시점의 past 길이 — dirty = past.length !== savedDepth */
   savedDepth: number
+  /** 마지막 저장본 — present와의 diff가 버전 기록 요약(§13)이 된다 */
+  savedDocument: EditorDocument | null
 
   /** 문서 로드. 같은 문서를 dirty 상태에서 다시 수화하려 하면 거부(false)해 로컬 변경을 지킨다. force는 충돌 재로드처럼 폐기가 확정된 경우 */
   hydrate: (input: EditorHydrateInput, opts?: { force?: boolean }) => boolean
@@ -40,8 +50,8 @@ interface EditorState {
   commitAll: (changes: ErdChange[]) => void
   undo: () => void
   redo: () => void
-  /** 저장 완료 — 버전 갱신·dirty 해제 */
-  markSaved: (version: number) => void
+  /** 저장 완료 — 버전 갱신·dirty 해제. saved는 실제 PUT한 문서(생략하면 현재 present) */
+  markSaved: (version: number, saved?: EditorDocument) => void
   /** 뷰포인트 저장(저장 시점 화면 복원용) — undo 대상 아님 */
   setViewport: (viewport: ErdViewport) => void
 }
@@ -53,6 +63,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   past: [],
   future: [],
   savedDepth: 0,
+  savedDocument: null,
 
   hydrate: (input, opts) => {
     const state = get()
@@ -66,6 +77,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       past: [],
       future: [],
       savedDepth: 0,
+      savedDocument: input.savedDocument ?? input.document,
     })
     return true
   },
@@ -109,8 +121,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })
   },
 
-  markSaved: (version) => {
-    set({ baseVersion: version, savedDepth: get().past.length })
+  markSaved: (version, saved) => {
+    set({ baseVersion: version, savedDepth: get().past.length, savedDocument: saved ?? get().present })
   },
 
   setViewport: (viewport) => {
@@ -133,5 +145,6 @@ export function resetEditorStore(): void {
     past: [],
     future: [],
     savedDepth: 0,
+    savedDocument: null,
   })
 }

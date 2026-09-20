@@ -2,8 +2,20 @@
  * ERD 문서 API (08-core/02-model.md) — 목록·상세·생성·데이터베이스 종류 코드.
  * content 저장은 에디터 단계(2.x)에서 추가한다.
  */
-import { apiDelete, apiGet, apiGetList, apiPatch, apiPost } from '@/api/client'
-import type { DatabaseType, ListResult, Model, ModelSummary, ModelShare, PublicShare, SharedGalleryItem } from '@/api/types'
+import { apiDelete, apiGet, apiGetList, apiGetPage, apiPatch, apiPost } from '@/api/client'
+import type {
+  DatabaseType,
+  ListResult,
+  Model,
+  ModelSummary,
+  ModelShare,
+  ModelVersionDetail,
+  ModelVersionEntry,
+  OffsetPagingParams,
+  PageResult,
+  PublicShare,
+  SharedGalleryItem,
+} from '@/api/types'
 
 export type FetchModelsParams = {
   keyword?: string
@@ -24,6 +36,11 @@ export function fetchModel(workspaceId: string, modelId: string, signal?: AbortS
 /** 문서 열기 — 새 창 전체 화면 라우트 (window.open 대상) */
 export function modelEditorPath(workspaceId: string, modelId: string): string {
   return `/workspaces/${workspaceId}/models/${modelId}`
+}
+
+/** 버전 뷰어 — 해당 시점 문서를 읽기 전용으로 여는 라우트 (버전 기록 다이얼로그 조회 링크) */
+export function modelVersionPath(workspaceId: string, modelId: string, version: number): string {
+  return `/workspaces/${workspaceId}/models/${modelId}/history/${version}`
 }
 
 export interface CreateModelInput {
@@ -86,4 +103,61 @@ export function fetchSharedDocument(token: string, signal?: AbortSignal) {
 /** 공유 갤러리 목록 — 인증 없이(게이트웨이 화이트리스트), 랜딩 페이지가 현재 공유 중인 문서를 나열 */
 export function fetchSharedGallery(signal?: AbortSignal) {
   return apiGetList<SharedGalleryItem>('/api/v1/core/shares', undefined, signal)
+}
+
+/* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */
+
+/** 버전 기록 목록 — 최신순 페이징, 행은 content 없는 요약(메모·자동 요약 포함) */
+export function fetchModelVersions(
+  workspaceId: string,
+  modelId: string,
+  params: OffsetPagingParams = {},
+  signal?: AbortSignal,
+): Promise<PageResult<ModelVersionEntry>> {
+  return apiGetPage<ModelVersionEntry>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions`,
+    { page: params.page, size: params.size },
+    signal,
+  )
+}
+
+/** 버전 상세 — 해당 시점 문서 전문(content). 버전 뷰어가 연다 */
+export function fetchModelVersionDetail(
+  workspaceId: string,
+  modelId: string,
+  version: number,
+  signal?: AbortSignal,
+): Promise<ModelVersionDetail | undefined> {
+  return apiGet<ModelVersionDetail>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions/${version}`,
+    undefined,
+    signal,
+  )
+}
+
+/** 버전 메모 편집 — memo null은 삭제, 생략은 변경 없음(빈 문자열·501자 이상은 400). 갱신된 목록 행 응답 */
+export function patchModelVersionMemo(
+  workspaceId: string,
+  modelId: string,
+  version: number,
+  body: { memo?: string | null },
+) {
+  return apiPatch<ModelVersionEntry>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions/${version}/memo`,
+    body,
+  )
+}
+
+/** 버전 복원 — 과거 content를 새 버전으로 저장한다(과거 버전은 불변).
+ *  응답은 저장과 같은 계약(새 version·updatedAt — SaveContentResponse). */
+export function restoreModelVersion(
+  workspaceId: string,
+  modelId: string,
+  version: number,
+  body: { baseVersion: number },
+): Promise<{ version: number; updatedAt: string } | undefined> {
+  return apiPost<{ version: number; updatedAt: string }>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions/${version}/restore`,
+    body,
+  )
 }

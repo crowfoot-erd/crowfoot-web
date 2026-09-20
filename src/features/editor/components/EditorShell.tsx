@@ -4,6 +4,7 @@
  * - 수화: 상세 content를 parseContent로 스토어에 적재. 같은 문서·같은 버전이면 유지
  *   (저장 직후 invalidate 재조회가 undo 스택을 날리지 않게).
  * - 저장: Ctrl/Cmd+S·툴바 → 뷰포인트 저장 → 직렬화 → PUT content(낙관적 잠금).
+ *   본문과 함께 변경 요약(savedDocument↔present diff — §13)을 동봉해 버전 기록을 남긴다.
  *   409 VERSION_CONFLICT는 충돌 다이얼로그(다시 불러오기 = 강제 수화).
  * - 임시 저장: 저장 시도마다 localStorage에 본문을 먼저 남기고 성공하면 폐기한다.
  *   다시 열 때 baseVersion이 서버와 같은 임시본이면 복원해 즉시 저장하고, pagehide에서는
@@ -38,6 +39,7 @@ import {
 } from '@/components/ui/dialog'
 import { parseContent, serializeContent } from '@/features/editor/model/content-io'
 import { templateIdForDatabase } from '@/features/editor/model/dbms'
+import { diffDocuments } from '@/features/editor/model/doc-diff'
 import { clearDraft, loadDraft, saveDraft } from '@/features/editor/model/draft-storage'
 import { saveModelContentOnUnload } from '@/features/editor/api'
 import { useModelCollab } from '@/features/editor/collab'
@@ -111,9 +113,12 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         return null
       }
     }
+    // 서버 본문은 요약 diff의 기준점(savedDocument)으로도 쓴다 — 임시본을 화면에 띄우는
+    // 복원 경로에서도 마지막 저장본은 서버 것이므로. 파싱 실패는 로드 실패와 같게 취급한다
+    const serverParsed = tryParse(model.content)
     const draftParsed = restore ? tryParse(restore.content) : null
     if (restore && !draftParsed) clearDraft(model.workspaceId, model.modelId) // 깨진 임시본 — 폐기
-    const parsed = draftParsed ?? tryParse(model.content)
+    const parsed = draftParsed ?? serverParsed
     if (!parsed) {
       setParseError(true)
       return
@@ -127,6 +132,9 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         modelId: model.modelId,
         baseVersion: model.version,
         document: { model: parsed.model, diagram: parsed.diagram },
+        savedDocument: serverParsed
+          ? { model: serverParsed.model, diagram: serverParsed.diagram }
+          : undefined,
       })
   }, [model.modelId, model.version, model.content, model.workspaceId, canEdit])
 
@@ -148,6 +156,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     userName: me.data?.name,
     avatarUrl: me.data?.avatarUrl,
     githubLogin: me.data?.githubLogin,
+    // 공개 뷰어는 읽기 전용 게스트 화면 — 룸에 접속자로 뜨지 않게 채널 자체를 끈다
+    enabled: !publicView,
     onRemoteSaved: (event) => {
       // 푸시를 폴링 캐시에 주입 — 아래 감지 effect가 자동 동기화·배너로 이어받는다(5초 기다림 없음)
       queryClient.setQueryData(modelKeys.version(model.workspaceId, model.modelId), {
@@ -189,18 +199,26 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   /* ---------- 저장 ---------- */
 
   /** 저장 실행부 — dirty 검사 없이 주어진 본문을 PUT한다. 수동·자동 저장과 임시 저장 복원
-   *  플러시가 같은 파이프라인(낙관적 잠금·409 처리·성공 후 임시본 폐기)을 공유한다. */
+   *  플러시가 같은 파이프라인(낙관적 잠금·409 처리·성공 후 임시본 폐기)을 공유한다.
+   *  버전 기록 요약(§13)도 여기서 낀다 — 마지막 저장본(savedDocument)과 현재 문서의 diff를
+   *  JSON으로 동봉하고, 성공 시 PUT한 본문 시점의 문서를 다음 diff 기준점으로 포착한다
+   *  (요청 비행 중 들어온 편집은 다음 저장 요약으로 넘어간다). */
   const putContent = useCallback(
     (content: string, baseVersion: number, options?: { silent?: boolean }) => {
+      const state = useEditorStore.getState()
+      const savingDocument = state.present
+      const changeSummary = state.savedDocument
+        ? JSON.stringify(diffDocuments(state.savedDocument, state.present))
+        : undefined
       // 서버에 못 미치는 순간(배포 중단·네트워크 오류)에 대비해 임시 저장을 먼저 남긴다 —
       // 저장이 성공하면 폐기되고, 실패하면 다음 열기에서 복원된다
       saveDraft(model.workspaceId, model.modelId, { baseVersion, content, savedAt: Date.now() })
       saveMutation.mutate(
-        { modelId: model.modelId, body: { baseVersion, content } },
+        { modelId: model.modelId, body: { baseVersion, content, changeSummary } },
         {
           onSuccess: (result) => {
             if (result) {
-              useEditorStore.getState().markSaved(result.version)
+              useEditorStore.getState().markSaved(result.version, savingDocument)
               clearDraft(model.workspaceId, model.modelId) // 서버가 원천 — 임시본 폐기
               onSaved?.(result.version)
               publishSaved(result.version) // 협업 룸에 저장 알림(채널 없으면 조용히)
@@ -315,14 +333,18 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       const state = useEditorStore.getState()
       if (!canEdit || state.past.length === state.savedDepth) return
       state.setViewport(rf.getViewport())
-      const { present, baseVersion } = useEditorStore.getState()
+      const { present, baseVersion, savedDocument } = useEditorStore.getState()
       const content = serializeContent({
         schemaVersion: 1,
         model: present.model,
         diagram: present.diagram,
       })
+      // 최선 저장에도 요약을 동봉한다 — 이 저장이 살면 그대로 버전 기록이 된다
+      const changeSummary = savedDocument
+        ? JSON.stringify(diffDocuments(savedDocument, present))
+        : undefined
       saveDraft(model.workspaceId, model.modelId, { baseVersion, content, savedAt: Date.now() })
-      saveModelContentOnUnload(model.workspaceId, model.modelId, { baseVersion, content })
+      saveModelContentOnUnload(model.workspaceId, model.modelId, { baseVersion, content, changeSummary })
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     window.addEventListener('pagehide', onPageHide)

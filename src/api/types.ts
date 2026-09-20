@@ -253,6 +253,45 @@ export interface SharedGalleryItem {
   sharedAt: string
 }
 
+/* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */
+
+/** 변경 요약 items형 — 웹 doc-diff 계약의 구조 diff (kind·action은 렌더 i18n 키로 쓰인다) */
+export interface ChangeSummaryItems {
+  items: { kind: string; action: string; table: string; name: string; detail: string }[]
+  /** model 변경 없이 diagram(노트·레이아웃·뷰포트)만 바뀐 저장 */
+  layoutOnly: boolean
+  truncated: boolean
+}
+
+/** 변경 요약 특수형 — 리버스 엔지니어링 생성 직후 (서버가 기록) */
+export interface ChangeSummaryCreated {
+  created: true
+  tables: number
+  relationships: number
+}
+
+/** 변경 요약 특수형 — 과거 버전 복원 (서버가 기록) */
+export interface ChangeSummaryRestored {
+  restoredFrom: number
+}
+
+export type ChangeSummary = ChangeSummaryItems | ChangeSummaryCreated | ChangeSummaryRestored
+
+/** 버전 기록 목록 행 — content 제외. memo는 사용자 자유 메모, null이면 자동 요약을 렌더한다 */
+export interface ModelVersionEntry {
+  version: number
+  /** 자동 변경 요약 JSON 원문 — null은 요약 없는 저장(직접 생성 v0) */
+  changeSummary: string | null
+  memo: string | null
+  createdBy: { userId: string; name: string } | null
+  createdAt: string
+}
+
+/** 버전 기록 상세 — 해당 시점 문서 전문 포함 (버전 뷰어가 연다) */
+export interface ModelVersionDetail extends ModelVersionEntry {
+  content: string
+}
+
 /* ---------- DB 커넥션 (08-core/06-connection.md) ---------- */
 
 /** 커넥션 — 비밀번호는 응답에 내려오지 않는다 */

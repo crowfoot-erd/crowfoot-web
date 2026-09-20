@@ -5,6 +5,7 @@ import { toHaveNoViolations } from 'jest-axe'
 import { afterEach, beforeAll, afterAll, expect } from 'vitest'
 
 import { server } from '@/api/mocks/server'
+import { resetModelContentState } from '@/api/mocks/handlers'
 import i18n from '@/lib/i18n'
 
 expect.extend(toHaveNoViolations)
@@ -71,6 +72,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   cleanup()
   server.resetHandlers()
+  // 문서 저장·버전 기록 목업 상태(진행된 version·append된 스냅샷)를 되돌린다
+  resetModelContentState()
   // 테스트 문구 기대값은 ko 기준 — 개별 테스트가 바꾼 언어를 되돌린다
   void i18n.changeLanguage('ko')
 })

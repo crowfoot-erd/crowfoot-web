@@ -595,7 +595,8 @@
         "sync": "Sync DB",
         "image": "Export image",
         "crown": "Export document file",
-        "share": "Share"
+        "share": "Share",
+        "history": "Version history"
       },
       "ddl": {
         "title": "SQL script",
@@ -644,6 +645,48 @@
           "add": "added",
           "update": "changed",
           "remove": "removed"
+        }
+      },
+      "history": {
+        "title": "Version history",
+        "description": "Save history of ‘{{model}}’ — every save creates a version",
+        "empty": "No saved versions yet",
+        "loadFailed": "Failed to load version history",
+        "current": "Current",
+        "view": "View",
+        "editMemo": "Edit note",
+        "memoPlaceholder": "Note for this version (leave empty to delete)",
+        "saveMemo": "Save note",
+        "memoSaved": "Note saved",
+        "restore": "Restore this version",
+        "restoreConfirmTitle": "Restore version",
+        "restoreConfirmDescription": "Saves the document of version {{version}} as a new version. The current document stays in the version history.",
+        "restored": "Restored to version {{version}}",
+        "backToDoc": "Back to document",
+        "notFound": "Version not found",
+        "render": {
+          "created": "Document created",
+          "reverseCreated": "Created by database import — {{tables}} tables · {{relationships}} relationships",
+          "restoredFrom": "Restored from version {{version}}",
+          "layoutOnly": "Layout-only changes",
+          "counts": "{{add}} added · {{update}} changed · {{remove}} removed · {{move}} moved",
+          "truncated": "Some changes omitted"
+        },
+        "kind": {
+          "table": "Table",
+          "column": "Column",
+          "primaryKey": "Primary key",
+          "uniqueKey": "Unique key",
+          "index": "Index",
+          "relationship": "Relationship",
+          "note": "Note",
+          "node": "Node"
+        },
+        "action": {
+          "add": "added",
+          "update": "changed",
+          "remove": "removed",
+          "move": "moved"
         }
       },
       "contextMenu": {

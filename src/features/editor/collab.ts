@@ -93,6 +93,8 @@ export interface UseModelCollabOptions {
   onRemoteSaved?: (event: RemoteSavedPayload) => void
   /** 남의 채팅 수신(자기 에코 제외) — 닫힌 채팅 패널의 토스트·배지 알림용 */
   onIncomingChat?: (message: ChatMessage) => void
+  /** false면 채널을 아예 열지 않는다 — 공개 뷰어·버전 뷰어처럼 읽기 전용 화면의 고스트 룸 방지 */
+  enabled?: boolean
 }
 
 export interface ModelCollabHandle {
@@ -131,7 +133,7 @@ function toChatMessage(event: ChatEvent): ChatMessage {
 }
 
 export function useModelCollab(options: UseModelCollabOptions): ModelCollabHandle {
-  const { modelId, userId, userName, avatarUrl, githubLogin, onRemoteSaved, onIncomingChat } = options
+  const { modelId, userId, userName, avatarUrl, githubLogin, onRemoteSaved, onIncomingChat, enabled } = options
 
   // 최신 콜백 유지 — 구독은 연결 수립 시 1회만 맺는다
   const onRemoteSavedRef = useRef(onRemoteSaved)
@@ -145,8 +147,8 @@ export function useModelCollab(options: UseModelCollabOptions): ModelCollabHandl
   const clientRef = useRef<Client | null>(null)
 
   useEffect(() => {
-    // 신원 없으면(미인증) 채널 없음 — 폴링만으로 동작한다
-    if (!userId || !modelId) return
+    // 신원 없으면(미인증) 채널 없음 — 폴링만으로 동작한다. 읽기 전용 화면(publicView)도 마찬가지
+    if (enabled === false || !userId || !modelId) return
 
     const connectHeaders: Record<string, string> = { 'X-USER-ID': userId, 'X-USER-NAME': userName ?? '' }
     if (avatarUrl) connectHeaders['X-USER-AVATAR'] = avatarUrl
@@ -197,7 +199,7 @@ export function useModelCollab(options: UseModelCollabOptions): ModelCollabHandl
       setConnected(false)
       void client.deactivate()
     }
-  }, [userId, userName, avatarUrl, githubLogin, modelId])
+  }, [enabled, userId, userName, avatarUrl, githubLogin, modelId])
 
   // 룸 키는 modelId(문서 정체성) — workspaceId 는 채널 주소에 쓰지 않는다
   const publishSaved = useMemo(

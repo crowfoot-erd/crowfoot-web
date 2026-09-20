@@ -110,3 +110,40 @@ describe('editor-store — 수화 가드', () => {
     expect(useEditorStore.getState().modelId).toBe('502')
   })
 })
+
+describe('editor-store — savedDocument(버전 기록 요약 기준점)', () => {
+  it('수화 시 savedDocument는 document 자체(일반 로드 — 서버 본문이 마지막 저장본)', () => {
+    expect(useEditorStore.getState().savedDocument).toEqual(useEditorStore.getState().present)
+  })
+
+  it('임시 저장 복원 수화 — document(임시본)와 savedDocument(서버 본문)를 따로 가진다', () => {
+    const server = document()
+    const draft = document()
+    useEditorStore.getState().hydrate({
+      modelId: '501',
+      baseVersion: 3,
+      document: draft,
+      savedDocument: server,
+    })
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+
+    const s = useEditorStore.getState()
+    expect(s.present.model.tables).toHaveLength(1)
+    expect(s.savedDocument?.model.tables).toHaveLength(0) // 기준점은 서버 본문 그대로
+  })
+
+  it('markSaved는 present를 기준점으로 포착한다 — 이후 요약 diff의 from', () => {
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+    useEditorStore.getState().markSaved(4)
+
+    expect(useEditorStore.getState().savedDocument?.model.tables).toHaveLength(1)
+  })
+
+  it('markSaved는 PUT한 본문을 명시적으로 포착한다 — 비행 중 편집은 기준점에 못 들어간다', () => {
+    const putDocument = document() // PUT 시점 스냅샷(빈 문서)
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } }) // 비행 중 편집
+    useEditorStore.getState().markSaved(4, putDocument)
+
+    expect(useEditorStore.getState().savedDocument).toBe(putDocument)
+  })
+})

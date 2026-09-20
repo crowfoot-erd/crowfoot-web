@@ -6,6 +6,9 @@ import { API_BASE_URL, apiGet, apiPost, apiPut, getAccessToken } from '@/api/cli
 export interface SaveModelContentInput {
   baseVersion: number
   content: string
+  /** 변경 요약 JSON(버전 기록 자동 메모 — §1.11). 에디터가 저장 직전 diff로 만들고
+   *  서버는 해석 없이 스냅샷에 보관한다. 없는 저장(레거시·드래프트 플러시 외 경로)은 생략 */
+  changeSummary?: string
 }
 
 export interface SaveModelContentResult {

@@ -16,6 +16,7 @@ import { fail, fixtures, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
 import { EditorShell } from '@/features/editor'
 import { createColumn, createTable, type ErdChange } from '@/features/editor/model/changes'
+import type { DocumentDiffSummary } from '@/features/editor/model/doc-diff'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
@@ -686,6 +687,31 @@ describe('EditorShell — 저장', () => {
     expect(state.present.model.tables).toHaveLength(1) // 문서 유지
   })
 
+  it('저장 본문에 변경 요약(changeSummary)이 동봉된다 — savedDocument 대비 table add 1건', async () => {
+    const bodies: Array<{ baseVersion: number; content: string; changeSummary?: string }> = []
+    server.use(
+      http.put('/api/v1/core/workspaces/101/models/501/content', async ({ request }) => {
+        bodies.push((await request.json()) as { baseVersion: number; content: string; changeSummary?: string })
+        return HttpResponse.json(ok({ response: { version: 4, updatedAt: '2026-09-18T00:00:00Z' } }))
+      }),
+    )
+    await renderEditor()
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+
+    const save = screen.getByRole('button', { name: '저장' })
+    await waitFor(() => expect(save).toBeEnabled())
+    fireEvent.click(save)
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    // 요약 — 마지막 저장본(빈 문서) → 현재(orders)의 구조 diff. 노드 항목은 없다(양쪽에 있는 노드만)
+    const summary = JSON.parse(bodies[0].changeSummary ?? 'null') as DocumentDiffSummary
+    expect(summary.items).toEqual([
+      { kind: 'table', action: 'add', table: 'orders', name: 'orders', detail: 'columns 0' },
+    ])
+    expect(summary.layoutOnly).toBe(false)
+    expect(summary.truncated).toBe(false)
+  })
+
   it('409 VERSION_CONFLICT → 충돌 다이얼로그 → 다시 불러오기(강제 수화)', async () => {
     server.use(
       http.put('/api/v1/core/workspaces/101/models/501/content', () => fail('VERSION_CONFLICT', 409)),
@@ -985,10 +1011,10 @@ describe('EditorShell — 임시 저장(배포·이탈 편집 복원)', () => {
 
   /** 서버 PUT을 잡아 본문을 기록하는 핸들러 — 버전 3 → 4 성공 */
   function capturePuts() {
-    const puts: Array<{ baseVersion: number; content: string }> = []
+    const puts: Array<{ baseVersion: number; content: string; changeSummary?: string }> = []
     server.use(
       http.put('/api/v1/core/workspaces/101/models/501/content', async ({ request }) => {
-        puts.push((await request.json()) as { baseVersion: number; content: string })
+        puts.push((await request.json()) as { baseVersion: number; content: string; changeSummary?: string })
         return HttpResponse.json(ok({ response: { version: 4, updatedAt: '2026-09-18T00:00:00Z' } }))
       }),
     )
@@ -1014,6 +1040,11 @@ describe('EditorShell — 임시 저장(배포·이탈 편집 복원)', () => {
     await waitFor(() => expect(puts).toHaveLength(1))
     expect(puts[0]).toMatchObject({ baseVersion: 3 })
     expect(puts[0].content).toContain('remote_orders')
+    // 플러시 저장의 요약 — 임시본(remote_orders) 대 서버 본문(빈 문서)의 diff만 말한다
+    const summary = JSON.parse(puts[0].changeSummary ?? 'null') as DocumentDiffSummary
+    expect(summary.items).toEqual([
+      { kind: 'table', action: 'add', table: 'remote_orders', name: 'remote_orders', detail: 'columns 1' },
+    ])
     await waitFor(() => expect(useEditorStore.getState().baseVersion).toBe(4))
     expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull() // 서버가 원천 — 폐기
   })
@@ -1046,6 +1077,11 @@ describe('EditorShell — 임시 저장(배포·이탈 편집 복원)', () => {
     expect(draft).toMatchObject({ baseVersion: 3 })
     expect(draft?.content).toContain('orders')
     await waitFor(() => expect(puts).toHaveLength(1)) // saveModelContentOnUnload — keepalive PUT
+    // 이탈 저장에도 요약이 동봉된다 — 마지막 저장본(빈 문서) 대비 diff
+    const summary = JSON.parse(puts[0].changeSummary ?? 'null') as DocumentDiffSummary
+    expect(summary.items).toEqual([
+      { kind: 'table', action: 'add', table: 'orders', name: 'orders', detail: 'columns 0' },
+    ])
   })
 
   it('깨끗한 상태의 pagehide는 아무것도 남기지 않는다', async () => {
