@@ -26,6 +26,7 @@ function toViewerModel(token: string, share: PublicShare): Model {
     name: share.modelName,
     description: share.description,
     databaseType: share.databaseType,
+    sourceConnectionId: null, // 공개 뷰어 — 동기화 없음(편집 불가 문서)
     version: share.version,
     createdBy: null,
     createdAt: now,

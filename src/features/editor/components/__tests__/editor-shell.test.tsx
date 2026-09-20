@@ -1134,6 +1134,27 @@ describe('EditorShell — 문서 대상 DBMS 고정', () => {
   })
 })
 
+describe('EditorShell — DB 동기화 버튼 노출 조건', () => {
+  // 원천 연결 있는(리버스 생성) 문서·편집 권한·원천 커넥션 생존 — 세 조건이 모두 있을 때만
+  it('원천 커넥션이 살아 있으면 노출한다 (기본 픽스처 501 — sourceConnectionId 301)', async () => {
+    await renderEditor()
+    // 커넥션 목록(301 존재) 로드 후 버튼이 나타난다
+    expect(await screen.findByRole('button', { name: 'DB 동기화' })).toBeVisible()
+  })
+
+  it('읽기 전용(편집 권한 없음)에서는 노출하지 않는다', async () => {
+    await renderEditor(false)
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+    expect(screen.queryByRole('button', { name: 'DB 동기화' })).toBeNull()
+  })
+
+  it('원천 연결이 없는(직접 생성) 문서에는 노출하지 않는다', async () => {
+    renderWithProviders(<EditorShell model={modelFixture({ sourceConnectionId: null })} canEdit />, { wrapRoutes: false })
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+    expect(screen.queryByRole('button', { name: 'DB 동기화' })).toBeNull()
+  })
+})
+
 describe('EditorShell — 관계 생성 UX (밴드 팝업 → 대상 클릭)', () => {
   /** 부모(users, PK 있음)·자식(orders) 2테이블 문서 — 노드 렌더까지 기다린다 */
   async function setupTwoTables(withParentPk = true) {

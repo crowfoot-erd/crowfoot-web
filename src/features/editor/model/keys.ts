@@ -25,12 +25,12 @@ export function documentKeyNames(model: ErdModelData): Set<string> {
   return names
 }
 
-/** 충돌 회피 접미 — base가 있으면 `_1`, `_2`… */
-function nextName(existing: ReadonlySet<string>, base: string): string {
-  if (!existing.has(base)) return base
+/** 충돌 회피 접미 — base가 있으면 `_1`, `_2`… (대소문자 무시 비교 — 집합은 소문자로 정규화되어 있다) */
+export function nextName(existing: ReadonlySet<string>, base: string): string {
+  if (!existing.has(base.toLowerCase())) return base
   for (let i = 1; ; i += 1) {
     const candidate = `${base}_${i}`
-    if (!existing.has(candidate)) return candidate
+    if (!existing.has(candidate.toLowerCase())) return candidate
   }
 }
 

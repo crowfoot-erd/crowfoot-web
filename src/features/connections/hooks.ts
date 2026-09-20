@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createConnection,
   deleteConnection,
+  fetchConnectionSchema,
   fetchConnections,
   reverseEngineer,
   testConnection,
@@ -84,5 +85,12 @@ export function useReverseEngineer(workspaceId: string) {
       void queryClient.invalidateQueries({ queryKey: connectionKeys.list(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
     },
+  })
+}
+
+/** 스키마 조회(동기화 원천) — 문서·커넥션 상태를 바꾸지 않는 읽기 경로라 캐시 무효화 없음 */
+export function useConnectionSchema(workspaceId: string) {
+  return useMutation({
+    mutationFn: (connectionId: string) => fetchConnectionSchema(workspaceId, connectionId),
   })
 }

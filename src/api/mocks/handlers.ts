@@ -9,9 +9,125 @@ import { HttpResponse, http } from 'msw'
 
 import type { ApiEnvelope } from '@/api/types'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
+import { createColumn, createTable, newId } from '@/features/editor/model/changes'
+import { buildRelationship } from '@/features/editor/model/relationship'
 
 /** 빈 Canonical 문서 v1 — 상세·생성 응답의 content 초기값 (08-core/02-model.md §1.5.1) */
 const EMPTY_CONTENT = serializeContent(emptyContent())
+
+/** DB 동기화 픽스처 한 쌍 — 문서(사용자 편집 상태) vs 스키마 조회(DB 현재 상태).
+ *  문서 측: users 강조색·연결된 메모·문서 전용 컬럼 grade·바꾼 논리명.
+ *  DB 측 드리프트: grade 삭제·email 길이 320·orders.memo 추가·amount 정밀도 (12,2)·
+ *  status 기본값 'CREATED'·FK onDelete CASCADE·신규 products 테이블.
+ *  DB 컬럼 논리명은 물리명과 같게 둔다(리버스 조립 규칙 — 코멘트 없음). */
+function buildSyncPair() {
+  // -- 문서 측 (리버스 후 사용자가 편집한 상태)
+  const docUserId = createColumn({ physicalName: 'id', logicalName: '사용자ID', dataType: 'BIGINT', nullable: false, autoIncrement: true })
+  const docEmail = createColumn({ physicalName: 'email', logicalName: '이메일', dataType: 'VARCHAR', length: 255, nullable: false })
+  const docGrade = createColumn({ physicalName: 'grade', logicalName: '등급', dataType: 'VARCHAR', length: 10 }) // 문서 전용 — DB에 없음
+  const docUsers = createTable('users', {
+    logicalName: '사용자',
+    columns: [docUserId, docEmail, docGrade],
+    primaryKey: { name: 'users_pkey', columnIds: [docUserId.id] },
+    uniques: [{ id: newId(), name: 'uk_users_email', columnIds: [docEmail.id] }],
+  })
+  const docOrderId = createColumn({ physicalName: 'id', dataType: 'BIGINT', nullable: false, autoIncrement: true })
+  const docStatus = createColumn({ physicalName: 'status', dataType: 'VARCHAR', length: 20, nullable: false, defaultValue: 'PENDING' })
+  const docAmount = createColumn({ physicalName: 'amount', dataType: 'NUMERIC', precision: 10, scale: 2 })
+  const docOrders = createTable('orders', {
+    logicalName: '주문',
+    columns: [docOrderId, docStatus, docAmount],
+    primaryKey: { name: 'orders_pkey', columnIds: [docOrderId.id] },
+  })
+  const docRel = buildRelationship({
+    parentTable: docUsers,
+    childTable: docOrders,
+    type: 'ONE_TO_MANY',
+    identifying: false,
+    parentMultiplicity: 'ZERO_OR_ONE',
+    childMultiplicity: 'ZERO_OR_MORE',
+    onDelete: 'NO_ACTION',
+    onUpdate: 'NO_ACTION',
+  })
+  if (!docRel.ok) throw new Error('sync fixture: 문서 측 users PK가 없습니다')
+  docOrders.columns.push(...docRel.fkColumns)
+  const documentContent = serializeContent({
+    schemaVersion: 1,
+    model: { tables: [docUsers, docOrders], relationships: [docRel.relationship] },
+    diagram: {
+      nodes: {
+        [docUsers.id]: { x: 80, y: 120, width: null, color: 'violet' },
+        [docOrders.id]: { x: 520, y: 160, width: null, color: 'default' },
+      },
+      notes: [
+        {
+          id: newId(),
+          x: 80,
+          y: 480,
+          width: 220,
+          text: '회원 등급은 문서에서만 관리',
+          title: '메모',
+          color: 'yellow',
+          linkedTableId: docUsers.id,
+        },
+      ],
+      viewport: null,
+    },
+  })
+
+  // -- DB 측 (스키마 조회가 조립한 현재 상태)
+  const dbUserId = createColumn({ physicalName: 'id', logicalName: 'id', dataType: 'BIGINT', nullable: false, autoIncrement: true })
+  const dbEmail = createColumn({ physicalName: 'email', logicalName: 'email', dataType: 'VARCHAR', length: 320, nullable: false })
+  const dbUsers = createTable('users', {
+    logicalName: 'users',
+    columns: [dbUserId, dbEmail],
+    primaryKey: { name: 'users_pkey', columnIds: [dbUserId.id] },
+    uniques: [{ id: newId(), name: 'uk_users_email', columnIds: [dbEmail.id] }],
+  })
+  const dbOrderId = createColumn({ physicalName: 'id', logicalName: 'id', dataType: 'BIGINT', nullable: false, autoIncrement: true })
+  const dbStatus = createColumn({ physicalName: 'status', logicalName: 'status', dataType: 'VARCHAR', length: 20, nullable: false, defaultValue: 'CREATED' })
+  const dbAmount = createColumn({ physicalName: 'amount', logicalName: 'amount', dataType: 'NUMERIC', precision: 12, scale: 2 })
+  const dbMemo = createColumn({ physicalName: 'memo', logicalName: 'memo', dataType: 'VARCHAR', length: 200 })
+  const dbOrders = createTable('orders', {
+    logicalName: 'orders',
+    columns: [dbOrderId, dbStatus, dbAmount, dbMemo],
+    primaryKey: { name: 'orders_pkey', columnIds: [dbOrderId.id] },
+  })
+  const dbRel = buildRelationship({
+    parentTable: dbUsers,
+    childTable: dbOrders,
+    type: 'ONE_TO_MANY',
+    identifying: false,
+    parentMultiplicity: 'ZERO_OR_ONE',
+    childMultiplicity: 'ZERO_OR_MORE',
+    onDelete: 'CASCADE',
+    onUpdate: 'NO_ACTION',
+  })
+  if (!dbRel.ok) throw new Error('sync fixture: DB 측 users PK가 없습니다')
+  // DB 측 FK 컬럼은 코멘트가 없다 — 논리명=물리명(조립 규칙). 빌더가 부모 논리명을 복사하므로 덮어쓴다
+  for (const fk of dbRel.fkColumns) fk.logicalName = fk.physicalName
+  dbOrders.columns.push(...dbRel.fkColumns)
+  const dbProductId = createColumn({ physicalName: 'id', logicalName: 'id', dataType: 'BIGINT', nullable: false, autoIncrement: true })
+  const dbProductName = createColumn({ physicalName: 'name', logicalName: 'name', dataType: 'VARCHAR', length: 100, nullable: false })
+  const dbProductPrice = createColumn({ physicalName: 'price', logicalName: 'price', dataType: 'NUMERIC', precision: 10, scale: 2 })
+  const dbProducts = createTable('products', {
+    logicalName: 'products',
+    columns: [dbProductId, dbProductName, dbProductPrice],
+    primaryKey: { name: 'products_pkey', columnIds: [dbProductId.id] },
+  })
+  const schemaContent = serializeContent({
+    schemaVersion: 1,
+    model: { tables: [dbUsers, dbOrders, dbProducts], relationships: [dbRel.relationship] },
+    diagram: { nodes: {}, notes: [], viewport: null },
+  })
+
+  return {
+    documentContent,
+    syncSchema: { content: schemaContent, tableCount: 3, relationshipCount: 1, skipped: [] },
+  }
+}
+
+const SYNC_PAIR = buildSyncPair()
 
 const BASE = ''
 
@@ -111,6 +227,7 @@ export const fixtures = {
         name: '주문 서비스 ERD',
         description: '결제 도메인 1차',
         databaseType: 'postgresql',
+        sourceConnectionId: '301', // 리버스 생성 문서 — DB 동기화 버튼 노출
         version: 3,
         createdBy: { userId: '2', name: '부트스트랩 관리자' },
         createdAt: '2026-09-05T10:00:00Z',
@@ -122,6 +239,7 @@ export const fixtures = {
         name: '회원 서비스 ERD',
         description: null,
         databaseType: 'mysql',
+        sourceConnectionId: null, // 직접 생성 문서 — 동기화 버튼 없음
         version: 1,
         createdBy: { userId: '3', name: 'kim' },
         createdAt: '2026-09-08T02:00:00Z',
@@ -191,6 +309,8 @@ export const fixtures = {
       },
     ],
   },
+  /** DB 동기화(§3.7) — 문서 측 content(테스트가 스토어 수화에 쓴다) + 스키마 조회 응답(DB 측) */
+  sync: SYNC_PAIR,
   /** 매니지드 루트 인스턴스 (08-core/07) — PostgreSQL·MySQL. MySQL은 database 생략(발급 시 생성).
    *  PG(401)는 노출 주소 분리 실측용, MySQL(403)은 publicHost null 폴백 커버 */
   managedInstances: {
@@ -625,6 +745,7 @@ export const handlers = [
           name: body.name,
           description: null,
           databaseType: body.databaseType,
+          sourceConnectionId: null,
           content: EMPTY_CONTENT,
           version: 0,
           createdBy: { userId: '2', name: '부트스트랩 관리자' },
@@ -764,6 +885,7 @@ export const handlers = [
               name,
               description: body.description ?? null,
               databaseType: matched.dbmsType,
+              sourceConnectionId: matched.connectionId, // 리버스 생성 — 원천 커넥션 기억
               content: EMPTY_CONTENT,
               version: 0,
               createdBy: { userId: '2', name: '부트스트랩 관리자' },
@@ -779,6 +901,15 @@ export const handlers = [
       )
     },
   ),
+
+  // 스키마 조회(§3.7 문서 동기화 원천) — 리버스와 같은 규칙으로 조립된 content만 내린다(문서 생성 없음)
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/connections/:connectionId/schema`, ({ params }) => {
+    const matched = fixtures.connections.responses.find(
+      (connection) => connection.connectionId === params.connectionId,
+    )
+    if (!matched) return fail('CONNECTION_NOT_FOUND', 404)
+    return HttpResponse.json(ok({ response: fixtures.sync.syncSchema }))
+  }),
 
   /* ---------- core admin (08-core/05-account.md Section 2) ---------- */
 

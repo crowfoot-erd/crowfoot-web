@@ -592,6 +592,7 @@
         "autoLayout": "Auto layout",
         "autoLayoutFailed": "Auto layout failed",
         "ddl": "Generate SQL",
+        "sync": "Sync DB",
         "image": "Export image",
         "crown": "Export document file",
         "share": "Share"
@@ -618,6 +619,32 @@
         "run": "Deploy",
         "running": "Deploying…",
         "summary": "{{total}} statements — {{executed}} succeeded, {{failed}} failed"
+      },
+      "sync": {
+        "title": "Sync with database",
+        "description": "Compares “{{model}}” with the current schema of the source connection ({{connection}})",
+        "preserveNote": "Document-only attributes such as table colors, positions and notes are preserved. After applying, a single Undo (Ctrl+Z) reverts everything.",
+        "dirtyNote": "You have unsaved changes — the comparison uses the current on-screen state",
+        "compare": "Compare",
+        "comparing": "Comparing…",
+        "compareFailed": "Failed to fetch the schema",
+        "noChanges": "No changes — the document already matches the database",
+        "apply": "Apply",
+        "applied": "Sync applied — a single Undo reverts it",
+        "counts": "{{add}} added · {{update}} changed · {{remove}} removed",
+        "skippedWarning": "Some objects were skipped: {{items}}",
+        "kind": {
+          "table": "Table",
+          "column": "Column",
+          "primaryKey": "Primary key",
+          "uniqueKey": "Unique key",
+          "relationship": "Relationship"
+        },
+        "action": {
+          "add": "added",
+          "update": "changed",
+          "remove": "removed"
+        }
       },
       "contextMenu": {
         "createTable": "New entity",

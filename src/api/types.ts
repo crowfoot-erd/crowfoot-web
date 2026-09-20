@@ -208,6 +208,8 @@ export interface ModelSummary {
   name: string
   description: string | null
   databaseType: string
+  /** 리버스 엔지니어링 원천 커넥션 — 직접 생성 문서는 null (DB 동기화 버튼 노출 근거) */
+  sourceConnectionId: string | null
   version: number
   createdBy: { userId: string; name: string } | null
   createdAt: string
@@ -279,6 +281,15 @@ export interface ConnectionTestResult {
 /** 리버스 엔지니어링 응답 — 생성된 문서 + 가져오기 요약 */
 export interface ReverseEngineeringResult {
   model: Model
+  tableCount: number
+  relationshipCount: number
+  skipped: string[]
+}
+
+/** 스키마 조회 응답 — 리버스와 같은 규칙으로 조립된 content만 내린다(문서 생성 없음).
+ *  비교·병합은 에디터가 담당한다(sync-merge). */
+export interface ConnectionSchema {
+  content: string
   tableCount: number
   relationshipCount: number
   skipped: string[]

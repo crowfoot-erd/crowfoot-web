@@ -592,6 +592,7 @@
         "autoLayout": "자동 배치",
         "autoLayoutFailed": "자동 배치에 실패했습니다",
         "ddl": "SQL 생성",
+        "sync": "DB 동기화",
         "image": "이미지 내보내기",
         "crown": "문서 파일 내보내기",
         "share": "공유"
@@ -618,6 +619,32 @@
         "run": "배포",
         "running": "배포 중…",
         "summary": "{{total}}문장 실행 — 성공 {{executed}} · 실패 {{failed}}"
+      },
+      "sync": {
+        "title": "데이터베이스 동기화",
+        "description": "‘{{model}}’ 문서를 원천 커넥션({{connection}})의 현재 스키마와 비교합니다",
+        "preserveNote": "테이블 색상·위치·메모 등 문서 전용 속성은 그대로 유지됩니다. 적용 후 되돌리기(Ctrl+Z) 한 번으로 전체를 복구할 수 있습니다.",
+        "dirtyNote": "저장되지 않은 편집이 있습니다 — 비교는 화면의 현재 상태를 기준으로 합니다",
+        "compare": "비교",
+        "comparing": "비교 중…",
+        "compareFailed": "스키마 조회에 실패했습니다",
+        "noChanges": "변경 사항이 없습니다 — 문서가 데이터베이스와 일치합니다",
+        "apply": "적용",
+        "applied": "동기화를 적용했습니다 — 되돌리기 한 번으로 복구할 수 있습니다",
+        "counts": "추가 {{add}} · 변경 {{update}} · 삭제 {{remove}}",
+        "skippedWarning": "일부 객체를 건너뛰었습니다: {{items}}",
+        "kind": {
+          "table": "테이블",
+          "column": "컬럼",
+          "primaryKey": "기본 키",
+          "uniqueKey": "유니크 키",
+          "relationship": "관계"
+        },
+        "action": {
+          "add": "추가",
+          "update": "변경",
+          "remove": "삭제"
+        }
       },
       "contextMenu": {
         "createTable": "엔터티 생성",

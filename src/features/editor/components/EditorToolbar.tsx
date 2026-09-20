@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { ChevronDown, Database, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronDown, Database, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useConnections } from '@/features/connections/hooks'
 import { ShareDialog } from '@/features/models/components/share-dialog'
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ import { captureErdPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint 
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
+import { SyncDialog } from './SyncDialog'
 
 export interface EditorToolbarProps {
   canEdit: boolean
@@ -55,6 +57,8 @@ export interface EditorToolbarProps {
   workspaceId: string
   /** 문서 id — 공유 링크 API 호출 경로 */
   modelId: string
+  /** 리버스 엔지니어링 원천 커넥션 — DB 동기화 버튼 노출 근거(없으면 미노출) */
+  sourceConnectionId?: string | null
   /** 공개 공유 뷰어(/share/{token}) — 워크스페이스 API(DDL)·공유 관리를 숨긴다 */
   publicView?: boolean
 }
@@ -73,6 +77,7 @@ export function EditorToolbar({
   modelDescription,
   workspaceId,
   modelId,
+  sourceConnectionId = null,
   publicView = false,
 }: EditorToolbarProps) {
   const { t } = useTranslation()
@@ -108,6 +113,9 @@ export function EditorToolbar({
       </Button>
 
       <AutoLayoutButton canEdit={canEdit} />
+      {!publicView && canEdit && sourceConnectionId ? (
+        <SyncButton workspaceId={workspaceId} modelName={modelName} sourceConnectionId={sourceConnectionId} />
+      ) : null}
       {!publicView && (
         <DdlButton
           dbmsId={dbmsId}
@@ -257,6 +265,51 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       {t('model.editor.toolbar.autoLayout')}
       {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <Network aria-hidden className="size-3.5" />}
     </Button>
+  )
+}
+
+/** DB 동기화 — 원천 커넥션(리버스 생성 시점)의 현재 스키마를 문서에 부분 반영한다
+ *  (05-editor/04-dbms-engineering.md §3.3). 색상·위치·메모 등 문서 전용 속성은 유지되고
+ *  적용은 되돌리기 1회로 복구된다. 원천 커넥션이 삭제됐으면 원천이 없으니 버튼만 숨긴다. */
+function SyncButton({
+  workspaceId,
+  modelName,
+  sourceConnectionId,
+}: {
+  workspaceId: string
+  modelName: string
+  sourceConnectionId: string
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const connections = useConnections(workspaceId)
+  const exists = (connections.data?.items ?? []).some(
+    (connection) => connection.connectionId === sourceConnectionId,
+  )
+  if (!exists) return null
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 px-2"
+        onClick={() => setOpen(true)}
+        aria-label={t('model.editor.toolbar.sync')}
+        title={t('model.editor.toolbar.sync')}
+      >
+        {t('model.editor.toolbar.sync')}
+        <RefreshCw aria-hidden className="size-3.5" />
+      </Button>
+      <SyncDialog
+        open={open}
+        onOpenChange={setOpen}
+        workspaceId={workspaceId}
+        modelName={modelName}
+        sourceConnectionId={sourceConnectionId}
+      />
+    </>
   )
 }
 

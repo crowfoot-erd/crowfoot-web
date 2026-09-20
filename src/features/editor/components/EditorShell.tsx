@@ -416,6 +416,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         modelDescription={model.description}
         workspaceId={model.workspaceId}
         modelId={model.modelId}
+        sourceConnectionId={model.sourceConnectionId}
         publicView={publicView}
       />
       <main className="relative min-h-0 flex-1">

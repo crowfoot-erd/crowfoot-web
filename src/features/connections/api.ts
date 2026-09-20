@@ -3,7 +3,12 @@
  * 비밀번호는 등록·변경에만 실리고 응답에는 내려오지 않는다.
  */
 import { apiDelete, apiGetList, apiPatch, apiPost } from '@/api/client'
-import type { ConnectionTestResult, DbConnection, ReverseEngineeringResult } from '@/api/types'
+import type {
+  ConnectionSchema,
+  ConnectionTestResult,
+  DbConnection,
+  ReverseEngineeringResult,
+} from '@/api/types'
 
 export function fetchConnections(workspaceId: string, signal?: AbortSignal) {
   return apiGetList<DbConnection>(`/api/v1/core/workspaces/${workspaceId}/connections`, undefined, signal)
@@ -56,6 +61,15 @@ export function reverseEngineer(workspaceId: string, connectionId: string, body:
   return apiPost<ReverseEngineeringResult>(
     `/api/v1/core/workspaces/${workspaceId}/connections/${connectionId}/reverse-engineering`,
     body,
+  )
+}
+
+/** 스키마 조회 — 문서 동기화의 비교 원천. 리버스와 같은 규칙으로 조립된 content만
+ *  내린다(문서 생성 없음). 병합은 에디터가 한다(sync-merge). */
+export function fetchConnectionSchema(workspaceId: string, connectionId: string) {
+  return apiPost<ConnectionSchema>(
+    `/api/v1/core/workspaces/${workspaceId}/connections/${connectionId}/schema`,
+    {},
   )
 }
 
