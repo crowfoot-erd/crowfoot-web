@@ -149,7 +149,8 @@
       "workspaces": "Workspaces",
       "teams": "Teams",
       "admin": "Admin",
-      "community": "Community"
+      "community": "Community",
+      "home": "Home"
     },
     "sidebar": {
       "title": "Workspaces",

@@ -149,7 +149,8 @@
       "workspaces": "워크스페이스",
       "teams": "팀",
       "admin": "관리자",
-      "community": "커뮤니티"
+      "community": "커뮤니티",
+      "home": "메인으로"
     },
     "sidebar": {
       "title": "워크스페이스",

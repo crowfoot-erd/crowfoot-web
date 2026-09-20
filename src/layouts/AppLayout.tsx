@@ -3,10 +3,12 @@
  */
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Home } from 'lucide-react'
 
 import { LanguageSelect } from '@/components/language-select'
 import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { Button } from '@/components/ui/button'
 import { cn } from 'cn'
 import { useMe } from '@/features/auth'
 import { CreateWorkspaceDialog } from '@/features/workspaces'
@@ -60,6 +62,13 @@ export function AppLayout() {
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            {/* 메인(랜딩) 바로가기 — 시작 페이지는 로그인 상태에서도 열람 가능 */}
+            <Button asChild variant="ghost" size="sm" className="gap-1.5">
+              <Link to="/" data-testid="shell-home-link">
+                {t('shell.nav.home')}
+                <Home aria-hidden className="size-4" />
+              </Link>
+            </Button>
             <ThemeToggle />
             <LanguageSelect />
             <UserMenu />

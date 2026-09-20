@@ -247,13 +247,15 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
     <Button
       type="button"
       variant="ghost"
-      size="icon"
+      size="sm"
+      className="h-7 gap-1 px-2"
       onClick={() => void run()}
       disabled={!canEdit || tableCount < 2 || running}
       aria-label={t('model.editor.toolbar.autoLayout')}
       title={t('model.editor.toolbar.autoLayout')}
     >
-      {running ? <Loader2 aria-hidden className="animate-spin" /> : <Network aria-hidden />}
+      {t('model.editor.toolbar.autoLayout')}
+      {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <Network aria-hidden className="size-3.5" />}
     </Button>
   )
 }
@@ -282,12 +284,14 @@ function DdlButton({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="sm"
+        className="h-7 gap-1 px-2"
         onClick={() => setOpen(true)}
         aria-label={t('model.editor.toolbar.ddl')}
         title={t('model.editor.toolbar.ddl')}
       >
-        <FileCode2 aria-hidden />
+        {t('model.editor.toolbar.ddl')}
+        <FileCode2 aria-hidden className="size-3.5" />
       </Button>
       <SqlPreviewDialog
         open={open}
@@ -320,12 +324,14 @@ function ShareButton({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="sm"
+        className="h-7 gap-1 px-2"
         onClick={() => setOpen(true)}
         aria-label={t('model.editor.toolbar.share')}
         title={t('model.editor.toolbar.share')}
       >
-        <Share2 aria-hidden />
+        {t('model.editor.toolbar.share')}
+        <Share2 aria-hidden className="size-3.5" />
       </Button>
       <ShareDialog
         open={open}
@@ -372,13 +378,15 @@ function ImageButton({ modelName }: { modelName: string }) {
     <Button
       type="button"
       variant="ghost"
-      size="icon"
+      size="sm"
+      className="h-7 gap-1 px-2"
       onClick={() => void run()}
       disabled={objectCount === 0 || running}
       aria-label={t('model.editor.toolbar.image')}
       title={t('model.editor.toolbar.image')}
     >
-      {running ? <Loader2 aria-hidden className="animate-spin" /> : <ImageDown aria-hidden />}
+      {t('model.editor.toolbar.image')}
+      {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <ImageDown aria-hidden className="size-3.5" />}
     </Button>
   )
 }
@@ -413,12 +421,14 @@ function CrownButton({
     <Button
       type="button"
       variant="ghost"
-      size="icon"
+      size="sm"
+      className="h-7 gap-1 px-2"
       onClick={run}
       aria-label={t('model.editor.toolbar.crown')}
       title={t('model.editor.toolbar.crown')}
     >
-      <FileDown aria-hidden />
+      {t('model.editor.toolbar.crown')}
+      <FileDown aria-hidden className="size-3.5" />
     </Button>
   )
 }
