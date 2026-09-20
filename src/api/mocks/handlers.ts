@@ -10,8 +10,9 @@
 import { HttpResponse, http } from 'msw'
 
 import type { ApiEnvelope } from '@/api/types'
-import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
+import { emptyContent, parseContent, serializeContent } from '@/features/editor/model/content-io'
 import { createColumn, createTable, newId } from '@/features/editor/model/changes'
+import { diffDocuments } from '@/features/editor/model/doc-diff'
 import { buildRelationship } from '@/features/editor/model/relationship'
 
 /** 빈 Canonical 문서 v1 — 상세·생성 응답의 content 초기값 (08-core/02-model.md §1.5.1) */
@@ -150,12 +151,42 @@ interface VersionRow {
   content: string
 }
 
+/** 버전별 content(§1.11.3 비교 뷰 원천) — 501의 네 스냅샷은 실제로 달라야 한다.
+ *  v1=SYNC_PAIR 문서, v0=그 이전(grade 컬럼·메모 없음 — 같은 테이블 id), v2=메모만 이동,
+ *  v3=v1(복원). changeSummary도 문맥에 맞게: v1/v2는 실제 diffDocuments로 계산해
+ *  요약이 content와 어긋나지 않게 한다. v0(리버스 생성)·v3(복원)은 특수형 그대로. */
+function buildVersionContents() {
+  const v1 = parseContent(SYNC_PAIR.documentContent)
+
+  const v0 = structuredClone(v1)
+  const v0Users = v0.model.tables.find((table) => table.physicalName === 'users')!
+  v0Users.columns = v0Users.columns.filter((column) => column.physicalName !== 'grade')
+  v0.diagram.notes = []
+
+  const v2 = structuredClone(v1)
+  const v2Note = v2.diagram.notes[0]!
+  v2Note.x += 60
+  v2Note.y -= 40
+
+  const v1Summary = diffDocuments(v0, v1)
+  const v2Summary = diffDocuments(v1, v2)
+  return {
+    v0: serializeContent(v0),
+    v1: SYNC_PAIR.documentContent,
+    v2: serializeContent(v2),
+    v3: SYNC_PAIR.documentContent,
+    v1Summary: JSON.stringify(v1Summary),
+    v2Summary: JSON.stringify(v2Summary),
+  }
+}
+
 /** 버전 기록 픽스처 — 501(리버스 문서, v0~v3)·502(직접 생성, v0~v1).
  *  changeSummary는 웹 계약(doc-diff)과 특수형(리버스 created·복원 restoredFrom)의
  *  실제 모양새를 담는다 — memo는 요약과 달리 사용자 자유 메모. */
 function buildVersionRows(): Record<string, VersionRow[]> {
   const admin = { userId: '2', name: '부트스트랩 관리자' }
   const kim = { userId: '3', name: 'kim' }
+  const versionContents = buildVersionContents()
   return {
     '501': [
       {
@@ -164,34 +195,23 @@ function buildVersionRows(): Record<string, VersionRow[]> {
         memo: null,
         createdBy: admin,
         createdAt: '2026-09-05T10:00:00Z',
-        content: SYNC_PAIR.documentContent,
+        content: versionContents.v0,
       },
       {
         version: 1,
-        changeSummary: JSON.stringify({
-          items: [
-            { kind: 'column', action: 'add', table: 'users', name: 'grade', detail: 'VARCHAR(10)' },
-            { kind: 'note', action: 'add', table: '', name: '배포 전 확인', detail: '' },
-          ],
-          layoutOnly: false,
-          truncated: false,
-        }),
+        changeSummary: versionContents.v1Summary,
         memo: '등급 컬럼 추가',
         createdBy: admin,
         createdAt: '2026-09-08T02:00:00Z',
-        content: SYNC_PAIR.documentContent,
+        content: versionContents.v1,
       },
       {
         version: 2,
-        changeSummary: JSON.stringify({
-          items: [{ kind: 'note', action: 'move', table: '', name: '배포 전 확인', detail: 'x, y' }],
-          layoutOnly: true,
-          truncated: false,
-        }),
+        changeSummary: versionContents.v2Summary,
         memo: null,
         createdBy: kim,
         createdAt: '2026-09-09T05:00:00Z',
-        content: SYNC_PAIR.documentContent,
+        content: versionContents.v2,
       },
       {
         version: 3,
@@ -199,7 +219,7 @@ function buildVersionRows(): Record<string, VersionRow[]> {
         memo: null,
         createdBy: admin,
         createdAt: '2026-09-10T08:30:00Z',
-        content: SYNC_PAIR.documentContent,
+        content: versionContents.v3,
       },
     ],
     '502': [
@@ -332,6 +352,37 @@ export const fixtures = {
     warnings: [] as { code: string; message: string }[],
     tableCount: 1,
     relationshipCount: 0,
+  },
+  /** 마이그레이션 DDL 응답(§1.7.1) — 생성 전용. version=버전 A→B, connection=문서↔실제 DB.
+   *  fromLabel/toLabel은 버전 핸들러가 v{N}으로 교체해 내린다. 경고 분기 테스트는 server.use() */
+  migration: {
+    version: {
+      sql: [
+        '-- 주문 서비스 ERD — PostgreSQL 마이그레이션 DDL (v0 → v1)',
+        '',
+        'ALTER TABLE users ADD COLUMN grade VARCHAR(10);',
+        'ALTER TABLE users DROP COLUMN temp_flag;',
+      ].join('\n'),
+      warnings: [
+        { code: 'DESTRUCTIVE', message: 'DROP 문이 포함되어 있습니다 — 실행 전 대상 환경의 데이터를 확인하세요.' },
+      ] as { code: string; message: string }[],
+      statementCount: 2,
+      fromLabel: 'v0',
+      toLabel: 'v1',
+    },
+    connection: {
+      sql: [
+        '-- 주문 서비스 ERD — PostgreSQL 마이그레이션 DDL (DB → 문서)',
+        '',
+        'ALTER TABLE users ADD COLUMN grade VARCHAR(10);',
+      ].join('\n'),
+      warnings: [
+        { code: 'NOT_INTROSPECTED', message: '인덱스는 실제 DB에서 읽을 수 없어 비교에서 제외했습니다.' },
+      ] as { code: string; message: string }[],
+      statementCount: 1,
+      fromLabel: 'DB',
+      toLabel: '문서',
+    },
   },
   /** 배포 응답(1.8) — 전체 성공 기본값. 부분 실패는 server.use()로 덧씌운다 */
   deploy: {
@@ -837,7 +888,11 @@ export const handlers = [
     const url = new URL(request.url)
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1)
     const size = Math.min(100, Math.max(1, Number(url.searchParams.get('size')) || 20))
-    const rows = [...(fixtures.versions[matched.modelId] ?? [])].sort((a, b) => b.version - a.version)
+    // keyword는 메모 부분 일치(대소문자 무시) — 페이징은 걸린 뒤 기준으로 계산한다
+    const keyword = (url.searchParams.get('keyword') ?? '').trim().toLowerCase()
+    const rows = [...(fixtures.versions[matched.modelId] ?? [])]
+      .sort((a, b) => b.version - a.version)
+      .filter((row) => !keyword || (row.memo ?? '').toLowerCase().includes(keyword))
     const slice = rows.slice((page - 1) * size, page * size)
     return HttpResponse.json(
       ok({
@@ -1034,6 +1089,44 @@ export const handlers = [
     if (!matched) return fail('MODEL_NOT_FOUND', 404)
     return HttpResponse.json(ok({ response: fixtures.ddl }))
   }),
+
+  // 마이그레이션 DDL — 버전 A→B(§1.7.1). from==to·to 누락 400, 없는 버전 404
+  http.get(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/versions/:from/migration`,
+    ({ params, request }) => {
+      const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+      if (!matched) return fail('MODEL_NOT_FOUND', 404)
+      // Number(null)===0 함정 — to 누락을 갈무리 전에 가린다
+      const toParam = new URL(request.url).searchParams.get('to')
+      const from = Number(params.from)
+      if (toParam == null || !Number.isInteger(from) || !Number.isInteger(Number(toParam)) || from === Number(toParam)) {
+        return fail('INVALID_REQUEST', 400)
+      }
+      const to = Number(toParam)
+      const versions = fixtures.versions[matched.modelId] ?? []
+      const has = (v: number) => versions.some((row) => row.version === v)
+      if (!has(from) || !has(to)) return fail('MODEL_VERSION_NOT_FOUND', 404)
+      const { sql, warnings, statementCount } = fixtures.migration.version
+      return HttpResponse.json(
+        ok({ response: { sql, warnings, statementCount, fromLabel: `v${from}`, toLabel: `v${to}` } }),
+      )
+    },
+  ),
+
+  // 마이그레이션 DDL — 문서↔실제 DB(§1.7.1). DBMS 불일치 400은 배포와 같은 검사
+  http.get(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/connections/:connectionId/migration`,
+    ({ params }) => {
+      const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+      if (!matched) return fail('MODEL_NOT_FOUND', 404)
+      const connection = fixtures.connections.responses.find(
+        (item) => item.connectionId === params.connectionId,
+      )
+      if (!connection) return fail('CONNECTION_NOT_FOUND', 404)
+      if (connection.dbmsType !== matched.databaseType) return fail('INVALID_REQUEST', 400)
+      return HttpResponse.json(ok({ response: fixtures.migration.connection }))
+    },
+  ),
 
   // 포워드 엔지니어링 배포(1.8) — 부분 실패 리포트가 필요한 테스트는 server.use()로 덧씌운다
   http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/deploy`, async ({ request }) => {

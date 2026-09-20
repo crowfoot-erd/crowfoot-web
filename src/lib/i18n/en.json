@@ -650,10 +650,12 @@
       "history": {
         "title": "Version history",
         "description": "Save history of ‘{{model}}’ — every save creates a version",
+        "searchPlaceholder": "Search memos (partial match)",
         "empty": "No saved versions yet",
         "loadFailed": "Failed to load version history",
         "current": "Current",
         "view": "View",
+        "compare": "Compare",
         "editMemo": "Edit note",
         "memoPlaceholder": "Note for this version (leave empty to delete)",
         "saveMemo": "Save note",
@@ -688,6 +690,23 @@
           "remove": "removed",
           "move": "moved"
         }
+      },
+      "compare": {
+        "title": "Version compare",
+        "range": "v{{from}} → v{{to}}",
+        "baseLabel": "Base version",
+        "canvasNote": "Canvas shows v{{to}} — changed tables get +/~ badges",
+        "removedTitle": "Tables removed in this version",
+        "exit": "Close compare",
+        "loadFailed": "Failed to load the base version",
+        "noChanges": "No changes between the two versions",
+        "noTableGroup": "Off-canvas changes",
+        "mark": {
+          "add": "Added table",
+          "update": "Changed table",
+          "remove": "Removed table"
+        },
+        "migrationDdl": "Migration DDL"
       },
       "contextMenu": {
         "createTable": "New entity",
@@ -869,6 +888,16 @@
       "crown": {
         "exported": "Downloaded a .crown document file",
         "failed": "Failed to export the document file"
+      },
+      "migration": {
+        "titleVersion": "Migration DDL — v{{from}} → v{{to}}",
+        "titleConnection": "Migration DDL — Document ↔ DB",
+        "subtitle": "Generates ALTER statements for the difference between the two snapshots. Execution is out of scope.",
+        "statementCount": "{{count}} statements",
+        "warningTitle": "Warnings",
+        "loading": "Generating migration DDL…",
+        "error": "Failed to generate migration DDL",
+        "button": "Migration DDL"
       }
     },
     "import": {

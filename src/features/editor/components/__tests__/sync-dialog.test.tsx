@@ -44,7 +44,7 @@ function seedDocument(content: string): void {
   })
 }
 
-function renderDialog() {
+function renderDialog(canEdit = true) {
   return renderWithProviders(
     <SyncDialog
       open
@@ -52,6 +52,7 @@ function renderDialog() {
       workspaceId="101"
       modelName="주문 서비스 ERD"
       sourceConnectionId="301"
+      canEdit={canEdit}
     />,
     { wrapRoutes: false },
   )
@@ -134,6 +135,28 @@ describe('SyncDialog — 비교', () => {
         expect.stringContaining('weird_view'),
       ),
     )
+  })
+})
+
+describe('SyncDialog — 마이그레이션 DDL 진입', () => {
+  it('Editor(canEdit)면 문서↔DB 마이그레이션 DDL 버튼이 다이얼로그를 연다 — NOT_INTROSPECTED 경고', async () => {
+    seedDocument(fixtures.sync.documentContent)
+    renderDialog(true)
+
+    fireEvent.click(await screen.findByTestId('sync-migration-ddl'))
+
+    // 문서↔실제 DB 모드 — 커넥션 픽스처 기본 경고(인덱스 제외)
+    expect(await screen.findByTestId('migration-ddl-dialog')).toBeVisible()
+    const warnings = await screen.findByTestId('migration-ddl-warnings')
+    expect(within(warnings).getByText(/인덱스는 실제 DB에서/)).toBeVisible()
+  })
+
+  it('Viewer(canEdit=false)면 마이그레이션 DDL 버튼이 없다', async () => {
+    seedDocument(fixtures.sync.documentContent)
+    renderDialog(false)
+
+    await screen.findByText('app@db.dev.example.com:5432/orders')
+    expect(screen.queryByTestId('sync-migration-ddl')).not.toBeInTheDocument()
   })
 })
 

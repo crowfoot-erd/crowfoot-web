@@ -5,8 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   deployModel,
+  fetchConnectionMigrationDdl,
   fetchModelDdl,
   fetchModelVersion,
+  fetchVersionMigrationDdl,
   saveModelContent,
   type SaveModelContentInput,
 } from '@/features/editor/api'
@@ -34,6 +36,41 @@ export function useModelDdl(workspaceId: string, modelId: string | null, enabled
     queryKey: ['workspaces', workspaceId, 'models', modelId, 'ddl'],
     queryFn: ({ signal }) => fetchModelDdl(workspaceId, modelId as string, signal),
     enabled: enabled && modelId !== null,
+    staleTime: 0,
+    gcTime: 30_000,
+    retry: false,
+  })
+}
+
+/** 마이그레이션 DDL(버전 A→B) — 비교 뷰 헤더 진입, 다이얼로그가 열려 있을 때만 */
+export function useVersionMigrationDdl(
+  workspaceId: string,
+  modelId: string,
+  from: number,
+  to: number,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['workspaces', workspaceId, 'models', modelId, 'versions', from, 'migration', to],
+    queryFn: ({ signal }) => fetchVersionMigrationDdl(workspaceId, modelId, from, to, signal),
+    enabled,
+    staleTime: 0,
+    gcTime: 30_000,
+    retry: false,
+  })
+}
+
+/** 마이그레이션 DDL(문서↔실제 DB) — SyncDialog 푸터 진입(Editor+), 열려 있을 때만 */
+export function useConnectionMigrationDdl(
+  workspaceId: string,
+  modelId: string,
+  connectionId: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['workspaces', workspaceId, 'models', modelId, 'connections', connectionId, 'migration'],
+    queryFn: ({ signal }) => fetchConnectionMigrationDdl(workspaceId, modelId, connectionId, signal),
+    enabled: enabled && connectionId.length > 0,
     staleTime: 0,
     gcTime: 30_000,
     retry: false,

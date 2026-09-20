@@ -34,9 +34,11 @@ export const modelKeys = {
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'version'] as const,
   shares: (workspaceId: string, modelId: string) =>
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'shares'] as const,
-  /** 버전 기록 목록(§1.11) — page 포함. detail 서브트리라 저장 성공 무효화에 함께 갱신된다 */
-  versions: (workspaceId: string, modelId: string, page: number) =>
-    ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', page] as const,
+  /** 버전 기록 목록(§1.11) — page·keyword 포함(메모 검색). keyword가 키에 있어야
+   *  검색어를 바꿀 때 새로 땡긴다 — 누락되면 이전 키워드의 캐시가 그대로 노출된다.
+   *  detail 서브트리라 저장 성공 무효화에 함께 갱신된다 */
+  versions: (workspaceId: string, modelId: string, page: number, keyword = '') =>
+    ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', page, keyword] as const,
   /** 버전 상세(해당 시점 content 전문) — 버전 뷰어 */
   versionDetail: (workspaceId: string, modelId: string, version: number) =>
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', 'detail', version] as const,
@@ -143,11 +145,19 @@ export function useRevokeModelShare(workspaceId: string, modelId: string) {
 
 /* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */
 
-/** 버전 기록 목록 — 다이얼로그가 열려 있을 때만, 최신순 페이징(size 20 고정) */
-export function useModelVersions(workspaceId: string, modelId: string, page: number, enabled: boolean) {
+/** 버전 기록 목록 — 다이얼로그가 열려 있을 때만, 최신순 페이징(size 20 고정).
+ *  keyword는 디바운스가 끝난 값(메모 부분 일치) — 빈 문자열이면 전체 목록 */
+export function useModelVersions(
+  workspaceId: string,
+  modelId: string,
+  page: number,
+  keyword: string,
+  enabled: boolean,
+) {
   return useQuery({
-    queryKey: modelKeys.versions(workspaceId, modelId, page),
-    queryFn: ({ signal }) => fetchModelVersions(workspaceId, modelId, { page, size: 20 }, signal),
+    queryKey: modelKeys.versions(workspaceId, modelId, page, keyword),
+    queryFn: ({ signal }) =>
+      fetchModelVersions(workspaceId, modelId, { page, size: 20, keyword: keyword || undefined }, signal),
     enabled: enabled && workspaceId.length > 0 && modelId.length > 0,
   })
 }

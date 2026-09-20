@@ -27,6 +27,7 @@ import { diffSync, type SyncDiff, type SyncDiffItem } from '@/features/editor/mo
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { errorMessage } from '@/lib/result-code'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
+import { MigrationDdlDialog } from './MigrationDdlDialog'
 
 export interface SyncDialogProps {
   open: boolean
@@ -36,6 +37,8 @@ export interface SyncDialogProps {
   modelName: string
   /** 리버스 생성 시점 원천 커넥션 — 이 커넥션의 스키마와 비교한다 */
   sourceConnectionId: string
+  /** 마이그레이션 DDL 진입 게이트 — Editor 이상 (비교·적용은 읽기라 Viewer도 가능) */
+  canEdit: boolean
 }
 
 export function SyncDialog({
@@ -44,6 +47,7 @@ export function SyncDialog({
   workspaceId,
   modelName,
   sourceConnectionId,
+  canEdit,
 }: SyncDialogProps) {
   const { t } = useTranslation()
   const connections = useConnections(workspaceId)
@@ -52,11 +56,14 @@ export function SyncDialog({
   )
   const dirty = useEditorStore((s) => s.past.length !== s.savedDepth)
   const commitAll = useEditorStore((s) => s.commitAll)
+  const modelId = useEditorStore((s) => s.modelId)
   const schema = useConnectionSchema(workspaceId)
 
   const [diff, setDiff] = useState<SyncDiff | null>(null)
   // 비교 결과의 원천 — 적용은 재조회 없이 이 문서 기준으로 재 diff한다(고정점)
   const dbRef = useRef<EditorDocument | null>(null)
+  // 마이그레이션 DDL(문서↔실제 DB) — SyncDialog와 별개 다이얼로그로 연다
+  const [migrationOpen, setMigrationOpen] = useState(false)
 
   // 닫을 때 결과를 비운다 — 다시 열면 항상 새 비교부터
   const resetSchema = schema.reset
@@ -174,11 +181,31 @@ export function SyncDialog({
             )}
             {schema.isPending ? t('model.editor.sync.comparing') : t('model.editor.sync.compare')}
           </Button>
+          {canEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setMigrationOpen(true)}
+              data-testid="sync-migration-ddl"
+            >
+              {t('model.editor.migration.button')}
+            </Button>
+          ) : null}
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.close')}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* 문서↔실제 DB 마이그레이션 DDL — 문서에 반영하는 것과 별개로 DB 쪽 변화를 검토한다 (Editor+) */}
+      {canEdit && modelId && sourceConnectionId ? (
+        <MigrationDdlDialog
+          open={migrationOpen}
+          onOpenChange={setMigrationOpen}
+          modelName={modelName}
+          mode={{ kind: 'connection', workspaceId, modelId, connectionId: sourceConnectionId }}
+        />
+      ) : null}
     </Dialog>
   )
 }

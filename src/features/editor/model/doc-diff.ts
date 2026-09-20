@@ -281,8 +281,19 @@ function diffNodes(from: EditorDocument, to: EditorDocument, items: DocDiffItem[
   }
 }
 
+/** diffDocuments 선택 변수 — 기본값과 같다. 버전 비교 뷰는 itemLimit 500으로 올려
+ *  51번째 이후 변경 테이블에 배지가 누락되는 일이 없게 한다(단순 목록 잘림이 아닌 정확성 문제) */
+export interface DiffDocumentsOptions {
+  itemLimit?: number
+}
+
 /** 마지막 저장 문서와 현재 문서의 변경 요약을 계산한다 (05-editor/01-core.md §13) */
-export function diffDocuments(from: EditorDocument, to: EditorDocument): DocumentDiffSummary {
+export function diffDocuments(
+  from: EditorDocument,
+  to: EditorDocument,
+  options?: DiffDocumentsOptions,
+): DocumentDiffSummary {
+  const limit = options?.itemLimit ?? DOC_DIFF_ITEM_LIMIT
   const items: DocDiffItem[] = []
 
   const toTables = new Map(to.model.tables.map((t) => [t.id, t]))
@@ -309,9 +320,9 @@ export function diffDocuments(from: EditorDocument, to: EditorDocument): Documen
     JSON.stringify(from.diagram.viewport) !== JSON.stringify(to.diagram.viewport)
   const modelChanged = items.some((item) => !DIAGRAM_KINDS.has(item.kind))
 
-  const truncated = items.length > DOC_DIFF_ITEM_LIMIT
+  const truncated = items.length > limit
   return {
-    items: truncated ? items.slice(0, DOC_DIFF_ITEM_LIMIT) : items,
+    items: truncated ? items.slice(0, limit) : items,
     layoutOnly: !modelChanged && (items.length > 0 || viewportChanged),
     truncated,
   }

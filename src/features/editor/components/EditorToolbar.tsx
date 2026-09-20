@@ -115,7 +115,12 @@ export function EditorToolbar({
 
       <AutoLayoutButton canEdit={canEdit} />
       {!publicView && canEdit && sourceConnectionId ? (
-        <SyncButton workspaceId={workspaceId} modelName={modelName} sourceConnectionId={sourceConnectionId} />
+        <SyncButton
+          workspaceId={workspaceId}
+          modelName={modelName}
+          sourceConnectionId={sourceConnectionId}
+          canEdit={canEdit}
+        />
       ) : null}
       {!publicView && (
         <DdlButton
@@ -279,10 +284,12 @@ function SyncButton({
   workspaceId,
   modelName,
   sourceConnectionId,
+  canEdit,
 }: {
   workspaceId: string
   modelName: string
   sourceConnectionId: string
+  canEdit: boolean
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -312,6 +319,7 @@ function SyncButton({
         workspaceId={workspaceId}
         modelName={modelName}
         sourceConnectionId={sourceConnectionId}
+        canEdit={canEdit}
       />
     </>
   )

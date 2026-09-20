@@ -112,6 +112,25 @@ describe('VersionHistoryDialog — 목록 렌더', () => {
     expect(link.getAttribute('target')).toBe('_blank')
   })
 
+  it('비교 링크 — 직전 버전을 기준으로 비교 모드로 연다. v0는 링크가 없다', async () => {
+    seedSession()
+    renderDialog()
+
+    const list = await openList()
+    const [v3, v2, v1, v0] = rowsOf(list)
+
+    const compareV2 = within(v2).getByRole('link', { name: /비교/ }) as HTMLAnchorElement
+    expect(compareV2.getAttribute('href')).toBe('/workspaces/101/models/501/history/2?compare=1')
+    expect(within(v3).getByRole('link', { name: /비교/ }).getAttribute('href')).toBe(
+      '/workspaces/101/models/501/history/3?compare=2',
+    )
+    expect(within(v1).getByRole('link', { name: /비교/ }).getAttribute('href')).toBe(
+      '/workspaces/101/models/501/history/1?compare=0',
+    )
+    // v0는 직전 버전이 없다 — 비교 링크 없음
+    expect(within(v0).queryByRole('link', { name: /비교/ })).toBeNull()
+  })
+
   it('버전 기록이 없으면 빈 안내를 보여준다', async () => {
     server.use(
       http.get('/api/v1/core/workspaces/101/models/501/versions', () =>
@@ -248,5 +267,98 @@ describe('VersionHistoryDialog — 페이징·저장 연동', () => {
     // 배지는 세션(baseVersion 3) 기준 — v3 행에 붙고 v4(미갱신)에는 없다
     expect(within(rows[1]).getByText('현재')).toBeVisible()
     expect(within(rows[0]).queryByText('현재')).toBeNull()
+  })
+})
+
+describe('VersionHistoryDialog — 메모 검색', () => {
+  it('검색어(300ms 디바운스)로 메모 부분 일치 필터 — ‘등급’이면 v1만 남는다', async () => {
+    seedSession()
+    renderDialog()
+    await openList()
+
+    fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '등급' } })
+
+    // 디바운스(300ms) → 새 쿼리 키 조회 → 필터된 목록.
+    // 키가 바뀌는 동안 ul이 재마운트되므로 waitFor 안에서 새로 잡는다(이전 참조 무효)
+    await waitFor(() =>
+      expect(rowsOf(screen.getByTestId('version-history-list')).map((row) => row.dataset.version)).toEqual(['1']),
+    )
+    expect(within(rowsOf(screen.getByTestId('version-history-list'))[0]).getByText('등급 컬럼 추가')).toBeVisible()
+  })
+
+  it('검색어를 비우면 전체 목록으로 되돌아간다', async () => {
+    seedSession()
+    renderDialog()
+    await openList()
+
+    fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '등급' } })
+    await waitFor(() =>
+      expect(rowsOf(screen.getByTestId('version-history-list')).map((row) => row.dataset.version)).toEqual(['1']),
+    )
+
+    fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '' } })
+    await waitFor(() =>
+      expect(
+        rowsOf(screen.getByTestId('version-history-list')).map((row) => row.dataset.version),
+      ).toEqual(['3', '2', '1', '0']),
+    )
+  })
+
+  it('검색어가 바뀌면 페이지를 1로 되돌린다', async () => {
+    seedSession()
+    // 검색 반영 + size 3 강제(4행 → 2페이지) — 페이지 리셋 확인용
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models/501/versions', ({ request }) => {
+        const url = new URL(request.url)
+        const page = Number(url.searchParams.get('page')) || 1
+        const keyword = (url.searchParams.get('keyword') ?? '').trim().toLowerCase()
+        const row = (version: number) => fixtures.versions['501'].find((e) => e.version === version)!
+        const filtered = !keyword
+          ? [row(3), row(2), row(1), row(0)]
+          : [row(3), row(2), row(1), row(0)].filter((r) => (r.memo ?? '').toLowerCase().includes(keyword))
+        return HttpResponse.json(
+          ok({
+            page,
+            size: 3,
+            totalPages: Math.max(1, Math.ceil(filtered.length / 3)),
+            totalCount: filtered.length,
+            responses: filtered.slice((page - 1) * 3, page * 3).map((r) => ({
+              version: r.version,
+              changeSummary: r.changeSummary,
+              memo: r.memo,
+              createdBy: r.createdBy,
+              createdAt: r.createdAt,
+            })),
+          }),
+        )
+      }),
+    )
+    renderDialog()
+    await openList()
+
+    // 2페이지로 이동 → 검색어 입력 → 결과 궤적이 달라져 1페이지로 되돌아간다
+    fireEvent.click(screen.getByRole('button', { name: '다음' }))
+    await waitFor(() =>
+      expect(rowsOf(screen.getByTestId('version-history-list')).map((row) => row.dataset.version)).toEqual(['0']),
+    )
+
+    fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '등급' } })
+    await waitFor(() =>
+      expect(rowsOf(screen.getByTestId('version-history-list')).map((row) => row.dataset.version)).toEqual(['1']),
+    )
+    // 필터 결과가 한 페이지 — 페이징 UI가 사라진 것 자체가 1페이지 귀환 증거
+    expect(screen.queryByRole('button', { name: '다음' })).toBeNull()
+  })
+
+  it('뷰어(canEdit=false)에서도 검색할 수 있다 — 조회 계열 동작이다', async () => {
+    seedSession()
+    renderDialog(false)
+    await openList()
+
+    fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '등급' } })
+
+    await waitFor(() =>
+      expect(rowsOf(screen.getByTestId('version-history-list')).map((row) => row.dataset.version)).toEqual(['1']),
+    )
   })
 })

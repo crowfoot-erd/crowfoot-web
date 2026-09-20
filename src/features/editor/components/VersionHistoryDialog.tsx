@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ExternalLink, Loader2, PencilLine } from 'lucide-react'
+import { ExternalLink, GitCompareArrows, Loader2, PencilLine, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { ChangeSummary, ModelVersionEntry } from '@/api/types'
@@ -22,9 +22,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { modelVersionPath, useModelVersions, usePatchModelVersionMemo } from '@/features/models'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 
@@ -37,6 +39,12 @@ export interface VersionHistoryDialogProps {
   modelName: string
   /** 메모 편집 권한 — Editor 이상 (조회는 Viewer도 가능) */
   canEdit: boolean
+}
+
+/** 버전 뷰어 비교 모드 링크 — 이 버전을 최신으로, 직전 버전을 기준으로 연다 (?compare).
+ *  v0는 직전 버전이 없으니 링크가 없다 */
+function modelVersionComparePath(workspaceId: string, modelId: string, version: number): string {
+  return `${modelVersionPath(workspaceId, modelId, version)}?compare=${version - 1}`
 }
 
 /** changeSummary 원문 → 파싱된 요약. 파싱에 실패하면 null(렌더 생략 — 미래 계약 대비) */
@@ -63,19 +71,28 @@ export function VersionHistoryDialog({
 }: VersionHistoryDialogProps) {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
+  // 메모 검색 — 300ms 디바운스를 거쳐 쿼리 키에 들어간다(타이핝마다 요청하지 않는다)
+  const [keyword, setKeyword] = useState('')
+  const debouncedKeyword = useDebouncedValue(keyword, 300)
   // 현재 문서 버전 — 편집기 기준(세션 중 저장이 반영된다). 모델 메타 version이 아니다
   const currentVersion = useEditorStore((s) => s.baseVersion)
-  const versions = useModelVersions(workspaceId, modelId, page, open)
+  const versions = useModelVersions(workspaceId, modelId, page, debouncedKeyword, open)
   const memoMutation = usePatchModelVersionMemo(workspaceId, modelId)
 
   // 인라인 메모 편집 상태 — 행 버전 번호로 편집 대상을 가린다
   const [editing, setEditing] = useState<number | null>(null)
   const [memoDraft, setMemoDraft] = useState('')
 
-  // 닫을 때 상태 초기화 — 다시 열면 1페이지·새 목록부터
+  // 검색어가 바뀌면 결과 궤적이 달라진다 — 1페이지로 되돌린다
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedKeyword])
+
+  // 닫을 때 상태 초기화 — 다시 열면 1페이지·검색 없이 새 목록부터
   useEffect(() => {
     if (open) return
     setPage(1)
+    setKeyword('')
     setEditing(null)
     setMemoDraft('')
   }, [open])
@@ -110,6 +127,18 @@ export function VersionHistoryDialog({
             {t('model.editor.history.description', { model: modelName })}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="relative">
+          <Search aria-hidden className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t('model.editor.history.searchPlaceholder')}
+            className="h-9 pl-8 text-xs"
+            aria-label={t('model.editor.history.searchPlaceholder')}
+            data-testid="version-search-input"
+          />
+        </div>
 
         {versions.isPending ? (
           <div className="flex h-24 items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -189,6 +218,18 @@ export function VersionHistoryDialog({
                           <ExternalLink aria-hidden className="size-3" />
                         </a>
                       </Button>
+                      {entry.version > 0 ? (
+                        <Button asChild type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+                          <a
+                            href={modelVersionComparePath(workspaceId, modelId, entry.version)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <GitCompareArrows aria-hidden className="size-3" />
+                            {t('model.editor.history.compare')}
+                          </a>
+                        </Button>
+                      ) : null}
                       {canEdit ? (
                         <Button
                           type="button"

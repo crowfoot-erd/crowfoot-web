@@ -73,6 +73,47 @@ export function fetchModelDdl(
   return apiGet<ModelDdlResult>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/ddl`, undefined, signal)
 }
 
+export interface MigrationDdlResult {
+  sql: string
+  warnings: ModelDdlWarning[]
+  statementCount: number
+  /** "v2" / "DB" — 헤더 표기용 */
+  fromLabel: string
+  /** "v3" / "문서" */
+  toLabel: string
+}
+
+/** 마이그레이션 DDL — 버전 A→B 차이를 ALTER 문으로 (08-core/02-model.md §1.7.1).
+ *  생성만 제공한다 — 실행은 범위 밖(경고·복사·검토용 스크립트). */
+export function fetchVersionMigrationDdl(
+  workspaceId: string,
+  modelId: string,
+  from: number,
+  to: number,
+  signal?: AbortSignal,
+): Promise<MigrationDdlResult | undefined> {
+  return apiGet<MigrationDdlResult>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions/${from}/migration`,
+    { to },
+    signal,
+  )
+}
+
+/** 마이그레이션 DDL — 문서↔실제 DB 비교(doc→DB 방향, §1.7.1). 스키마 조회가 인덱스를
+ *  읽지 못해 인덱스 변경은 제외된다(NOT_INTROSPECTED 경고). */
+export function fetchConnectionMigrationDdl(
+  workspaceId: string,
+  modelId: string,
+  connectionId: string,
+  signal?: AbortSignal,
+): Promise<MigrationDdlResult | undefined> {
+  return apiGet<MigrationDdlResult>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/connections/${connectionId}/migration`,
+    undefined,
+    signal,
+  )
+}
+
 export interface ModelVersionResult {
   version: number
   updatedAt: string

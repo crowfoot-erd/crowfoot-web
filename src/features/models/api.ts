@@ -107,16 +107,17 @@ export function fetchSharedGallery(signal?: AbortSignal) {
 
 /* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */
 
-/** 버전 기록 목록 — 최신순 페이징, 행은 content 없는 요약(메모·자동 요약 포함) */
+/** 버전 기록 목록 — 최신순 페이징, 행은 content 없는 요약(메모·자동 요약 포함).
+ *  keyword는 메모 부분 일치(대소문자 무시) — 빈값은 파라미터에서 빠진다(전체 목록) */
 export function fetchModelVersions(
   workspaceId: string,
   modelId: string,
-  params: OffsetPagingParams = {},
+  params: OffsetPagingParams & { keyword?: string } = {},
   signal?: AbortSignal,
 ): Promise<PageResult<ModelVersionEntry>> {
   return apiGetPage<ModelVersionEntry>(
     `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions`,
-    { page: params.page, size: params.size },
+    { page: params.page, size: params.size, keyword: params.keyword || undefined },
     signal,
   )
 }

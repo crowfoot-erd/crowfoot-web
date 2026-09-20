@@ -35,7 +35,9 @@ import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
 import { useEditorStore } from '@/features/editor/store/editor-store'
+import { DiffActionBadge } from '@/components/diff-action-badge'
 import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
+import { useCompareHighlight } from './compare-context'
 import { tableSkin } from './table-skin'
 import { CommitInput, CommitSelect } from './inline-inputs'
 
@@ -529,6 +531,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
     completeRelation,
     openRelationPicker,
   } = useEditorCanvas()
+  // 버전 비교 하이라이트 — 비교 모드(?compare=N)가 아니면 null(배지 없음 — 본체 캔버스 불변)
+  const compareMark = useCompareHighlight(id)
   const table = useEditorStore((s) => s.present.model.tables.find((tb) => tb.id === id))
   const width = useEditorStore((s) => s.present.diagram.nodes[id]?.width ?? null)
   const color = useEditorStore((s) => s.present.diagram.nodes[id]?.color ?? 'default')
@@ -807,6 +811,9 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
           {resizingWidth}px
         </span>
       ) : null}
+
+      {/* 버전 비교 배지 — 최신 버전 캔버스에서 변경된 테이블 우상단 +/~ 마커 */}
+      {compareMark ? <DiffActionBadge action={compareMark} className="-top-2 -right-2 z-10" /> : null}
 
       {/* 드래그 핸들 밴드 — 논리명 상시 표시(보기 옵션과 무관·표시 전용, 수정은 정보 다이얼로그) + 이동 그립.
           강조색이 지정되면 밴드 배경을 색 틴트로 덮는다(선택 강조 bg-primary/25 대신 링이 선택을 알린다) */}
