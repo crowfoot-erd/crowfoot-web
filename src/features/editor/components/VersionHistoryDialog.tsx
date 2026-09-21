@@ -29,6 +29,7 @@ import { errorMessage } from '@/lib/result-code'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { modelVersionPath, useModelVersions, usePatchModelVersionMemo } from '@/features/models'
 import { useEditorStore } from '@/features/editor/store/editor-store'
+import { diffItemDisplayName } from '@/features/editor/model/doc-diff'
 
 export interface VersionHistoryDialogProps {
   open: boolean
@@ -324,18 +325,16 @@ function ChangeSummaryView({ raw, memoShown }: { raw: string | null; memoShown: 
       </p>
       <ul className="mt-1 grid gap-0.5">
         {summary.items.map((item, index) => (
-          <li key={index} className="flex items-baseline gap-1.5 text-xs">
+          // 버전 비교 패널과 같은 규칙 — 이름·상세를 줄이지 않고 줄바꿈한다(break-all)
+          <li key={index} className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
             <ActionMarker action={item.action} />
             <span className="shrink-0">
               {t(`model.editor.history.kind.${item.kind}`)}{' '}
               {t(`model.editor.history.action.${item.action}`)}
             </span>
-            <span className="truncate font-mono">
-              {item.table ? `${item.table}.` : ''}
-              {item.name}
-            </span>
+            <span className="min-w-0 flex-1 break-all font-mono">{diffItemDisplayName(item)}</span>
             {item.detail ? (
-              <span className="truncate text-muted-foreground">— {item.detail}</span>
+              <span className="w-full break-all pl-[18px] text-muted-foreground">— {item.detail}</span>
             ) : null}
           </li>
         ))}

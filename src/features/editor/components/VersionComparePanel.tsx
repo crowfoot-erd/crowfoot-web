@@ -9,6 +9,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { diffItemDisplayName } from '@/features/editor/model/doc-diff'
 import type { DocumentDiffSummary, DocDiffItem } from '@/features/editor/model/doc-diff'
 import type { TableChangeClassification } from '@/features/editor/model/version-compare'
 
@@ -62,7 +63,12 @@ export function VersionComparePanel({ baseVersion, targetVersion, diff, classifi
             : t('model.editor.history.render.counts', counts)}
           {diff.truncated ? ` · ${t('model.editor.history.render.truncated')}` : ''}
         </p>
-        <p className="mt-1 text-[11px] text-muted-foreground">{t('model.editor.compare.canvasNote')}</p>
+        {/* layout-only 비교는 배지가 붙을 구조 변경이 없다 — 안내 문구도 그에 맞게 */}
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {diff.layoutOnly
+            ? t('model.editor.compare.canvasNoteLayoutOnly')
+            : t('model.editor.compare.canvasNote', { to: targetVersion })}
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -74,21 +80,20 @@ export function VersionComparePanel({ baseVersion, targetVersion, diff, classifi
           <ul>
             {groups.map(([table, items]) => (
               <li key={table} className="border-b last:border-b-0">
-                <p className="bg-muted/40 px-3 py-1 font-mono text-xs font-medium">{table}</p>
+                <p className="break-all bg-muted/40 px-3 py-1 font-mono text-xs font-medium">{table}</p>
                 <ul>
                   {items.map((item, index) => (
-                    <li key={index} className="flex items-baseline gap-1.5 px-3 py-1 text-xs">
+                    // 물리명·상세는 줄이지 않고 줄바꿈한다(break-all) — "무엇이 바뀌었는지"를
+                    // 말줄임 없이 통째로 보여준다. 상세는 자기 줄에(marker 폭만큼 들여쓰기)
+                    <li key={index} className="flex flex-wrap items-baseline gap-x-1.5 px-3 py-1 text-xs">
                       <ItemMarker action={item.action} />
                       <span className="shrink-0">
                         {t(`model.editor.history.kind.${item.kind}`)}{' '}
                         {t(`model.editor.history.action.${item.action}`)}
                       </span>
-                      <span className="truncate font-mono">
-                        {item.table && item.table !== '' ? `${item.table}.` : ''}
-                        {item.name}
-                      </span>
-                      {item.action === 'update' && item.detail ? (
-                        <span className="truncate text-muted-foreground">— {item.detail}</span>
+                      <span className="min-w-0 flex-1 break-all font-mono">{diffItemDisplayName(item)}</span>
+                      {item.detail ? (
+                        <span className="w-full break-all pl-[18px] text-muted-foreground">— {item.detail}</span>
                       ) : null}
                     </li>
                   ))}
@@ -107,7 +112,7 @@ export function VersionComparePanel({ baseVersion, targetVersion, diff, classifi
               {classification.removed.map((name) => (
                 <li key={name} className="flex items-baseline gap-1.5 px-3 py-1 text-xs">
                   <ItemMarker action="remove" />
-                  <span className="font-mono">{name}</span>
+                  <span className="min-w-0 flex-1 break-all font-mono">{name}</span>
                 </li>
               ))}
             </ul>

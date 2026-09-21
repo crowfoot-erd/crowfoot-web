@@ -19,6 +19,7 @@ import { ShareDialog } from '@/features/models/components/share-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuSeparator,
@@ -31,7 +32,7 @@ import { layoutTablePositions, orderFkColumns, positionNotes, type TableSizes } 
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
-import { captureErdPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
+import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
@@ -451,7 +452,9 @@ function VersionHistoryButton({
   )
 }
 
-/** 이미지 내보내기 — 문서 전체 범위(테이블·노트·관계선 + 여백)를 PNG로 내려받는다(05-editor/02-ui.md §1.1).
+/** 이미지 내보내기 — 두 범위를 제공한다(05-editor/02-ui.md §1.1).
+ *  · 보이는 화면: 현재 줌·구도 그대로 뷰포트만 찍는다 — 래스터가 작아 큰 문서도 즉시 끝난다
+ *  · 전체 문서: 모든 테이블·노트·관계선 + 여백. 넓은 문서는 배율을 낮춰 느려짐을 줄인다
  *  캡처 대상이 없으면(빈 문서) 비활성. 노드는 항상 전부 렌더돼 있어(컬링 없음) 화면 밖 노드도 그대로 찍힌다. */
 function ImageButton({ modelName }: { modelName: string }) {
   const { t } = useTranslation()
@@ -461,18 +464,24 @@ function ImageButton({ modelName }: { modelName: string }) {
   )
   const [running, setRunning] = useState(false)
 
-  const run = async () => {
+  const run = async (mode: 'viewport' | 'document') => {
     // 캡처 대상 DOM — 에디터 화면의 캔버스는 1개뿐이다
     const canvasEl = document.querySelector<HTMLElement>('.react-flow')
     if (!canvasEl) return
     setRunning(true)
     try {
-      // 최신 커밋의 페인트가 끝난 뒤 전체 범위를 계산한다
+      // 최신 커밋의 페인트가 끝난 뒤 범위를 계산한다
       await waitForPaint()
-      const bounds = nodesBoundingBox(getNodes())
-      if (!bounds) return
-      const dataUrl = await captureErdPng(canvasEl, bounds, resolveCanvasBackground(canvasEl))
-      downloadDataUrl(`${safeFilename(modelName)}.png`, dataUrl)
+      const background = resolveCanvasBackground(canvasEl)
+      if (mode === 'viewport') {
+        const dataUrl = await captureErdViewportPng(canvasEl, background)
+        downloadDataUrl(`${safeFilename(modelName)}.png`, dataUrl)
+      } else {
+        const bounds = nodesBoundingBox(getNodes())
+        if (!bounds) return
+        const dataUrl = await captureErdPng(canvasEl, bounds, background)
+        downloadDataUrl(`${safeFilename(modelName)}.png`, dataUrl)
+      }
       toast.success(t('model.editor.image.exported'))
     } catch {
       toast.error(t('model.editor.image.failed'))
@@ -482,19 +491,30 @@ function ImageButton({ modelName }: { modelName: string }) {
   }
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-7 gap-1 px-2"
-      onClick={() => void run()}
-      disabled={objectCount === 0 || running}
-      aria-label={t('model.editor.toolbar.image')}
-      title={t('model.editor.toolbar.image')}
-    >
-      {t('model.editor.toolbar.image')}
-      {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <ImageDown aria-hidden className="size-3.5" />}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2"
+          disabled={objectCount === 0 || running}
+          aria-label={t('model.editor.toolbar.image')}
+          title={t('model.editor.toolbar.image')}
+        >
+          {t('model.editor.toolbar.image')}
+          {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <ImageDown aria-hidden className="size-3.5" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => void run('viewport')}>
+          {t('model.editor.image.viewport')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => void run('document')}>
+          {t('model.editor.image.document')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

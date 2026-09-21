@@ -81,12 +81,14 @@ export async function captureErdPng(
   const width = bounds.width + IMAGE_PADDING * 2
   const height = bounds.height + IMAGE_PADDING * 2
   const prevTransform = viewport.style.transform
+  // 거대 문서의 2배 래스터는 수억 픽셀이라 캡처가 수십 초 걸린다 — 넓이가 크면 배율을 낮춘다
+  const pixelRatio = width * height > 4_000_000 ? 1 : 2
 
   viewport.style.transform = `translate(0px, 0px) scale(1)`
   try {
     return await toPng(viewport, {
       backgroundColor: background,
-      pixelRatio: 2,
+      pixelRatio,
       width,
       height,
       style: {
@@ -98,4 +100,33 @@ export async function captureErdPng(
   } finally {
     viewport.style.transform = prevTransform
   }
+}
+
+/**
+ * 지금 화면에 보이는 영역을 현재 줌 비율 그대로 PNG로 캡처한다 — 전체 문서 캡처보다
+ * 훨씬 빠르다(래스터가 문서 크기가 아니라 뷰포트 크기). 범위 이동·원복도 없다:
+ * viewport의 현재 transform(팬·줌)을 클론에 그대로 얹고 보이는 크기로 잘라 찍는다.
+ */
+export async function captureErdViewportPng(
+  canvasElement: HTMLElement,
+  background: string,
+): Promise<string> {
+  const viewport = canvasElement.querySelector<HTMLElement>('.react-flow__viewport')
+  if (!viewport) throw new Error('react-flow viewport not found')
+
+  const width = canvasElement.clientWidth
+  const height = canvasElement.clientHeight
+  return toPng(viewport, {
+    backgroundColor: background,
+    pixelRatio: 2,
+    width,
+    height,
+    style: {
+      width: `${width}px`,
+      height: `${height}px`,
+      // 현재 팬·줌 — 화면에 보이는 것과 같은 구도로 클론에 적용한다
+      transform: viewport.style.transform,
+      transformOrigin: '0 0',
+    },
+  })
 }

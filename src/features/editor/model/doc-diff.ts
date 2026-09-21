@@ -53,6 +53,14 @@ export interface DocumentDiffSummary {
   truncated: boolean
 }
 
+/** 항목 표시 이름 — 보통 "소속테이블.대상이름". node는 table과 name이 같은 물리명이라
+ *  한 번만 보여준다(두 번 찍으면 좁은 목록 폭에서 truncate에 잘려 깨져 보인다).
+ *  인자는 최소 구조만 요구한다 — 서버 저장 changeSummary(string 필드)와 공용으로 쓴다 */
+export function diffItemDisplayName(item: { kind: string; table: string; name: string }): string {
+  if (item.kind === 'node') return item.name
+  return item.table ? `${item.table}.${item.name}` : item.name
+}
+
 /** 항목 상한 — 넉넉한 하루치 편집도 요약 목록에 다 들어가고 64KB 서버 상한에도 여유 */
 export const DOC_DIFF_ITEM_LIMIT = 50
 

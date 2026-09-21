@@ -153,7 +153,8 @@
       "home": "메인으로"
     },
     "sidebar": {
-      "title": "워크스페이스",
+      "mine": "나의 워크스페이스",
+      "shared": "공유받은 워크스페이스",
       "newWorkspace": "새 워크스페이스",
       "adminTitle": "관리자",
       "adminUsers": "사용자 관리",
@@ -696,6 +697,7 @@
         "range": "v{{from}} → v{{to}}",
         "baseLabel": "기준 버전",
         "canvasNote": "캔버스는 v{{to}} 기준 — 변경 테이블에 +/~ 배지가 붙습니다",
+        "canvasNoteLayoutOnly": "배지는 구조 변경이 있을 때만 붙습니다 — 이 비교는 레이아웃(위치·메모) 변경만 있습니다",
         "removedTitle": "이 버전에서 사라진 테이블",
         "exit": "비교 닫기",
         "loadFailed": "기준 버전을 불러오지 못했습니다",
@@ -883,7 +885,9 @@
       },
       "image": {
         "exported": "이미지를 내려받았습니다",
-        "failed": "이미지 내보내기에 실패했습니다"
+        "failed": "이미지 내보내기에 실패했습니다",
+        "viewport": "보이는 화면 PNG",
+        "document": "전체 문서 PNG"
       },
       "crown": {
         "exported": ".crown 문서 파일을 내려받았습니다",

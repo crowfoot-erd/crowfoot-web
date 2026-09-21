@@ -1610,7 +1610,14 @@ describe('EditorShell — SQL 생성', () => {
 })
 
 describe('EditorShell — 이미지 내보내기', () => {
-  it('툴바 버튼으로 전체 범위 PNG를 파일명({문서명}.png)으로 내려받는다', async () => {
+  /** 이미지 버튼은 드롭다운 — 열고 항목을 고른다 (radix pointerdown 관례) */
+  const openImageMenu = () => {
+    const trigger = screen.getByRole('button', { name: '이미지 내보내기' })
+    fireEvent.pointerDown(trigger, { button: 0 })
+    fireEvent.click(trigger)
+  }
+
+  it('전체 문서 항목으로 전체 범위 PNG를 파일명({문서명}.png)으로 내려받는다', async () => {
     vi.mocked(toPng).mockResolvedValue('data:image/png;base64,MOCK')
     const clicked: HTMLAnchorElement[] = []
     const clickSpy = vi
@@ -1631,13 +1638,38 @@ describe('EditorShell — 이미지 내보내기', () => {
     // 커밋 → RF 노드 등록(리렌더)까지 기다린 뒤 캡처 — 등록 전이면 캡처 대상이 없다
     await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(1))
 
-    fireEvent.click(screen.getByRole('button', { name: '이미지 내보내기' }))
+    openImageMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: '전체 문서 PNG' }))
 
     await waitFor(() => expect(clicked).toHaveLength(1))
     expect(clicked[0].download).toBe('주문_서비스_ERD.png')
     expect(clicked[0].href).toBe('data:image/png;base64,MOCK')
     // 캡처는 문서 전체(viewport DOM) 대상 — 노드는 컬링 없이 항상 전부 렌더돼 있다
     expect(clickSpy).toHaveBeenCalled()
+  })
+
+  it('보이는 화면 항목은 현재 줌 그대로 뷰포트 캡처로 내려받는다', async () => {
+    vi.mocked(toPng).mockResolvedValue('data:image/png;base64,VIEWPORT')
+    const clicked: HTMLAnchorElement[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this)
+    })
+    await renderEditor()
+    useEditorStore.getState().commit({
+      type: 'table/create',
+      table: createTable('member', { id: 'T1', columns: [] }),
+      position: { x: 0, y: 0 },
+    } as ErdChange)
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(1))
+
+    openImageMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: '보이는 화면 PNG' }))
+
+    await waitFor(() => expect(clicked).toHaveLength(1))
+    expect(clicked[0].download).toBe('주문_서비스_ERD.png')
+    // 뷰포트 캡처 판별 — 클론 style에 현재 transform이 그대로 얹힌다(transformOrigin 고정)
+    const options = vi.mocked(toPng).mock.calls.at(-1)?.[1]
+    expect(options?.style).toHaveProperty('transformOrigin', '0 0')
   })
 
   it('캡처 대상(테이블·노트)이 없으면 비활성화', async () => {
@@ -1658,7 +1690,8 @@ describe('EditorShell — 이미지 내보내기', () => {
     } as ErdChange)
     await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(1))
 
-    fireEvent.click(screen.getByRole('button', { name: '이미지 내보내기' }))
+    openImageMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: '보이는 화면 PNG' }))
 
     await waitFor(() => expect(toPng).toHaveBeenCalled())
     expect(clickSpy).not.toHaveBeenCalled()

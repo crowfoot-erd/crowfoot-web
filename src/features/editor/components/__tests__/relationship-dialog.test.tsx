@@ -232,4 +232,112 @@ describe('RelationshipDialog — 편집', () => {
     // 편집은 방향 전환 제공 안 함
     expect(screen.queryByRole('button', { name: '부모/자식 바꾸기' })).toBeNull()
   })
+
+  it('아주 긴 fkName도 설명 줄이 다이얼로그 폭을 밀어내지 않는다 — truncate + title', () => {
+    const longFkName = 'FK_NOTIFICATION_CHANNEL_PREFERENCES_ORGANIZATION_MEMBERS'
+    const { relationship } = relationshipFixture()
+    relationship.fkName = longFkName
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={null}
+        child={null}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+      />,
+      { wrapRoutes: false },
+    )
+
+    // 줄바꿈 기회가 없는 54자 이름: 텍스트는 truncate로 잘리고 전체 이름은 title에 남는다
+    const description = screen.getByTitle(longFkName)
+    expect(description).toHaveTextContent(longFkName)
+    expect(description).toHaveClass('truncate')
+  })
+
+  it('FK 이름이 길면 값이 입력칸(2열 절반 폭)에 통째로 보이도록 폭을 넓힌다', () => {
+    // jsdom엔 캔버스가 없다 — 측정 스텁: 글자수×7px
+    const measureStub = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      { font: '', measureText: (text: string) => ({ width: text.length * 7 }) } as unknown as CanvasRenderingContext2D,
+    )
+    // 설명 줄은 짧게(120) — FK 요구 폭만 지배하는 상황
+    const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockReturnValue(120)
+    const { relationship } = relationshipFixture()
+    relationship.fkName = 'fk_report_environment_door_stats_reports_id' // 43자
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={null}
+        child={null}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+      />,
+      { wrapRoutes: false },
+    )
+
+    // FK 요구 폭 = (측정값 + 칸 장식 + 여유 2)×2 + 44 — 칸 장식(패딩·테두리)은 계산값 그대로
+    const input = document.querySelector('#relationship-fk-name') as HTMLInputElement
+    const cs = getComputedStyle(input)
+    const chrome = [cs.paddingLeft, cs.paddingRight, cs.borderLeftWidth, cs.borderRightWidth].reduce(
+      (sum, value) => sum + (parseFloat(value) || 0),
+      0,
+    )
+    const expected = (43 * 7 + chrome + 2) * 2 + 44
+    const content = document.querySelector('[data-slot="dialog-content"]') as HTMLElement
+    expect(content.style.maxWidth).toBe(`${expected}px`)
+    scrollWidth.mockRestore()
+    measureStub.mockRestore()
+  })
+
+  it('극단적으로 긴 값은 상한에 막힌다 — min(1280, 뷰포트-32)', () => {
+    const measureStub = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      { font: '', measureText: (text: string) => ({ width: text.length * 7 }) } as unknown as CanvasRenderingContext2D,
+    )
+    // 설명 줄이 880px — FK 요구(짧은 이름 286)보다 크고 상한 안쪽
+    const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockReturnValue(880)
+    const { relationship } = relationshipFixture()
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={null}
+        child={null}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+      />,
+      { wrapRoutes: false },
+    )
+
+    // 880 + 좌우 패딩 32 = 912 (jsdom innerWidth 1024 → 상한 min(1280, 992) = 992 안쪽)
+    const content = document.querySelector('[data-slot="dialog-content"]') as HTMLElement
+    expect(content.style.maxWidth).toBe('912px')
+    scrollWidth.mockRestore()
+    measureStub.mockRestore()
+  })
+
+  it('설명이 짧으면 기본 폭(sm:max-w-md)을 유지한다 — 인라인 maxWidth 없음', () => {
+    const scrollWidth = vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockReturnValue(120)
+    const { relationship } = relationshipFixture()
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={null}
+        child={null}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+      />,
+      { wrapRoutes: false },
+    )
+
+    // 설명 120+32=152 (jsdom 캔버스 불가 → FK 기여 없음) — 448 바닥 미만 → 클래스 기본 폭에 맡긴다
+    const content = document.querySelector('[data-slot="dialog-content"]') as HTMLElement
+    expect(content.style.maxWidth).toBe('')
+    scrollWidth.mockRestore()
+  })
 })

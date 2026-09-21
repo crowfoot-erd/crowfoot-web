@@ -98,4 +98,33 @@ describe('VersionComparePanel', () => {
 
     expect(screen.getByText('두 버전 사이 변경이 없습니다')).toBeVisible()
   })
+
+  it('canvasNote — 기준 버전 번호가 치환된다(v{{to}} 리터럴 없음), node 항목은 테이블 이름을 한 번만', () => {
+    renderPanel({
+      items: [
+        item('node', 'update', 'department_telegram_chats', 'department_telegram_chats', 'width, color'),
+      ],
+      layoutOnly: false,
+      truncated: false,
+    })
+
+    expect(screen.getByText('캔버스는 v1 기준 — 변경 테이블에 +/~ 배지가 붙습니다')).toBeVisible()
+    expect(screen.queryByText(/v\{\{to\}\}/)).toBeNull()
+
+    // node는 table과 name이 같은 물리명 — "테이블.테이블" 중복 표기가 없어야 한다
+    expect(screen.queryByText('department_telegram_chats.department_telegram_chats')).toBeNull()
+    expect(screen.getByText('— width, color')).toBeVisible()
+  })
+
+  it('layoutOnly 비교 — 배지 없음을 알리는 전용 안내', () => {
+    renderPanel({
+      items: [item('node', 'move', 'users', 'users', 'x, y')],
+      layoutOnly: true,
+      truncated: false,
+    })
+
+    expect(
+      screen.getByText('배지는 구조 변경이 있을 때만 붙습니다 — 이 비교는 레이아웃(위치·메모) 변경만 있습니다'),
+    ).toBeVisible()
+  })
 })

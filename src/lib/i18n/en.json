@@ -153,7 +153,8 @@
       "home": "Home"
     },
     "sidebar": {
-      "title": "Workspaces",
+      "mine": "My workspaces",
+      "shared": "Shared with me",
       "newWorkspace": "New workspace",
       "adminTitle": "Admin",
       "adminUsers": "Users",
@@ -696,6 +697,7 @@
         "range": "v{{from}} → v{{to}}",
         "baseLabel": "Base version",
         "canvasNote": "Canvas shows v{{to}} — changed tables get +/~ badges",
+        "canvasNoteLayoutOnly": "Badges appear only for structural changes — this compare is layout-only",
         "removedTitle": "Tables removed in this version",
         "exit": "Close compare",
         "loadFailed": "Failed to load the base version",
@@ -883,7 +885,9 @@
       },
       "image": {
         "exported": "Image downloaded",
-        "failed": "Failed to export image"
+        "failed": "Failed to export image",
+        "viewport": "Visible area (PNG)",
+        "document": "Full document (PNG)"
       },
       "crown": {
         "exported": "Downloaded a .crown document file",

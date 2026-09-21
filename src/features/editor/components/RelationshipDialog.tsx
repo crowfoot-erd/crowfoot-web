@@ -5,7 +5,7 @@
  * (관계 + FK 컬럼 + 식별 관계 PK 포함 — undo 1스택). 부모/자식 스왑 가능.
  * 편집: 속성만 patch(컬럼 매핑 재구성은 후속 Phase).
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -72,6 +72,28 @@ interface RelationFormState {
   fkName: string
   onDelete: ReferentialAction
   onUpdate: ReferentialAction
+}
+
+/** 줄의 자연 텍스트 폭 — truncate된 요소의 scrollWidth는 max(텍스트 폭, 현재 상자 폭)이라
+ *  상자가 넓어진 뒤 다시 재면 값이 자라난다(재측정마다 +α 래칫). width를 max-content로
+ *  잠깐 바꿔 읽고 되돌린다 — 측정이 멱등해져 다이얼로그 폭이 내용을 따라간다 */
+function naturalTextWidth(el: HTMLElement): number {
+  const prev = el.style.width
+  el.style.width = 'max-content'
+  const width = el.scrollWidth
+  el.style.width = prev
+  return width
+}
+
+/** 캔버스로 텍스트 폭 측정 — 대상 요소의 실제 계산 폰트를 그대로 쓴다. input은 기본
+ *  클래스의 md:text-sm이 text-xs보다 캔버스 순서에서 뒤라 실제 렌더 폰트(14px)와
+ *  미러 span(12px)이 어긋난다 — DOM 미러 대신 이 방식으로 잰다 */
+function measuredTextWidth(text: string, font: string): number {
+  if (text === '') return 0
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (!ctx) return 0 // 캔버스 불가 환경(jsdom) — 0이면 요구 폭이 바닥에 기여하지 않는다
+  ctx.font = font
+  return Math.ceil(ctx.measureText(text).width)
 }
 
 export function RelationshipDialog({
@@ -186,15 +208,66 @@ export function RelationshipDialog({
 
   const fkNameValue = state.fkName || defaultFkName
 
+  const descriptionText =
+    isCreate && effectiveParent && effectiveChild
+      ? `${effectiveParent.physicalName} (1) → ${effectiveChild.physicalName} (N)`
+      : (relationship?.fkName ?? '')
+
+  /** 설명 줄(헤더·부모/자식 테이블 정보)과 FK 이름 값이 길면 다이얼로그 폭을 그에 맞춰
+   *  넓힌다 — 448(sm:max-w-md 바닥)~1280(뷰포트 한도) 범위. 그래도 못 담는 극단값은
+   *  truncate가 다이얼로그 폭을 지킨다(전체 텍스트는 title 호버).
+   *  FK 이름 입력칸은 2열 그리드의 절반 폭이라 값 전체가 보이려면 (값+칸 장식) 폭의
+   *  2배+여백이 필요하다 — 입력칸의 계산 폰트로 캔버스 측정한다.
+   *  radix Portal이 본문을 첫 커밋보다 늦게 마운트해 useLayoutEffect 시점엔 노드가
+   *  없다 — ref가 붙는 시점마다 재측정한다(마지막 부착이 전체 줄을 본다) */
+  const widthDriverRefs = useRef<Array<HTMLParagraphElement | null>>([])
+  const fkInputRef = useRef<HTMLInputElement | null>(null)
+  const [dialogMaxWidth, setDialogMaxWidth] = useState<number | null>(null)
+  const applyContentWidth = useCallback((fkValue: string) => {
+    const widest = widthDriverRefs.current.reduce(
+      (max, el) => Math.max(max, el ? naturalTextWidth(el) : 0),
+      0,
+    )
+    let fkRequired = 0
+    const inputEl = fkInputRef.current
+    if (inputEl) {
+      const cs = getComputedStyle(inputEl)
+      const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+      const chrome = [cs.paddingLeft, cs.paddingRight, cs.borderLeftWidth, cs.borderRightWidth].reduce(
+        (sum, value) => sum + (parseFloat(value) || 0),
+        0,
+      )
+      // +2 = 캔버스 측정 오차 여유. ×2 = 절반 폭 칸, +44 = 열 간격 12 + 다이얼로그 패딩 32
+      fkRequired = (measuredTextWidth(fkValue, font) + chrome + 2) * 2 + 44
+    }
+    const cap = Math.min(1280, window.innerWidth - 32)
+    const target = Math.min(Math.max(widest + 32, fkRequired, 448), cap)
+    const next = target > 448 ? target : null
+    // 같은 값이면 재렌더링하지 않는다 — 측정이 멱등하므로 ref 콜백이 흔들려도 수렴한다
+    setDialogMaxWidth((prev) => (prev === next ? prev : next))
+  }, [])
+  const setWidthDriver = (index: number) => (el: HTMLParagraphElement | null) => {
+    widthDriverRefs.current[index] = el
+    if (el != null) applyContentWidth(fkNameValue)
+  }
+  const setFkInput = (el: HTMLInputElement | null) => {
+    fkInputRef.current = el
+    if (el != null) applyContentWidth(fkNameValue)
+  }
+  useLayoutEffect(() => {
+    if (!open) setDialogMaxWidth(null)
+  }, [open])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        style={dialogMaxWidth != null ? { maxWidth: `${dialogMaxWidth}px` } : undefined}
+      >
         <DialogHeader>
           <DialogTitle>{t(isCreate ? 'model.editor.relationship.createTitle' : 'model.editor.relationship.editTitle')}</DialogTitle>
-          <DialogDescription>
-            {isCreate && effectiveParent && effectiveChild
-              ? `${effectiveParent.physicalName} (1) → ${effectiveChild.physicalName} (N)`
-              : (relationship?.fkName ?? '')}
+          <DialogDescription ref={setWidthDriver(0)} className="truncate" title={descriptionText}>
+            {descriptionText}
           </DialogDescription>
         </DialogHeader>
 
@@ -202,11 +275,11 @@ export function RelationshipDialog({
           {isCreate ? (
             <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
               <div className="min-w-0">
-                <p className="truncate">
+                <p ref={setWidthDriver(1)} className="truncate">
                   <span className="text-muted-foreground">{t('model.editor.relationship.parent')}: </span>
                   <span className="font-medium">{effectiveParent?.physicalName}</span>
                 </p>
-                <p className="truncate">
+                <p ref={setWidthDriver(2)} className="truncate">
                   <span className="text-muted-foreground">{t('model.editor.relationship.child')}: </span>
                   <span className="font-medium">{effectiveChild?.physicalName}</span>
                 </p>
@@ -226,14 +299,14 @@ export function RelationshipDialog({
           ) : effectiveParent && effectiveChild ? (
             // 편집 — 어떤 테이블 ↔ 어떤 테이블 관계인지 읽기 전용으로 보여준다 (스왑 불가)
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-              <p className="truncate">
+              <p ref={setWidthDriver(3)} className="truncate">
                 <span className="text-muted-foreground">{t('model.editor.relationship.parent')}: </span>
                 <span className="font-medium">{effectiveParent.physicalName}</span>
                 {effectiveParent.logicalName !== effectiveParent.physicalName ? (
                   <span className="text-muted-foreground"> ({effectiveParent.logicalName})</span>
                 ) : null}
               </p>
-              <p className="truncate">
+              <p ref={setWidthDriver(4)} className="truncate">
                 <span className="text-muted-foreground">{t('model.editor.relationship.child')}: </span>
                 <span className="font-medium">{effectiveChild.physicalName}</span>
                 {effectiveChild.logicalName !== effectiveChild.physicalName ? (
@@ -298,6 +371,7 @@ export function RelationshipDialog({
               <Label htmlFor="relationship-fk-name">{t('model.editor.relationship.fkName')}</Label>
               <Input
                 id="relationship-fk-name"
+                ref={setFkInput}
                 value={fkNameValue}
                 onChange={(event) => setState((prev) => ({ ...prev, fkName: event.target.value }))}
                 className="font-mono text-xs"
