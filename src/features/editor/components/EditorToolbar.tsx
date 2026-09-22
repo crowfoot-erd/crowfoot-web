@@ -462,59 +462,92 @@ function ImageButton({ modelName }: { modelName: string }) {
   const objectCount = useEditorStore(
     (s) => s.present.model.tables.length + s.present.diagram.notes.length,
   )
-  const [running, setRunning] = useState(false)
+  /** 진행 표시 — 범위 계산(prepare) → 렌더링(render, 제일 김) → 파일 저장(save).
+   *  단계마다 waitForPaint로 커밋·페인트를 기다린 뒤 무거운 작업을 시작한다(오버레이가 먼저 보여야 한다) */
+  const [progress, setProgress] = useState<{ mode: 'viewport' | 'document'; phase: 'prepare' | 'render' | 'save' } | null>(null)
+  const running = progress !== null
 
   const run = async (mode: 'viewport' | 'document') => {
     // 캡처 대상 DOM — 에디터 화면의 캔버스는 1개뿐이다
     const canvasEl = document.querySelector<HTMLElement>('.react-flow')
     if (!canvasEl) return
-    setRunning(true)
+    setProgress({ mode, phase: 'prepare' })
     try {
       // 최신 커밋의 페인트가 끝난 뒤 범위를 계산한다
       await waitForPaint()
       const background = resolveCanvasBackground(canvasEl)
       if (mode === 'viewport') {
+        setProgress({ mode, phase: 'render' })
+        await waitForPaint()
         const dataUrl = await captureErdViewportPng(canvasEl, background)
+        setProgress({ mode, phase: 'save' })
+        await waitForPaint()
         downloadDataUrl(`${safeFilename(modelName)}.png`, dataUrl)
       } else {
         const bounds = nodesBoundingBox(getNodes())
         if (!bounds) return
+        setProgress({ mode, phase: 'render' })
+        await waitForPaint()
         const dataUrl = await captureErdPng(canvasEl, bounds, background)
+        setProgress({ mode, phase: 'save' })
+        await waitForPaint()
         downloadDataUrl(`${safeFilename(modelName)}.png`, dataUrl)
       }
       toast.success(t('model.editor.image.exported'))
     } catch {
       toast.error(t('model.editor.image.failed'))
     } finally {
-      setRunning(false)
+      setProgress(null)
     }
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1 px-2"
-          disabled={objectCount === 0 || running}
-          aria-label={t('model.editor.toolbar.image')}
-          title={t('model.editor.toolbar.image')}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 px-2"
+            disabled={objectCount === 0 || running}
+            aria-label={t('model.editor.toolbar.image')}
+            title={t('model.editor.toolbar.image')}
+          >
+            {t('model.editor.toolbar.image')}
+            {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <ImageDown aria-hidden className="size-3.5" />}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => void run('viewport')}>
+            {t('model.editor.image.viewport')}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void run('document')}>
+            {t('model.editor.image.document')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {progress ? (
+        // 캡처 중 진행 오버레이 — 전체 캡처는 뷰포트를 옮겨 찍으므로 조작 차단은 안전장치이기도 하다.
+        // 진행 바 애니메이션은 transform 기반이라 toPng의 메인 스레드 블로킹에도 멈추지 않는다
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="image-export-progress"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-background/70 backdrop-blur-[2px]"
         >
-          {t('model.editor.toolbar.image')}
-          {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <ImageDown aria-hidden className="size-3.5" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => void run('viewport')}>
-          {t('model.editor.image.viewport')}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void run('document')}>
-          {t('model.editor.image.document')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <div className="flex w-80 flex-col items-center gap-3 rounded-lg border bg-background p-5 shadow-lg">
+            <p className="text-sm font-medium">
+              {t('model.editor.toolbar.image')} — {t(`model.editor.image.${progress.mode}`)}
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-full origin-left rounded-full bg-primary [animation:image-export-progress_20s_ease-out_forwards]" />
+            </div>
+            <p className="text-xs text-muted-foreground">{t(`model.editor.image.progress.${progress.phase}`)}</p>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }
 

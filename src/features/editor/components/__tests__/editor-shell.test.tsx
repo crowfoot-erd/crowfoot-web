@@ -1696,6 +1696,37 @@ describe('EditorShell — 이미지 내보내기', () => {
     await waitFor(() => expect(toPng).toHaveBeenCalled())
     expect(clickSpy).not.toHaveBeenCalled()
   })
+
+  it('캡처 중 진행 오버레이 — 렌더링 단계 문구가 보이다가 완료 뒤 사라진다', async () => {
+    // 캡처를 완료 못 하게 묶어두고 중간 상태를 관찰한다
+    let resolvePng!: (value: string) => void
+    vi.mocked(toPng).mockImplementation(
+      () => new Promise((resolve) => { resolvePng = resolve }),
+    )
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined)
+    await renderEditor()
+    useEditorStore.getState().commit({
+      type: 'table/create',
+      table: createTable('member', { id: 'T1', columns: [] }),
+      position: { x: 0, y: 0 },
+    } as ErdChange)
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(1))
+
+    openImageMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: '전체 문서 PNG' }))
+
+    // 렌더링 단계 — 오버레이(status) + 진행 문구 (문구는 toPng 진입 전에 먼저 보인다)
+    expect(await screen.findByText(/이미지로 렌더링하는 중/)).toBeVisible()
+    const overlay = screen.getByTestId('image-export-progress')
+    expect(overlay.getAttribute('role')).toBe('status')
+    await waitFor(() => expect(toPng).toHaveBeenCalled())
+
+    resolvePng('data:image/png;base64,OK')
+    await waitFor(() => expect(screen.queryByTestId('image-export-progress')).toBeNull())
+    expect(clickSpy).toHaveBeenCalled()
+  })
 })
 
 describe('EditorShell — .crown 문서 파일 내보내기', () => {

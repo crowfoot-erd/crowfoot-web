@@ -133,3 +133,16 @@
     cursor: pointer;
   }
 }
+/* 이미지 내보내기 진행 바 — transform 애니메이션은 컴포지터 스레드에서 실행되므로
+   캡처(toPng)의 메인 스레드 블로킹 중에도 멈추지 않는다(줄어들 뿐). */
+@keyframes image-export-progress {
+  0% {
+    transform: scaleX(0.03);
+  }
+  60% {
+    transform: scaleX(0.72);
+  }
+  100% {
+    transform: scaleX(0.95);
+  }
+}

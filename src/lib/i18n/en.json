@@ -888,7 +888,12 @@
         "exported": "Image downloaded",
         "failed": "Failed to export image",
         "viewport": "Visible area (PNG)",
-        "document": "Full document (PNG)"
+        "document": "Full document (PNG)",
+        "progress": {
+          "prepare": "Measuring the capture range…",
+          "render": "Rendering the image… large documents can take a while",
+          "save": "Saving the file…"
+        }
       },
       "crown": {
         "exported": "Downloaded a .crown document file",
