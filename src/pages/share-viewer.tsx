@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EditorShell } from '@/features/editor'
 import { useSharedDocument } from '@/features/models'
+import { usePageMeta } from '@/hooks/usePageMeta'
 import { resultCodeMessage } from '@/lib/result-code'
 
 /** 공개 응답 → EditorShell이 받는 Model 모양으로 — modelId는 공유 문서 식별자로 대체 */
@@ -39,6 +40,16 @@ export function ShareViewerPage() {
   const { t } = useTranslation()
   const { token = '' } = useParams()
   const share = useSharedDocument(token)
+  // 제목·설명은 조회 뒤 — 색인은 어떤 상태(pending·오류 포함)에서도 금지(토큰이 곧 자격)
+  usePageMeta(
+    share.data
+      ? {
+          title: `${share.data.modelName} — ${t('common.appName')}`,
+          description: share.data.description ?? undefined,
+          noindex: true,
+        }
+      : { noindex: true },
+  )
 
   return (
     <div className="flex h-dvh flex-col bg-background">

@@ -1,0 +1,76 @@
+<!doctype html>
+<!--
+  og:image 원본 레이아웃 — 링크 공유 미리보기(카카오톡·Slack·X) 썸네일.
+  파비콘(public/logo.svg·favicon.svg)과 같은 톤: zinc-950 배경 + 흰색 까마귀발 마크.
+  재생성: node scripts/generate-og-image.mjs (04-front/storyboard/00-common.md §3.11)
+-->
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        background: #09090b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        position: relative;
+      }
+      /* 마크 뒤 은은한 방사광 — 단색 배경에 깊이만 */
+      body::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 680px 440px at 50% 36%, rgba(250, 250, 250, 0.08), transparent 70%);
+      }
+      .mark {
+        width: 230px;
+        height: 230px;
+        position: relative;
+      }
+      .word {
+        color: #fafafa;
+        font-size: 92px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        position: relative;
+      }
+      .tag {
+        color: #71717a;
+        font-size: 33px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- public/logo.svg 까마귀발 마크(배경 사각형 제외한 선화만) -->
+    <svg class="mark" viewBox="0 0 512 512" aria-hidden="true">
+      <g stroke="#fafafa" stroke-width="30" stroke-linecap="round" fill="none">
+        <circle cx="124" cy="256" r="48" />
+        <line x1="197" y1="256" x2="335" y2="256" />
+        <line x1="335" y1="256" x2="435" y2="142" />
+        <line x1="335" y1="256" x2="435" y2="256" />
+        <line x1="335" y1="256" x2="435" y2="370" />
+      </g>
+    </svg>
+    <div class="word">Crowfoot</div>
+    <div class="tag">ERD Editor</div>
+  </body>
+</html>

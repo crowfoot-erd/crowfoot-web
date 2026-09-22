@@ -4,7 +4,46 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crowfoot — ERD Editor</title>
+    <!-- 검색 최적화(SEO) 기본 메타 — 사전 렌더 문구는 ko로 고정하고, 런타임은 usePageMeta 훅이
+         라우트·언어별 문구로 덮어쓴다. 색인 대상·noindex 정책은 public/sitemap.xml과 같다
+         (04-front/storyboard/00-common.md §3.11) -->
+    <title>Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지</title>
+    <meta
+      name="description"
+      content="웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://crowfoot.java21.net/" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#09090b" />
+    <!-- Open Graph·Twitter — 링크 공유 미리보기(og:image 재생성: node scripts/generate-og-image.mjs) -->
+    <meta property="og:site_name" content="Crowfoot" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지" />
+    <meta
+      property="og:description"
+      content="웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구."
+    />
+    <meta property="og:url" content="https://crowfoot.java21.net/" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:image" content="https://crowfoot.java21.net/og-image.png" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://crowfoot.java21.net/og-image.png" />
+    <!-- 구조화 데이터 — 검색 결과 리치 스니펫용 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Crowfoot",
+        "url": "https://crowfoot.java21.net/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "description": "웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+      }
+    </script>
     <script>
       // 테마 FOUC 방지 — 본문 렌더 전에 localStorage 테마 적용 (04-front/storyboard/00-common.md §3.9)
       ;(function () {

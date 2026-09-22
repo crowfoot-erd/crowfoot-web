@@ -4,6 +4,7 @@
  * lazy MarkdownViewer는 가벼운 stub으로 대체(페이지 로직 검증이 목적 —
  * toast-ui 렌더 자체는 e2e·수동 스파이크 영역, post-detail 관례).
  * 무인증 열람·존재 은닉(다른 게시판 post-id·없는 글 404)을 검증한다.
+ * head 메타(제목·canonical·오류 noindex — 00-common §3.11)도 함께 검증한다.
  */
 import { screen } from '@testing-library/react'
 import { Route } from 'react-router-dom'
@@ -37,6 +38,17 @@ describe('릴리스 노트 공개 뷰어', () => {
     const viewer = await screen.findByTestId('markdown-viewer')
     expect(viewer).toHaveTextContent('# 개요')
     expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
+
+    // then: head 메타 — 게시글 제목·canonical·본문 요약(마크다운·표 걷어냄) (00-common §3.11)
+    expect(document.title).toBe('v1.4.0 — 커뮤니티 게시판 — Crowfoot')
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      'https://crowfoot.java21.net/release-notes/902',
+    )
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute(
+      'content',
+      '개요 이번 릴리스의 주요 변경 사항입니다. 항목 내용 기능 커뮤니티 릴리스 노트는 관리자가 작성합니다',
+    )
   })
 
   it('게스트 — 없는 post-id는 404 안내와 홈 링크를 보여준다', async () => {
@@ -45,6 +57,12 @@ describe('릴리스 노트 공개 뷰어', () => {
     // then: COMMUNITY_POST_NOT_FOUND 메시지
     expect(await screen.findByText('게시글을 찾을 수 없습니다.')).toBeVisible()
     expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
+
+    // then: 오류 화면은 색인 제외 (00-common §3.11)
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex, nofollow',
+    )
   })
 
   it('게스트 — 다른 게시판(FEEDBACK) post-id는 404로 존재를 은닉한다', async () => {

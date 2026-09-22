@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { LanguageSelect } from '@/components/language-select'
 import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { usePageMeta } from '@/hooks/usePageMeta'
 
 /** i18n terms.sections 한 단위 — heading + paragraphs */
 interface TermsSection {
@@ -20,6 +21,8 @@ interface TermsSection {
 
 export function TermsPage() {
   const { t } = useTranslation()
+  // 설명은 서비스 기본(index.html) 유지 — 약관 문구가 검색 설명으로는 부적절해서
+  usePageMeta({ title: `${t('terms.title')} — ${t('common.appName')}` })
   const sections = t('terms.sections', { returnObjects: true }) as TermsSection[]
 
   return (

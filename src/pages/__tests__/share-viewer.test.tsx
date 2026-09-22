@@ -4,6 +4,7 @@
  * given: 공개 조회(/core/shares/{token}) 응답을 MSW로 정의 — 인증 없는 경로
  * when: 라우트로 직접 진입 (게스트 — 세션 없음)
  * then: 문서 메타 + 읽기 전용 툴바(저장·DDL·공유 없음) / 만료 410·없는 토큰 404 안내
+ *       + head 메타(문서 제목·항상 noindex — 토큰=자격, 00-common §3.11)
  */
 import { screen } from '@testing-library/react'
 import { http } from 'msw'
@@ -41,6 +42,13 @@ describe('공유 문서 공개 뷰어', () => {
 
     // then: 홈으로 링크
     expect(screen.getByRole('link', { name: /홈으로/ })).toHaveAttribute('href', '/')
+
+    // then: head — 문서 제목·색인 제외(토큰=자격) (00-common §3.11)
+    expect(document.title).toBe('주문 서비스 ERD — Crowfoot')
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex, nofollow',
+    )
   })
 
   it('shows the inactive message for an expired token (410)', async () => {
@@ -48,6 +56,12 @@ describe('공유 문서 공개 뷰어', () => {
 
     expect(await screen.findByText('공유 기간이 아니거나 만료된 링크입니다.')).toBeVisible()
     expect(screen.getByRole('link', { name: /홈으로/ })).toBeVisible()
+
+    // then: 오류 화면도 색인 제외 유지 (00-common §3.11)
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex, nofollow',
+    )
   })
 
   it('shows the not-found message for an unknown token (404)', async () => {

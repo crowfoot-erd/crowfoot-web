@@ -15,7 +15,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePublicReleaseNote } from '@/features/community/hooks'
+import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
+import { summarizeMarkdown } from '@/lib/markdown'
 import { resultCodeMessage } from '@/lib/result-code'
 
 // toast-ui 청크 분리 — 메인 번들에 포함하지 않는다(post-detail 관례)
@@ -25,6 +27,17 @@ export function ReleaseNoteViewerPage() {
   const { t } = useTranslation()
   const { postId = '' } = useParams()
   const note = usePublicReleaseNote(postId)
+  // 게시글 제목·본문 요약·canonical — 데이터 도착 전·오류에는 색인만 막는다
+  usePageMeta(
+    note.data
+      ? {
+          title: `${note.data.title} — ${t('common.appName')}`,
+          description: summarizeMarkdown(note.data.content),
+          canonicalPath: `/release-notes/${postId}`,
+          ogType: 'article',
+        }
+      : { noindex: true },
+  )
 
   return (
     <div className="flex h-dvh flex-col bg-background">

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { isApiError, setAccessToken } from '@/api/client'
 import { exchangeOAuthCode } from '@/features/auth'
 import { consumeOAuthNext, consumeOAuthProvider } from '@/features/auth'
+import { usePageMeta } from '@/hooks/usePageMeta'
 import { resultCodeMessage } from '@/lib/result-code'
 import { useSessionStore } from '@/stores/session'
 
@@ -29,6 +30,9 @@ export function AuthCallbackPage() {
   const signIn = useSessionStore((state) => state.signIn)
   const [state, setState] = useState<CallbackState>('processing')
   const [failureCode, setFailureCode] = useState<string>('AUTH_STATE_INVALID')
+
+  // 일시적 처리 화면 — 색인 제외(sitemap 제외 규칙과 동일)
+  usePageMeta({ noindex: true })
 
   // mount 1회 — StrictMode 이중 실행 방지
   const startedRef = useRef(false)

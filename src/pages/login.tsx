@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useProviders } from '@/features/auth'
 import { startOAuthLogin } from '@/features/auth'
 import { consentTerms, hasConsentedTerms } from '@/features/auth'
+import { usePageMeta } from '@/hooks/usePageMeta'
 import { useSessionStore } from '@/stores/session'
 
 // lucide v1은 브랜드 아이콘(Github 등)을 제공하지 않는다 — 중립 아이콘 사용
@@ -36,6 +37,9 @@ export function LoginPage() {
   const nextParam = searchParams.get('next') ?? undefined
   // 이용약관 동의 — 최초 1회(브라우저 기록), 동의 전에는 제공자 버튼을 잠근다
   const [agreed, setAgreed] = useState(hasConsentedTerms)
+
+  // 색인 제외(로그인은 색인 가치 없음 — sitemap 제외 규칙과 동일) — 훅은 아래 조기 return보다 먼저
+  usePageMeta({ title: t('auth.login.title'), noindex: true })
 
   // 이미 로그인 상태 — 로그인 화면을 다시 보지 않는다
   if (status === 'authenticated') {

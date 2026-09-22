@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
+import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
 import { useSessionStore } from '@/stores/session'
 
@@ -32,6 +33,11 @@ const FEATURES = [
 
 export function LandingPage() {
   const { t } = useTranslation()
+  // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외)
+  usePageMeta({
+    title: `${t('common.appName')} — ${t('landing.badge')}`,
+    description: t('landing.hero.description'),
+  })
   const status = useSessionStore((state) => state.status)
   // 인증 상태에서도 랜딩 열람 가능 — CTA 행선지만 전환된다
   const authenticated = status === 'authenticated'
