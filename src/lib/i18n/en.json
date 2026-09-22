@@ -696,6 +696,7 @@
         "title": "Version compare",
         "range": "v{{from}} → v{{to}}",
         "baseLabel": "Base version",
+        "targetLabel": "Compare version",
         "canvasNote": "Canvas shows v{{to}} — changed tables get +/~ badges",
         "canvasNoteLayoutOnly": "Badges appear only for structural changes — this compare is layout-only",
         "removedTitle": "Tables removed in this version",

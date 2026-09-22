@@ -152,6 +152,45 @@ describe('버전 기록 뷰어 — 비교 모드 (?compare=N)', () => {
     })
   })
 
+  it('비교 대상(새 버전) 선택 — v1?compare=0에서 대상을 v3로 바꾸면 기준(v0)을 유지한 채 경로가 바뀐다', async () => {
+    renderViewer(1, '?compare=0')
+
+    expect(await screen.findByTestId('compare-badge')).toBeVisible()
+
+    // radix select — 대상 후보는 기준+1 .. 최신(문서 메타 v3)
+    const trigger = screen.getByRole('combobox', { name: '비교 버전' })
+    fireEvent.pointerDown(trigger, { button: 0 })
+    fireEvent.click(trigger)
+    const options = await screen.findAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual(['v3', 'v2', 'v1'])
+    fireEvent.click(screen.getByRole('option', { name: 'v3' }))
+
+    // v3는 v1 복원 — v0 → v3도 v0 → v1과 같은 grade 추가 요약
+    await waitFor(() => {
+      const updated = screen.getByTestId('version-compare-panel')
+      expect(within(updated).getByText('v0 → v3')).toBeVisible()
+      expect(within(updated).getByText('users.grade')).toBeVisible()
+    })
+  })
+
+  it('비교 진입 — 일반 뷰어의 [비교] 버튼으로 직전 버전과 비교한다', async () => {
+    renderViewer(2)
+
+    // 비교 모드가 아니어도 헤더 [비교]로 즉시 진입 — 인접 쌍(v2 vs v1)으로 시작
+    expect(screen.queryByTestId('compare-badge')).toBeNull()
+    fireEvent.click(await screen.findByTestId('compare-enter'))
+
+    const panel = await screen.findByTestId('version-compare-panel')
+    expect(within(panel).getByText('v1 → v2')).toBeVisible()
+  })
+
+  it('v0은 비교 상대가 없어 [비교] 버튼이 없다', async () => {
+    renderViewer(0)
+
+    expect(await screen.findByRole('heading', { name: '주문 서비스 ERD' })).toBeVisible()
+    expect(screen.queryByTestId('compare-enter')).toBeNull()
+  })
+
   it('compare가 현재 버전 이상이면 무시 — 일반 뷰어로 연다', async () => {
     renderViewer(1, '?compare=1')
 

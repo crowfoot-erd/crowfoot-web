@@ -9,6 +9,9 @@
  * - 비교 모드 ?compare=N(§1.11.3): 이 화면 버전(newer)을 기준 버전 N(base)과 비교한다.
  *   상세 2회·diff는 클라이언트(diffDocuments itemLimit 500) — 캔버스는 최신 버전 하나만
  *   그리고 변경 테이블에 +/~ 배지(CompareHighlightContext), 우측 패널에 변경 목록.
+ *   기준(과거)·비교(새) 버전을 헤더 Select 두 개로 각각 고른다 — 다이얼로그 [비교]는
+ *   인접 쌍(N vs N-1)으로만 들어가는 빠른 진입이라 여기서 임의의 쌍으로 조정한다.
+ *   비교 모드가 아니어도 [비교] 버튼으로 바로 진입할 수 있다(이 화면 vs 직전).
  * - modelId는 합성 식별자(history-{id}-v{N}) — 실제 id면 에디터 스토어 수화가
  *   진짜 문서로 착각해 엉뚱한 문서를 그린다(share-viewer `share-{token}` 관례).
  */
@@ -40,7 +43,13 @@ import { diffDocuments } from '@/features/editor/model/doc-diff'
 import { classifyTableChanges, toTableIdMarks } from '@/features/editor/model/version-compare'
 import { CompareHighlightContext } from '@/features/editor/components/canvas/compare-context'
 import { VersionComparePanel } from '@/features/editor/components/VersionComparePanel'
-import { modelEditorPath, useModel, useModelVersionDetail, useRestoreModelVersion } from '@/features/models'
+import {
+  modelEditorPath,
+  modelVersionPath,
+  useModel,
+  useModelVersionDetail,
+  useRestoreModelVersion,
+} from '@/features/models'
 import { useMyWorkspaces } from '@/features/workspaces'
 
 /** 스냅샷 상세 → EditorShell이 받는 Model 모양 — modelId는 버전 식별 합성어로 대체 */
@@ -125,11 +134,22 @@ export function ModelVersionViewerPage() {
     return { classification, marks: toTableIdMarks(classification, newer), diff }
   }, [compareVersion, detail.data, base.data])
 
-  /** 기준 버전 선택 — 0..현재-1 (버전은 연속 생성). 프루닝으로 없는 버전을 고르면 패널이 실패 안내 */
+  /** 기준(과거) 버전 선택 — 0..이 버전-1 (버전은 연속 생성). 프루닝으로 없는 버전을 고르면 패널이 실패 안내 */
   const changeCompare = (next: string) => {
     const parsed = Number(next)
     if (Number.isFinite(parsed)) setSearchParams({ compare: String(parsed) }, { replace: true })
   }
+  /** 비교 대상(새 버전) 선택 — 라우트 세그먼트가 곧 새 버전이라 경로를 통째로 갈아탄다(기준 유지) */
+  const changeTarget = (next: string) => {
+    const parsed = Number(next)
+    if (Number.isFinite(parsed) && compareVersion !== null) {
+      navigate(`${modelVersionPath(workspaceId, modelId, parsed)}?compare=${compareVersion}`, {
+        replace: true,
+      })
+    }
+  }
+  /** 비교 시작 — 이 버전 vs 직전으로 들어가고, 헤더 Select로 양쪽을 다시 고른다 */
+  const enterCompare = () => setSearchParams({ compare: String(version - 1) }, { replace: true })
   const exitCompare = () => setSearchParams({}, { replace: true })
 
   const compareLoadFailed = compareVersion !== null && base.isError
@@ -196,7 +216,7 @@ export function ModelVersionViewerPage() {
                 <>
                   <Select value={String(compareVersion)} onValueChange={changeCompare}>
                     <SelectTrigger
-                      className="h-8 w-32 text-xs"
+                      className="h-8 w-24 text-xs"
                       aria-label={t('model.editor.compare.baseLabel')}
                       data-testid="compare-base-select"
                     >
@@ -204,6 +224,31 @@ export function ModelVersionViewerPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: detail.data.version }, (_, i) => i)
+                        .reverse()
+                        .map((v) => (
+                          <SelectItem key={v} value={String(v)} className="font-mono text-xs">
+                            v{v}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <span aria-hidden className="text-xs text-muted-foreground">
+                    →
+                  </span>
+                  <Select value={String(detail.data.version)} onValueChange={changeTarget}>
+                    <SelectTrigger
+                      className="h-8 w-24 text-xs"
+                      aria-label={t('model.editor.compare.targetLabel')}
+                      data-testid="compare-target-select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* 새 버전 후보 — 기준+1 .. 최신(문서 메타 version) */}
+                      {Array.from(
+                        { length: model.data.version - compareVersion },
+                        (_, i) => i + compareVersion + 1,
+                      )
                         .reverse()
                         .map((v) => (
                           <SelectItem key={v} value={String(v)} className="font-mono text-xs">
@@ -233,6 +278,12 @@ export function ModelVersionViewerPage() {
                     {t('model.editor.compare.exit')}
                   </Button>
                 </>
+              ) : null}
+              {compareVersion === null && detail.data.version > 0 ? (
+                <Button type="button" variant="outline" size="sm" onClick={enterCompare} data-testid="compare-enter">
+                  <GitCompareArrows aria-hidden />
+                  {t('model.editor.history.compare')}
+                </Button>
               ) : null}
               {canEdit && detail.data.version !== model.data.version ? (
                 <Button type="button" size="sm" onClick={() => setConfirmOpen(true)} disabled={restore.isPending}>

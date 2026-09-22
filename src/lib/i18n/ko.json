@@ -696,6 +696,7 @@
         "title": "버전 비교",
         "range": "v{{from}} → v{{to}}",
         "baseLabel": "기준 버전",
+        "targetLabel": "비교 버전",
         "canvasNote": "캔버스는 v{{to}} 기준 — 변경 테이블에 +/~ 배지가 붙습니다",
         "canvasNoteLayoutOnly": "배지는 구조 변경이 있을 때만 붙습니다 — 이 비교는 레이아웃(위치·메모) 변경만 있습니다",
         "removedTitle": "이 버전에서 사라진 테이블",

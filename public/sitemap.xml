@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  구글 사이트맵 — 색인 대상은 공개 페이지뿐이다.
+  - 보호 경로(/dashboard, /workspaces, /teams, /community, /admin …)는 로그인이 필요해 제외
+  - /share/{token}은 토큰이 곧 자격이라 제외(공개 갤러리 링크로 크롤러가 발견하게 둔다)
+  - /login, /auth/callback은 색인 가치가 없어 제외
+  운영 원칙(docs README 릴리스 표와 동일): 릴리스 노트 게시마다 아래에 <url> 행 1개씩 추가, 삭제 금지.
+  게시물 id는 community_posts(board=RELEASE_NOTE)의 id다.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://crowfoot.java21.net/</loc>
+    <lastmod>2026-09-22</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/terms</loc>
+    <lastmod>2026-09-15</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <!-- 릴리스 노트 공개 뷰어 /release-notes/{postId} -->
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/1</loc>
+    <lastmod>2026-09-12</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/2</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/3</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/4</loc>
+    <lastmod>2026-09-15</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/5</loc>
+    <lastmod>2026-09-15</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/6</loc>
+    <lastmod>2026-09-16</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/7</loc>
+    <lastmod>2026-09-16</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/8</loc>
+    <lastmod>2026-09-18</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/9</loc>
+    <lastmod>2026-09-18</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/10</loc>
+    <lastmod>2026-09-20</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/11</loc>
+    <lastmod>2026-09-20</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/release-notes/13</loc>
+    <lastmod>2026-09-21</lastmod>
+    <priority>0.5</priority>
+  </url>
+</urlset>
