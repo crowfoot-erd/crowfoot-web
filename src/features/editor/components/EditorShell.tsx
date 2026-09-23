@@ -39,6 +39,8 @@ import {
 } from '@/components/ui/dialog'
 import { parseContent, serializeContent } from '@/features/editor/model/content-io'
 import { templateIdForDatabase } from '@/features/editor/model/dbms'
+import { copyToClipboard, pasteFromClipboard } from '@/features/editor/model/clipboard'
+import type { ErdChange } from '@/features/editor/model/changes'
 import { diffDocuments } from '@/features/editor/model/doc-diff'
 import { clearDraft, loadDraft, saveDraft } from '@/features/editor/model/draft-storage'
 import { saveModelContentOnUnload } from '@/features/editor/api'
@@ -53,9 +55,22 @@ import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context
 import { ChatDock, chatPreview } from './ChatDock'
 import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
+import { ModelExplorerPanel } from './ModelExplorerPanel'
 
 /** 자동 저장 지연 — 마지막 편집 후 이 시간 동안 추가 편집이 없으면 저장한다 */
 const AUTOSAVE_DELAY_MS = 2000
+
+/** 모델 익스플로러 열림 기억 — 브라우저 단위(줌·팬 기억 viewport-memory와 같은 관례, 문서 무관) */
+const EXPLORER_OPEN_KEY = 'crowfoot.editor.explorer-open'
+
+function readExplorerOpen(): boolean {
+  try {
+    const raw = localStorage.getItem(EXPLORER_OPEN_KEY)
+    return raw === null ? true : raw === 'true'
+  } catch {
+    return true
+  }
+}
 
 export interface EditorShellProps {
   model: Model
@@ -84,6 +99,23 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const [parseError, setParseError] = useState(false)
   const [nameDisplay, setNameDisplay] = useState<NameDisplayMode>('both')
   const [columnDisplay, setColumnDisplay] = useState<ColumnDisplayMode>('all')
+  // 모델 익스플로러 — 열림은 브라우저에 기억, focusSearchSignal은 Ctrl+F로 검색창에 데려오는 신호
+  const [explorerOpen, setExplorerOpen] = useState(readExplorerOpen)
+  const [explorerFocusSignal, setExplorerFocusSignal] = useState(0)
+  const toggleExplorer = useCallback(() => {
+    setExplorerOpen((open) => {
+      try {
+        localStorage.setItem(EXPLORER_OPEN_KEY, String(!open))
+      } catch {
+        // 시크릿 모드 등 저장 실패는 무시 — 상태만 전환한다
+      }
+      return !open
+    })
+  }, [])
+  const openExplorerSearch = useCallback(() => {
+    setExplorerOpen(true)
+    setExplorerFocusSignal((signal) => signal + 1)
+  }, [])
   const reloadingRef = useRef(false)
   const [remoteChangeOpen, setRemoteChangeOpen] = useState(false)
   const syncedVersionRef = useRef(0)
@@ -270,8 +302,42 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return
 
       const mod = event.metaKey || event.ctrlKey
-      if (!mod) return
       const key = event.key.toLowerCase()
+
+      // Esc — 선택 해제(보기 동작이라 읽기 전용도 동작)
+      if (key === 'escape') {
+        const { selectedIds, setSelection } = useEditorStore.getState()
+        if (selectedIds.length > 0) {
+          event.preventDefault()
+          setSelection([])
+        }
+        return
+      }
+
+      // 방향키 — 선택 객체 미세 이동(1px, Shift 10px). 테이블은 node/move, 메모는 note/patch로
+      if (!mod && key.startsWith('arrow')) {
+        if (!canEdit) return
+        const { selectedIds, present, commitAll } = useEditorStore.getState()
+        if (selectedIds.length === 0) return
+        const step = event.shiftKey ? 10 : 1
+        const dx = key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0
+        const dy = key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0
+        const positions: Record<string, { x: number; y: number }> = {}
+        const changes: ErdChange[] = []
+        for (const id of selectedIds) {
+          const layout = present.diagram.nodes[id]
+          if (layout) positions[id] = { x: layout.x + dx, y: layout.y + dy }
+          const note = present.diagram.notes.find((n) => n.id === id)
+          if (note) changes.push({ type: 'note/patch', noteId: id, patch: { x: note.x + dx, y: note.y + dy } })
+        }
+        if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
+        if (changes.length === 0) return
+        event.preventDefault()
+        commitAll(changes)
+        return
+      }
+
+      if (!mod) return
       if (key === 'z') {
         event.preventDefault()
         if (!canEdit) return
@@ -283,11 +349,47 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       } else if (key === 's') {
         event.preventDefault()
         handleSave()
+      } else if (key === 'f') {
+        // 검색 — 모델 익스플로러를 열고 검색 입력으로 포커스(읽기 전용·공개 뷰어도 탐색은 가능)
+        event.preventDefault()
+        openExplorerSearch()
+      } else if (key === 'a') {
+        // 전체 선택 — 테이블+메모(관계는 양끝 테이블 선택에 따라붙는다)
+        event.preventDefault()
+        const { present, setSelection } = useEditorStore.getState()
+        setSelection([
+          ...present.model.tables.map((table) => table.id),
+          ...present.diagram.notes.map((note) => note.id),
+        ])
+      } else if (key === 'c') {
+        if (!canEdit) return
+        const { present, selectedIds } = useEditorStore.getState()
+        if (copyToClipboard(present, selectedIds)) event.preventDefault()
+      } else if (key === 'v') {
+        if (!canEdit) return
+        const { present, commitAll, setSelection } = useEditorStore.getState()
+        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'))
+        if (pasted) {
+          event.preventDefault()
+          commitAll(pasted.changes)
+          setSelection(pasted.selectedIds)
+        }
+      } else if (key === 'd') {
+        // Duplicate — 선택을 그 자리에서 복사+붙여넣기(같은 규칙, 오프셋 32px)
+        if (!canEdit) return
+        event.preventDefault()
+        const { present, selectedIds, commitAll, setSelection } = useEditorStore.getState()
+        if (!copyToClipboard(present, selectedIds)) return
+        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'))
+        if (pasted) {
+          commitAll(pasted.changes)
+          setSelection(pasted.selectedIds)
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canEdit, handleSave])
+  }, [canEdit, handleSave, openExplorerSearch, t])
 
   /* ---------- 자동 저장 — 마지막 편집 후 정적 구간이 지나면 조용히 저장 ---------- */
 
@@ -428,6 +530,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         canEdit={canEdit}
         saving={saveMutation.isPending}
         onSave={() => handleSave()}
+        explorerOpen={explorerOpen}
+        onToggleExplorer={toggleExplorer}
         nameDisplay={nameDisplay}
         onNameDisplayChange={setNameDisplay}
         columnDisplay={columnDisplay}
@@ -441,76 +545,84 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         sourceConnectionId={model.sourceConnectionId}
         publicView={publicView}
       />
-      <main className="relative min-h-0 flex-1">
-        {remoteChangeOpen && !conflictOpen && (
-          <div
-            data-testid="remote-change-banner"
-            className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 border-b border-amber-300 bg-amber-100 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
-          >
-            <span className="flex items-center gap-2">
-              <Users className="size-4 shrink-0" aria-hidden />
-              {t('model.editor.remoteChange.banner')}
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 shrink-0"
-              onClick={() => void handleConflictReload()}
+      <main className="flex min-h-0 flex-1">
+        {/* 모델 익스플로러 — 탐색은 보기 기능이라 읽기 전용·공개 뷰어에서도 쓸 수 있다 */}
+        <ModelExplorerPanel
+          open={explorerOpen}
+          focusSearchSignal={explorerFocusSignal}
+          nameDisplay={nameDisplay}
+        />
+        <div className="relative min-w-0 flex-1">
+          {remoteChangeOpen && !conflictOpen && (
+            <div
+              data-testid="remote-change-banner"
+              className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 border-b border-amber-300 bg-amber-100 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
             >
-              {t('model.editor.remoteChange.reload')}
-            </Button>
-          </div>
-        )}
-        {participants.length > 0 && (
-          <div
-            data-testid="presence-chip"
-            aria-label={`${t('model.editor.presence.label')}: ${presenceNames}`}
-            title={presenceNames}
-            className="absolute right-3 top-3 z-10 flex -space-x-1.5"
-          >
-            {participants.slice(0, 5).map((participant) => (
-              <Avatar
-                key={participant.userId}
-                name={participant.name}
-                avatarUrl={participant.avatarUrl}
-                className="size-6 border border-background text-[10px] font-semibold shadow-sm"
-              />
-            ))}
-            {participants.length > 5 && (
-              <span className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-[10px] font-semibold text-muted-foreground shadow-sm">
-                +{participants.length - 5}
+              <span className="flex items-center gap-2">
+                <Users className="size-4 shrink-0" aria-hidden />
+                {t('model.editor.remoteChange.banner')}
               </span>
-            )}
-          </div>
-        )}
-        {hydrated ? (
-          <ErdCanvas canEdit={canEdit} nameDisplay={nameDisplay} columnDisplay={columnDisplay} dbmsId={dbmsId} modelId={model.modelId} />
-        ) : (
-          // 수화 게이트 — 문서 파싱·hydrate가 끝나기 전 캔버스 자리에 로딩을 보여준다
-          <div
-            role="status"
-            aria-live="polite"
-            data-testid="editor-loading"
-            className="flex h-full flex-col items-center justify-center gap-4"
-          >
-            <Loader2 aria-hidden className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-          </div>
-        )}
-        {/* 문서 채팅 — 공개 뷰어는 게스트(신원 없음)라 렌더하지 않는다 */}
-        {!publicView && (
-          <ChatDock
-            open={chatOpen}
-            onOpenChange={handleChatOpenChange}
-            unread={chatUnread}
-            messages={messages}
-            participants={participants}
-            myUserId={me.data?.userId}
-            connected={connected}
-            onSend={sendMessage}
-          />
-        )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0"
+                onClick={() => void handleConflictReload()}
+              >
+                {t('model.editor.remoteChange.reload')}
+              </Button>
+            </div>
+          )}
+          {participants.length > 0 && (
+            <div
+              data-testid="presence-chip"
+              aria-label={`${t('model.editor.presence.label')}: ${presenceNames}`}
+              title={presenceNames}
+              className="absolute right-3 top-3 z-10 flex -space-x-1.5"
+            >
+              {participants.slice(0, 5).map((participant) => (
+                <Avatar
+                  key={participant.userId}
+                  name={participant.name}
+                  avatarUrl={participant.avatarUrl}
+                  className="size-6 border border-background text-[10px] font-semibold shadow-sm"
+                />
+              ))}
+              {participants.length > 5 && (
+                <span className="flex size-6 items-center justify-center rounded-full border border-background bg-muted text-[10px] font-semibold text-muted-foreground shadow-sm">
+                  +{participants.length - 5}
+                </span>
+              )}
+            </div>
+          )}
+          {hydrated ? (
+            <ErdCanvas canEdit={canEdit} nameDisplay={nameDisplay} columnDisplay={columnDisplay} dbmsId={dbmsId} modelId={model.modelId} />
+          ) : (
+            // 수화 게이트 — 문서 파싱·hydrate가 끝나기 전 캔버스 자리에 로딩을 보여준다
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="editor-loading"
+              className="flex h-full flex-col items-center justify-center gap-4"
+            >
+              <Loader2 aria-hidden className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+            </div>
+          )}
+          {/* 문서 채팅 — 공개 뷰어는 게스트(신원 없음)라 렌더하지 않는다 */}
+          {!publicView && (
+            <ChatDock
+              open={chatOpen}
+              onOpenChange={handleChatOpenChange}
+              unread={chatUnread}
+              messages={messages}
+              participants={participants}
+              myUserId={me.data?.userId}
+              connected={connected}
+              onSend={sendMessage}
+            />
+          )}
+        </div>
       </main>
 
       <Dialog open={conflictOpen} onOpenChange={setConflictOpen}>

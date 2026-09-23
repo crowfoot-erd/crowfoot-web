@@ -294,9 +294,13 @@ function ChangeSummaryView({ raw, memoShown }: { raw: string | null; memoShown: 
   }
   if (summary == null) return null // 메모가 이미 행을 설명한다 — 요약 없음(직접 생성)
   if ('created' in summary) {
+    // source:sql — SQL Import 태생(§1.12). 미전송이면 기존 리버스 문구(하위 호환)
+    const key = summary.source === 'sql'
+      ? 'model.editor.history.render.sqlImported'
+      : 'model.editor.history.render.reverseCreated'
     return (
       <p className="mt-1 text-xs text-muted-foreground">
-        {t('model.editor.history.render.reverseCreated', {
+        {t(key, {
           tables: summary.tables,
           relationships: summary.relationships,
         })}

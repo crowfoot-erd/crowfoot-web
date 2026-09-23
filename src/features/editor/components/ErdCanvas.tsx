@@ -142,7 +142,11 @@ function buildNodes(doc: EditorDocument, selectedIds: Set<string>): AppNode[] {
   return tableNodes.concat(noteNodes)
 }
 
-function buildEdges(doc: EditorDocument, sizeReports: Record<string, { w: number; h: number }>): AppEdge[] {
+function buildEdges(
+  doc: EditorDocument,
+  sizeReports: Record<string, { w: number; h: number }>,
+  selectedIds: Set<string>,
+): AppEdge[] {
   return doc.model.relationships.map((rel) => {
     const childTable = doc.model.tables.find((t) => t.id === rel.childTableId)
     const parentTable = doc.model.tables.find((t) => t.id === rel.parentTableId)
@@ -176,6 +180,7 @@ function buildEdges(doc: EditorDocument, sizeReports: Record<string, { w: number
       sourceHandle: sides.child,
       targetHandle: sides.parent,
       data: EMPTY_NODE_DATA,
+      selected: selectedIds.has(rel.id),
     }
   })
 }
@@ -200,6 +205,27 @@ function nodesEqual(a: AppNode[], b: AppNode[]): boolean {
   return true
 }
 
+/** select 변경을 스토어 선택에 반영하는 공용 write-through — 노드·엣지가 같은 구조라 하나로 쓴다 */
+function applySelectChanges(
+  changes: ReadonlyArray<{ type: string; id?: string; selected?: boolean }>,
+  state: { selectedIds: string[]; setSelection: (ids: string[]) => void },
+): void {
+  const next = new Set(state.selectedIds)
+  let touched = false
+  for (const change of changes) {
+    if (change.type !== 'select' || typeof change.id !== 'string') continue
+    if (change.selected) {
+      if (!next.has(change.id)) {
+        next.add(change.id)
+        touched = true
+      }
+    } else if (next.delete(change.id)) {
+      touched = true
+    }
+  }
+  if (touched) state.setSelection([...next])
+}
+
 function edgesEqual(a: AppEdge[], b: AppEdge[]): boolean {
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i += 1) {
@@ -210,7 +236,8 @@ function edgesEqual(a: AppEdge[], b: AppEdge[]): boolean {
       x.source !== y.source ||
       x.target !== y.target ||
       x.sourceHandle !== y.sourceHandle ||
-      x.targetHandle !== y.targetHandle
+      x.targetHandle !== y.targetHandle ||
+      x.selected !== y.selected
     ) {
       return false
     }
@@ -261,7 +288,8 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
   const initialRef = useRef<{ nodes: AppNode[]; edges: AppEdge[] } | null>(null)
   if (initialRef.current === null) {
     const doc = useEditorStore.getState().present
-    initialRef.current = { nodes: buildNodes(doc, new Set()), edges: buildEdges(doc, {}) }
+    const selected = new Set(useEditorStore.getState().selectedIds)
+    initialRef.current = { nodes: buildNodes(doc, selected), edges: buildEdges(doc, {}, selected) }
   }
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialRef.current.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>(initialRef.current.edges)
@@ -392,21 +420,25 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
     if (changes.length > 0) commitAll(changes)
   }, [sizeReports, canEdit, commitAll])
 
-  /* ---------- 스토어 → 표시 레이어 동기화 (커밋·undo·수화 시) ---------- */
+  /* ---------- 스토어 → 표시 레이어 동기화 (커밋·undo·수화·선택 변경 시) ---------- */
+
+  // 선택 원천은 스토어 selectedIds다 — 캔버스 클릭(select 변경 write-through)과 모델
+  // 익스플로러 클릭(setSelection)이 같은 상태를 고쳐 쓴다(§3 양방향 동기화).
+  const selectedIds = useEditorStore((s) => s.selectedIds)
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
   useEffect(() => {
     if (draggingRef.current) return
     setNodes((current) => {
-      const selectedIds = new Set(current.filter((n) => n.selected).map((n) => n.id))
-      const next = buildNodes(present, selectedIds)
+      const next = buildNodes(present, selectedSet)
       // 값이 같으면 기존 배열 반환 — RF 노드 memo(객체 identity)가 살아있게
       return nodesEqual(current, next) ? current : next
     })
     setEdges((current) => {
-      const next = buildEdges(present, sizeReports)
+      const next = buildEdges(present, sizeReports, selectedSet)
       return edgesEqual(current, next) ? current : next
     })
-  }, [present, sizeReports, setNodes, setEdges])
+  }, [present, sizeReports, selectedSet, setNodes, setEdges])
 
   /* ---------- 초기 뷰: 브라우저에 기억한 마지막 화면 > 저장된 뷰포인트 > 전체 맞춤 ---------- */
 
@@ -431,28 +463,20 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
 
   /* ---------- 노드/엣지 변경 라우팅 — remove는 스토어 커밋으로 처리 ---------- */
 
-  /** 단일 선택 원칙 — 마지막에 선택된 노드 1개만 유지(다중 선택 이동 방지). remove는 스토어 커밋으로 */
+  /** 선택 write-through — RF select 변화를 스토어 선택(익스플로러와 공유 원천)에 반영.
+   *  Shift+클릭으로 여러 객체를 선택할 수 있다(박스 선택은 스크린 팬과 겹쳐 쓰지 않는다).
+   *  remove는 스토어 커밋(deleteKeyCode → onNodesDelete)으로 처리한다 */
   const handleNodesChange: OnNodesChange<AppNode> = useCallback(
     (changes) => {
-      let lastSelectedId: string | null = null
-      for (const change of changes) {
-        if (change.type === 'select' && change.selected) lastSelectedId = change.id
-      }
-      onNodesChange(
-        changes
-          .filter((change) => change.type !== 'remove')
-          .map((change) =>
-            change.type === 'select' && change.selected && change.id !== lastSelectedId
-              ? { ...change, selected: false }
-              : change,
-          ),
-      )
+      applySelectChanges(changes, useEditorStore.getState())
+      onNodesChange(changes.filter((change) => change.type !== 'remove'))
     },
     [onNodesChange],
   )
 
   const handleEdgesChange: OnEdgesChange<AppEdge> = useCallback(
     (changes) => {
+      applySelectChanges(changes, useEditorStore.getState())
       onEdgesChange(changes.filter((change) => change.type !== 'remove'))
     },
     [onEdgesChange],
@@ -1041,8 +1065,10 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         // 빈 캔버스 더블클릭 확대 방지 — 더블클릭은 편집기에서 다른 의미로 쓸 일이 없게 한다
         zoomOnDoubleClick={false}
         elementsSelectable
+        // 박스 선택(selectionKeyCode)은 팬·관계 클릭과 제스처가 겹쳐 쓰지 않는다 —
+        // 다중 선택은 Shift+클릭으로만(§9)
         selectionKeyCode={null}
-        multiSelectionKeyCode={null}
+        multiSelectionKeyCode={['Shift', 'Meta']}
         deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
         minZoom={0.1}
         maxZoom={2.5}

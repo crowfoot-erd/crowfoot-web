@@ -263,9 +263,11 @@ export interface ChangeSummaryItems {
   truncated: boolean
 }
 
-/** 변경 요약 특수형 — 리버스 엔지니어링 생성 직후 (서버가 기록) */
+/** 변경 요약 특수형 — 리버스 엔지니어링·SQL Import 생성 직후 (서버가 기록).
+ *  source는 SQL Import만 심는다('sql') — 렌더 문구 분기용, 리버스는 미전송(기존 호환) */
 export interface ChangeSummaryCreated {
   created: true
+  source?: 'sql'
   tables: number
   relationships: number
 }
@@ -319,6 +321,35 @@ export interface ConnectionTestResult {
 
 /** 리버스 엔지니어링 응답 — 생성된 문서 + 가져오기 요약 */
 export interface ReverseEngineeringResult {
+  model: Model
+  tableCount: number
+  relationshipCount: number
+  skipped: string[]
+}
+
+/* ---------- SQL Import (08-core/02-model.md §1.12 — DDL 텍스트 → 문서) ---------- */
+
+/** SQL Import 미리보기 — 테이블별 요약 1건 */
+export interface SqlImportPreviewTable {
+  name: string
+  comment: string | null
+  columnCount: number
+  primaryKeyColumns: string[]
+  foreignKeyCount: number
+}
+
+/** SQL Import 미리보기 응답 — 저장 없이 파싱·조립까지만. 개수는 생성과 같은 경로라 그대로 믿으면 된다 */
+export interface SqlImportPreviewResult {
+  databaseType: string
+  tableCount: number
+  relationshipCount: number
+  tables: SqlImportPreviewTable[]
+  /** 읽지 못한 문장·제약 요약(CREATE INDEX·VIEW…) — 문서 생성은 가능한 만큼 진행된다 */
+  skipped: string[]
+}
+
+/** SQL Import 생성 응답 — 리버스와 같은 뼈대. 커넥션 원천이 없어 DB 동기화 대상이 아니다 */
+export interface SqlImportResult {
   model: Model
   tableCount: number
   relationshipCount: number

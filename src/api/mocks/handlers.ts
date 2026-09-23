@@ -1046,6 +1046,65 @@ export const handlers = [
     )
   }),
 
+  // SQL Import 미리보기(§1.12) — CREATE TABLE이 없으면 400. 요약은 테이블명·REFERENCES 개수로 근사
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/sql-import/preview`, async ({ request }) => {
+    const body = (await request.json()) as { databaseType?: string; ddl?: string }
+    if (!body.databaseType || !body.ddl) return fail('INVALID_REQUEST', 400)
+    if (!/create\s+table/i.test(body.ddl)) return fail('SQL_IMPORT_NO_TABLES', 400)
+    const names = [...body.ddl.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?[`"[]?([\w$]+)[`"\]]?\s*\(/gi)]
+      .map((match) => match[1])
+    const references = body.ddl.match(/\breferences\b/gi)?.length ?? 0
+    return HttpResponse.json(
+      ok({
+        response: {
+          databaseType: body.databaseType,
+          tableCount: names.length,
+          relationshipCount: references,
+          tables: names.map((name) => ({
+            name,
+            comment: null,
+            columnCount: 0,
+            primaryKeyColumns: [] as string[],
+            foreignKeyCount: 0,
+          })),
+          skipped: [] as string[],
+        },
+      }),
+    )
+  }),
+
+  // SQL Import 생성(§1.12) — 이름 중복 409. 문서 이름 기본값 "SQL ERD", 원천 커넥션 없음
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/sql-import`, async ({ request }) => {
+    const body = (await request.json()) as { name?: string; description?: string; databaseType?: string; ddl?: string }
+    const name = body.name?.trim() || 'SQL ERD'
+    if (fixtures.models.responses.some((model) => model.name === name)) {
+      return fail('DUPLICATED_NAME', 409)
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          model: {
+            modelId: String(600 + fixtures.models.responses.length + 1),
+            workspaceId: '101',
+            name,
+            description: body.description ?? null,
+            databaseType: body.databaseType,
+            sourceConnectionId: null,
+            content: EMPTY_CONTENT,
+            version: 0,
+            createdBy: { userId: '2', name: '부트스트랩 관리자' },
+            createdAt: '2026-09-12T00:00:00Z',
+            updatedAt: '2026-09-12T00:00:00Z',
+          },
+          tableCount: 2,
+          relationshipCount: 1,
+          skipped: [] as string[],
+        },
+      }),
+      { status: 201 },
+    )
+  }),
+
   // 모델 메타 변경 — 이름·설명, 갱신된 메타 반환(픽스처 불변 유지)
   http.patch(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId`, async ({ request }) => {
     const body = (await request.json()) as { name?: string; description?: string | null }

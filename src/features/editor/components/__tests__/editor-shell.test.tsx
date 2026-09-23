@@ -113,12 +113,15 @@ function Harness({ canEdit = true }: { canEdit?: boolean }) {
 }
 
 async function renderCollabEditor(canEdit = true) {
+  // 이 파일의 테스트는 캔버스 조작이 대상 — 익스플로러를 닫아 텍스트 질의가 캔버스에만 걸리게 한다(패널은 model-explorer.test.tsx)
+  window.localStorage.setItem('crowfoot.editor.explorer-open', 'false')
   const utils = renderWithProviders(<Harness canEdit={canEdit} />, { wrapRoutes: false })
   await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
   return utils
 }
 
 async function renderEditor(canEdit = true) {
+  window.localStorage.setItem('crowfoot.editor.explorer-open', 'false')
   renderWithProviders(<EditorShell model={modelFixture()} canEdit={canEdit} />, { wrapRoutes: false })
   await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
 }
@@ -1766,5 +1769,101 @@ describe('EditorShell — .crown 문서 파일 내보내기', () => {
     expect(envelope.format).toBe('crowfoot-crown')
     expect(envelope.model.databaseType).toBe('postgresql')
     expect(envelope.content.model.tables[0]?.physicalName).toBe('member')
+  })
+})
+
+describe('EditorShell — 단축키: 클립보드·선택·이동 (§9)', () => {
+  function seedTable(name: string, x = 10, y = 20) {
+    const table = createTable(name)
+    useEditorStore.getState().commit({ type: 'table/create', table, position: { x, y } })
+    return table
+  }
+
+  it('Ctrl+A 전체 선택 → Esc 해제', async () => {
+    await renderEditor()
+    const orders = seedTable('orders')
+    const users = seedTable('users')
+
+    fireEvent.keyDown(window, { key: 'a', ctrlKey: true })
+    expect([...useEditorStore.getState().selectedIds].sort()).toEqual([orders.id, users.id].sort())
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(useEditorStore.getState().selectedIds).toEqual([])
+  })
+
+  it('Ctrl+C → Ctrl+V — 사본 생성·붙여넣은 객체 선택·undo 한 번에 전체 취소', async () => {
+    await renderEditor()
+    const orders = seedTable('orders')
+    useEditorStore.getState().setSelection([orders.id])
+
+    fireEvent.keyDown(window, { key: 'c', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+
+    const state = useEditorStore.getState()
+    expect(state.present.model.tables.map((t) => t.physicalName)).toEqual(['orders', 'orders_사본'])
+    const copy = state.present.model.tables[1]
+    expect(state.selectedIds).toEqual([copy.id])
+    expect(state.present.diagram.nodes[copy.id]).toMatchObject({ x: 42, y: 52 }) // +32px 오프셋
+
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.model.tables).toHaveLength(1)
+    expect(useEditorStore.getState().selectedIds).toEqual([]) // 선택은 undo 대상 아님 — 남는 id도 정리된다
+  })
+
+  it('Ctrl+D — 선택을 그 자리에서 복제한다', async () => {
+    await renderEditor()
+    const orders = seedTable('orders')
+    useEditorStore.getState().setSelection([orders.id])
+
+    fireEvent.keyDown(window, { key: 'd', ctrlKey: true })
+
+    const state = useEditorStore.getState()
+    expect(state.present.model.tables.map((t) => t.physicalName)).toEqual(['orders', 'orders_사본'])
+    expect(state.selectedIds).toEqual([state.present.model.tables[1].id])
+  })
+
+  it('Arrow — 선택 테이블 1px 이동, Shift+Arrow 10px', async () => {
+    await renderEditor()
+    const orders = seedTable('orders', 10, 20)
+    useEditorStore.getState().setSelection([orders.id])
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(useEditorStore.getState().present.diagram.nodes[orders.id]).toMatchObject({ x: 11, y: 20 })
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', shiftKey: true })
+    expect(useEditorStore.getState().present.diagram.nodes[orders.id]).toMatchObject({ x: 11, y: 30 })
+
+    // 선택 없으면 방향키는 문서를 바꾸지 않는다
+    useEditorStore.getState().setSelection([])
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(useEditorStore.getState().present.diagram.nodes[orders.id]).toMatchObject({ x: 11, y: 30 })
+  })
+
+  it('읽기 전용에서는 클립보드·이동이 동작하지 않는다', async () => {
+    await renderEditor(false)
+    const orders = seedTable('orders') // 스토어 직접 commit — 읽기 전용은 UI 게이트일 뿐
+    useEditorStore.getState().setSelection([orders.id])
+
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'd', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(useEditorStore.getState().present.model.tables).toHaveLength(1)
+    expect(useEditorStore.getState().present.diagram.nodes[orders.id]).toMatchObject({ x: 10, y: 20 })
+  })
+
+  it('input 포커스 중에는 클립보드 단축키를 건너뛴다', async () => {
+    await renderEditor()
+    const table = createTable('orders', {
+      columns: [createColumn({ id: 'c1', physicalName: 'id' })],
+    })
+    useEditorStore.getState().commit({ type: 'table/create', table, position: { x: 0, y: 0 } })
+    useEditorStore.getState().setSelection([table.id])
+
+    const input = await screen.findByLabelText('컬럼 물리명 — id')
+    input.focus()
+    fireEvent.keyDown(input, { key: 'c', ctrlKey: true })
+    fireEvent.keyDown(input, { key: 'v', ctrlKey: true })
+
+    expect(useEditorStore.getState().present.model.tables).toHaveLength(1)
   })
 })

@@ -99,6 +99,7 @@
       "DUPLICATED_NAME": "이미 존재하는 이름입니다",
       "VERSION_CONFLICT": "다른 클라이언트가 먼저 저장했습니다.",
       "MODEL_NOT_FOUND": "문서를 찾을 수 없습니다.",
+      "SQL_IMPORT_NO_TABLES": "CREATE TABLE 문을 찾을 수 없습니다.",
       "CONNECTION_NOT_FOUND": "커넥션을 찾을 수 없습니다.",
       "CONNECTION_UNREACHABLE": "데이터베이스에 접속할 수 없습니다. 접속 정보를 확인해 주세요.",
       "INVALID_DBMS_TYPE": "지원하지 않는 DBMS입니다.",
@@ -599,6 +600,22 @@
         "share": "공유",
         "history": "버전 기록"
       },
+      "explorer": {
+        "title": "모델 익스플로러",
+        "toggle": "탐색기",
+        "searchPlaceholder": "객체 검색 (테이블·컬럼·관계·메모)",
+        "searchLabel": "객체 검색",
+        "groupTables": "테이블",
+        "groupRelationships": "관계",
+        "groupNotes": "메모",
+        "noResults": "일치하는 객체가 없습니다",
+        "emptyDocument": "문서가 비어 있습니다",
+        "matchCount": "{{count}}건",
+        "untitledNote": "제목 없는 메모"
+      },
+      "clipboard": {
+        "copyLabel": "사본"
+      },
       "ddl": {
         "title": "SQL 스크립트",
         "tableCount": "테이블 {{tables}}개 · 관계 {{relationships}}개",
@@ -670,6 +687,7 @@
         "render": {
           "created": "문서 생성",
           "reverseCreated": "DB 가져오기로 생성 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
+          "sqlImported": "SQL 가져오기로 생성 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
           "restoredFrom": "버전 {{version}}에서 복원",
           "layoutOnly": "레이아웃 변경만 있음",
           "counts": "추가 {{add}} · 변경 {{update}} · 삭제 {{remove}} · 이동 {{move}}",
@@ -1057,6 +1075,29 @@
     "defaultModelName": "{{name}} ERD",
     "successToast": "'{{name}}' 문서를 만들었습니다 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
     "skippedToast": "가져오지 못한 외래키: {{skipped}}"
+  },
+  "sqlImport": {
+    "openButton": "SQL 가져오기",
+    "title": "SQL 스크립트로 문서 만들기",
+    "notice": "CREATE TABLE 문의 DDL 텍스트를 읽어 새 ERD 문서를 만듭니다 — 커넥션 없이도 ERD를 시작할 수 있습니다.",
+    "databaseType": "데이터베이스 종류",
+    "noDatabaseType": "종류가 없습니다",
+    "name": "문서 이름",
+    "namePlaceholder": "SQL ERD",
+    "descriptionPlaceholder": "어떤 DDL인지 메모 (선택)",
+    "ddl": "DDL 스크립트",
+    "ddlPlaceholder": "CREATE TABLE members (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\n  ...\n);",
+    "readFile": ".sql 파일 읽기",
+    "fileTooLarge": "파일이 1MB를 초과합니다 — 내용을 나눠 붙여넣으세요",
+    "preview": "미리보기",
+    "previewResult": "테이블 {{tables}}개 · 관계 {{relationships}}개",
+    "columnCount": "컬럼 {{count}}개",
+    "fkCount": "FK {{count}}개",
+    "previewSkipped": "읽지 못한 문장",
+    "submit": "문서 만들기",
+    "fieldRequired": "필수 값입니다",
+    "successToast": "'{{name}}' 문서를 만들었습니다 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
+    "skippedToast": "읽지 못한 문장: {{skipped}}"
   },
   "landing": {
     "badge": "무료 · 오픈소스 ERD 에디터",

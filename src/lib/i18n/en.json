@@ -99,6 +99,7 @@
       "DUPLICATED_NAME": "A document with this name already exists.",
       "VERSION_CONFLICT": "Another client saved first.",
       "MODEL_NOT_FOUND": "Document not found.",
+      "SQL_IMPORT_NO_TABLES": "No CREATE TABLE statements found in the SQL script.",
       "CONNECTION_NOT_FOUND": "Connection not found.",
       "CONNECTION_UNREACHABLE": "Cannot reach the database. Check the connection settings.",
       "INVALID_DBMS_TYPE": "Unsupported DBMS.",
@@ -599,6 +600,22 @@
         "share": "Share",
         "history": "Version history"
       },
+      "explorer": {
+        "title": "Model Explorer",
+        "toggle": "Explorer",
+        "searchPlaceholder": "Search objects (tables, columns, relationships, notes)",
+        "searchLabel": "Search objects",
+        "groupTables": "Tables",
+        "groupRelationships": "Relationships",
+        "groupNotes": "Notes",
+        "noResults": "No matching objects",
+        "emptyDocument": "Document is empty",
+        "matchCount": "{{count}} match(es)",
+        "untitledNote": "Untitled note"
+      },
+      "clipboard": {
+        "copyLabel": "copy"
+      },
       "ddl": {
         "title": "SQL script",
         "tableCount": "{{tables}} tables · {{relationships}} relationships",
@@ -670,6 +687,7 @@
         "render": {
           "created": "Document created",
           "reverseCreated": "Created by database import — {{tables}} tables · {{relationships}} relationships",
+          "sqlImported": "Created by SQL import — {{tables}} tables · {{relationships}} relationships",
           "restoredFrom": "Restored from version {{version}}",
           "layoutOnly": "Layout-only changes",
           "counts": "{{add}} added · {{update}} changed · {{remove}} removed · {{move}} moved",
@@ -1057,6 +1075,29 @@
     "defaultModelName": "{{name}} ERD",
     "successToast": "Created '{{name}}' — {{tables}} tables · {{relationships}} relationships",
     "skippedToast": "Skipped foreign keys: {{skipped}}"
+  },
+  "sqlImport": {
+    "openButton": "Import SQL",
+    "title": "Create document from SQL script",
+    "notice": "Reads DDL text (CREATE TABLE statements) and creates a new ERD document — no connection needed.",
+    "databaseType": "Database type",
+    "noDatabaseType": "No types available",
+    "name": "Document name",
+    "namePlaceholder": "SQL ERD",
+    "descriptionPlaceholder": "What this DDL is for (optional)",
+    "ddl": "DDL script",
+    "ddlPlaceholder": "CREATE TABLE members (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\n  ...\n);",
+    "readFile": "Read .sql file",
+    "fileTooLarge": "File exceeds 1MB — paste the content in parts",
+    "preview": "Preview",
+    "previewResult": "{{tables}} tables · {{relationships}} relationships",
+    "columnCount": "{{count}} columns",
+    "fkCount": "{{count}} FKs",
+    "previewSkipped": "Skipped statements",
+    "submit": "Create document",
+    "fieldRequired": "Required",
+    "successToast": "Created '{{name}}' — {{tables}} tables · {{relationships}} relationships",
+    "skippedToast": "Skipped statements: {{skipped}}"
   },
   "landing": {
     "badge": "Free, open-source ERD editor",

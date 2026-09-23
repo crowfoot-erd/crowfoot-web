@@ -28,6 +28,7 @@ import {
   EditModelDialog,
   ImportCrownButton,
   modelEditorPath,
+  SqlImportButton,
   useDeleteModel,
   useModels,
 } from '@/features/models'
@@ -83,6 +84,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
           <div className="flex items-center gap-2">
             <ImportCrownButton workspaceId={workspaceId} />
             <DatabaseImportButton workspaceId={workspaceId} />
+            <SqlImportButton workspaceId={workspaceId} />
             <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
               <Plus aria-hidden />
               {t('model.list.newDocument')}

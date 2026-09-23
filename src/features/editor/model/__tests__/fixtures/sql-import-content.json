@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "model": {
+    "tables": [
+      {
+        "id": "9750a2a4-874a-4760-a72e-2c6b432ff030",
+        "logicalName": "회원",
+        "physicalName": "members",
+        "comment": null,
+        "columns": [
+          {
+            "id": "2eb8596c-8844-49ee-a94b-681154887823",
+            "physicalName": "id",
+            "dataType": "BIGINT",
+            "length": null,
+            "precision": null,
+            "scale": null,
+            "nullable": false,
+            "defaultValue": null,
+            "autoIncrement": true,
+            "logicalName": "id",
+            "comment": null
+          },
+          {
+            "id": "c2c100e4-8965-4bb6-a70f-bed20838f879",
+            "physicalName": "email",
+            "dataType": "VARCHAR",
+            "length": 191,
+            "precision": null,
+            "scale": null,
+            "nullable": false,
+            "defaultValue": null,
+            "autoIncrement": false,
+            "logicalName": "로그인 이메일",
+            "comment": null
+          },
+          {
+            "id": "8176aaa8-fb69-4025-96d5-7d1fc2c85063",
+            "physicalName": "balance",
+            "dataType": "DECIMAL",
+            "length": null,
+            "precision": 10,
+            "scale": 2,
+            "nullable": false,
+            "defaultValue": "0",
+            "autoIncrement": false,
+            "logicalName": "balance",
+            "comment": null
+          },
+          {
+            "id": "871e2c18-59cf-499e-aff0-58793e9b2602",
+            "physicalName": "created_at",
+            "dataType": "DATETIME",
+            "length": null,
+            "precision": null,
+            "scale": null,
+            "nullable": false,
+            "defaultValue": "current_timestamp",
+            "autoIncrement": false,
+            "logicalName": "created_at",
+            "comment": null
+          }
+        ],
+        "primaryKey": {
+          "name": "PRIMARY_members",
+          "columnIds": [
+            "2eb8596c-8844-49ee-a94b-681154887823"
+          ]
+        },
+        "uniques": [
+          {
+            "id": "ec5c6ee5-0aea-474d-859e-2b5918810a90",
+            "name": "uk_members_email",
+            "columnIds": [
+              "c2c100e4-8965-4bb6-a70f-bed20838f879"
+            ]
+          }
+        ],
+        "indexes": []
+      },
+      {
+        "id": "383a0317-dfe7-4d15-9731-4f3be9f9a5ad",
+        "logicalName": "주문",
+        "physicalName": "orders",
+        "comment": null,
+        "columns": [
+          {
+            "id": "50baadfc-332c-460d-84c3-09df1eca7576",
+            "physicalName": "order_id",
+            "dataType": "BIGINT",
+            "length": null,
+            "precision": null,
+            "scale": null,
+            "nullable": false,
+            "defaultValue": null,
+            "autoIncrement": true,
+            "logicalName": "order_id",
+            "comment": null
+          },
+          {
+            "id": "13bc9ee8-cbde-4cbe-afd3-8ee6abd9c5f9",
+            "physicalName": "member_id",
+            "dataType": "BIGINT",
+            "length": null,
+            "precision": null,
+            "scale": null,
+            "nullable": false,
+            "defaultValue": null,
+            "autoIncrement": false,
+            "logicalName": "member_id",
+            "comment": null
+          },
+          {
+            "id": "b839fff7-8fe7-4e46-aa9f-20b095300582",
+            "physicalName": "total_amount",
+            "dataType": "DECIMAL",
+            "length": null,
+            "precision": 12,
+            "scale": 2,
+            "nullable": true,
+            "defaultValue": null,
+            "autoIncrement": false,
+            "logicalName": "total_amount",
+            "comment": null
+          },
+          {
+            "id": "902387a2-3175-43ae-b368-d22d8380300e",
+            "physicalName": "status",
+            "dataType": "VARCHAR",
+            "length": 20,
+            "precision": null,
+            "scale": null,
+            "nullable": false,
+            "defaultValue": "pending",
+            "autoIncrement": false,
+            "logicalName": "status",
+            "comment": null
+          }
+        ],
+        "primaryKey": {
+          "name": "PRIMARY_orders",
+          "columnIds": [
+            "50baadfc-332c-460d-84c3-09df1eca7576"
+          ]
+        },
+        "uniques": [],
+        "indexes": []
+      }
+    ],
+    "relationships": [
+      {
+        "id": "a7906fd0-8626-47d2-881f-4ad5a0618d9a",
+        "name": "fk_orders_members",
+        "parentTableId": "9750a2a4-874a-4760-a72e-2c6b432ff030",
+        "childTableId": "383a0317-dfe7-4d15-9731-4f3be9f9a5ad",
+        "type": "ONE_TO_MANY",
+        "identifying": false,
+        "parentMultiplicity": "EXACTLY_ONE",
+        "childMultiplicity": "ZERO_OR_MORE",
+        "fkName": "fk_orders_members",
+        "columnMappings": [
+          {
+            "parentColumnId": "2eb8596c-8844-49ee-a94b-681154887823",
+            "childColumnId": "13bc9ee8-cbde-4cbe-afd3-8ee6abd9c5f9"
+          }
+        ],
+        "onDelete": "CASCADE",
+        "onUpdate": "NO_ACTION"
+      }
+    ]
+  },
+  "diagram": {
+    "nodes": {
+      "9750a2a4-874a-4760-a72e-2c6b432ff030": {
+        "x": 80,
+        "y": 80,
+        "width": null
+      },
+      "383a0317-dfe7-4d15-9731-4f3be9f9a5ad": {
+        "x": 440,
+        "y": 80,
+        "width": null
+      }
+    },
+    "notes": [],
+    "viewport": null
+  }
+}

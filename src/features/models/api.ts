@@ -15,6 +15,8 @@ import type {
   PageResult,
   PublicShare,
   SharedGalleryItem,
+  SqlImportPreviewResult,
+  SqlImportResult,
 } from '@/api/types'
 
 export type FetchModelsParams = {
@@ -51,6 +53,29 @@ export interface CreateModelInput {
 
 export function createModel(workspaceId: string, body: CreateModelInput) {
   return apiPost<Model>(`/api/v1/core/workspaces/${workspaceId}/models`, body)
+}
+
+/* ---------- SQL Import (08-core/02-model.md §1.12 — DDL 텍스트 → 문서) ---------- */
+
+export interface SqlImportInput {
+  name?: string
+  description?: string
+  databaseType: string
+  /** DDL 원문 — 상한 1MB(서버 @Size). CREATE TABLE 0개면 400 */
+  ddl: string
+}
+
+/** 미리보기 — 저장 없이 파싱·조립 결과만 (Editor 이상) */
+export function sqlImportPreview(workspaceId: string, body: Omit<SqlImportInput, 'name' | 'description'>) {
+  return apiPost<SqlImportPreviewResult>(
+    `/api/v1/core/workspaces/${workspaceId}/models/sql-import/preview`,
+    body,
+  )
+}
+
+/** 생성 — DDL로 신규 문서를 만들고 저장한다 (Editor 이상) */
+export function sqlImport(workspaceId: string, body: SqlImportInput) {
+  return apiPost<SqlImportResult>(`/api/v1/core/workspaces/${workspaceId}/models/sql-import`, body)
 }
 
 /** 메타 변경 — 이름·설명만, 변경분만 전송 (description: null은 명시적 클리어) */

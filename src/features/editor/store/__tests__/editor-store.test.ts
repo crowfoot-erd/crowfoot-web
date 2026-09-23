@@ -147,3 +147,45 @@ describe('editor-store — savedDocument(버전 기록 요약 기준점)', () =>
     expect(useEditorStore.getState().savedDocument).toBe(putDocument)
   })
 })
+
+describe('editor-store — 선택 상태(selectedIds)', () => {
+  it('setSelection은 선택을 교체하고 같은 배열이면 스테이트를 흔들지 않는다', () => {
+    const store = useEditorStore.getState()
+    store.setSelection(['t1', 't2'])
+    expect(useEditorStore.getState().selectedIds).toEqual(['t1', 't2'])
+
+    const before = useEditorStore.getState()
+    store.setSelection(['t1', 't2'])
+    expect(useEditorStore.getState()).toBe(before) // 참조 동일 — 리렌더 없음
+  })
+
+  it('커밋으로 사라진 객체 id는 선택에서 정리된다', () => {
+    const store = useEditorStore.getState()
+    store.commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+    const tableId = useEditorStore.getState().present.model.tables[0].id
+    store.setSelection([tableId, 'ghost-id'])
+
+    useEditorStore.getState().commit({ type: 'table/remove', tableId })
+
+    expect(useEditorStore.getState().selectedIds).toEqual([]) // 삭제분·유령 모두 정리
+  })
+
+  it('undo로 객체가 되살아나도 선택은 살아있는 객체만 유지한다', () => {
+    const store = useEditorStore.getState()
+    store.commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+    const tableId = useEditorStore.getState().present.model.tables[0].id
+    store.setSelection([tableId])
+    useEditorStore.getState().commit({ type: 'table/remove', tableId })
+    expect(useEditorStore.getState().selectedIds).toEqual([])
+
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.model.tables).toHaveLength(1)
+    expect(useEditorStore.getState().selectedIds).toEqual([]) // 선택은 뷰 상태 — undo로 부활하지 않는다
+  })
+
+  it('수화(hydrate)는 선택을 초기화한다', () => {
+    useEditorStore.getState().setSelection(['stale'])
+    hydrate()
+    expect(useEditorStore.getState().selectedIds).toEqual([])
+  })
+})

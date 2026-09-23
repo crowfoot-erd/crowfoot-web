@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { ChevronDown, Database, History, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronDown, Database, History, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -43,6 +43,9 @@ export interface EditorToolbarProps {
   canEdit: boolean
   saving: boolean
   onSave: () => void
+  /** 모델 익스플로러 패널 열림 — 토글 버튼 상태 */
+  explorerOpen: boolean
+  onToggleExplorer: () => void
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
   columnDisplay: ColumnDisplayMode
@@ -69,6 +72,8 @@ export function EditorToolbar({
   canEdit,
   saving,
   onSave,
+  explorerOpen,
+  onToggleExplorer,
   nameDisplay,
   onNameDisplayChange,
   columnDisplay,
@@ -92,6 +97,18 @@ export function EditorToolbar({
   return (
     <div className="flex h-10 items-center gap-1 border-b bg-background px-2">
       {!canEdit ? <Badge variant="secondary" className="mr-1">{t('model.editor.toolbar.readOnly')}</Badge> : null}
+
+      <Button
+        type="button"
+        variant={explorerOpen ? 'secondary' : 'ghost'}
+        size="icon"
+        onClick={onToggleExplorer}
+        aria-label={t('model.editor.explorer.toggle')}
+        aria-pressed={explorerOpen}
+        title={t('model.editor.explorer.toggle')}
+      >
+        <PanelLeft aria-hidden />
+      </Button>
 
       <Button type="button" variant="ghost" size="icon" onClick={undo} disabled={!canEdit || !canUndo} aria-label={t('model.editor.toolbar.undo')} title={t('model.editor.toolbar.undo')}>
         <Undo2 aria-hidden />

@@ -19,9 +19,12 @@ import {
   patchModelVersionMemo,
   restoreModelVersion,
   revokeModelShare,
+  sqlImport,
+  sqlImportPreview,
   updateModel,
   type CreateModelInput,
   type CreateShareInput,
+  type SqlImportInput,
 } from '@/features/models/api'
 import type { ModelSummary } from '@/api/types'
 
@@ -102,6 +105,28 @@ export function useCreateModel(workspaceId: string) {
 
   return useMutation({
     mutationFn: (body: CreateModelInput) => createModel(workspaceId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
+  })
+}
+
+/* ---------- SQL Import (08-core/02-model.md §1.12) ---------- */
+
+/** SQL Import 미리보기 — 다이얼로그 [미리보기] 버튼. 저장 부수효과 없음 */
+export function useSqlImportPreview(workspaceId: string) {
+  return useMutation({
+    mutationFn: (body: { databaseType: string; ddl: string }) =>
+      sqlImportPreview(workspaceId, body),
+  })
+}
+
+/** SQL Import 생성 — 성공 시 문서 목록 invalidate */
+export function useSqlImport(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: SqlImportInput) => sqlImport(workspaceId, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
     },
