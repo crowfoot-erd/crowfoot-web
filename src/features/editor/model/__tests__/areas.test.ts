@@ -5,10 +5,9 @@ import { createArea, createTable } from '@/features/editor/model/changes'
 import { emptyContent } from '@/features/editor/model/content-io'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import {
-  AREA_MIN_HEIGHT,
-  AREA_MIN_WIDTH,
+  AREA_ARRANGE_GAP,
   AREA_PUSH_GAP,
-  fitAreaToMembers,
+  arrangeAreaMembers,
   relocateNonMembers,
   tablesOfArea,
   uniqueAreaName,
@@ -80,8 +79,8 @@ describe('visibleTableIds — 캔버스 표시 집합(영역 필터 ∩ 접힘 �
   })
 })
 
-describe('fitAreaToMembers — 멤버십 변경 시 영역이 멤버를 감싼다 (v1.13)', () => {
-  /** T-USERS(100,200)·T-LOGS(600,400) 컬럼 0개 — 렌더 추정 크기 370×112 (contentBounds 폴백과 같은 식) */
+describe('arrangeAreaMembers — 멤버십 변경 시 멤버를 영역 안 그리드로 배치한다 (v1.13)', () => {
+  /** T-USERS(100,200)·T-LOGS(600,400) 컬럼 0개 — 렌더 추정 크기 370×112 (contentBounds 폴백과 같은 식)) */
   function docWithLayouts(): EditorDocument {
     const base = docWithArea()
     return {
@@ -96,32 +95,55 @@ describe('fitAreaToMembers — 멤버십 변경 시 영역이 멤버를 감싼�
     }
   }
 
-  it('멤버 bbox를 사방 패딩으로 감싸고 위쪽엔 헤더 여유를 더한다', () => {
-    // bbox (100,200)→(970,512): x=100-28, y=200-28-48, w=870+56, h=312+56+48
-    expect(fitAreaToMembers(docWithLayouts(), ['T-USERS', 'T-LOGS'])).toEqual({
-      x: 72,
-      y: 124,
-      width: 926,
-      height: 416,
+  it('박스 안쪽(패딩 28 + 헤더 여유 48 아래)부터 그리드로 배치한다 — 폭이 좁으면 1열 세로 적층', () => {
+    const r = arrangeAreaMembers(docWithLayouts(), { x: 100, y: 100, width: 800, height: 560 }, ['T-USERS', 'T-LOGS'])
+    // 800-56=744 < 370*2+40=780 → 1열. 문서 순서 T-USERS → T-LOGS로 세로 적층
+    expect(r!.positions).toEqual({
+      'T-USERS': { x: 128, y: 176 },
+      'T-LOGS': { x: 128, y: 176 + 112 + AREA_ARRANGE_GAP },
+    })
+    // 그리드가 박스 안에 들어가면 크기는 유지 — 사용자가 만든 "적당한 크기"를 줄이지 않는다
+    expect(r!.bounds).toEqual({ x: 100, y: 100, width: 800, height: 560 })
+  })
+
+  it('박스가 충분히 넓으면 2열 — 문서 순서(체크 목록 순서)대로 행-주요로 채운다', () => {
+    const d = {
+      ...docWithLayouts(),
+      model: { ...docWithLayouts().model, tables: [...docWithLayouts().model.tables, createTable('payments', { id: 'T-PAY' })] },
+      diagram: {
+        ...docWithLayouts().diagram,
+        nodes: { ...docWithLayouts().diagram.nodes, 'T-PAY': { x: 400, y: 150, width: null, color: 'default' as const } },
+      },
+    }
+    // 900-56=844 ≥ 780 → 2열. 문서 순서 T-USERS → T-LOGS → T-PAY (현재 위치와 무관 — 체크 순서를 바꿔도 같은 그리드)
+    const r = arrangeAreaMembers(d, { x: 100, y: 100, width: 900, height: 400 }, ['T-USERS', 'T-LOGS', 'T-PAY'])
+    expect(r!.positions).toEqual({
+      'T-USERS': { x: 128, y: 176 },
+      'T-LOGS': { x: 128 + 370 + AREA_ARRANGE_GAP, y: 176 },
+      'T-PAY': { x: 128, y: 176 + 112 + AREA_ARRANGE_GAP },
+    })
+    expect(r!.bounds).toEqual({ x: 100, y: 100, width: 900, height: 400 })
+  })
+
+  it('그리드가 박스보다 크면 필요한 만큼만 늘린다 — 240×160 최소 박스에 2멤버 1열', () => {
+    const r = arrangeAreaMembers(docWithLayouts(), { x: 100, y: 100, width: 240, height: 160 }, ['T-USERS', 'T-LOGS'])
+    // 폭: 370+56=426, 높이: 헤더 76 + 112*2 + 간격 40 + 패딩 28 = 368
+    expect(r!.bounds).toEqual({ x: 100, y: 100, width: 426, height: 368 })
+    expect(r!.positions).toEqual({
+      'T-USERS': { x: 128, y: 176 },
+      'T-LOGS': { x: 128, y: 176 + 112 + AREA_ARRANGE_GAP },
     })
   })
 
-  it('단일 멤버도 감싼다 — 최소 크기(240×160)보다 작아지지 않는다', () => {
-    const fit = fitAreaToMembers(docWithLayouts(), ['T-USERS'])
-    expect(fit).not.toBeNull()
-    expect(fit!.width).toBeGreaterThanOrEqual(AREA_MIN_WIDTH)
-    expect(fit!.height).toBeGreaterThanOrEqual(AREA_MIN_HEIGHT)
-  })
-
-  it('감쌀 멤버가 없으면 null — 호출자가 기존 경계를 유지한다(멤버 전부 해제 케이스)', () => {
-    expect(fitAreaToMembers(docWithLayouts(), [])).toBeNull()
+  it('배치할 멤버가 없으면 null — 호출자가 멤버십만 커밋한다(전부 해제 케이스)', () => {
+    expect(arrangeAreaMembers(docWithLayouts(), { x: 100, y: 100, width: 800, height: 560 }, [])).toBeNull()
     // 죽은 id·레이아웃 없는 id만으로도 null
-    expect(fitAreaToMembers(docWithLayouts(), ['T-GONE'])).toBeNull()
-    expect(fitAreaToMembers(docWithArea(), ['T-USERS'])).toBeNull()
+    expect(arrangeAreaMembers(docWithLayouts(), { x: 100, y: 100, width: 800, height: 560 }, ['T-GONE'])).toBeNull()
+    expect(arrangeAreaMembers(docWithArea(), { x: 100, y: 100, width: 800, height: 560 }, ['T-USERS'])).toBeNull()
   })
 })
 
-describe('relocateNonMembers — 감싸기 확정 시 비멤버를 박스 밖으로 밀어낸다 (v1.13)', () => {
+describe('relocateNonMembers — 멤버 배치 후 박스와 교차하는 비멤버를 박스 밖으로 밀어낸다 (v1.13)', () => {
   /** 컬럼 0개 테이블(추정 370×112)을 지정 좌표에 배치한 문서 */
   function docForPushout(nodes: Record<string, { x: number; y: number }>): EditorDocument {
     return {

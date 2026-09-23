@@ -24,40 +24,79 @@ export interface AreaBounds {
   height: number
 }
 
-/** 감싸기 확정 시 박스 안에 남게 된 비멤버를 박스 아래로 밀어낼 때의 아래쪽 여유 */
+/** 멤버를 박스 안 그리드로 묶을 때 테이블 사이 간격 */
+export const AREA_ARRANGE_GAP = 40
+
+/** 멤버 배치 후 박스와 교차하는 비멤버를 박스 아래로 밀어낼 때의 아래쪽 여유 */
 export const AREA_PUSH_GAP = 60
 
-/** 멤버 테이블들을 감싸는 영역 경계 — 멤버십이 바뀔 때 영역이 멤버를 감싸게 재계산한다.
- *  테이블 위치는 옮기지 않는다(박스가 테이블을 감싼다 — 레이아웃을 해치지 않는 방향).
- *  테이블 크기는 캔버스 경계(contentBounds 폴백)와 같은 렌더 추정식으로 계산한다.
- *  감쌀 멤버가 없으면(0개·전부 레이아웃 없음) null — 호출자가 경계를 그대로 둔다. */
-export function fitAreaToMembers(doc: EditorDocument, tableIds: readonly string[]): AreaBounds | null {
+/** 멤버 테이블들을 영역(그룹 박스) 안 그리드로 배치한다 — 영역이 기준이고 테이블이 따라간다.
+ *  박스의 x/y(사용자가 만든 그룹 앵커)는 그대로 두고, 헤더 여유 아래부터 행-주요 그리드로
+ *  채운다. 열 폭은 가장 넓은 멤버에 맞추고(균일 열 — 그룹으로 읽히게), 열 수는 박스 안쪽
+ *  폭에 들어가는 만큼. 그리드가 박스보다 크면 필요한 만큼만 늘리고 줄이지는 않는다
+ *  (사용자가 만든 "적당한 크기" 존중). 배치 순서는 **문서 순서** — 멤버 체크 목록
+ *  (AreaDialog)과 같은 순서라 다이얼로그에서 보는 그대로 채워지고, 체크 순서·이미
+ *  배치된 위치와 무관하게 항상 같은 그리드가 나온다. 테이블 크기는 캔버스 경계
+ *  (contentBounds 폴백)와 같은 렌더 추정식.
+ *  배치할 멤버가 없으면(0개·전부 레이아웃 없음) null — 호출자가 경계를 그대로 둔다. */
+export function arrangeAreaMembers(
+  doc: EditorDocument,
+  area: AreaBounds,
+  tableIds: readonly string[],
+): { bounds: AreaBounds; positions: Record<string, { x: number; y: number }> } | null {
+  const order = new Map(doc.model.tables.map((table, index) => [table.id, index]))
   const byId = new Map(doc.model.tables.map((table) => [table.id, table]))
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const id of tableIds) {
-    const table = byId.get(id)
-    const layout = doc.diagram.nodes[id]
-    if (!table || !layout) continue
-    const w = tableRenderWidth(layout.width ?? null, 0)
-    const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
-    minX = Math.min(minX, layout.x)
-    minY = Math.min(minY, layout.y)
-    maxX = Math.max(maxX, layout.x + w)
-    maxY = Math.max(maxY, layout.y + h)
+  const members = tableIds
+    .slice()
+    .sort((a, b) => (order.get(a) ?? Infinity) - (order.get(b) ?? Infinity))
+    .flatMap((id) => {
+      const table = byId.get(id)
+      const layout = doc.diagram.nodes[id]
+      if (!table || !layout) return []
+      return [{
+        id,
+        w: tableRenderWidth(layout.width ?? null, 0),
+        h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+      }]
+    })
+  if (members.length === 0) return null
+
+  const colW = Math.max(...members.map((m) => m.w))
+  const innerX = area.x + AREA_MEMBER_PADDING
+  const innerY = area.y + AREA_MEMBER_PADDING + AREA_HEADER_RESERVE
+  const availW = Math.max(area.width - AREA_MEMBER_PADDING * 2, colW)
+  const cols = Math.max(1, Math.floor((availW + AREA_ARRANGE_GAP) / (colW + AREA_ARRANGE_GAP)))
+
+  const positions: Record<string, { x: number; y: number }> = {}
+  let maxX = innerX
+  let maxY = innerY
+  let cursorY = innerY
+  for (let row = 0; row * cols < members.length; row += 1) {
+    const slice = members.slice(row * cols, row * cols + cols)
+    const rowH = Math.max(...slice.map((m) => m.h))
+    slice.forEach((m, col) => {
+      positions[m.id] = {
+        x: Math.round(innerX + col * (colW + AREA_ARRANGE_GAP)),
+        y: Math.round(cursorY),
+      }
+    })
+    const last = slice[slice.length - 1]
+    maxX = Math.max(maxX, innerX + (slice.length - 1) * (colW + AREA_ARRANGE_GAP) + last.w)
+    maxY = Math.max(maxY, cursorY + rowH)
+    cursorY += rowH + AREA_ARRANGE_GAP
   }
-  if (minX === Infinity) return null
   return {
-    x: minX - AREA_MEMBER_PADDING,
-    y: minY - AREA_MEMBER_PADDING - AREA_HEADER_RESERVE,
-    width: Math.max(maxX - minX + AREA_MEMBER_PADDING * 2, AREA_MIN_WIDTH),
-    height: Math.max(maxY - minY + AREA_MEMBER_PADDING * 2 + AREA_HEADER_RESERVE, AREA_MIN_HEIGHT),
+    bounds: {
+      x: area.x,
+      y: area.y,
+      width: Math.max(area.width, Math.round(maxX - area.x + AREA_MEMBER_PADDING)),
+      height: Math.max(area.height, Math.round(maxY - area.y + AREA_MEMBER_PADDING)),
+    },
+    positions,
   }
 }
 
-/** 감싸기 확정 경계 안(걸침 포함)에 있는 **비멤버** 테이블을 박스 아래로 밀어낸 좌표 —
+/** 멤버 배치 후의 박스와 교차하는(걸침 포함) **비멤버** 테이블을 박스 아래로 밀어낸 좌표 —
  *  영역은 선택한 테이블만 담는다는 규칙(02-ui.md §6). 멤버·경계 밖 테이블은 그대로 두고,
  *  이미 밖에 있는 테이블은 결과에 없다(node/move positions와 같은 모양). x는 유지하고
  *  밀어낸 테이블끼리 x가 겹치면 위에서부터 세로로 쌓는다 — 상대 배치를 최대한 보존. */
