@@ -36,6 +36,7 @@ import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBa
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { LogicalNamesDialog } from './LogicalNamesDialog'
+import { useAreaViewFit } from './ModelExplorerPanel'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
 import { SyncDialog } from './SyncDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
@@ -235,6 +236,7 @@ function ViewMenu({
 }) {
   const { t } = useTranslation()
   const areas = useEditorStore((s) => s.present.diagram.areas)
+  const fitArea = useAreaViewFit()
 
   return (
     <DropdownMenu>
@@ -270,7 +272,15 @@ function ViewMenu({
             <DropdownMenuLabel>{t('model.editor.toolbar.areaFilter.label')}</DropdownMenuLabel>
             <DropdownMenuRadioGroup
               value={activeAreaId ?? AREA_FILTER_ALL}
-              onValueChange={(value) => onActiveAreaChange(value === AREA_FILTER_ALL ? null : value)}
+              onValueChange={(value) => {
+                // 그룹을 고르면 익스플로러 눈 아이콘과 같은 규칙으로 그 그룹에 화면을 맞춘다
+                if (value === AREA_FILTER_ALL) {
+                  onActiveAreaChange(null)
+                  return
+                }
+                onActiveAreaChange(value)
+                fitArea(value)
+              }}
             >
               <DropdownMenuRadioItem value={AREA_FILTER_ALL}>{t('model.editor.toolbar.areaFilter.all')}</DropdownMenuRadioItem>
               {areas.map((area) => (

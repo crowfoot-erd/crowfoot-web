@@ -27,16 +27,19 @@ export type CanvasExtent = [[number, number], [number, number]]
 /**
  * 문서 전체 콘텐츠의 AABB — 테이블(측정 크기 > 렌더 추정식)과 메모(폭 저장값·높이 추정)를 포함한다.
  * 레이아웃 없는 테이블은 건너뛴다(전체 맞춤 추정과 같은 규칙). 콘텐츠가 없으면 null.
+ * onlyTableIds를 주면 그 테이블들만의 경계를 낸다(그룹 보기 진입) — 메모는 그룹 밖 객체라 제외.
  */
 export function contentBounds(
   doc: EditorDocument,
   sizeReports: Record<string, { w: number; h: number }> = {},
+  onlyTableIds?: ReadonlySet<string>,
 ): ContentBounds | null {
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
   for (const table of doc.model.tables) {
+    if (onlyTableIds && !onlyTableIds.has(table.id)) continue
     const layout = doc.diagram.nodes[table.id]
     if (!layout) continue
     const size = sizeReports[table.id] ?? {
@@ -48,11 +51,14 @@ export function contentBounds(
     maxX = Math.max(maxX, layout.x + size.w)
     maxY = Math.max(maxY, layout.y + size.h)
   }
-  for (const note of doc.diagram.notes) {
-    minX = Math.min(minX, note.x)
-    minY = Math.min(minY, note.y)
-    maxX = Math.max(maxX, note.x + note.width)
-    maxY = Math.max(maxY, note.y + NOTE_ESTIMATED_HEIGHT)
+  // 메모는 그룹 밖 객체라 전체 경계에만 들어간다(그룹 경계는 멤버 테이블만)
+  if (!onlyTableIds) {
+    for (const note of doc.diagram.notes) {
+      minX = Math.min(minX, note.x)
+      minY = Math.min(minY, note.y)
+      maxX = Math.max(maxX, note.x + note.width)
+      maxY = Math.max(maxY, note.y + NOTE_ESTIMATED_HEIGHT)
+    }
   }
   // 그룹(주제 영역)은 캔버스 객체가 아니라(논리 소속) 경계 계산에서 빠진다 — 멤버 테이블이
   // 이미 콘텐츠 AABB를 이룬다
@@ -114,4 +120,35 @@ export function viewportCenteredOn(
   const shiftX = dx1 > dx0 ? (dx0 + dx1) / 2 : Math.min(0, dx0) || Math.max(0, dx1)
   const shiftY = dy1 > dy0 ? (dy0 + dy1) / 2 : Math.min(0, dy0) || Math.max(0, dy1)
   return { x: -(left - shiftX) * zoom, y: -(top - shiftY) * zoom, zoom }
+}
+
+/**
+ * 사각형을 화면에 맞추는 뷰포트 — 그룹 보기 진입용. fitView와 같은 결과(padding은 경계
+ * 크기의 비율 여유, 줌은 [minZoom, maxZoom] 클램프)를 **스토어 좌표 경계**로 계산한다.
+ * fitView는 현재 렌더된
+ * 노드만 찾을 수 있어 다른 그룹에서 곧바로 전환할 때(새 그룹 노드가 렌더 전) 무시되지만,
+ * 이 계산은 노드 렌더 타이밍과 무관하게 항상 그 그룹을 맞춘다(2026-09-23 실사용 회귀).
+ * 줌 한계 기본값은 캔버스(0.1)·초기 전체 맞춤(상한 1)과 같다.
+ */
+export function viewportFittedTo(
+  bounds: ContentBounds,
+  viewSize: { width: number; height: number },
+  extent: CanvasExtent,
+  minZoom = 0.1,
+  maxZoom = 1,
+  padding = 0.25,
+): ViewportTranslate {
+  const bw = Math.max(1, bounds.maxX - bounds.minX)
+  const bh = Math.max(1, bounds.maxY - bounds.minY)
+  // fitView(getViewportForBounds)와 같은 식 — padding은 경계 크기의 비율로 사방 여유를 둔다
+  const zoom = Math.min(
+    maxZoom,
+    Math.max(minZoom, Math.min(viewSize.width / (bw * (1 + padding * 2)), viewSize.height / (bh * (1 + padding * 2)))),
+  )
+  return viewportCenteredOn(
+    { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 },
+    zoom,
+    viewSize,
+    extent,
+  )
 }

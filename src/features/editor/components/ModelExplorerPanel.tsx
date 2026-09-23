@@ -25,7 +25,9 @@ import { Input } from '@/components/ui/input'
 import { TABLE_COLOR_HEX, type EditorDocument } from '@/features/editor/model/content-schema'
 import {
   NOTE_ESTIMATED_HEIGHT,
+  contentBounds,
   viewportCenteredOn,
+  viewportFittedTo,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
 import { tablesOfArea } from '@/features/editor/model/areas'
@@ -56,6 +58,27 @@ const FOCUS_EXTENT: CanvasExtent = [
 
 /** 포커스 시 줌 하한 — 멀리서 보던 화면 배율로는 객체를 알아볼 수 없어 살짝 당긴다 */
 const FOCUS_MIN_ZOOM = 0.6
+
+/** 그룹 보기 진입 — 그룹 멤버를 화면에 맞춘다. focusPoint와 같은 방식으로 **스토어 좌표에서
+ *  뷰포트를 계산해 setViewport**한다 — 렌더된 노드를 검색하는 fitView는 다른 그룹에서 곧바로
+ *  전환할 때 호출 시점에 새 그룹 노드가 아직 렌더되지 않아 무시된다(실사용 회귀, 2026-09-23).
+ *  익스플로러 눈 아이콘과 툴바 보기 메뉴 라디오가 같이 쓴다. */
+export function useAreaViewFit() {
+  const rf = useReactFlow()
+  return useCallback(
+    (areaId: string) => {
+      const present = useEditorStore.getState().present
+      const bounds = contentBounds(present, {}, tablesOfArea(present, areaId))
+      if (!bounds) return
+      const el = document.querySelector('.react-flow')
+      const size = el
+        ? { width: el.clientWidth, height: el.clientHeight }
+        : { width: window.innerWidth || 1200, height: window.innerHeight || 800 }
+      rf.setViewport(viewportFittedTo(bounds, size, FOCUS_EXTENT), { duration: 200 })
+    },
+    [rf],
+  )
+}
 
 export function ModelExplorerPanel(props: ModelExplorerPanelProps) {
   if (!props.open) return null
@@ -198,16 +221,8 @@ function ExplorerBody({
     [focusPoint, tableCenter],
   )
 
-  /** 그룹 보기 진입 — 그룹의 멤버를 화면에 맞춘다. 탐색기에서 그룹을 골랐을 때 그
-   *  테이블들이 있는 쪽으로 중심이 이동해야 한다(실사용 피드백) */
-  const fitArea = useCallback(
-    (areaId: string) => {
-      const members = tablesOfArea(useEditorStore.getState().present, areaId)
-      const nodes = [...members].map((id) => ({ id }))
-      if (nodes.length > 0) rf.fitView({ nodes, padding: 0.25, duration: 200 })
-    },
-    [rf],
-  )
+  /** 그룹 보기 진입 맞춤 — 모듈의 useAreaViewFit(스토어 좌표 계산)을 그대로 쓴다 */
+  const fitArea = useAreaViewFit()
 
   /** 행 클릭 — 선택 교체 + 포커스. 관계 행은 엣지 하이라이트만(RelationshipEdge selected) */
   const selectTarget = useCallback(
@@ -360,8 +375,8 @@ function ExplorerBody({
                     onToggleFold={() => toggleFold(area.id)}
                     active={activeAreaId === area.id}
                     onView={() => {
-                      // 보기 아이콘 — 그룹 내 테이블만 모아 본다. 진입할 때만 화면 이동,
-                      // 나갈 때(재클릭)는 뷰포트를 그대로 둔다
+                      // 보기 아이콘 — 그룹 내 테이블만 모아 본다. 진입·다른 그룹 직접 전환
+                      // 모두 그 그룹에 화면을 맞추고, 나갈 때(재클릭)는 뷰포트를 그대로 둔다
                       if (activeAreaId === area.id) onActiveAreaChange(null)
                       else {
                         onActiveAreaChange(area.id)

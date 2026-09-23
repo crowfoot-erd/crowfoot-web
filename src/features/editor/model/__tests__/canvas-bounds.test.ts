@@ -10,6 +10,7 @@ import {
   contentBounds,
   growExtent,
   viewportCenteredOn,
+  viewportFittedTo,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
@@ -93,6 +94,19 @@ describe('canvas-bounds — contentBounds', () => {
     }
     const bounds = contentBounds(withoutLayout, { A: { w: 340, h: 200 } })
     expect(bounds).toEqual({ minX: 100, minY: 100, maxX: 440, maxY: 300 })
+  })
+
+  it('onlyTableIds — 그 테이블들만의 경계를 낸다(그룹 보기 진입). 메모는 제외', () => {
+    let d = seedTable(doc(), 'A', 0, 0)
+    d = seedTable(d, 'B', 5000, 2000)
+    d = seedNote(d, 'n1', 8000, 8000)
+    const bounds = contentBounds(d, { A: { w: 340, h: 200 }, B: { w: 340, h: 200 } }, new Set(['B']))
+    expect(bounds).toEqual({ minX: 5000, minY: 2000, maxX: 5340, maxY: 2200 })
+  })
+
+  it('onlyTableIds에 레이아웃 있는 멤버가 없으면 null', () => {
+    const d = seedTable(doc(), 'A', 0, 0)
+    expect(contentBounds(d, {}, new Set(['없는-아이디']))).toBeNull()
   })
 })
 
@@ -211,5 +225,41 @@ describe('canvas-bounds — viewportCenteredOn', () => {
     expect((v.left + v.right) / 2).toBe(500)
     expect((v.top + v.bottom) / 2).toBe(300)
     expect(vp.zoom).toBe(0.5)
+  })
+})
+
+describe('canvas-bounds — viewportFittedTo(그룹 보기 진입)', () => {
+  const loose: CanvasExtent = [
+    [-1e9, -1e9],
+    [1e9, 1e9],
+  ]
+  const view = { width: 1200, height: 800 }
+
+  const visible = (vp: { x: number; y: number; zoom: number }) => ({
+    left: -vp.x / vp.zoom,
+    top: -vp.y / vp.zoom,
+    right: (-vp.x + view.width) / vp.zoom,
+    bottom: (-vp.y + view.height) / vp.zoom,
+  })
+
+  it('경계 중심을 화면 중심에 두고, fitView와 같은 배율(경계×(1+2·padding)을 화면에 맞춤)을 낸다', () => {
+    const vp = viewportFittedTo({ minX: 0, minY: 0, maxX: 2400, maxY: 1400 }, view, loose)
+    expect(vp.zoom).toBeCloseTo(1200 / (2400 * 1.5), 5) // 폭이 지배축
+    const v = visible(vp)
+    expect((v.left + v.right) / 2).toBeCloseTo(1200, 5) // 경계 중심 x
+    expect((v.top + v.bottom) / 2).toBeCloseTo(700, 5) // 경계 중심 y
+    // 지배축(폭)의 여유는 padding×경계폭 — fitView(getViewportForBounds)와 같은 식
+    expect(v.left).toBeCloseTo(-600, 5)
+    expect(v.right).toBeCloseTo(3000, 5)
+  })
+
+  it('작은 경계는 maxZoom 1로 클램프 — 확대 과잉 없음', () => {
+    const vp = viewportFittedTo({ minX: 0, minY: 0, maxX: 300, maxY: 150 }, view, loose)
+    expect(vp.zoom).toBe(1)
+  })
+
+  it('거대한 경계는 minZoom(기본 0.1)까지 내려가지 않는다 — 캔버스 줌 한계와 같다', () => {
+    const vp = viewportFittedTo({ minX: 0, minY: 0, maxX: 30000, maxY: 20000 }, view, loose)
+    expect(vp.zoom).toBe(0.1)
   })
 })
