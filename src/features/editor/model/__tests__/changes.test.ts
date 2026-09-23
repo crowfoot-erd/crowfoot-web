@@ -473,9 +473,8 @@ describe('applyChange — 주제 영역 (v1.13)', () => {
     return applyChange(d, { type: 'area/create', area })
   }
 
-  it('area/create는 기본값(펼침·무색·멤버 없음)으로 diagram.areas에 추가한다', () => {
+  it('area/create는 기본값(무색·멤버 없음)으로 diagram.areas에 추가한다', () => {
     const area = createArea('영역')
-    expect(area.collapsed).toBe(false)
     expect(area.color).toBe('default')
     expect(area.tableIds).toEqual([])
     const next = applyChange(doc(), { type: 'area/create', area })
@@ -483,14 +482,14 @@ describe('applyChange — 주제 영역 (v1.13)', () => {
     expect(next.diagram.areas[0].name).toBe('영역')
   })
 
-  it('area/patch는 이름·설명·색·접힘·멤버를 바꾼다', () => {
+  it('area/patch는 이름·설명·색·멤버를 바꾼다', () => {
     const next = applyChange(docWithArea(), {
       type: 'area/patch',
       areaId: 'A1',
-      patch: { name: '회원 도메인', description: '계정·프로필', color: 'sky', collapsed: true, tableIds: ['T-USERS', 'T-LOGS'] },
+      patch: { name: '회원 도메인', description: '계정·프로필', color: 'sky', tableIds: ['T-USERS', 'T-LOGS'] },
     })
     const area = next.diagram.areas[0]
-    expect(area).toMatchObject({ name: '회원 도메인', description: '계정·프로필', color: 'sky', collapsed: true, tableIds: ['T-USERS', 'T-LOGS'] })
+    expect(area).toMatchObject({ name: '회원 도메인', description: '계정·프로필', color: 'sky', tableIds: ['T-USERS', 'T-LOGS'] })
     // 원본 불변
     expect(docWithArea().diagram.areas[0].name).toBe('회원')
   })

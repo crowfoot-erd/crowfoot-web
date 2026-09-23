@@ -649,6 +649,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
               dbmsId={dbmsId}
               modelId={model.modelId}
               activeAreaId={activeArea}
+              onActiveAreaChange={setActiveAreaId}
               onOpenAreaEdit={setAreaEditId}
             />
           ) : (

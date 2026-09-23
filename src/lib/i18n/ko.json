@@ -806,7 +806,8 @@
         "createGroup": "그룹 생성",
         "addToGroup": "그룹에 추가",
         "removeFromGroup": "그룹에서 제외",
-        "editGroup": "그룹 편집"
+        "editGroup": "그룹 편집",
+        "exitGroupView": "전체 화면으로 돌아가기"
       },
       "table": {
         "addColumn": "컬럼 추가",
@@ -1001,9 +1002,8 @@
       },
       "area": {
         "defaultName": "그룹",
-        "expand": "그룹 펼치기",
-        "collapse": "그룹 접기",
         "edit": "그룹 편집",
+        "view": "그룹 보기",
         "memberCount": "멤버 테이블 수"
       },
       "areaDialog": {

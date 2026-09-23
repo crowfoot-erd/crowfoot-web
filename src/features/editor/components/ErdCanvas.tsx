@@ -293,6 +293,8 @@ export interface ErdCanvasProps {
   modelId: string | null
   /** 보기 필터로 선택된 주제 영역 — null이면 전체. 뷰 상태라 undo 대상이 아니다(EditorShell 소유) */
   activeAreaId: string | null
+  /** 보기 필터 해제 — 컨텍스트 메뉴 '전체 화면으로 돌아가기'가 쓴다(EditorShell 소유 상태) */
+  onActiveAreaChange: (areaId: string | null) => void
   /** 그룹 편집 다이얼로그 열기 — 다이얼로그는 EditorShell이 소유한다(익스플로러와 공유) */
   onOpenAreaEdit: (areaId: string) => void
 }
@@ -304,6 +306,7 @@ export function ErdCanvas({
   dbmsId,
   modelId,
   activeAreaId,
+  onActiveAreaChange,
   onOpenAreaEdit,
 }: ErdCanvasProps) {
   const { t } = useTranslation()
@@ -856,6 +859,10 @@ export function ErdCanvas({
           // 우클릭한 테이블의 소속 그룹 설정(이름·설명·색·멤버) — AreaDialog는 EditorShell이 소유한다
           onOpenAreaEdit(action.areaId)
           return
+        case 'exitGroupView':
+          // 그룹 보기 해제 — 문서는 그대로, 보이는 범위만 전체로 돌아간다(뷰 상태라 undo 대상 아님)
+          onActiveAreaChange(null)
+          return
         case 'addToGroup': {
           // 소속 병합 — 기존 멤버 순서를 지키고 새 멤버는 뒤에 붙인다(중복 없이)
           const area = useEditorStore.getState().present.diagram.areas.find((a) => a.id === action.areaId)
@@ -1224,6 +1231,7 @@ export function ErdCanvas({
           toFlow={toFlow}
           selectedTableIds={selectedTableIds}
           groups={contextGroups}
+          activeAreaName={present.diagram.areas.find((area) => area.id === activeAreaId)?.name ?? null}
           onAction={handleContextMenuAction}
         >
           {flow}

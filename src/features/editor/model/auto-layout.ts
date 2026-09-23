@@ -4,6 +4,10 @@
  * 하이브리드: elkjs는 **테이블 노드 좌표만** 계산한다(elk.direction DOWN — FK 참조 방향 기준
  * 부모가 위 레벨). 관계선 경로는 소비하지 않고 좌표가 바뀌면 자체 라우터(edge-router)가
  * 다시 계산한다 — 장애물 회피·까마귀발 글리프 끝점 연결은 그대로 유지된다.
+ * 그룹(v1.13 논리 그룹)이 있으면 그래프가 2계층이 된다 — 그룹마다 컴파운드 노드 하나에
+ * 멤버를 넣고 elk.hierarchyHandling INCLUDE_CHILDREN으로 계층 교차 관계까지 계층형
+ * 알고리즘이 처리한다. 같은 그룹끼리 하나의 덩어리로 모여 배치되고(사용자 요청),
+ * 그룹이 없으면 루트에 테이블이 그대로 놓이는 기존 평면 그래프와 동일하다.
  * 노트는 ELK 그래프에서 제외되지만 배치 후 테이블과 포개지지 않게 위치를 잡는다
  * (positionNotes — 연관 노트는 테이블 우측, 자유 노트는 겹칠 때만 우측 여백 열).
  * 자기 참조 관계는 레벨 제약이 없어 엣지에서 제외한다.
@@ -65,30 +69,90 @@ function getElk(): Promise<ELK> {
   return elkPromise
 }
 
+/** 그룹 컴파운드 노드의 안쪽 여백 — 그룹 상자는 캔버스에 그려지지 않으므로(논리 그룹) 이
+ *  여백은 순수하게 **덩어리 사이 복도**로 작동한다. 그룹 경계를 넘는 관계선은 모두 이 복도로
+ *  몰려 지나가는데 레이어 간격(170px)만으로는 선들이 인접 테이블에 밀착해 어느 관계인지
+ *  읽기 어렵다(2026-09-23 실사용 피드백). 여백이 상자 양쪽으로 붙으니 멤버 간 실거리는
+ *  betweenLayers + GROUP_PADDING×2로 벌어지고, 자체 라우터의 법선 스태브·장애물 회피가
+ *  그 공간에서 펴진다. 그룹 안쪽 멤버 간격은 이 값의 영향을 받지 않는다 */
+const GROUP_PADDING = 96
+
 /**
  * 문서 → ELK 그래프(순수·동기). 노드 = 테이블 전체(관계 없는 테이블 포함, 노트 제외),
  * 크기는 측정값(RF 실측) 우선, 없으면 렌더 추정치. 엣지 = 관계 부모→자식,
  * 자기 참조(부모===자식)는 제외한다.
+ * 그룹이 있으면 그룹마다 자식을 품은 컴파운드 노드가 되고 미소속 테이블은 루트에 놓는다.
+ * 각 테이블은 **문서 순서 첫 소속 그룹** 한 곳에만 들어간다(groupColorOf와 같은 규칙 —
+ * 스키마는 다중 소속을 허용하지만 물리적으로는 한 덩어리에만 속할 수 있다).
+ * 엣지는 ELK 규칙대로 양 끝의 최소 공통 조상에 둔다: 같은 그룹이면 그룹 노드,
+ * 경계를 넘으면(그룹↔그룹·그룹↔미소속) 루트. 계층 교차 엣지는 INCLUDE_CHILDREN로
+ * 계층형 알고리즘이 직접 레벨 배정한다.
  */
 export function buildLayoutGraph(
   doc: EditorDocument,
   spacing: LayoutSpacing = DEFAULT_LAYOUT_SPACING,
   sizes?: TableSizes,
 ): ElkNode {
-  const children: ElkNode[] = doc.model.tables.map((table) => {
+  const tableNode = (table: ErdTable): ElkNode => {
     const size = sizeOf(table, doc.diagram.nodes[table.id]?.width ?? null, sizes)
     return { id: table.id, width: size.w, height: size.h }
-  })
-  const edges = doc.model.relationships
-    .filter((rel) => rel.parentTableId !== rel.childTableId)
-    .map((rel) => ({ id: rel.id, sources: [rel.parentTableId], targets: [rel.childTableId] }))
+  }
+
+  const alive = new Set(doc.model.tables.map((table) => table.id))
+  // areas ?? [] — 리버스·SQL Import 다이얼로그는 서버 조립 JSON을 파싱해 그대로 넘긴다
+  // (v1.13 이전 콘텐츠는 areas 키 자체가 없다 — content-io의 레거시 정규화와 같은 처지)
+  const areas = doc.diagram.areas ?? []
+  const firstGroupOf = new Map<string, string>() // tableId → areaId(문서 순서 첫 소속)
+  for (const area of areas) {
+    for (const id of area.tableIds) {
+      if (!firstGroupOf.has(id) && alive.has(id)) firstGroupOf.set(id, area.id)
+    }
+  }
+
+  const groupNodes: ElkNode[] = []
+  const groupNodeOf = new Map<string, ElkNode>() // areaId → 컴파운드 노드
+  for (const area of areas) {
+    const members = doc.model.tables.filter((table) => firstGroupOf.get(table.id) === area.id)
+    if (members.length === 0) continue
+    const group: ElkNode = {
+      id: `group:${area.id}`,
+      children: members.map(tableNode),
+      edges: [],
+      layoutOptions: {
+        'elk.padding': `[top=${GROUP_PADDING},left=${GROUP_PADDING},bottom=${GROUP_PADDING},right=${GROUP_PADDING}]`,
+      },
+    }
+    groupNodes.push(group)
+    groupNodeOf.set(area.id, group)
+  }
+
+  const looseNodes = doc.model.tables
+    .filter((table) => !firstGroupOf.has(table.id))
+    .map(tableNode)
+
+  const rootEdges: Array<{ id: string; sources: [string]; targets: [string] }> = []
+  for (const rel of doc.model.relationships) {
+    if (rel.parentTableId === rel.childTableId) continue
+    const edge = { id: rel.id, sources: [rel.parentTableId] as [string], targets: [rel.childTableId] as [string] }
+    const parentGroup = firstGroupOf.get(rel.parentTableId)
+    if (parentGroup && parentGroup === firstGroupOf.get(rel.childTableId)) {
+      groupNodeOf.get(parentGroup)!.edges!.push(edge)
+    } else {
+      rootEdges.push(edge)
+    }
+  }
+
   return {
     id: 'root',
-    children,
-    edges,
+    children: [...groupNodes, ...looseNodes],
+    edges: rootEdges,
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'DOWN',
+      // 계층 교차 처리는 그룹이 있을 때만 켠다 — 평면 그래프에서 켜면 계층형 알고리즘이
+      // 컴파운드 모드로 돌아 레이어 간격·엣지 레인 산출이 달라진다(2026-09-23 실사용 회귀 —
+      // 그룹 없는 문서는 예전 결과와 완전히 같아야 한다)
+      ...(groupNodes.length > 0 ? { 'elk.hierarchyHandling': 'INCLUDE_CHILDREN' } : {}),
       'elk.spacing.nodeNode': `${spacing.nodeNode}`,
       'elk.spacing.edgeEdge': `${spacing.edgeEdge}`,
       'elk.spacing.edgeNode': `${spacing.edgeNode}`,
@@ -101,7 +165,9 @@ export function buildLayoutGraph(
 
 /**
  * 자동 배치를 실행해 테이블별 새 좌표를 얻는다. 결과 x/y는 그래프 루트 원점(좌상단) 기준이라
- * 캔버스 좌표계와 같다. 테이블이 2개 미만이면 빈 객체(배치할 관계가 없다).
+ * 캔버스 좌표계와 같다 — 그룹 컴파운드 노드 안의 테이블 좌표는 그룹 기준이라 부모 오프셋을
+ * 누적해 절대 좌표로 바꾼다(ELK 좌표는 항상 자신을 담은 노드 기준).
+ * 테이블이 2개 미만이면 빈 객체(배치할 관계가 없다).
  * 실패는 예외를 전파한다 — 안내 토스트는 호출부가 담당한다.
  */
 export async function layoutTablePositions(
@@ -111,11 +177,17 @@ export async function layoutTablePositions(
   if (doc.model.tables.length < 2) return {}
   const elk = options.elk ?? (await getElk())
   const graph = await elk.layout(buildLayoutGraph(doc, options.spacing, options.sizes))
+  const tableIds = new Set(doc.model.tables.map((table) => table.id))
   const positions: Record<string, { x: number; y: number }> = {}
-  for (const child of graph.children ?? []) {
-    if (child.x === undefined || child.y === undefined) continue
-    positions[child.id] = { x: Math.round(child.x), y: Math.round(child.y) }
+  const collect = (node: ElkNode, offsetX: number, offsetY: number) => {
+    const x = offsetX + (node.x ?? 0)
+    const y = offsetY + (node.y ?? 0)
+    if (node.id && tableIds.has(node.id)) {
+      positions[node.id] = { x: Math.round(x), y: Math.round(y) }
+    }
+    for (const child of node.children ?? []) collect(child, x, y)
   }
+  for (const child of graph.children ?? []) collect(child, 0, 0)
   return positions
 }
 

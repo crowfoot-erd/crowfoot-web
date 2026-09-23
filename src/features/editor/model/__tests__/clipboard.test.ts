@@ -100,7 +100,6 @@ describe('copyToClipboard', () => {
         id: 'area-1',
         name: '회원 도메인',
         description: '',
-        collapsed: false,
         color: 'default',
         tableIds: [doc.model.tables[0].id],
       },

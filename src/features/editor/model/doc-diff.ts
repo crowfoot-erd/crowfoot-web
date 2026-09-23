@@ -281,7 +281,7 @@ function diffAreas(from: ErdArea[], to: ErdArea[], items: DocDiffItem[]): void {
       items.push({ kind: 'area', action: 'remove', table: '', name: prev.name, detail: '' })
       continue
     }
-    const contentFields = ['name', 'description', 'color', 'collapsed', 'tableIds'] as const
+    const contentFields = ['name', 'description', 'color', 'tableIds'] as const
     const changedContent = contentFields.filter((f) => prev[f] !== next[f])
     if (changedContent.length > 0) {
       items.push({ kind: 'area', action: 'update', table: '', name: next.name, detail: changedContent.join(', ') })

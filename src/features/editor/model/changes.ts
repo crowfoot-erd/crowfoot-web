@@ -38,7 +38,7 @@ export type RelationshipPatch = Partial<
   >
 >
 export type NotePatch = Partial<Pick<ErdNote, 'x' | 'y' | 'width' | 'text' | 'title' | 'color' | 'linkedTableId'>>
-export type AreaPatch = Partial<Pick<ErdArea, 'name' | 'description' | 'collapsed' | 'color' | 'tableIds'>>
+export type AreaPatch = Partial<Pick<ErdArea, 'name' | 'description' | 'color' | 'tableIds'>>
 
 export type ErdChange =
   | { type: 'table/create'; table: ErdTable; position: { x: number; y: number } }
@@ -105,7 +105,6 @@ export function createArea(name: string, init: Partial<ErdArea> = {}): ErdArea {
     id: newId(),
     name,
     description: '',
-    collapsed: false,
     color: 'default',
     tableIds: [],
     ...init,

@@ -338,17 +338,32 @@ describe('ModelExplorerPanel — 그룹 폴더 트리 (v1.13)', () => {
     expect(document.getElementById(`explorer-table-${doc.model.tables[1].id}`)).toBeInTheDocument()
   })
 
-  it('폴더 헤더 클릭은 보기 필터 — 활성 폴더 눌림, 재클릭·미분류는 해제(null)', () => {
+  it('눈 아이콘은 보기 필터다 — 진입(area-1)은 눌림 없는 상태에서, 접힘과 독립', () => {
+    hydrateWithArea()
+    const onActiveAreaChange = vi.fn()
+    renderPanelWithArea(null, onActiveAreaChange)
+
+    const view = screen.getByTestId('explorer-group-area-1-view')
+    expect(view).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(view)
+    expect(onActiveAreaChange).toHaveBeenLastCalledWith('area-1')
+
+    // 헤더 접기와 보기 필터는 독립이다 — 접힌 폴더에서도 눈으로 그룹에 들어온다
+    fireEvent.click(screen.getByTestId('explorer-group-area-1'))
+    expect(onActiveAreaChange).toHaveBeenCalledTimes(1) // 접기는 필터를 건드리지 않는다
+    fireEvent.click(view)
+    expect(onActiveAreaChange).toHaveBeenCalledTimes(2)
+    expect(onActiveAreaChange).toHaveBeenLastCalledWith('area-1')
+  })
+
+  it('활성 그룹의 눈 아이콘은 눌림 상태다 — 재클릭하면 전체(null)로 돌아간다', () => {
     hydrateWithArea()
     const onActiveAreaChange = vi.fn()
     renderPanelWithArea('area-1', onActiveAreaChange)
 
-    expect(screen.getByTestId('explorer-group-area-1')).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByTestId('explorer-group-ungrouped')).toHaveAttribute('aria-pressed', 'false')
-
-    fireEvent.click(screen.getByTestId('explorer-group-area-1'))
-    expect(onActiveAreaChange).toHaveBeenCalledWith(null)
-    fireEvent.click(screen.getByTestId('explorer-group-ungrouped'))
+    const view = screen.getByTestId('explorer-group-area-1-view')
+    expect(view).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(view)
     expect(onActiveAreaChange).toHaveBeenLastCalledWith(null)
   })
 
@@ -365,16 +380,32 @@ describe('ModelExplorerPanel — 그룹 폴더 트리 (v1.13)', () => {
     expect(screen.getByRole('button', { name: /^메모/ })).toHaveTextContent('(1)')
   })
 
-  it('폴더 접기(셰브론)는 문서의 그룹 접기다 — 멤버를 캔버스에서 숨기고 목록엔 흐리게 남는다', () => {
+  it('폴더 헤더 클릭·셰브론은 목록 접기다 — 멤버 행을 접고 문서는 고치지 않는다', () => {
     const doc = hydrateWithArea() // members: users
     renderPanelWithArea(null)
 
-    fireEvent.click(screen.getByTestId('explorer-group-area-1-chevron'))
-    const state = useEditorStore.getState()
-    expect(state.present.diagram.areas[0].collapsed).toBe(true) // area/patch 1커밋
-    // 목록에는 남되 흐리다 — 클릭하면 그룹을 펼친 뒤 선택한다(아래 별도 케이스)
-    expect(hasClass(tableRow(doc.model.tables[0].id), 'opacity-50')).toBe(true)
-    expect(state.past).toHaveLength(1)
+    const folder = screen.getByTestId('explorer-group-area-1')
+    expect(folder).toHaveAttribute('aria-expanded', 'true')
+    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument()
+
+    fireEvent.click(folder)
+    expect(screen.getByTestId('explorer-group-area-1')).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById(`explorer-table-${doc.model.tables[0].id}`)).not.toBeInTheDocument()
+    // 문서 접기 폐지(v1.13 피드백) — 접힘은 패널의 보기 상태라 커밋이 없다
+    expect(useEditorStore.getState().past).toHaveLength(0)
+
+    fireEvent.click(screen.getByTestId('explorer-group-area-1')) // 재클릭 — 다시 펼침
+    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument()
+  })
+
+  it('미분류 폴더도 목록 접기가 된다 — 눈 아이콘은 없다(그룹이 아니라 전체 보기)', () => {
+    const doc = hydrateWithArea()
+    renderPanelWithArea(null)
+
+    expect(screen.queryByTestId('explorer-group-ungrouped-view')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('explorer-group-ungrouped'))
+    expect(screen.getByTestId('explorer-group-ungrouped')).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById(`explorer-table-${doc.model.tables[1].id}`)).not.toBeInTheDocument()
   })
 
   it('폴더 편집(✎)·삭제(🗑) — 편집은 다이얼로그 오픈, 삭제는 area/remove 커밋', () => {
@@ -389,27 +420,16 @@ describe('ModelExplorerPanel — 그룹 폴더 트리 (v1.13)', () => {
     expect(useEditorStore.getState().present.diagram.areas).toHaveLength(0) // 그룹만 사라진다
   })
 
-  it('읽기 전용에서는 편집·삭제·접기 버튼이 없다 — 탐색·필터만', () => {
+  it('읽기 전용에서는 편집·삭제 버튼이 없다 — 접기·보기는 가능하다(보기 상태라 문서를 안 고친다)', () => {
     hydrateWithArea()
     renderPanelWithArea(null, () => {}, false)
 
     expect(screen.queryByTestId('explorer-group-area-1-edit')).not.toBeInTheDocument()
     expect(screen.queryByTestId('explorer-group-area-1-remove')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('explorer-group-area-1-chevron')).not.toBeInTheDocument()
+    expect(screen.getByTestId('explorer-group-area-1-view')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('explorer-group-area-1')) // 접기는 패널 로컬 — 가능
+    expect(screen.getByTestId('explorer-group-area-1')).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('접힌 그룹 멤버는 흐리게 남는다 — 클릭하면 그룹을 펼친 뒤 선택한다', () => {
-    const doc = hydrateWithArea({ collapsed: true }, 'all')
-    renderPanelWithArea(null)
-
-    // 두 멤버 모두 목록에 있되 흐리다(접힌 그룹 = 캔버스에서 숨겨진 테이블)
-    expect(hasClass(tableRow(doc.model.tables[0].id), 'opacity-50')).toBe(true)
-    expect(hasClass(tableRow(doc.model.tables[1].id), 'opacity-50')).toBe(true)
-
-    fireEvent.click(tableRow(doc.model.tables[0].id))
-    const state = useEditorStore.getState()
-    expect(state.present.diagram.areas[0].collapsed).toBe(false) // 펼침 area/patch 1커밋
-    expect(state.selectedIds).toEqual([doc.model.tables[0].id])
-    expect(state.past).toHaveLength(1)
-  })
 })

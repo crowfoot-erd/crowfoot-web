@@ -194,11 +194,11 @@ describe('editor-store — 주제 영역 (v1.13)', () => {
   it('영역 생성·패치도 undo/redo 스택을 탄다 — 1커밋 1스택', () => {
     const area = createArea('회원', { id: 'A1', tableIds: [] })
     useEditorStore.getState().commit({ type: 'area/create', area })
-    useEditorStore.getState().commit({ type: 'area/patch', areaId: 'A1', patch: { collapsed: true } })
-    expect(useEditorStore.getState().present.diagram.areas[0].collapsed).toBe(true)
+    useEditorStore.getState().commit({ type: 'area/patch', areaId: 'A1', patch: { color: 'sky' } })
+    expect(useEditorStore.getState().present.diagram.areas[0].color).toBe('sky')
 
     useEditorStore.getState().undo()
-    expect(useEditorStore.getState().present.diagram.areas[0].collapsed).toBe(false)
+    expect(useEditorStore.getState().present.diagram.areas[0].color).toBe('default')
     useEditorStore.getState().undo()
     expect(useEditorStore.getState().present.diagram.areas).toHaveLength(0)
     useEditorStore.getState().redo()

@@ -13,7 +13,7 @@
  */
 import { useRef, useState } from 'react'
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
-import { FolderPlus, FolderMinus, FolderPen, Info, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
+import { Expand, FolderPlus, FolderMinus, FolderPen, Info, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
@@ -31,6 +31,7 @@ export type ContextMenuAction =
   | { type: 'addToGroup'; areaId: string; tableIds: string[] }
   | { type: 'removeFromGroup'; areaId: string; tableIds: string[] }
   | { type: 'editGroup'; areaId: string }
+  | { type: 'exitGroupView' }
   | { type: 'tableInfo'; tableId: string }
   | { type: 'removeTable'; tableId: string }
   | { type: 'removeNote'; noteId: string }
@@ -51,6 +52,8 @@ interface CanvasContextMenuProps {
   /** 현재 선택된 테이블 id — 우클릭 타깃이 선택 상태면 이 전체가 그룹 조작 대상 */
   selectedTableIds: readonly string[]
   groups: readonly ContextMenuGroup[]
+  /** 보기 필터로 들어가 있는 그룹 이름 — null이면 전체 보기(돌아가기 항목이 없다) */
+  activeAreaName: string | null
   onAction: (action: ContextMenuAction) => void
   children: React.ReactNode
 }
@@ -98,7 +101,7 @@ function GroupRow({ group }: { group: ContextMenuGroup }) {
   )
 }
 
-export function CanvasContextMenu({ toFlow, selectedTableIds, groups, onAction, children }: CanvasContextMenuProps) {
+export function CanvasContextMenu({ toFlow, selectedTableIds, groups, activeAreaName, onAction, children }: CanvasContextMenuProps) {
   const { t } = useTranslation()
   const [target, setTarget] = useState<MenuTarget>({ kind: 'canvas' })
   const screenRef = useRef<CanvasPoint>({ x: 0, y: 0 })
@@ -139,6 +142,21 @@ export function CanvasContextMenu({ toFlow, selectedTableIds, groups, onAction, 
         >
           {target.kind === 'canvas' ? (
             <>
+              {/* 그룹 보기 중 — 전체 보기로 돌아가는 길을 메뉴 첫 항목으로 밝힌다(폴더 재클릭 외
+                  유일한 복귀 수단이라 불직관하다는 피드백). '그룹에서 제외'(멤버 제거)와 달리
+                  이쪽은 보기 전환 — 문구로 둘을 구분한다 */}
+              {activeAreaName !== null ? (
+                <>
+                  <ContextMenuPrimitive.Item
+                    className={SUB_ITEM_CLASS}
+                    onSelect={() => onAction({ type: 'exitGroupView' })}
+                  >
+                    <Expand aria-hidden />
+                    {t('model.editor.contextMenu.exitGroupView')}
+                  </ContextMenuPrimitive.Item>
+                  <ContextMenuPrimitive.Separator className="mx-1 my-1 h-px bg-border" />
+                </>
+              ) : null}
               <ContextMenuPrimitive.Item
                 className={SUB_ITEM_CLASS}
                 onSelect={() => onAction({ type: 'createTable', position: toFlow(screenRef.current) })}

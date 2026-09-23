@@ -5,9 +5,10 @@
  * 생성·삭제·이름 변경은 캔버스의 기존 UX(컨텍스트 메뉴·다이얼로그)를 그대로 쓴다.
  *
  * - 테이블 목록은 그룹(주제 영역) 폴더로 묶는다(v1.13): 그룹 폴더 + 미분류. 폴더 헤더
- *   클릭은 보기 필터(activeAreaId — 캔버스·툴바와 같은 상태), 셰브론은 문서의 그룹 접기
- *   (멤버를 캔버스에서 숨긴다 — 목록에는 흐리게 남는다). 편집(✎)은 그룹 편집 다이얼로그
- *   (EditorShell 소유), 삭제(🗑)는 area/remove — 멤버 테이블은 남는다.
+ *   클릭·셰브론은 목록 접기(패널의 보기 상태 — 문서를 고치지 않는다), 눈 아이콘은 그룹
+ *   보기 필터(activeAreaId — 캔버스·툴바와 같은 상태, 진입 시 멤버를 화면에 맞춘다).
+ *   편집(✎)은 그룹 편집 다이얼로그(EditorShell 소유), 삭제(🗑)는 area/remove — 멤버
+ *   테이블은 남는다.
  * - 선택 원천은 스토어 selectedIds — 캔버스 클릭과 이 패널 클릭이 같은 상태를 고쳐 쓴다
  *   (§3 양방향 동기화). 행 클릭은 선택 + 포커스 이동(객체를 화면 중심에 두고 줌 하한 보정).
  * - 검색은 문서 전체를 로컬 계산(object-search — 스토어 구독이라 캔버스 성능과 무관)하고
@@ -16,7 +17,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Search, StickyNote, Table2, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, ChevronRight, Eye, Pencil, Search, StickyNote, Table2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
@@ -27,8 +28,7 @@ import {
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
-import { hiddenTableIds, tablesOfArea } from '@/features/editor/model/areas'
-import type { ErdChange } from '@/features/editor/model/changes'
+import { tablesOfArea } from '@/features/editor/model/areas'
 import { searchObjects, type ObjectHit } from '@/features/editor/model/object-search'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { estimateTableHeight, tableRenderWidth } from './canvas/TableNode'
@@ -72,6 +72,8 @@ export function ModelExplorerPanel(props: ModelExplorerPanelProps) {
 }
 
 type GroupKey = 'tables' | 'relationships' | 'notes'
+/** 미분류 폴더의 접기 키 — 문서 객체가 없어 패널 로컬 키로 식별한다 */
+const UNGROUPED_KEY = '__ungrouped__'
 
 function ExplorerBody({
   nameDisplay,
@@ -99,6 +101,8 @@ function ExplorerBody({
   /** 펼친 테이블 — 기본은 모두 접힌다(리버스 문서처럼 테이블이 수십 개면 펼침이 병목) */
   const [expandedTables, setExpandedTables] = useState<ReadonlySet<string>>(new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<GroupKey>>(new Set())
+  /** 폴더 접힘 — 목록 접기는 문서가 아니라 패널의 보기 상태다(문서 접기 폐지, v1.13 피드백) */
+  const [foldedAreas, setFoldedAreas] = useState<ReadonlySet<string>>(new Set())
   const [activeHit, setActiveHit] = useState(-1)
   const searchRef = useRef<HTMLInputElement | null>(null)
 
@@ -194,6 +198,17 @@ function ExplorerBody({
     [focusPoint, tableCenter],
   )
 
+  /** 그룹 보기 진입 — 그룹의 멤버를 화면에 맞춘다. 탐색기에서 그룹을 골랐을 때 그
+   *  테이블들이 있는 쪽으로 중심이 이동해야 한다(실사용 피드백) */
+  const fitArea = useCallback(
+    (areaId: string) => {
+      const members = tablesOfArea(useEditorStore.getState().present, areaId)
+      const nodes = [...members].map((id) => ({ id }))
+      if (nodes.length > 0) rf.fitView({ nodes, padding: 0.25, duration: 200 })
+    },
+    [rf],
+  )
+
   /** 행 클릭 — 선택 교체 + 포커스. 관계 행은 엣지 하이라이트만(RelationshipEdge selected) */
   const selectTarget = useCallback(
     (hit: { kind: ObjectHit['kind']; targetId: string }) => {
@@ -235,13 +250,20 @@ function ExplorerBody({
       return next
     })
   }
+  /** 폴더 접기 토글 — 그룹은 area.id, 미분류는 UNGROUPED_KEY로 구분한다 */
+  const toggleFold = (key: string) => {
+    setFoldedAreas((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const searching = query.trim().length > 0
   /* 영역 필터 — 캔버스 표시 집합과 같은 식(members)을 목록에도 적용한다. 관계는 양끽 테이블이
      모두 영역 안일 때만, 메모는 영역 밖 객체라 항상 전체(폴더는 테이블·관계만 좁힌다) */
   const areaMembers = activeAreaId ? tablesOfArea(doc, activeAreaId) : null
-  /** 접힌 영역의 멤버 — 목록에는 남기되 흐리게, 클릭하면 영역을 펼친 뒤 선택한다 */
-  const hiddenIds = hiddenTableIds(doc)
   const tables = doc.model.tables
     .filter((table) => !searching || hitTableIds.has(table.id))
     .filter((table) => !areaMembers || areaMembers.has(table.id))
@@ -254,18 +276,6 @@ function ExplorerBody({
     .filter((rel) => !areaMembers || (areaMembers.has(rel.childTableId) && areaMembers.has(rel.parentTableId)))
   const notes = searching ? doc.diagram.notes.filter((note) => hitNoteIds.has(note.id)) : doc.diagram.notes
   const documentEmpty = doc.model.tables.length === 0 && doc.model.relationships.length === 0 && doc.diagram.notes.length === 0
-
-  /** 접힌 영역의 멤버를 클릭했다 — 그 테이블을 숨긴 영역을 모두 펼치고 선택·포커스로 이어간다.
-   *  펼침을 생략하면 숨겨진 테이블만 포커스해 빈 화면을 보게 된다 */
-  const selectTableExpanded = (tableId: string) => {
-    if (hiddenIds.has(tableId)) {
-      const changes = doc.diagram.areas
-        .filter((area) => area.collapsed && area.tableIds.includes(tableId))
-        .map((area) => ({ type: 'area/patch', areaId: area.id, patch: { collapsed: false } }) as ErdChange)
-      if (changes.length > 0) useEditorStore.getState().commitAll(changes)
-    }
-    selectTarget({ kind: 'table', targetId: tableId })
-  }
 
   const physicalOf = (tableId: string) =>
     doc.model.tables.find((tb) => tb.id === tableId)?.physicalName ?? '?'
@@ -286,8 +296,7 @@ function ExplorerBody({
       activeColumnId={
         hits[activeHit]?.targetId === table.id ? hits[activeHit].columnId : undefined
       }
-      dimmed={hiddenIds.has(table.id)}
-      onSelect={() => selectTableExpanded(table.id)}
+      onSelect={() => selectTarget({ kind: 'table', targetId: table.id })}
       onToggle={() => toggleTable(table.id)}
     />
   )
@@ -347,12 +356,18 @@ function ExplorerBody({
                     name={area.name}
                     color={area.color}
                     count={memberIds.size}
-                    collapsed={area.collapsed}
-                    onToggleCollapsed={() =>
-                      commit({ type: 'area/patch', areaId: area.id, patch: { collapsed: !area.collapsed } })
-                    }
+                    folded={foldedAreas.has(area.id)}
+                    onToggleFold={() => toggleFold(area.id)}
                     active={activeAreaId === area.id}
-                    onFilter={() => onActiveAreaChange(activeAreaId === area.id ? null : area.id)}
+                    onView={() => {
+                      // 보기 아이콘 — 그룹 내 테이블만 모아 본다. 진입할 때만 화면 이동,
+                      // 나갈 때(재클릭)는 뷰포트를 그대로 둔다
+                      if (activeAreaId === area.id) onActiveAreaChange(null)
+                      else {
+                        onActiveAreaChange(area.id)
+                        fitArea(area.id)
+                      }
+                    }}
                     canEdit={canEdit}
                     onEdit={() => onOpenAreaEdit(area.id)}
                     onRemove={() => commit({ type: 'area/remove', areaId: area.id })}
@@ -368,8 +383,8 @@ function ExplorerBody({
                   testid="explorer-group-ungrouped"
                   name={t('model.editor.explorer.groupUngrouped')}
                   count={doc.model.tables.filter((table) => !groupedIds.has(table.id)).length}
-                  active={activeAreaId === null}
-                  onFilter={() => onActiveAreaChange(null)}
+                  folded={foldedAreas.has(UNGROUPED_KEY)}
+                  onToggleFold={() => toggleFold(UNGROUPED_KEY)}
                 >
                   <div className="ml-3">
                     {tables
@@ -480,18 +495,18 @@ function GroupHeader({
   )
 }
 
-/** 그룹 폴더 헤더 — 클릭은 보기 필터(토글), 셰브론은 문서의 그룹 접기(멤버를 캔버스에서
- *  숨긴다 — 문서 변경이라 편집 권한이 있을 때만). 편집·삭제도 편집 권한 전용(호버 시 노출).
- *  미분류 폴더는 문서 객체가 아니라 셰브론·편집·삭제가 없다 */
+/** 그룹 폴더 헤더 — 헤더 클릭·셰브론은 목록 접기(패널 보기 상태, 문서 변경 아님), 눈 아이콘은
+ *  그룹 보기 필터(그룹 내 테이블만 모아 본다). 편집·삭제만 편집 권한 전용(호버 시 노출).
+ *  미분류 폴더는 문서 객체가 아니라 접기만 있고 눈·편집·삭제가 없다 */
 function GroupFolder({
   testid,
   name,
   color,
   count,
-  collapsed,
-  onToggleCollapsed,
-  active,
-  onFilter,
+  folded,
+  onToggleFold,
+  active = false,
+  onView,
   canEdit,
   onEdit,
   onRemove,
@@ -502,11 +517,12 @@ function GroupFolder({
   /** 그룹 색('default' 포함) — 미분류 폴더는 undefined */
   color?: EditorDocument['diagram']['areas'][number]['color']
   count: number
-  /** 문서의 접힘 상태(area.collapsed) — 미분류는 undefined */
-  collapsed?: boolean
-  onToggleCollapsed?: () => void
-  active: boolean
-  onFilter: () => void
+  /** 목록 접힘 — 패널 로컬 상태(그룹은 area.id, 미분류는 UNGROUPED_KEY) */
+  folded: boolean
+  onToggleFold: () => void
+  /** 그룹 보기 활성 여부 — 눈 아이콘 강조·헤더 하이라이트 */
+  active?: boolean
+  onView?: () => void
   canEdit?: boolean
   onEdit?: () => void
   onRemove?: () => void
@@ -520,33 +536,18 @@ function GroupFolder({
         role="button"
         tabIndex={0}
         data-testid={testid}
-        aria-pressed={active}
+        aria-expanded={!folded}
         aria-label={name}
-        onClick={onFilter}
+        onClick={onToggleFold}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') onFilter()
+          if (event.key === 'Enter') onToggleFold()
         }}
         className={cn(
           'group flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-sm px-2 text-left text-xs font-medium',
           active ? 'bg-accent text-accent-foreground' : 'text-foreground/80 hover:bg-accent/60',
         )}
       >
-        {canEdit && onToggleCollapsed ? (
-          <button
-            type="button"
-            data-testid={`${testid}-chevron`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onToggleCollapsed()
-            }}
-            aria-expanded={!collapsed}
-            aria-label={t('model.editor.area.collapse')}
-            title={collapsed ? t('model.editor.area.expand') : t('model.editor.area.collapse')}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-          >
-            {collapsed ? <ChevronRight aria-hidden className="size-3" /> : <ChevronDown aria-hidden className="size-3" />}
-          </button>
-        ) : null}
+        {folded ? <ChevronRight aria-hidden className="size-3 shrink-0" /> : <ChevronDown aria-hidden className="size-3 shrink-0" />}
         <span
           aria-hidden
           className={cn('size-2.5 shrink-0 rounded-full border border-foreground/20', !hex && 'bg-muted-foreground/25')}
@@ -554,6 +555,25 @@ function GroupFolder({
         />
         <span className="min-w-0 flex-1 truncate">{name}</span>
         <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
+        {onView ? (
+          <button
+            type="button"
+            data-testid={`${testid}-view`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onView()
+            }}
+            aria-pressed={active}
+            aria-label={t('model.editor.area.view')}
+            title={t('model.editor.area.view')}
+            className={cn(
+              'flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:text-foreground',
+              active ? 'text-foreground' : 'text-muted-foreground',
+            )}
+          >
+            <Eye aria-hidden className="size-3" />
+          </button>
+        ) : null}
         {canEdit && onEdit ? (
           <button
             type="button"
@@ -585,7 +605,7 @@ function GroupFolder({
           </button>
         ) : null}
       </div>
-      {children}
+      {folded ? null : children}
     </div>
   )
 }
@@ -601,7 +621,6 @@ function TableRow({
   selected,
   active,
   activeColumnId,
-  dimmed,
   onSelect,
   onToggle,
 }: {
@@ -617,8 +636,6 @@ function TableRow({
   active: boolean
   /** 활성 히트가 이 테이블의 컬럼이면 그 컬럼 id — 컬럼 행 링 표시용 */
   activeColumnId?: string
-  /** 접힌 영역의 멤버 — 캔버스에 숨겨진 테이블. 클릭하면 영역을 펼친 뒤 선택한다 */
-  dimmed: boolean
   onSelect: () => void
   onToggle: () => void
 }) {
@@ -634,7 +651,7 @@ function TableRow({
     <>
       <div
         id={`explorer-table-${table.id}`}
-        className={cn(rowClass(selected, active), dimmed && 'opacity-50')}
+        className={rowClass(selected, active)}
         onClick={onSelect}
         onKeyDown={(event) => {
           if (event.key === 'Enter') onSelect()

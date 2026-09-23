@@ -2033,4 +2033,28 @@ describe('EditorShell — 그룹 소속 테이블: 색 잠금·소속 표시·�
     // 기존 멤버는 유지된다
     expect(useEditorStore.getState().present.diagram.areas[0].tableIds).toContain(area.tableIds[0])
   })
+
+  it('전체 보기에서는 캔버스 메뉴에 돌아가기 항목이 없다', async () => {
+    await seedGroupedFixture()
+
+    fireEvent.contextMenu(document.querySelector('.react-flow') ?? document.body)
+    expect(await screen.findByRole('menuitem', { name: '엔터티 생성' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: '전체 화면으로 돌아가기' })).toBeNull()
+  })
+
+  it('그룹 보기 중 캔버스 우클릭 → 전체 화면으로 돌아가기 → 숨겨졌던 미소속 테이블이 돌아온다', async () => {
+    const { area } = await seedGroupedFixture()
+
+    // 렌더러는 익스플로러를 닫고 시작한다 — 패널을 열고 눈 아이콘 클릭 → 그룹 보기(멤버만 보인다).
+    // (폴더 헤더 클릭은 목록 접기 — 보기 필터가 아니다)
+    fireEvent.click(screen.getByRole('button', { name: '탐색기' }))
+    fireEvent.click(await screen.findByTestId(`explorer-group-${area.id}-view`))
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(1))
+
+    fireEvent.contextMenu(document.querySelector('.react-flow') ?? document.body)
+    fireEvent.click(await screen.findByRole('menuitem', { name: '전체 화면으로 돌아가기' }))
+
+    // 전체 복귀 — 미소속 payments 노드가 다시 그려진다
+    await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(2))
+  })
 })

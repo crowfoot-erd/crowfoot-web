@@ -806,7 +806,8 @@
         "createGroup": "New group",
         "addToGroup": "Add to group",
         "removeFromGroup": "Remove from group",
-        "editGroup": "Edit group"
+        "editGroup": "Edit group",
+        "exitGroupView": "Back to all tables"
       },
       "table": {
         "addColumn": "Add column",
@@ -1001,9 +1002,8 @@
       },
       "area": {
         "defaultName": "Group",
-        "expand": "Expand group",
-        "collapse": "Collapse group",
         "edit": "Edit group",
+        "view": "View group",
         "memberCount": "Member tables"
       },
       "areaDialog": {

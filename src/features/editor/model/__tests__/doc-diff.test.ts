@@ -350,7 +350,6 @@ describe('diffDocuments — 주제 영역(그룹) (v1.13)', () => {
     id: 'a-1',
     name: '회원',
     description: '',
-    collapsed: false,
     color: 'default' as const,
     tableIds: ['t-orders'],
     ...init,
@@ -364,14 +363,14 @@ describe('diffDocuments — 주제 영역(그룹) (v1.13)', () => {
     expect(remove.items[0]).toMatchObject({ kind: 'area', action: 'remove', name: '회원' })
   })
 
-  it('내용(이름·색·접힘·멤버) 변경은 update — 그룹은 위치 데이터가 없어 move가 없다', () => {
+  it('내용(이름·색·멤버) 변경은 update — 그룹은 위치 데이터가 없어 move가 없다', () => {
     const from = makeDoc([], { areas: [area()] })
     const to = makeDoc([], {
-      areas: [area({ name: '회원 도메인', color: 'sky', collapsed: true, tableIds: [] })],
+      areas: [area({ name: '회원 도메인', color: 'sky', tableIds: [] })],
     })
     const summary = diffDocuments(from, to)
     expect(summary.items).toEqual([
-      { kind: 'area', action: 'update', table: '', name: '회원 도메인', detail: 'name, color, collapsed, tableIds' },
+      { kind: 'area', action: 'update', table: '', name: '회원 도메인', detail: 'name, color, tableIds' },
     ])
   })
 

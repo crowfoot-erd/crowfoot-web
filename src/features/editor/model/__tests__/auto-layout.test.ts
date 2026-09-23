@@ -154,6 +154,135 @@ describe('auto-layout — layoutTablePositions (실 elkjs)', () => {
   })
 })
 
+describe('auto-layout — 그룹 클러스터링 (v1.13)', () => {
+  /** 문서에 그룹을 직접 심는다 — 체인지 경유 없이 배치 입력만 만든다 */
+  function seedAreas(d: EditorDocument, ...areas: Array<{ id: string; name: string; tableIds: string[] }>): EditorDocument {
+    return {
+      ...d,
+      diagram: {
+        ...d.diagram,
+        areas: areas.map((area) => ({ ...area, description: '', color: 'default' })),
+      },
+    }
+  }
+
+  /** 테이블들의 화면 AABB 합집합 — 그룹 덩어리의 경계 */
+  function bboxOf(d: EditorDocument, positions: Record<string, { x: number; y: number }>, ids: string[]) {
+    const boxes = boxesOf(d, positions).filter((box) => ids.includes(box.id))
+    return {
+      left: Math.min(...boxes.map((b) => b.x)),
+      top: Math.min(...boxes.map((b) => b.y)),
+      right: Math.max(...boxes.map((b) => b.x + b.w)),
+      bottom: Math.max(...boxes.map((b) => b.y + b.h)),
+    }
+  }
+
+  it('그래프 조립 — 그룹마다 컴파운드 노드, 그룹 내 엣지는 그룹에·경계 엣지는 루트에', () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id)
+    const ab = seedRelation(d, 'A', 'B')
+    d = ab
+    d = seedRelation(d, 'C', 'D') // 그룹2 내부
+    d = seedRelation(d, 'B', 'C') // 그룹 경계
+    const bc = d.model.relationships[d.model.relationships.length - 1]!
+    d = seedAreas(
+      d,
+      { id: 'G1', name: '회원', tableIds: ['A', 'B'] },
+      { id: 'G2', name: '주문', tableIds: ['C', 'D'] },
+    )
+
+    const graph = buildLayoutGraph(d)
+    expect(graph.children?.map((c) => c.id).sort()).toEqual(['group:G1', 'group:G2'])
+    const g1 = graph.children?.find((c) => c.id === 'group:G1')
+    expect(g1?.children?.map((c) => c.id)).toEqual(['A', 'B'])
+    expect(g1?.edges?.map((e) => e.id)).toEqual([ab.model.relationships[0].id]) // A→B는 그룹 안에
+    expect(graph.edges).toEqual([{ id: bc.id, sources: ['B'], targets: ['C'] }]) // B→C는 루트에
+    expect(graph.layoutOptions?.['elk.hierarchyHandling']).toBe('INCLUDE_CHILDREN')
+  })
+
+  it('다중 소속 테이블은 문서 순서 첫 그룹에만 들어간다(groupColorOf와 같은 규칙)', () => {
+    let d = doc()
+    for (const id of ['A', 'SHARED', 'D']) d = seedTable(d, id)
+    d = seedAreas(
+      d,
+      { id: 'G1', name: '회원', tableIds: ['A', 'SHARED'] },
+      { id: 'G2', name: '주문', tableIds: ['SHARED', 'D'] },
+    )
+
+    const graph = buildLayoutGraph(d)
+    const g1 = graph.children?.find((c) => c.id === 'group:G1')
+    const g2 = graph.children?.find((c) => c.id === 'group:G2')
+    expect(g1?.children?.map((c) => c.id)).toEqual(['A', 'SHARED'])
+    expect(g2?.children?.map((c) => c.id)).toEqual(['D'])
+  })
+
+  it('같은 그룹은 하나의 덩어리로 모인다 — 그룹 bbox끼리 겹치지 않고 미소속은 밖', async () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D', 'ISLAND']) d = seedTable(d, id)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'C', 'D')
+    d = seedAreas(
+      d,
+      { id: 'G1', name: '회원', tableIds: ['A', 'B'] },
+      { id: 'G2', name: '주문', tableIds: ['C', 'D'] },
+    )
+
+    const positions = await layoutTablePositions(d)
+    expect(Object.keys(positions).sort()).toEqual(['A', 'B', 'C', 'D', 'ISLAND'])
+    const g1 = bboxOf(d, positions, ['A', 'B'])
+    const g2 = bboxOf(d, positions, ['C', 'D'])
+    // 덩어리끼리 겹치지 않는다 — 모여 있음의 판정
+    const separated = g1.right <= g2.left || g2.right <= g1.left || g1.bottom <= g2.top || g2.bottom <= g1.top
+    expect(separated).toBe(true)
+    // 미소속 고립 테이블은 어느 덩어리 안에도 있지 않다
+    const island = positions.ISLAND
+    const inside = (b: ReturnType<typeof bboxOf>) => island.x >= b.left && island.x < b.right && island.y >= b.top && island.y < b.bottom
+    expect(inside(g1)).toBe(false)
+    expect(inside(g2)).toBe(false)
+    // 그룹 안에서도 계층 규칙(부모가 위)은 유지된다
+    const boxes = boxesOf(d, positions)
+    const a = boxes.find((b) => b.id === 'A')
+    const b = boxes.find((b) => b.id === 'B')
+    expect(a!.y + a!.h).toBeLessThanOrEqual(b!.y)
+  })
+
+  it('그룹 경계 관계(B→C)에서도 부모 그룹이 위·자식 그룹이 아래로 배치된다', async () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'C', 'D')
+    d = seedRelation(d, 'B', 'C')
+    d = seedAreas(
+      d,
+      { id: 'G1', name: '회원', tableIds: ['A', 'B'] },
+      { id: 'G2', name: '주문', tableIds: ['C', 'D'] },
+    )
+
+    const positions = await layoutTablePositions(d)
+    const g1 = bboxOf(d, positions, ['A', 'B'])
+    const g2 = bboxOf(d, positions, ['C', 'D'])
+    expect(g1.bottom).toBeLessThanOrEqual(g2.top) // B(부모) 그룹이 위
+    // 덩어리 사이 복도 — 경계 관계선이 몰려 지나가는 곳이라 그룹 안 레이어 간격보다
+    // 넉넉해야 한다(선이 인접 테이블에 밀착하는 실사용 회귀 방지, GROUP_PADDING×2)
+    const boxes = boxesOf(d, positions)
+    const a = boxes.find((b) => b.id === 'A')!
+    const b = boxes.find((b) => b.id === 'B')!
+    const intraGap = b.y - (a.y + a.h)
+    const corridor = g2.top - g1.bottom
+    expect(corridor).toBeGreaterThanOrEqual(intraGap + 150)
+  })
+
+  it('그룹이 없으면 계층 교차 처리를 켜지 않는다 — 평면 그래프는 예전 결과를 유지한다', () => {
+    let d = doc()
+    for (const id of ['A', 'B']) d = seedTable(d, id)
+    d = seedRelation(d, 'A', 'B')
+
+    const graph = buildLayoutGraph(d)
+    expect(graph.children?.map((c) => c.id)).toEqual(['A', 'B']) // 루트에 테이블이 직접
+    expect(graph.layoutOptions).not.toHaveProperty('elk.hierarchyHandling')
+  })
+})
+
 describe('auto-layout — positionNotes(노트 겹침 방지 배치)', () => {
   it('연관 노트를 테이블 우측(폭+24)에 상단 정렬로 붙인다', () => {
     let d = doc()

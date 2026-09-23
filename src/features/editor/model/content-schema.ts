@@ -218,8 +218,6 @@ export const areaSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string().default(''),
-  /** 접기 — 멤버 테이블을 캔버스에서 숨긴다(ERDCloud·erwin 표준). 이전 문서는 펼침으로 정규화 */
-  collapsed: z.boolean().default(false),
   /** 그룹 색 — 멤버 테이블의 렌더 색을 고정한다(테이블 강조색 프리셋 재사용) */
   color: tableColorSchema.default('default'),
   /** 소속 테이블 — 문서 순서 그대로 */
