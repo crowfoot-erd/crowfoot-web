@@ -44,7 +44,7 @@ import {
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
-import { uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
+import { fitAreaToMembers, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
 import { createArea, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
 import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
@@ -1318,7 +1318,13 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         area={areaEdit}
         tables={areaEditTables}
         onColorChange={(areaId, color) => commit({ type: 'area/patch', areaId, patch: { color } })}
-        onCommit={(areaId, patch) => commit({ type: 'area/patch', areaId, patch })}
+        onCommit={(areaId, patch) => {
+          // 멤버십이 바뀌면 영역이 멤버를 감싸게 경계도 함께 재계산(02-ui.md §6) — 체크 한 번 = patch 1커밋
+          const fit = patch.tableIds
+            ? fitAreaToMembers(useEditorStore.getState().present, patch.tableIds)
+            : null
+          commit({ type: 'area/patch', areaId, patch: fit ? { ...patch, ...fit } : patch })
+        }}
       />
     </EditorCanvasContext.Provider>
   )

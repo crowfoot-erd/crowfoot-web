@@ -15,6 +15,7 @@ import { ChevronDown, ChevronRight, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
+import { AREA_MIN_HEIGHT, AREA_MIN_WIDTH } from '@/features/editor/model/areas'
 import { TABLE_COLOR_HEX } from '@/features/editor/model/content-schema'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { useEditorCanvas } from './editor-context'
@@ -22,8 +23,8 @@ import { useEditorCanvas } from './editor-context'
 export type AreaNodeData = Record<string, never>
 export type AreaNodeType = Node<AreaNodeData, 'area'>
 
-const MIN_WIDTH = 240
-const MIN_HEIGHT = 160
+const MIN_WIDTH = AREA_MIN_WIDTH
+const MIN_HEIGHT = AREA_MIN_HEIGHT
 
 function AreaNodeComponent({ id, selected }: NodeProps<AreaNodeType>) {
   const { t } = useTranslation()
@@ -88,7 +89,7 @@ function AreaNodeComponent({ id, selected }: NodeProps<AreaNodeType>) {
       {/* 헤더 밴드 — 이름·멤버 수·접기·설정. 배경 틴트보다 진하게 반전시켜 영역 라벨로 읽히게 한다 */}
       <div
         className={cn(
-          'flex h-8 shrink-0 items-center gap-1.5 rounded-t-[5px] px-2',
+          'flex h-9 shrink-0 items-center gap-2 rounded-t-[5px] px-2',
           tint ? '' : 'bg-muted/50',
           area.collapsed && 'rounded-b-[5px]',
         )}
@@ -111,9 +112,9 @@ function AreaNodeComponent({ id, selected }: NodeProps<AreaNodeType>) {
         ) : (
           <ChevronRight aria-hidden className="size-4 shrink-0 opacity-40" />
         )}
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground/70">{area.name}</span>
+        <span className="min-w-0 flex-1 truncate text-base font-bold text-foreground/80">{area.name}</span>
         <span
-          className="nodrag shrink-0 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-foreground/60 dark:bg-white/15"
+          className="nodrag shrink-0 rounded-full bg-black/10 px-1.5 py-0.5 text-xs font-medium tabular-nums text-foreground/60 dark:bg-white/15"
           title={t('model.editor.area.memberCount')}
         >
           {memberCount}

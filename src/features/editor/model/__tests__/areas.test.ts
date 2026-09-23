@@ -4,7 +4,15 @@ import { describe, expect, it } from 'vitest'
 import { createArea, createTable } from '@/features/editor/model/changes'
 import { emptyContent } from '@/features/editor/model/content-io'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
-import { tablesOfArea, uniqueAreaName, visibleTableIds, hiddenTableIds } from '@/features/editor/model/areas'
+import {
+  AREA_MIN_HEIGHT,
+  AREA_MIN_WIDTH,
+  fitAreaToMembers,
+  tablesOfArea,
+  uniqueAreaName,
+  visibleTableIds,
+  hiddenTableIds,
+} from '@/features/editor/model/areas'
 
 function doc(): EditorDocument {
   return { model: emptyContent().model, diagram: emptyContent().diagram }
@@ -67,5 +75,46 @@ describe('visibleTableIds — 캔버스 표시 집합(영역 필터 ∩ 접힘 �
     expect(visibleTableIds(docWithArea(), 'A1')).toEqual(new Set(['T-USERS']))
     // 필터로 선택한 영역 자체가 접혀 있으면 멤버 전부가 숨겨진다(접기=멤버 숨김)
     expect(visibleTableIds(docWithArea({ collapsed: true }), 'A1')).toEqual(new Set())
+  })
+})
+
+describe('fitAreaToMembers — 멤버십 변경 시 영역이 멤버를 감싼다 (v1.13)', () => {
+  /** T-USERS(100,200)·T-LOGS(600,400) 컬럼 0개 — 렌더 추정 크기 370×112 (contentBounds 폴백과 같은 식) */
+  function docWithLayouts(): EditorDocument {
+    const base = docWithArea()
+    return {
+      ...base,
+      diagram: {
+        ...base.diagram,
+        nodes: {
+          'T-USERS': { x: 100, y: 200, width: null, color: 'default' },
+          'T-LOGS': { x: 600, y: 400, width: null, color: 'default' },
+        },
+      },
+    }
+  }
+
+  it('멤버 bbox를 사방 패딩으로 감싸고 위쪽엔 헤더 여유를 더한다', () => {
+    // bbox (100,200)→(970,512): x=100-28, y=200-28-48, w=870+56, h=312+56+48
+    expect(fitAreaToMembers(docWithLayouts(), ['T-USERS', 'T-LOGS'])).toEqual({
+      x: 72,
+      y: 124,
+      width: 926,
+      height: 416,
+    })
+  })
+
+  it('단일 멤버도 감싼다 — 최소 크기(240×160)보다 작아지지 않는다', () => {
+    const fit = fitAreaToMembers(docWithLayouts(), ['T-USERS'])
+    expect(fit).not.toBeNull()
+    expect(fit!.width).toBeGreaterThanOrEqual(AREA_MIN_WIDTH)
+    expect(fit!.height).toBeGreaterThanOrEqual(AREA_MIN_HEIGHT)
+  })
+
+  it('감쌀 멤버가 없으면 null — 호출자가 기존 경계를 유지한다(멤버 전부 해제 케이스)', () => {
+    expect(fitAreaToMembers(docWithLayouts(), [])).toBeNull()
+    // 죽은 id·레이아웃 없는 id만으로도 null
+    expect(fitAreaToMembers(docWithLayouts(), ['T-GONE'])).toBeNull()
+    expect(fitAreaToMembers(docWithArea(), ['T-USERS'])).toBeNull()
   })
 })
