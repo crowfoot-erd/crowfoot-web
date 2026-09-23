@@ -113,6 +113,58 @@ describe('edge-router — routeOrthogonal', () => {
       box(480, 20, 100, 160),
     ])
   })
+
+  /** 축평행 선분과 박스의 최소 거리 — 밀착 단정에 쓴다(관통이면 0) */
+  function minGap(points: { x: number; y: number }[], bx: RouterBox): number {
+    let min = Infinity
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1]
+      const b = points[i]
+      if (a.x === b.x || a.y === b.y) {
+        // 직교 선분 — 박스로의 최단 거리는 양끝·박스 투영으로 정확히 계산된다
+        const lo = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) }
+        const hi = { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) }
+        const dx = Math.max(bx.x - hi.x, lo.x - (bx.x + bx.w), 0)
+        const dy = Math.max(bx.y - hi.y, lo.y - (bx.y + bx.h), 0)
+        if (dx === 0 && dy === 0) return 0 // 관통(내부 겹침)
+        min = Math.min(min, Math.hypot(dx, dy))
+      }
+    }
+    return min
+  }
+
+  it('앵커 레인이 복도 안 이웃 테이블 면에 1px로 붙어 달리면 마진 레인으로 물러난다', () => {
+    // 모델 33 실측 재현(2026-09-23) — 출발 x 레인(100)이 그리드 후보라 늘 존재하고 raw
+    // 박스(x=101)에 걸리지 않아 그대로 통과된다. 밀착 감지가 박스를 부풀려(±22) 재계산하면
+    // 경로는 ±24 레인으로 물러난다
+    const source = { x: 100, y: 100 }
+    const target = { x: 100, y: 700 }
+    const neighbor = box(101, 200, 120, 100) // 좌면이 레인에서 1px 오른쪽
+    const points = routeOrthogonal(source, target, [neighbor])
+    expect(points[0]).toEqual(source)
+    expect(points[points.length - 1]).toEqual(target)
+    assertOrthogonalClear(points, [neighbor])
+    expect(points.length).toBeGreaterThan(2) // 직선(밀착)이 아니라 물러난 경로다
+    expect(minGap(points, neighbor)).toBeGreaterThanOrEqual(22)
+  })
+
+  it('짧은 모서리 스침(<48px 병행)은 밀착으로 치지 않는다 — 직선이 유지된다', () => {
+    const neighbor = box(101, 200, 120, 30) // 병행 구간 30px뿐
+    const points = routeOrthogonal({ x: 100, y: 100 }, { x: 100, y: 700 }, [neighbor])
+    expect(points).toEqual([
+      { x: 100, y: 100 },
+      { x: 100, y: 700 },
+    ])
+  })
+
+  it('레인 마진(24px) 간격의 병행은 설계된 위치다 — 물러나지 않는다', () => {
+    const neighbor = box(124, 200, 120, 100) // 좌면이 레인(x=100)에서 정확히 24px
+    const points = routeOrthogonal({ x: 100, y: 100 }, { x: 100, y: 700 }, [neighbor])
+    expect(points).toEqual([
+      { x: 100, y: 100 },
+      { x: 100, y: 700 },
+    ])
+  })
 })
 
 describe('edge-router — path 헬퍼', () => {
@@ -504,7 +556,7 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
 
   it('같은 면이라도 이동 범위가 스치는 장애물이 다르면 각자의 통로에 놓인다 — 좁은 통로로 전원이 몰리지 않는다', () => {
     // 모델 17 sensor_types 사례 재현 — 부모 P 아래 면에 4개 관계가 붙는다. 왼쪽 2개(a·b)는
-    // 통로 중간에 끼어든 이웃 테이블 S를 스치는 좁은 구간(200~220)만 쓸 수 있고, 오른쪽
+    // 통로 중간에 끼어든 이웃 테이블 S를 스치는 좁은 구간(204~216)만 쓸 수 있고, 오른쪽
     // 2개(c·d)는 S를 스치지 않아 넓은 구간(80~220)의 자연 레인 부근에 놓인다. 클러스터
     // 전체를 한 구간에 등간격으로 묶으면 4개 전원이 좁은 구간으로 몰려 12px까지 압축된다
     const P: RouterBox = { x: 0, y: 0, w: 800, h: 60 } // 부모 — 아래 면 y=60
@@ -520,9 +572,9 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
       targetTableId: 'P',
     })
     const lanes = corridorLanes([child('a', 140), child('b', 180), child('c', 500), child('d', 540)], [P, S, row])
-    // S를 스치는 a·b는 S 아래 좁은 구간에 최소 간격으로 놓인다
-    expect(lanes.get('a')).toBe(200)
-    expect(lanes.get('b')).toBe(220)
+    // S를 스치는 a·b는 S 아래 좁은 구간(204~216)에 최소 간격으로 놓인다
+    expect(lanes.get('a')).toBe(204)
+    expect(lanes.get('b')).toBe(216)
     // 스치지 않는 c·d는 자연 레인(150)부터 28px 간격 — 좁은 구간과 30px 이상 떨어진다
     expect(lanes.get('c')).toBe(150)
     expect(lanes.get('d')).toBe(178)
@@ -530,16 +582,16 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
   })
 
   it('통로가 좁으면 등간격을 압축해서라도 통로 안에 넣는다', () => {
-    // 부모 행(바닥 60)과 자식 행(천장 160) 사이 통로(레인 여유 20px를 빼면 60px)에 6개 레인 —
+    // 부모 행(바닥 60)과 자식 행(천장 168) 사이 통로(레인 여유 24px를 빼면 60px)에 6개 레인 —
     // 28px 등간격(140px)은 안 들어가므로 최소 12px까지 압축한다. 그래도 못 들어가면 그 관계만 레인을 잃는다
     const obstacles: RouterBox[] = [
       { x: 0, y: 0, w: 900, h: 60 },
-      { x: 0, y: 160, w: 900, h: 120 },
+      { x: 0, y: 168, w: 900, h: 120 },
     ]
     const ids = ['a', 'b', 'c', 'd', 'e', 'f']
     const reqs = ids.map((relId, i): CorridorEndpoint => ({
       relId,
-      source: { x: 100 + i * 120, y: 160 },
+      source: { x: 100 + i * 120, y: 168 },
       target: { x: 100 + i * 120, y: 60 },
       sourceFace: 'top',
       targetFace: 'bottom',
@@ -549,11 +601,11 @@ describe('edge-router — 통로 레인 분리(corridorLanes)', () => {
     const lanes = corridorLanes(reqs, obstacles)
     const values = ids.map((k) => lanes.get(k)!)
     const sorted = [...values].sort((x, y) => x - y)
-    expect(sorted[0]).toBeGreaterThanOrEqual(66)
-    expect(sorted[sorted.length - 1]).toBeLessThanOrEqual(154)
+    expect(sorted[0]).toBeGreaterThanOrEqual(84)
+    expect(sorted[sorted.length - 1]).toBeLessThanOrEqual(144)
     for (let i = 1; i < sorted.length; i += 1) {
-      expect(sorted[i] - sorted[i - 1]).toBeGreaterThanOrEqual(10)
-      expect(sorted[i] - sorted[i - 1]).toBeLessThanOrEqual(20)
+      expect(sorted[i] - sorted[i - 1]).toBeGreaterThanOrEqual(12)
+      expect(sorted[i] - sorted[i - 1]).toBeLessThanOrEqual(28)
     }
   })
 })

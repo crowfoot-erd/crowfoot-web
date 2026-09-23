@@ -5,7 +5,9 @@
  * 놓고 다익스트라로 직교 최단 경로(굽음 페널티 포함 — 덜 꺾이는 경로를 선호)를 찾는다.
  * 장애물은 복도 AABB(양 끝을 감싼 사각형 + 여백)와 겹치는 박스만 우선 고려해 그리드를 작게
  * 유지하고, 완성 경로가 복도 밖 장애물을 관통하면 그 박스를 더해 다시 푼다(관통 검증 루프).
- * 경계를 스치는 선분은 허용(내부 관통만 차단)하고, 막다른 길이면 L자로 물러난다.
+ * 경계를 스치는 선분은 허용(내부 관통만 차단)하되, 면에 붙어 길게 달리는 밀착 선분은
+ * 레인 마진 안쪽 병행으로 보고 같은 루프에서 잡아 마진 레인으로 물러나게 한다. 막다른
+ * 길이면 L자로 물러난다.
  */
 export interface RouterBox {
   x: number
@@ -26,6 +28,38 @@ function segmentHitsBox(a: RouterPoint, b: RouterPoint, box: RouterBox): boolean
   const miny = Math.min(a.y, b.y)
   const maxy = Math.max(a.y, b.y)
   return maxx > box.x && minx < box.x + box.w && maxy > box.y && miny < box.y + box.h
+}
+
+/** 면 밀착으로 치는 간격 — 레인 마진(기본 24)보다 안쪽이면 레인 규칙 위반이다.
+ *  마진과 같으면(정확히 24) 잡지 않는다 — 레인에 놓인 선은 설계된 위치다 */
+const HUG_PROXIMITY = 22
+/** 밀착으로 치는 최소 병행 길이 — 모서리를 스치는 짧은 접촉은 무시한다 */
+const HUG_MIN_LENGTH = 48
+
+/** 직교 선분이 박스 면에 '붙어' 달리는지 — 관통은 아니지만 레인 규칙보다 안쪽에서
+ *  면을 따라 길게 병행하는 경우. 앵커 레인(출발·도착 x·y)은 그리드 후보라 늘 있고
+ *  raw 박스에 걸리지 않아 통과되는데, 복도 안 이웃 테이블 옆에서 1px 간격으로
+ *  627px를 주행한 사례(2026-09-23 모델 33 실측) 때문에 관통과 함께 잡는다 */
+function segmentHugsBox(a: RouterPoint, b: RouterPoint, box: RouterBox): boolean {
+  const minx = Math.min(a.x, b.x)
+  const maxx = Math.max(a.x, b.x)
+  const miny = Math.min(a.y, b.y)
+  const maxy = Math.max(a.y, b.y)
+  if (a.x === b.x) {
+    // 수직 선분 ↔ 좌·우 면 — 면 폭(y 방향)을 충분히 따라가야 밀착이다
+    if (Math.min(maxy, box.y + box.h) - Math.max(miny, box.y) < HUG_MIN_LENGTH) return false
+    const left = box.x - maxx
+    const right = minx - (box.x + box.w)
+    return (left >= 0 && left < HUG_PROXIMITY) || (right >= 0 && right < HUG_PROXIMITY)
+  }
+  if (a.y === b.y) {
+    // 수평 선분 ↔ 상·하 면
+    if (Math.min(maxx, box.x + box.w) - Math.max(minx, box.x) < HUG_MIN_LENGTH) return false
+    const top = box.y - maxy
+    const bottom = miny - (box.y + box.h)
+    return (top >= 0 && top < HUG_PROXIMITY) || (bottom >= 0 && bottom < HUG_PROXIMITY)
+  }
+  return false
 }
 
 function segmentClear(a: RouterPoint, b: RouterPoint, boxes: RouterBox[]): boolean {
@@ -112,8 +146,24 @@ export function routeOrthogonal(
   const overlapsCorridor = (box: RouterBox) =>
     box.x < maxX + margin && box.x + box.w > minX - margin && box.y < maxY + margin && box.y + box.h > minY - margin
 
-  /** 회피 집합 boxes로 그리드 다익스트라를 돌린다 — complete=false는 막다른 길(L자 폴백) */
-  const solve = (boxes: RouterBox[]): { points: RouterPoint[]; complete: boolean } => {
+  /** 회피 집합 boxes로 그리드 다익스트라를 돌린다 — complete=false는 막다른 길(L자 폴백).
+   *  inflated는 밀착으로 걸린 박스 — 통과 판정에서 ±HUG_PROXIMITY 부풀려 앵커 레인이
+   *  면에 붙는 것을 막는다. 마진 레인(±margin)은 margin > HUG_PROXIMITY라 살아 있어
+   *  경로는 레인으로 물러난다 */
+  const solve = (boxes: RouterBox[], inflated: RouterBox[] = []): { points: RouterPoint[]; complete: boolean } => {
+    const grown =
+      inflated.length === 0
+        ? boxes
+        : boxes.map((b) =>
+            inflated.includes(b)
+              ? {
+                  x: b.x - HUG_PROXIMITY,
+                  y: b.y - HUG_PROXIMITY,
+                  w: b.w + HUG_PROXIMITY * 2,
+                  h: b.h + HUG_PROXIMITY * 2,
+                }
+              : b,
+          )
     // 레인 후보 — 양 끝 앵커 + 각 박스 바깥 여백(박스를 돌아가는 길을 연다)
     const xsSet = new Set<number>([source.x, target.x])
     const ysSet = new Set<number>([source.y, target.y])
@@ -147,7 +197,7 @@ export function routeOrthogonal(
       const key = j * cols + i
       let clear = hClearCache.get(key)
       if (clear === undefined) {
-        clear = segmentClear(point(i, j), point(i + 1, j), boxes)
+        clear = segmentClear(point(i, j), point(i + 1, j), grown)
         hClearCache.set(key, clear)
       }
       return clear
@@ -157,7 +207,7 @@ export function routeOrthogonal(
       const key = j * cols + i
       let clear = vClearCache.get(key)
       if (clear === undefined) {
-        clear = segmentClear(point(i, j), point(i, j + 1), boxes)
+        clear = segmentClear(point(i, j), point(i, j + 1), grown)
         vClearCache.set(key, clear)
       }
       return clear
@@ -243,19 +293,34 @@ export function routeOrthogonal(
   }
 
   let active = obstacles.filter(overlapsCorridor)
+  let inflated: RouterBox[] = []
+  let lastComplete: RouterPoint[] | null = null
   for (let round = 0; round < 8; round += 1) {
-    const { points, complete } = solve(active)
-    // L자 폴백 — 회피 집합을 늘려도 뚫리지 않으니 그대로 반환한다
-    if (!complete) return points
+    const { points, complete } = solve(active, inflated)
+    // 막다른 길 — 회피 집합·부풀림이 길을 다 막은 경우다. 첫 라운드부터 막히면 L자로
+    // 물러나지만(아래 lastComplete ?? points), 중간 라운드면 직전 완성 경로가 낫다:
+    // 밀착 부풀림은 끝점 앵커에서 마진 안쪽인 레인(고정이라 못 피함)을 삼켜 길을 없앨
+    // 수 있는데, 그때 L자(관통 가능)보다 밀착만 남은 직전 경로가 상위 호환이다
+    if (!complete) return lastComplete ?? points
+    lastComplete = points
     const hidden = obstacles.filter(
       (box) =>
         !active.includes(box) &&
         points.some((p, i) => i > 0 && segmentHitsBox(points[i - 1], p, box)),
     )
-    if (hidden.length === 0) return points
-    active = [...active, ...hidden]
+    // 면 밀착(관통 아님) — 복도 안 박스(active) 옆에서도 일어난다. 레인 규칙 위반이니
+    // 그 박스를 레인·부풀림 양쪽에 넣어 다시 푼다
+    const hugged = obstacles.filter(
+      (box) =>
+        !inflated.includes(box) &&
+        points.some((p, i) => i > 0 && segmentHugsBox(points[i - 1], p, box)),
+    )
+    if (hidden.length === 0 && hugged.length === 0) return points
+    active = [...active, ...hidden, ...hugged.filter((b) => !active.includes(b))]
+    inflated = [...inflated, ...hugged]
   }
-  return solve(obstacles).points
+  const final = solve(obstacles, inflated)
+  return final.complete ? final.points : (lastComplete ?? final.points)
 }
 
 /** 같은 직선상의 점 제거 — 시작·끝은 유지 */
@@ -514,8 +579,11 @@ const CORRIDOR_SPACING_MIN = 12
 const CORRIDOR_TOLERANCE = 28
 /** 레인 통로가 장애물에서 물러나는 여백 — 선 굵기·시각 여유. 6px는 테이블에 붙어
  *  지나가는 것처럼 보여 12px로 넓혔고, 12px에도 우측 표기 배지(NN·AI) 바로 옆을
- *  스치듯 지나는 것처럼 보인다는 피드백으로 20px로 넓혔다(2026-09-18 사용자 요청) */
-const LANE_MARGIN = 20
+ *  스치듯 지나는 것처럼 보인다는 피드백으로 20px로 넓혔다(2026-09-18 사용자 요청).
+ *  20은 라우터 마진(24)·밀착 임계(22)보다 안쪽이라 — 자유 구간 클램프가 레인을 박스
+ *  면에서 20에 세우면 밀착으로 보이는 모순이 생긴다(읽기 전용 표면은 affordance가
+ *  없어 박스가 51px 낮아 이 배치가 실제로 나왔다). 라우터 마진과 같은 24로 정렬(2026-09-24) */
+const LANE_MARGIN = 24
 
 /**
  * 관계별 중간 통로 레인 — 마주 보는 면(위↔아래·좌↔우)으로 잇는 관계들이 같은 통로를

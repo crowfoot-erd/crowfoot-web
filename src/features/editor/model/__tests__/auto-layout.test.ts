@@ -4,7 +4,7 @@ import { applyChange, createColumn, createTable } from '@/features/editor/model/
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { emptyContent } from '@/features/editor/model/content-io'
 import { buildRelationship } from '@/features/editor/model/relationship'
-import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutTablePositions, orderFkColumns, positionNotes } from '@/features/editor/model/auto-layout'
+import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutTablePositions, orderFkColumns, positionNotes, refineHubAlignment } from '@/features/editor/model/auto-layout'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
 import { relationshipSharedRoutes } from '@/features/editor/components/canvas/edge-route-table'
 
@@ -152,6 +152,68 @@ describe('auto-layout — layoutTablePositions (실 elkjs)', () => {
     let d = doc()
     d = seedTable(d, 'A')
     expect(await layoutTablePositions(d)).toEqual({})
+  })
+})
+
+describe('auto-layout — refineHubAlignment(허브를 아래 자식에 맞춤)', () => {
+  const tw = tableRenderWidth(null, 0) // 시드 테이블 폭(추정식)
+  /** 허브 구조: P → H, H → C1(왼쪽 멀리)·C2(오른쪽 가까이) — ELK가 H를 부모 P와
+   *  정렬시킨 모양(중심 일치)을 position 시드로 흉내 낸다 */
+  const hubDoc = () => {
+    let d = doc()
+    d = seedTable(d, 'P')
+    d = seedTable(d, 'H')
+    d = seedTable(d, 'C1')
+    d = seedTable(d, 'C2')
+    d = seedRelation(d, 'P', 'H')
+    d = seedRelation(d, 'H', 'C1')
+    d = seedRelation(d, 'H', 'C2')
+    return d
+  }
+
+  it('부모 1·자식 2 이상인 허브는 아래 자식 중 중심이 가장 가까운 자식과 세로 정렬한다', () => {
+    const d = hubDoc()
+    const positions = {
+      P: { x: 100, y: 0 },
+      H: { x: 100, y: 300 }, // 중심 = P 중심(부모 정렬)
+      C1: { x: -400, y: 600 }, // 왼쪽 멀리 — 좌측 관계선이 몰리는 패턴
+      C2: { x: 180, y: 600 }, // 오른쪽 가까이 — 정렬 대상
+    }
+    const out = refineHubAlignment(d, positions)
+    expect(out.H).toEqual({ x: 180, y: 300 }) // H 중심 = C2 중심
+    expect(out.P).toEqual(positions.P) // 허브만 움직인다
+    expect(out.C1).toEqual(positions.C1)
+    expect(out.C2).toEqual(positions.C2)
+  })
+
+  it('이동한 자리에 같은 띈 테이블이 있으면 관계선 통로(96)를 남기고 되돌린다', () => {
+    let d = hubDoc()
+    d = seedTable(d, 'X') // 같은 띈 이웃 — 정렬 목표 지점을 막는다
+    const positions = {
+      P: { x: 100, y: 0 },
+      H: { x: 100, y: 300 },
+      C1: { x: -400, y: 600 },
+      C2: { x: 420, y: 600 },
+      X: { x: 500, y: 300 }, // H가 +320 가면(→420) X와 겹친다(500 < 420+tw)
+    }
+    const out = refineHubAlignment(d, positions)
+    // 라우터 마진(24)+밀착 부풀림(±22) 양쪽 = 24+22+22+24 ≈ 92 — 두 테이블 사이에
+    // 레인이 들어가려면 96은 필요하다(60이면 잔존 밀착 4px)
+    expect(out.H.x).toBe(500 - 96 - tw) // X 좌측 면에 96px 두고 서는 그만큼만 간다
+  })
+
+  it('부모가 2면 허브가 아니다 — 그대로 둔다', () => {
+    let d = hubDoc()
+    d = seedTable(d, 'P2')
+    d = seedRelation(d, 'P2', 'H')
+    const positions = {
+      P: { x: 100, y: 0 },
+      P2: { x: 500, y: 0 },
+      H: { x: 100, y: 300 },
+      C1: { x: -400, y: 600 },
+      C2: { x: 180, y: 600 },
+    }
+    expect(refineHubAlignment(d, positions).H).toEqual(positions.H)
   })
 })
 

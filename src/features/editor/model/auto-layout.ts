@@ -197,7 +197,84 @@ export async function layoutTablePositions(
     for (const child of node.children ?? []) collect(child, x, y)
   }
   for (const child of graph.children ?? []) collect(child, 0, 0)
-  return positions
+  return refineHubAlignment(doc, positions, options.sizes)
+}
+
+/**
+ * 배치 후 허브(부모 1·자식 2 이상)의 가로 정렬 다듬기 — **아래 자식 중 중심이 가장
+ * 가까운 자식과 세로로 맞춘다**(ELK 계층형은 허브를 위 부모와 정렬시키는데, 허브 아래
+ * 복도는 자식 부채꼴과 다른 테이블에서 오는 엣지가 겹치는 가장 붐비는 구간이라 그곳의
+ * 절선을 없애는 쪽이 관계선 식별에 낫다 — 조용한 위 복도[부모↔허브 1줄]에서 굽는다.
+ * 2026-09-23 실사용 피드백: medicine_package_units가 부모와 정렬하느라 왼쪽 관계선에
+ * 몰였고, 오른쪽 자식과 맞추니 식별이 좋아졌다).
+ * 이동은 같은 띈(y가 겹치는) 테이블과 겹치지 않는 범위로 되돌린다. 허브가 아니면(부모
+ * 0·2 이상, 자식 0·1) 그대로 둔다.
+ */
+export function refineHubAlignment(
+  doc: EditorDocument,
+  positions: Record<string, { x: number; y: number }>,
+  sizes?: TableSizes,
+): Record<string, { x: number; y: number }> {
+  if (Object.keys(positions).length === 0) return positions
+  const parentsOf = new Map<string, Set<string>>()
+  const childrenOf = new Map<string, Set<string>>()
+  const add = (map: Map<string, Set<string>>, key: string, value: string) => {
+    const set = map.get(key) ?? new Set<string>()
+    set.add(value)
+    map.set(key, set)
+  }
+  for (const rel of doc.model.relationships) {
+    if (rel.parentTableId === rel.childTableId) continue
+    add(parentsOf, rel.childTableId, rel.parentTableId)
+    add(childrenOf, rel.parentTableId, rel.childTableId)
+  }
+
+  const boxOf = (id: string): Box | null => {
+    const table = doc.model.tables.find((t) => t.id === id)
+    const pos = positions[id]
+    if (!table || !pos) return null
+    const size = sizeOf(table, doc.diagram.nodes[id]?.width ?? null, sizes)
+    return { x: pos.x, y: pos.y, w: size.w, h: size.h }
+  }
+
+  const out = { ...positions }
+  for (const table of doc.model.tables) {
+    const hub = boxOf(table.id)
+    const parents = parentsOf.get(table.id)
+    const children = childrenOf.get(table.id)
+    if (!hub || parents?.size !== 1 || !children || children.size < 2) continue
+    // 계층형 DOWN이라 자식은 아래 레이어에 있다 — 허브 바로 아래(세로로 안 겹치는) 자식만
+    const below = [...children].flatMap((id) => {
+      const box = boxOf(id)
+      return box && box.y >= hub.y + hub.h ? [box] : []
+    })
+    if (below.length === 0) continue
+    const hubCx = hub.x + hub.w / 2
+    const nearest = below.reduce((a, b) =>
+      Math.abs(b.x + b.w / 2 - hubCx) < Math.abs(a.x + a.w / 2 - hubCx) ? b : a,
+    )
+    let shift = nearest.x + nearest.w / 2 - hubCx
+    if (Math.abs(shift) < 1) continue
+    // 같은 띈 이웃에게 겹칠 만큼 가면 되돌린다(부모·자식은 위아래라 안 걸린다). 이때
+    // 딱 붙이면 관계선이 두 테이블 사이를 지나갈 통로가 없어진다 — 라우터는 면에서
+    // 마진(24)을 두고, 밀착 감지가 박스를 ±22 부풀려 재계산하므로 두 테이블 사이에
+    // 레인이 하나 들어가려면 24+22+22+24 ≈ 92는 필요하다(2026-09-23 organization_members가
+    // invitations에 붙어 글리프 스텁이 관통한 회귀 — 60으로는 잔존 밀착 4px)
+    const neighborGap = 96
+    for (const other of doc.model.tables) {
+      if (other.id === table.id) continue
+      const ob = boxOf(other.id)
+      if (!ob || ob.y >= hub.y + hub.h || hub.y >= ob.y + ob.h) continue
+      const moved = hub.x + shift
+      if (ob.x >= moved + hub.w || moved >= ob.x + ob.w) continue // 이동 결과가 안 겹친다
+      shift = shift > 0
+        ? ob.x - hub.x - hub.w - neighborGap
+        : ob.x + ob.w + neighborGap - hub.x
+    }
+    if (Math.abs(shift) < 1) continue
+    out[table.id] = { x: Math.round(hub.x + shift), y: hub.y }
+  }
+  return out
 }
 
 /** 연관 노트를 테이블에 붙이는 간격 — 테이블 우측 폭 여유 */
