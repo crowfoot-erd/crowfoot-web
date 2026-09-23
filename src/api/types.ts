@@ -319,6 +319,17 @@ export interface ConnectionTestResult {
   message: string | null
 }
 
+/** 워크스페이스 용어 사전 항목 (08-core/01-workspace.md §4) — 논리명 자동 추론의 커스텀 사전 */
+export interface WorkspaceTerm {
+  termId: string
+  workspaceId: string
+  /** 물리명 토큰 — 서버가 trim+소문자로 정규화한 값 */
+  term: string
+  /** 논리명 라벨 — 추론 결과에 그대로 쓰이는 표기(한글 등) */
+  label: string
+  updatedAt: string
+}
+
 /** 리버스 엔지니어링 응답 — 생성된 문서 + 가져오기 요약 */
 export interface ReverseEngineeringResult {
   model: Model

@@ -1192,6 +1192,18 @@ describe('EditorShell — DB 동기화 버튼 노출 조건', () => {
     await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
     expect(screen.queryByRole('button', { name: 'DB 동기화' })).toBeNull()
   })
+
+  // 논리명 추론 버튼(v1.13) — 커스텀 사전이 워크스페이스 API라 편집 권한이 필요하다
+  it('논리명 추론 버튼은 편집 가능에서 노출한다', async () => {
+    await renderEditor()
+    expect(screen.getByRole('button', { name: '논리명 추론' })).toBeVisible()
+  })
+
+  it('논리명 추론 버튼은 읽기 전용에서는 노출하지 않는다', async () => {
+    await renderEditor(false)
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+    expect(screen.queryByRole('button', { name: '논리명 추론' })).toBeNull()
+  })
 })
 
 describe('EditorShell — 관계 생성 UX (밴드 팝업 → 대상 클릭)', () => {

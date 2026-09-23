@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookOpenText, ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -35,6 +35,7 @@ import { dbmsTemplate } from '@/features/editor/model/dbms'
 import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
+import { LogicalNamesDialog } from './LogicalNamesDialog'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
 import { SyncDialog } from './SyncDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
@@ -135,6 +136,7 @@ export function EditorToolbar({
       </Button>
 
       <AutoLayoutButton canEdit={canEdit} />
+      {!publicView && canEdit ? <LogicalNamesButton workspaceId={workspaceId} /> : null}
       {!publicView && canEdit && sourceConnectionId ? (
         <SyncButton
           workspaceId={workspaceId}
@@ -305,6 +307,32 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       {t('model.editor.toolbar.autoLayout')}
       {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <Network aria-hidden className="size-3.5" />}
     </Button>
+  )
+}
+
+/** 논리명 자동 추론 — 코멘트 없는 객체의 논리명(물리명과 같은 것)을 사전으로 채운다
+ *  (05-editor/04-dbms-engineering.md §3.2). 이미 있는 논리명은 건드리지 않고,
+ *  적용은 undo 1회로 복구된다. 커스텀 사전은 워크스페이스 API라 공개 뷰어에서 숨긴다. */
+function LogicalNamesButton({ workspaceId }: { workspaceId: string }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 px-2"
+        onClick={() => setOpen(true)}
+        aria-label={t('model.editor.toolbar.logicalNames')}
+        title={t('model.editor.toolbar.logicalNames')}
+      >
+        <BookOpenText aria-hidden className="size-3.5" />
+        {t('model.editor.toolbar.logicalNames')}
+      </Button>
+      <LogicalNamesDialog open={open} onOpenChange={setOpen} workspaceId={workspaceId} />
+    </>
   )
 }
 

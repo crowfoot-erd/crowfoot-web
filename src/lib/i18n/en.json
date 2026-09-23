@@ -592,6 +592,7 @@
         },
         "dbmsLocked": "Target DBMS — fixed at document creation",
         "autoLayout": "Auto layout",
+        "logicalNames": "Logical names",
         "autoLayoutFailed": "Auto layout failed",
         "ddl": "Generate SQL",
         "sync": "Sync DB",
@@ -648,6 +649,32 @@
           "rightClick": "Right-click"
         },
         "readOnlyNote": "Editing, move and delete shortcuts require edit permission"
+      },
+      "logicalNames": {
+        "title": "Logical name inference",
+        "description": "Fills blank or physical-duplicated logical names from the dictionary (Korean labels)",
+        "empty": "Nothing to infer — logical names are filled or no tokens match the dictionary",
+        "dictionaryFailed": "Could not load the custom dictionary — computing with the built-in one",
+        "nothingToApply": "Nothing selected to apply",
+        "applied": "Filled {{count}} logical name(s) — undo (Ctrl/Cmd+Z) restores them",
+        "ruleNote": "Existing logical names (DB comments from reverse engineering) are left untouched",
+        "ddlNote": "Inferred names go into COMMENT clauses of generated and migration DDL",
+        "customCount": "Custom dictionary: {{count}} term(s)",
+        "manageDictionary": "Manage dictionary",
+        "apply": "Apply {{count}}"
+      },
+      "termDictionary": {
+        "title": "Workspace term dictionary",
+        "description": "Custom dictionary for logical name inference — overrides the built-in one",
+        "term": "Physical token",
+        "label": "Logical label",
+        "labelPlaceholder": "e.g. 사용자",
+        "add": "Add",
+        "fieldRequired": "Required",
+        "termPattern": "Token cannot contain spaces",
+        "loadFailed": "Failed to load the dictionary",
+        "empty": "No terms yet",
+        "hint": "Re-registering the same token overwrites it. Registering a full name (user_id) wins over token joining"
       },
       "ddl": {
         "title": "SQL script",

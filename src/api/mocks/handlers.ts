@@ -493,6 +493,15 @@ export const fixtures = {
       },
     ],
   },
+  /** 용어 사전(08-core/01-workspace.md §4) — 논리명 자동 추론 테스트의 커스텀 사전.
+   *  목업은 등록·삭제를 픽스처 불변 원칙에 맞게 응답 조립으로만 처리한다 */
+  terms: {
+    totalCount: 2,
+    responses: [
+      { termId: '401', workspaceId: '101', term: 'member', label: '회원', updatedAt: '2026-09-23T00:00:00Z' },
+      { termId: '402', workspaceId: '101', term: 'user', label: '사용자', updatedAt: '2026-09-23T00:00:00Z' },
+    ],
+  },
   /** DB 동기화(§3.7) — 문서 측 content(테스트가 스토어 수화에 쓴다) + 스키마 조회 응답(DB 측) */
   sync: SYNC_PAIR,
   /** 버전 기록 스냅샷(§1.11) — memo PATCH·복원·저장 append가 진행시키는 가변 상태.
@@ -1303,6 +1312,42 @@ export const handlers = [
     )
     if (!matched) return fail('CONNECTION_NOT_FOUND', 404)
     return HttpResponse.json(ok({ response: fixtures.sync.syncSchema }))
+  }),
+
+  /* ---------- 워크스페이스 용어 사전 (08-core/01-workspace.md §4) ---------- */
+
+  // 용어 목록 — 멤버 전체, term 오름차순
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/terms`, () =>
+    HttpResponse.json(ok(fixtures.terms)),
+  ),
+
+  // 용어 upsert — (workspace_id, term) 자연키라 항상 200. 검증: 공백 포함 term은 400
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/terms`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { term?: string; label?: string }
+    if (!body.term || !body.label) return fail('INVALID_REQUEST', 400)
+    const term = body.term.trim().toLowerCase()
+    if (/\s/.test(term)) return fail('INVALID_REQUEST', 400)
+    const existing = fixtures.terms.responses.find((row) => row.term === term)
+    return HttpResponse.json(
+      ok({
+        response: existing
+          ? { ...existing, label: body.label.trim() }
+          : {
+              termId: String(400 + fixtures.terms.responses.length + 1),
+              workspaceId: '101',
+              term,
+              label: body.label.trim(),
+              updatedAt: '2026-09-23T00:00:00Z',
+            },
+      }),
+    )
+  }),
+
+  // 용어 삭제 — 204. 없는 id는 404 TERM_NOT_FOUND
+  http.delete(`${BASE}/api/v1/core/workspaces/:workspaceId/terms/:termId`, ({ params }) => {
+    const matched = fixtures.terms.responses.some((row) => row.termId === params.termId)
+    if (!matched) return fail('TERM_NOT_FOUND', 404)
+    return new HttpResponse(null, { status: 204 })
   }),
 
   /* ---------- core admin (08-core/05-account.md Section 2) ---------- */
