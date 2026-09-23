@@ -6,11 +6,7 @@
  * 멤버십을 바꿔도 테이블 위치·박스 경계는 자동으로 건드리지 않는다 — 배치는 온전히
  * 사용자 손에 있다(체크 시 자동 재배치는 실사용 평가 후 제거, 02-ui.md §6).
  */
-import type { EditorDocument } from '@/features/editor/model/content-schema'
-
-/** 영역 경계 최소 크기 — NodeResizer 하한과 같은 값(단일 원천) */
-export const AREA_MIN_WIDTH = 240
-export const AREA_MIN_HEIGHT = 160
+import type { EditorDocument, TableColorValue } from '@/features/editor/model/content-schema'
 
 /** 문서에서 유일한 영역 이름 — "영역 N" 기본명의 접미 규칙(테이블 물리명 유일화와 같은 방식) */
 export function uniqueAreaName(doc: EditorDocument, base: string): string {
@@ -49,4 +45,16 @@ export function visibleTableIds(doc: EditorDocument, activeAreaId: string | null
   const scope = activeAreaId ? tablesOfArea(doc, activeAreaId) : new Set(doc.model.tables.map((table) => table.id))
   const hidden = hiddenTableIds(doc)
   return new Set([...scope].filter((id) => !hidden.has(id)))
+}
+
+/** 테이블 렌더 색의 우선순위 — **그룹 색이 멤버를 고정한다**(v1.13, 로컬 실사용 요청).
+ *  소속 그룹(다중 소속이면 문서 순서 첫 번째)의 색을 반환한다 — 그룹 색이 default이거나
+ *  어디에도 속하지 않았으면 null(호출자가 테이블 개별 색으로 폴백). 캔버스 노드와
+ *  미니맵이 같은 식을 공유한다. */
+export function groupColorOf(doc: EditorDocument, tableId: string): TableColorValue | null {
+  for (const area of doc.diagram.areas) {
+    if (!area.tableIds.includes(tableId)) continue
+    return area.color === 'default' ? null : area.color
+  }
+  return null
 }

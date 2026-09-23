@@ -1916,47 +1916,121 @@ describe('EditorShell — 단축키: 클립보드·선택·이동 (§9)', () => 
   })
 })
 
-describe('EditorShell — 단축키: 주제 영역 (v1.13 §6)', () => {
-  function seedArea(name: string, x = 100, y = 50) {
-    const area = createArea(name, { x, y })
+describe('EditorShell — 단축키: 그룹(주제 영역)은 캔버스 객체가 아니다 (v1.13 §6)', () => {
+  function seedArea(name: string) {
+    const area = createArea(name)
     useEditorStore.getState().commit({ type: 'area/create', area })
     return area
   }
 
-  it('Ctrl+A 전체 선택에 영역도 포함된다', async () => {
+  it('Ctrl+A 전체 선택에 그룹은 포함되지 않는다 — 논리 소속은 선택 대상이 아니다', async () => {
     await renderEditor()
     const orders = createTable('orders')
     useEditorStore.getState().commit({ type: 'table/create', table: orders, position: { x: 0, y: 0 } })
-    const area = seedArea('회원 도메인')
+    seedArea('회원 도메인')
 
     fireEvent.keyDown(window, { key: 'a', ctrlKey: true })
-    expect([...useEditorStore.getState().selectedIds].sort()).toEqual([orders.id, area.id].sort())
+    expect(useEditorStore.getState().selectedIds).toEqual([orders.id])
   })
 
-  it('Arrow — 선택 영역 1px 이동, Shift+Arrow 10px(area/patch)', async () => {
+  it('Arrow — 그룹 id가 선택에 남아 있어도 문서를 움직이지 않는다', async () => {
     await renderEditor()
-    const area = seedArea('회원 도메인', 100, 50)
+    const area = seedArea('회원 도메인')
     useEditorStore.getState().setSelection([area.id])
 
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 101, y: 50 })
+    expect(useEditorStore.getState().present.diagram.areas[0]).toBe(area)
+  })
+})
 
-    fireEvent.keyDown(window, { key: 'ArrowDown', shiftKey: true })
-    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 101, y: 60 })
+describe('EditorShell — 그룹 소속 테이블: 색 잠금·소속 표시·메뉴 비활성화 (v1.13 §6)', () => {
+  /** orders(회원 도메인 그룹·sky) + payments(미소속) */
+  async function seedGroupedFixture() {
+    await renderEditor()
+    const orders = createTable('orders', { logicalName: '주문' })
+    const payments = createTable('payments', { logicalName: '결제' })
+    useEditorStore.getState().commitAll([
+      { type: 'table/create', table: orders, position: { x: 0, y: 0 } },
+      { type: 'table/create', table: payments, position: { x: 400, y: 0 } },
+    ])
+    const area = createArea('회원 도메인', { color: 'sky', tableIds: [orders.id] })
+    useEditorStore.getState().commit({ type: 'area/create', area })
+    return { orders, payments, area }
+  }
 
-    // 키 입력당 1스택 — undo 2회로 이동 전(100, 50)으로 돌아간다
-    useEditorStore.getState().undo()
-    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 101, y: 50 })
-    useEditorStore.getState().undo()
-    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 100, y: 50 })
+  /** 노드 안 요소에 컨텍스트 메뉴 열기 — 논리명 밴드는 테이블별 유일한 노드 내 앵커다 */
+  const openTableMenu = (logical: string) =>
+    fireEvent.contextMenu(screen.getByText(logical, { selector: 'span:not([data-extras])' }))
+
+  it('그룹 소속 — 테이블 정보의 색 선택기가 그룹 색(sky)으로 잠기고 소속 그룹을 보여준다', async () => {
+    await seedGroupedFixture()
+
+    // 노드 더블클릭 → 테이블 정보 다이얼로그
+    fireEvent.doubleClick(await screen.findByText('주문', { selector: 'span:not([data-extras])' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('테이블 정보')).toBeInTheDocument()
+
+    // 소속 그룹 표시 — 문서 순서 그대로
+    expect(within(dialog).getByText('회원 도메인')).toBeInTheDocument()
+
+    // 스와치 전부 잠김 + 그룹 색(sky)이 선택된 상태 + 잠금 안내
+    const swatches = within(dialog).getAllByRole('button', { name: /^색상$|^기본$/ })
+    expect(swatches).toHaveLength(1 + 10) // 기본 + 프리셋 10색
+    for (const s of swatches) expect(s).toBeDisabled()
+    const sky = within(dialog).getAllByRole('button', { name: '색상' }).find(
+      (s) => s.getAttribute('aria-pressed') === 'true',
+    )
+    expect(sky).toBeDefined()
+    expect(within(dialog).getByText(/그룹 색이 우선합니다/)).toBeInTheDocument()
+
+    // 미소속 테이블(payments)은 그대로 개별 편집 — '미분류' 안내
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+    fireEvent.doubleClick(await screen.findByText('결제', { selector: 'span:not([data-extras])' }))
+    const dialog2 = await screen.findByRole('dialog')
+    expect(within(dialog2).getByText('미분류')).toBeInTheDocument()
+    for (const s of within(dialog2).getAllByRole('button', { name: /^색상$|^기본$/ })) expect(s).toBeEnabled()
+    expect(within(dialog2).queryByText(/그룹 색이 우선합니다/)).toBeNull()
   })
 
-  it('읽기 전용에서는 영역도 이동하지 않는다', async () => {
-    await renderEditor(false)
-    const area = seedArea('회원 도메인', 100, 50)
-    useEditorStore.getState().setSelection([area.id])
+  it('이미 소속 테이블 우클릭 — 그룹에 추가는 비활성화, 그룹에서 제외는 제공', async () => {
+    await seedGroupedFixture()
 
-    fireEvent.keyDown(window, { key: 'ArrowRight' })
-    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 100, y: 50 })
+    openTableMenu('주문') // 그룹 소속 orders 노드 안
+    const addTo = await screen.findByRole('menuitem', { name: '그룹에 추가' })
+    expect(addTo).toHaveAttribute('aria-disabled', 'true')
+    expect(await screen.findByRole('menuitem', { name: '그룹에서 제외' })).toBeEnabled()
+  })
+
+  it('그룹 편집 — 소속 테이블은 활성(클릭 → 그룹 다이얼로그), 미소속은 비활성화', async () => {
+    await seedGroupedFixture()
+
+    openTableMenu('주문')
+    const editGroup = await screen.findByRole('menuitem', { name: '그룹 편집' })
+    expect(editGroup).toBeEnabled()
+    fireEvent.click(editGroup)
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText('이름')).toHaveValue('회원 도메인')
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+
+    openTableMenu('결제')
+    const editGroup2 = await screen.findByRole('menuitem', { name: '그룹 편집' })
+    expect(editGroup2).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('미소속 테이블 우클릭 — 그룹에 추가 서브메뉴에서 그룹을 고르면 area/patch로 소속된다', async () => {
+    const { payments, area } = await seedGroupedFixture()
+
+    openTableMenu('결제')
+    const addTo = await screen.findByRole('menuitem', { name: '그룹에 추가' })
+    expect(addTo).not.toHaveAttribute('aria-disabled', 'true')
+
+    // 서브메뉴 펼침(radix는 키보드 ArrowRight로 하위 메뉴를 연다) → 그룹 행 클릭 → 미소속 테이블만 소속된다
+    fireEvent.keyDown(addTo, { key: 'ArrowRight' })
+    const groupItem = await screen.findByRole('menuitem', { name: /회원 도메인/ }, { timeout: 2500 })
+    fireEvent.click(groupItem)
+
+    await waitFor(() => expect(useEditorStore.getState().present.diagram.areas[0].tableIds).toContain(payments.id))
+    // 기존 멤버는 유지된다
+    expect(useEditorStore.getState().present.diagram.areas[0].tableIds).toContain(area.tableIds[0])
   })
 })

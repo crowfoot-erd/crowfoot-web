@@ -272,7 +272,7 @@ function diffNotes(from: ErdNote[], to: ErdNote[], items: DocDiffItem[]): void {
   }
 }
 
-/** 주제 영역 차분 — 내용(이름·설명·색·접힘·멤버)은 update, 위치·크기는 move (노트와 동형) */
+/** 주제 영역(그룹) 차분 — 논리 소속이라 위치 계열이 없다: 모든 변경이 update (노트와 동형 구조) */
 function diffAreas(from: ErdArea[], to: ErdArea[], items: DocDiffItem[]): void {
   const toById = new Map(to.map((a) => [a.id, a]))
   for (const prev of from) {
@@ -285,10 +285,6 @@ function diffAreas(from: ErdArea[], to: ErdArea[], items: DocDiffItem[]): void {
     const changedContent = contentFields.filter((f) => prev[f] !== next[f])
     if (changedContent.length > 0) {
       items.push({ kind: 'area', action: 'update', table: '', name: next.name, detail: changedContent.join(', ') })
-    }
-    const moveFields = (['x', 'y', 'width', 'height'] as const).filter((f) => prev[f] !== next[f])
-    if (moveFields.length > 0) {
-      items.push({ kind: 'area', action: 'move', table: '', name: next.name, detail: moveFields.join(', ') })
     }
   }
   const fromIds = new Set(from.map((a) => a.id))

@@ -21,14 +21,14 @@ const emptyDocument: EditorDocument = {
   diagram: { nodes: {}, notes: [], areas: [], viewport: null },
 }
 
-/** present가 바뀐 뒤 선택 정리 — 문서에서 사라진 객체 id(테이블·메모·관계·영역)는 선택에서 뺀다.
- *  관계 id도 선택 원천에 함께 산다(익스플로러 관계 행 ↔ 캔버스 엣지 하이라이트). */
+/** present가 바뀐 뒤 선택 정리 — 문서에서 사라진 객체 id(테이블·메모·관계)는 선택에서 뺀다.
+ *  관계 id도 선택 원천에 함께 산다(익스플로러 관계 행 ↔ 캔버스 엣지 하이라이트).
+ *  그룹(주제 영역)은 캔버스 객체가 아니라(논리 소속) 선택 원천에 들어오지 않는다. */
 function pruneSelection(present: EditorDocument, selectedIds: string[]): string[] {
   const alive = new Set<string>([
     ...present.model.tables.map((table) => table.id),
     ...present.model.relationships.map((rel) => rel.id),
     ...present.diagram.notes.map((note) => note.id),
-    ...present.diagram.areas.map((area) => area.id),
   ])
   const next = selectedIds.filter((id) => alive.has(id))
   return next.length === selectedIds.length ? selectedIds : next

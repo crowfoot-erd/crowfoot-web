@@ -345,15 +345,11 @@ describe('diffDocuments', () => {
   })
 })
 
-describe('diffDocuments — 주제 영역 (v1.13)', () => {
+describe('diffDocuments — 주제 영역(그룹) (v1.13)', () => {
   const area = (init: Partial<ErdArea> = {}) => ({
     id: 'a-1',
     name: '회원',
     description: '',
-    x: 0,
-    y: 0,
-    width: 800,
-    height: 560,
     collapsed: false,
     color: 'default' as const,
     tableIds: ['t-orders'],
@@ -368,15 +364,14 @@ describe('diffDocuments — 주제 영역 (v1.13)', () => {
     expect(remove.items[0]).toMatchObject({ kind: 'area', action: 'remove', name: '회원' })
   })
 
-  it('내용(이름·색·접힘·멤버)은 update, 위치·크기는 move — 별개 항목으로', () => {
+  it('내용(이름·색·접힘·멤버) 변경은 update — 그룹은 위치 데이터가 없어 move가 없다', () => {
     const from = makeDoc([], { areas: [area()] })
     const to = makeDoc([], {
-      areas: [area({ name: '회원 도메인', color: 'sky', collapsed: true, tableIds: [], x: 100, y: 50, width: 900 })],
+      areas: [area({ name: '회원 도메인', color: 'sky', collapsed: true, tableIds: [] })],
     })
     const summary = diffDocuments(from, to)
     expect(summary.items).toEqual([
       { kind: 'area', action: 'update', table: '', name: '회원 도메인', detail: 'name, color, collapsed, tableIds' },
-      { kind: 'area', action: 'move', table: '', name: '회원 도메인', detail: 'x, y, width' },
     ])
   })
 

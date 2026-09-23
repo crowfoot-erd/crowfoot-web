@@ -601,7 +601,7 @@
         "share": "공유",
         "history": "버전 기록",
         "areaFilter": {
-          "label": "주제 영역",
+          "label": "그룹",
           "all": "전체 보기"
         }
       },
@@ -617,7 +617,7 @@
         "emptyDocument": "문서가 비어 있습니다",
         "matchCount": "{{count}}건",
         "untitledNote": "제목 없는 메모",
-        "areaFilter": "주제 영역 필터"
+        "groupUngrouped": "미분류"
       },
       "clipboard": {
         "copyLabel": "사본"
@@ -767,7 +767,7 @@
           "relationship": "관계",
           "note": "메모",
           "node": "노드",
-          "area": "영역"
+          "area": "그룹"
         },
         "action": {
           "add": "추가",
@@ -803,9 +803,10 @@
         "removeNote": "메모 삭제",
         "editRelationship": "관계 편집",
         "removeRelationship": "관계 삭제",
-        "createArea": "영역 추가",
-        "areaInfo": "영역 편집",
-        "removeArea": "영역 삭제"
+        "createGroup": "그룹 생성",
+        "addToGroup": "그룹에 추가",
+        "removeFromGroup": "그룹에서 제외",
+        "editGroup": "그룹 편집"
       },
       "table": {
         "addColumn": "컬럼 추가",
@@ -885,7 +886,9 @@
         "commentPlaceholder": "테이블 설명",
         "nameRequired": "물리명을 입력하세요",
         "color": "색상",
-        "colorDefault": "기본"
+        "colorDefault": "기본",
+        "groupLabel": "그룹",
+        "colorGroupLocked": "그룹에 속한 테이블은 그룹 색이 우선합니다 — 색은 그룹 편집에서 변경하세요"
       },
       "savedToast": "문서를 저장했습니다",
       "draftRestored": "저장되지 않은 편집을 복구했습니다",
@@ -997,21 +1000,21 @@
         "button": "마이그레이션 DDL"
       },
       "area": {
-        "defaultName": "영역",
-        "expand": "영역 펼치기",
-        "collapse": "영역 접기",
-        "edit": "영역 편집",
+        "defaultName": "그룹",
+        "expand": "그룹 펼치기",
+        "collapse": "그룹 접기",
+        "edit": "그룹 편집",
         "memberCount": "멤버 테이블 수"
       },
       "areaDialog": {
-        "title": "주제 영역 편집",
+        "title": "그룹 편집",
         "name": "이름",
         "nameRequired": "이름을 입력하세요",
         "description": "설명",
-        "descriptionPlaceholder": "영역의 용도(선택)",
+        "descriptionPlaceholder": "그룹의 용도(선택)",
         "color": "강조색",
-        "tables": "포함 테이블",
-        "tablesHint": "체크하면 이 영역에 포함됩니다",
+        "tables": "멤버 테이블",
+        "tablesHint": "체크하면 이 그룹의 멤버가 됩니다",
         "noTables": "문서에 테이블이 없습니다"
       }
     },

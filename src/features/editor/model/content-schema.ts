@@ -208,21 +208,19 @@ export const viewportSchema = z.object({
 })
 export type ErdViewport = z.infer<typeof viewportSchema>
 
-/** 주제 영역 — 다이어그램 종속 배경 박스 (05-editor/02-ui.md §6, v1.13).
+/** 그룹(주제 영역) — 순수 논리 묶음 (05-editor/02-ui.md §6, v1.13).
+ *  캔버스 박스 없이 소속만 다룬다: 위치 데이터(x/y/width/height)는 v1.13 중반까지
+ *  존속했다가 논리 그룹 전환으로 제거됐다 — 이전 문서의 위치 필드는 수화 시 strip.
  *  tableIds는 모델(테이블)을 참조하는 표현 계층의 소프트 참조다 — 노트의 linkedTableId와
  *  같은 패턴(테이블 삭제 시 cascade에서 정리, 존재하지 않는 id는 무시).
- *  같은 테이블이 여러 영역에 소속될 수 있다(다중 소속 허용). */
+ *  같은 테이블이 여러 그룹에 소속될 수 있다(다중 소속 허용 — 색은 문서 순서 첫 그룹). */
 export const areaSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string().default(''),
-  x: z.number(),
-  y: z.number(),
-  width: z.number(),
-  height: z.number(),
   /** 접기 — 멤버 테이블을 캔버스에서 숨긴다(ERDCloud·erwin 표준). 이전 문서는 펼침으로 정규화 */
   collapsed: z.boolean().default(false),
-  /** 배경 틴트 — 테이블 강조색 프리셋 재사용 */
+  /** 그룹 색 — 멤버 테이블의 렌더 색을 고정한다(테이블 강조색 프리셋 재사용) */
   color: tableColorSchema.default('default'),
   /** 소속 테이블 — 문서 순서 그대로 */
   tableIds: z.array(z.string().min(1)).default([]),

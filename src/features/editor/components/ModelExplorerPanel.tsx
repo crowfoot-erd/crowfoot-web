@@ -4,6 +4,10 @@
  * 테이블/관계/메모 3그룹 트리 + 상단 객체 검색이 한 덩어리다. v1은 탐색·선택 전용 —
  * 생성·삭제·이름 변경은 캔버스의 기존 UX(컨텍스트 메뉴·다이얼로그)를 그대로 쓴다.
  *
+ * - 테이블 목록은 그룹(주제 영역) 폴더로 묶는다(v1.13): 그룹 폴더 + 미분류. 폴더 헤더
+ *   클릭은 보기 필터(activeAreaId — 캔버스·툴바와 같은 상태), 셰브론은 문서의 그룹 접기
+ *   (멤버를 캔버스에서 숨긴다 — 목록에는 흐리게 남는다). 편집(✎)은 그룹 편집 다이얼로그
+ *   (EditorShell 소유), 삭제(🗑)는 area/remove — 멤버 테이블은 남는다.
  * - 선택 원천은 스토어 selectedIds — 캔버스 클릭과 이 패널 클릭이 같은 상태를 고쳐 쓴다
  *   (§3 양방향 동기화). 행 클릭은 선택 + 포커스 이동(객체를 화면 중심에 두고 줌 하한 보정).
  * - 검색은 문서 전체를 로컬 계산(object-search — 스토어 구독이라 캔버스 성능과 무관)하고
@@ -12,12 +16,12 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { ArrowLeftRight, ChevronDown, ChevronRight, Search, StickyNote, Table2 } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, ChevronRight, Pencil, Search, StickyNote, Table2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
-import type { EditorDocument } from '@/features/editor/model/content-schema'
+import { TABLE_COLOR_HEX, type EditorDocument } from '@/features/editor/model/content-schema'
 import {
   NOTE_ESTIMATED_HEIGHT,
   viewportCenteredOn,
@@ -38,6 +42,10 @@ export interface ModelExplorerPanelProps {
   /** 보기 필터로 선택된 주제 영역 — null이면 전체(캔버스·툴바 보기 메뉴와 같은 상태) */
   activeAreaId: string | null
   onActiveAreaChange: (areaId: string | null) => void
+  /** 편집 권한 — 그룹 폴더의 편집·삭제 버튼만 게이트(탐색·필터는 읽기 전용도 가능) */
+  canEdit: boolean
+  /** 그룹 편집 다이얼로그 열기 — 다이얼로그는 EditorShell이 소유한다 */
+  onOpenAreaEdit: (areaId: string) => void
 }
 
 /** 포커스 클램프용 extent — 대상은 문서 안 객체라 사실상 무제한(캔버스 한계보다 안쪽) */
@@ -57,6 +65,8 @@ export function ModelExplorerPanel(props: ModelExplorerPanelProps) {
       focusSearchSignal={props.focusSearchSignal}
       activeAreaId={props.activeAreaId}
       onActiveAreaChange={props.onActiveAreaChange}
+      canEdit={props.canEdit}
+      onOpenAreaEdit={props.onOpenAreaEdit}
     />
   )
 }
@@ -68,17 +78,22 @@ function ExplorerBody({
   focusSearchSignal,
   activeAreaId,
   onActiveAreaChange,
+  canEdit,
+  onOpenAreaEdit,
 }: {
   nameDisplay: NameDisplayMode
   focusSearchSignal: number
   activeAreaId: string | null
   onActiveAreaChange: (areaId: string | null) => void
+  canEdit: boolean
+  onOpenAreaEdit: (areaId: string) => void
 }) {
   const { t } = useTranslation()
   const rf = useReactFlow()
   const doc = useEditorStore((s) => s.present)
   const selectedIds = useEditorStore((s) => s.selectedIds)
   const setSelection = useEditorStore((s) => s.setSelection)
+  const commit = useEditorStore((s) => s.commit)
 
   const [query, setQuery] = useState('')
   /** 펼친 테이블 — 기본은 모두 접힌다(리버스 문서처럼 테이블이 수십 개면 펼침이 병목) */
@@ -223,13 +238,17 @@ function ExplorerBody({
 
   const searching = query.trim().length > 0
   /* 영역 필터 — 캔버스 표시 집합과 같은 식(members)을 목록에도 적용한다. 관계는 양끽 테이블이
-     모두 영역 안일 때만, 메모는 영역 밖 객체라 항상 전체(칩은 테이블·관계만 좁힌다) */
+     모두 영역 안일 때만, 메모는 영역 밖 객체라 항상 전체(폴더는 테이블·관계만 좁힌다) */
   const areaMembers = activeAreaId ? tablesOfArea(doc, activeAreaId) : null
   /** 접힌 영역의 멤버 — 목록에는 남기되 흐리게, 클릭하면 영역을 펼친 뒤 선택한다 */
   const hiddenIds = hiddenTableIds(doc)
   const tables = doc.model.tables
     .filter((table) => !searching || hitTableIds.has(table.id))
     .filter((table) => !areaMembers || areaMembers.has(table.id))
+  /** 폴더 트리 재료 — 문서의 그룹 목록(살아 있는 멤버 id)과 미분류 테이블 */
+  const folderAreas = doc.diagram.areas.map((area) => ({ area, memberIds: tablesOfArea(doc, area.id) }))
+  const groupedIds = new Set(folderAreas.flatMap(({ memberIds }) => [...memberIds]))
+  const hasGroups = doc.diagram.areas.length > 0
   const relationships = doc.model.relationships
     .filter((rel) => !searching || hitRelationshipIds.has(rel.id))
     .filter((rel) => !areaMembers || (areaMembers.has(rel.childTableId) && areaMembers.has(rel.parentTableId)))
@@ -250,6 +269,28 @@ function ExplorerBody({
 
   const physicalOf = (tableId: string) =>
     doc.model.tables.find((tb) => tb.id === tableId)?.physicalName ?? '?'
+
+  /** 테이블 행 렌더 — 그룹 폴더 안(들여쓰기 래퍼가 밖에서 감싼다)·미분류·그룹 없음 평면 목록이 같은 행을 쓴다 */
+  const renderTableRow = (table: EditorDocument['model']['tables'][number]) => (
+    <TableRow
+      key={table.id}
+      table={table}
+      doc={doc}
+      nameDisplay={nameDisplay}
+      query={query}
+      searching={searching}
+      expanded={searching || expandedTables.has(table.id)}
+      hitColumnIds={hitColumnIds}
+      selected={selectedIds.includes(table.id)}
+      active={isActiveHit(hits, activeHit, table.id)}
+      activeColumnId={
+        hits[activeHit]?.targetId === table.id ? hits[activeHit].columnId : undefined
+      }
+      dimmed={hiddenIds.has(table.id)}
+      onSelect={() => selectTableExpanded(table.id)}
+      onToggle={() => toggleTable(table.id)}
+    />
+  )
 
   return (
     <aside
@@ -280,37 +321,6 @@ function ExplorerBody({
         ) : null}
       </div>
 
-      {/* 주제 영역 칩 — 문서에 영역이 있을 때만. 캔버스 보기 필터와 같은 상태를 공유한다 */}
-      {doc.diagram.areas.length > 0 ? (
-        <div
-          className="flex flex-wrap gap-1 border-b px-2 py-1.5"
-          role="group"
-          aria-label={t('model.editor.explorer.areaFilter')}
-        >
-          <button
-            type="button"
-            data-testid="explorer-area-chip-all"
-            aria-pressed={activeAreaId === null}
-            className={areaChipClass(activeAreaId === null)}
-            onClick={() => onActiveAreaChange(null)}
-          >
-            {t('model.editor.toolbar.areaFilter.all')}
-          </button>
-          {doc.diagram.areas.map((area) => (
-            <button
-              key={area.id}
-              type="button"
-              data-testid={`explorer-area-chip-${area.id}`}
-              aria-pressed={activeAreaId === area.id}
-              className={areaChipClass(activeAreaId === area.id)}
-              onClick={() => onActiveAreaChange(activeAreaId === area.id ? null : area.id)}
-            >
-              <span className="max-w-24 truncate">{area.name}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
         {documentEmpty ? (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">
@@ -328,27 +338,49 @@ function ExplorerBody({
               collapsed={collapsedGroups.has('tables')}
               onToggle={() => toggleGroup('tables')}
             />
-            {!collapsedGroups.has('tables') &&
-              tables.map((table) => (
-                <TableRow
-                  key={table.id}
-                  table={table}
-                  doc={doc}
-                  nameDisplay={nameDisplay}
-                  query={query}
-                  searching={searching}
-                  expanded={searching || expandedTables.has(table.id)}
-                  hitColumnIds={hitColumnIds}
-                  selected={selectedIds.includes(table.id)}
-                  active={isActiveHit(hits, activeHit, table.id)}
-                  activeColumnId={
-                    hits[activeHit]?.targetId === table.id ? hits[activeHit].columnId : undefined
-                  }
-                  dimmed={hiddenIds.has(table.id)}
-                  onSelect={() => selectTableExpanded(table.id)}
-                  onToggle={() => toggleTable(table.id)}
-                />
-              ))}
+            {!collapsedGroups.has('tables') && hasGroups ? (
+              <>
+                {folderAreas.map(({ area, memberIds }) => (
+                  <GroupFolder
+                    key={area.id}
+                    testid={`explorer-group-${area.id}`}
+                    name={area.name}
+                    color={area.color}
+                    count={memberIds.size}
+                    collapsed={area.collapsed}
+                    onToggleCollapsed={() =>
+                      commit({ type: 'area/patch', areaId: area.id, patch: { collapsed: !area.collapsed } })
+                    }
+                    active={activeAreaId === area.id}
+                    onFilter={() => onActiveAreaChange(activeAreaId === area.id ? null : area.id)}
+                    canEdit={canEdit}
+                    onEdit={() => onOpenAreaEdit(area.id)}
+                    onRemove={() => commit({ type: 'area/remove', areaId: area.id })}
+                  >
+                    <div className="ml-3">
+                      {tables
+                        .filter((table) => memberIds.has(table.id))
+                        .map((table) => renderTableRow(table))}
+                    </div>
+                  </GroupFolder>
+                ))}
+                <GroupFolder
+                  testid="explorer-group-ungrouped"
+                  name={t('model.editor.explorer.groupUngrouped')}
+                  count={doc.model.tables.filter((table) => !groupedIds.has(table.id)).length}
+                  active={activeAreaId === null}
+                  onFilter={() => onActiveAreaChange(null)}
+                >
+                  <div className="ml-3">
+                    {tables
+                      .filter((table) => !groupedIds.has(table.id))
+                      .map((table) => renderTableRow(table))}
+                  </div>
+                </GroupFolder>
+              </>
+            ) : !collapsedGroups.has('tables') ? (
+              tables.map((table) => renderTableRow(table))
+            ) : null}
 
             <GroupHeader
               label={t('model.editor.explorer.groupRelationships')}
@@ -411,16 +443,6 @@ function rowClass(selected: boolean, active: boolean): string {
   )
 }
 
-/** 영역 필터 칩 클래스 — 활성칩은 채워서, 나머지는 테두리만 */
-function areaChipClass(active: boolean): string {
-  return cn(
-    'flex max-w-32 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium',
-    active
-      ? 'border-primary bg-primary text-primary-foreground'
-      : 'border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-  )
-}
-
 /** 활성 순회 히트(Enter로 도착한 항목)인지 — 히트 대상 id가 행 객체와 같으면 */
 function isActiveHit(hits: ObjectHit[], activeHit: number, targetId: string): boolean {
   const hit = hits[activeHit]
@@ -455,6 +477,116 @@ function GroupHeader({
       <span>{label}</span>
       <span className="tabular-nums">({count})</span>
     </button>
+  )
+}
+
+/** 그룹 폴더 헤더 — 클릭은 보기 필터(토글), 셰브론은 문서의 그룹 접기(멤버를 캔버스에서
+ *  숨긴다 — 문서 변경이라 편집 권한이 있을 때만). 편집·삭제도 편집 권한 전용(호버 시 노출).
+ *  미분류 폴더는 문서 객체가 아니라 셰브론·편집·삭제가 없다 */
+function GroupFolder({
+  testid,
+  name,
+  color,
+  count,
+  collapsed,
+  onToggleCollapsed,
+  active,
+  onFilter,
+  canEdit,
+  onEdit,
+  onRemove,
+  children,
+}: {
+  testid: string
+  name: string
+  /** 그룹 색('default' 포함) — 미분류 폴더는 undefined */
+  color?: EditorDocument['diagram']['areas'][number]['color']
+  count: number
+  /** 문서의 접힘 상태(area.collapsed) — 미분류는 undefined */
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+  active: boolean
+  onFilter: () => void
+  canEdit?: boolean
+  onEdit?: () => void
+  onRemove?: () => void
+  children: React.ReactNode
+}) {
+  const { t } = useTranslation()
+  const hex = color && color !== 'default' ? TABLE_COLOR_HEX[color] : null
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        data-testid={testid}
+        aria-pressed={active}
+        aria-label={name}
+        onClick={onFilter}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') onFilter()
+        }}
+        className={cn(
+          'group flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-sm px-2 text-left text-xs font-medium',
+          active ? 'bg-accent text-accent-foreground' : 'text-foreground/80 hover:bg-accent/60',
+        )}
+      >
+        {canEdit && onToggleCollapsed ? (
+          <button
+            type="button"
+            data-testid={`${testid}-chevron`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleCollapsed()
+            }}
+            aria-expanded={!collapsed}
+            aria-label={t('model.editor.area.collapse')}
+            title={collapsed ? t('model.editor.area.expand') : t('model.editor.area.collapse')}
+            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+          >
+            {collapsed ? <ChevronRight aria-hidden className="size-3" /> : <ChevronDown aria-hidden className="size-3" />}
+          </button>
+        ) : null}
+        <span
+          aria-hidden
+          className={cn('size-2.5 shrink-0 rounded-full border border-foreground/20', !hex && 'bg-muted-foreground/25')}
+          style={hex ? { backgroundColor: hex } : undefined}
+        />
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
+        {canEdit && onEdit ? (
+          <button
+            type="button"
+            data-testid={`${testid}-edit`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit()
+            }}
+            aria-label={t('model.editor.area.edit')}
+            title={t('model.editor.area.edit')}
+            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <Pencil aria-hidden className="size-3" />
+          </button>
+        ) : null}
+        {canEdit && onRemove ? (
+          <button
+            type="button"
+            data-testid={`${testid}-remove`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onRemove()
+            }}
+            aria-label={t('common.delete')}
+            title={t('common.delete')}
+            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <Trash2 aria-hidden className="size-3" />
+          </button>
+        ) : null}
+      </div>
+      {children}
+    </div>
   )
 }
 

@@ -1,10 +1,11 @@
-/** 주제 영역 헬퍼 — 이름 유일화·멤버 조회·숨김 집합·표시 집합 (05-editor/02-ui.md §6) */
+/** 주제 영역(그룹) 헬퍼 — 이름 유일화·멤버 조회·숨김 집합·표시 집합·색 고정 (05-editor/02-ui.md §6) */
 import { describe, expect, it } from 'vitest'
 
 import { createArea, createTable } from '@/features/editor/model/changes'
 import { emptyContent } from '@/features/editor/model/content-io'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import {
+  groupColorOf,
   tablesOfArea,
   uniqueAreaName,
   visibleTableIds,
@@ -72,5 +73,27 @@ describe('visibleTableIds — 캔버스 표시 집합(영역 필터 ∩ 접힘 �
     expect(visibleTableIds(docWithArea(), 'A1')).toEqual(new Set(['T-USERS']))
     // 필터로 선택한 영역 자체가 접혀 있으면 멤버 전부가 숨겨진다(접기=멤버 숨김)
     expect(visibleTableIds(docWithArea({ collapsed: true }), 'A1')).toEqual(new Set())
+  })
+})
+
+describe('groupColorOf — 그룹 색이 멤버 테이블 렌더 색을 고정한다', () => {
+  it('소속 그룹의 색을 반환한다 — 미소속이면 null(개별 색 폴백)', () => {
+    const d = docWithArea({ color: 'sky' })
+    expect(groupColorOf(d, 'T-USERS')).toBe('sky')
+    expect(groupColorOf(d, 'T-LOGS')).toBeNull()
+  })
+
+  it('그룹 색이 default면 null — 개별 색이 살아난다', () => {
+    expect(groupColorOf(docWithArea(), 'T-USERS')).toBeNull()
+  })
+
+  it('다중 소속이면 문서 순서 첫 번째 그룹의 색을 쓴다', () => {
+    const base = docWithArea({ color: 'sky', tableIds: ['T-USERS'] })
+    const second = createArea('결제', { id: 'A2', color: 'red', tableIds: ['T-USERS'] })
+    const d = { ...base, diagram: { ...base.diagram, areas: [...base.diagram.areas, second] } }
+    expect(groupColorOf(d, 'T-USERS')).toBe('sky')
+    // 첫 그룹이 무색이면 폴백(다음 그룹 색을 따라가지 않는다 — 첫 소속이 원천)
+    const uncoloredFirst = { ...base, diagram: { ...base.diagram, areas: [createArea('무색', { id: 'A0', tableIds: ['T-USERS'] }), ...base.diagram.areas, second] } }
+    expect(groupColorOf(uncoloredFirst, 'T-USERS')).toBeNull()
   })
 })

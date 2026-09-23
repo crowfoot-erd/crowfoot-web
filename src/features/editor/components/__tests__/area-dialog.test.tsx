@@ -22,7 +22,7 @@ const TABLES = [
 function renderDialog(area = createArea('회원 도메인', { id: 'A1', tableIds: [] })) {
   const onColorChange = vi.fn()
   const onCommit = vi.fn()
-  renderWithProviders(
+  const utils = renderWithProviders(
     <AreaDialog
       open
       onOpenChange={vi.fn()}
@@ -33,7 +33,18 @@ function renderDialog(area = createArea('회원 도메인', { id: 'A1', tableIds
     />,
     { wrapRoutes: false },
   )
-  return { onColorChange, onCommit }
+  const rerenderDialog = (next: typeof area) =>
+    utils.rerender(
+      <AreaDialog
+        open
+        onOpenChange={vi.fn()}
+        area={next}
+        tables={TABLES}
+        onColorChange={onColorChange}
+        onCommit={onCommit}
+      />,
+    )
+  return { onColorChange, onCommit, rerenderDialog }
 }
 
 describe('AreaDialog — 멤버 체크·색·이름', () => {
@@ -70,5 +81,21 @@ describe('AreaDialog — 멤버 체크·색·이름', () => {
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => expect(screen.getByText('이름을 입력하세요')).toBeInTheDocument())
     expect(onCommit).toHaveBeenCalledTimes(1) // 빈 이름은 제출 안 됨
+  })
+
+  it('생성 직후 흐름 — 색을 먼저 고르고(즉시 커밋→area 참조 교체) 이름을 저장해도 입력이 유지된다', async () => {
+    // EditorShell은 즉시 커밋마다 새 area 객체를 내려준다. reset이 이 참조 변화에 반응하면
+    // 저장 전 이름이 문서값(기본 이름 '그룹')으로 되돌려진다 — 생성 다이얼로그 이름 소실 버그.
+    const initial = createArea('그룹', { id: 'A1', tableIds: [] })
+    const committed = { ...initial, color: TABLE_COLORS[0] as (typeof TABLE_COLORS)[number] }
+    const { onCommit, rerenderDialog } = renderDialog(initial)
+
+    // 이름 입력 → 색 즉시 커밋(부모가 area 참조를 교체해 리렌더) → 여전히 입력은 살아 있다
+    fireEvent.change(screen.getByLabelText('이름'), { target: { value: '회원 도메인' } })
+    rerenderDialog(committed)
+    expect(screen.getByLabelText('이름')).toHaveValue('회원 도메인')
+
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith('A1', { name: '회원 도메인', description: '' }))
   })
 })

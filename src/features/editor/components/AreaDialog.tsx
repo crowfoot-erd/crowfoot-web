@@ -71,12 +71,15 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
     defaultValues: { name: '', description: '' },
   })
 
-  // 열릴 때마다 대상 영역 값으로 초기화
+  // 열림/대상 전환 시에만 폼을 초기화한다. 색·멤버는 즉시 커밋이라 present가 계속 바뀌는데
+  // (area 참조가 매번 새로 만들어지는데) 그때마다 reset하면 아직 저장 전인 이름·설명 입력이
+  // 문서값(기본 이름)으로 되돌려진다 — 생성 직후 색을 고르고 이름을 저장하면 이름이 사라지는 버그.
+  const areaId = area?.id ?? null
   useEffect(() => {
     if (open && area) {
       form.reset({ name: area.name, description: area.description })
     }
-  }, [open, area, form])
+  }, [open, areaId, form])
 
   const handleSubmit = form.handleSubmit((values) => {
     if (!area) return

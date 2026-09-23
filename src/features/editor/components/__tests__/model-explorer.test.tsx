@@ -73,7 +73,15 @@ function hydrate(doc: EditorDocument = fixtureDoc()) {
 function renderPanel(nameDisplay: 'logical' | 'physical' | 'both' = 'both', open = true) {
   return renderWithProviders(
     <ReactFlowProvider>
-      <ModelExplorerPanel open={open} focusSearchSignal={0} nameDisplay={nameDisplay} activeAreaId={null} onActiveAreaChange={() => {}} />
+      <ModelExplorerPanel
+        open={open}
+        focusSearchSignal={0}
+        nameDisplay={nameDisplay}
+        activeAreaId={null}
+        onActiveAreaChange={() => {}}
+        canEdit
+        onOpenAreaEdit={() => {}}
+      />
     </ReactFlowProvider>,
     { wrapRoutes: false },
   )
@@ -240,14 +248,14 @@ describe('ModelExplorerPanel — 검색', () => {
     hydrate()
     const { rerender } = render(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="both" activeAreaId={null} onActiveAreaChange={() => {}} />
+        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="both" activeAreaId={null} onActiveAreaChange={() => {}} canEdit onOpenAreaEdit={() => {}} />
       </ReactFlowProvider>,
     )
     expect(document.activeElement).not.toBe(screen.getByLabelText('객체 검색'))
 
     rerender(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={1} nameDisplay="both" activeAreaId={null} onActiveAreaChange={() => {}} />
+        <ModelExplorerPanel open focusSearchSignal={1} nameDisplay="both" activeAreaId={null} onActiveAreaChange={() => {}} canEdit onOpenAreaEdit={() => {}} />
       </ReactFlowProvider>,
     )
     expect(document.activeElement).toBe(screen.getByLabelText('객체 검색'))
@@ -265,7 +273,7 @@ describe('ModelExplorerPanel — nameMode 정합', () => {
 
     rerender(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="physical" activeAreaId={null} onActiveAreaChange={() => {}} />
+        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="physical" activeAreaId={null} onActiveAreaChange={() => {}} canEdit onOpenAreaEdit={() => {}} />
       </ReactFlowProvider>,
     )
     row = tableRow(doc.model.tables[0].id)
@@ -274,8 +282,8 @@ describe('ModelExplorerPanel — nameMode 정합', () => {
   })
 })
 
-describe('ModelExplorerPanel — 주제 영역 필터 (v1.13)', () => {
-  /** 회원 도메인 영역 1개 — memberIds는 시딩될 문서의 테이블 id에서 뽑는다(랜덤 id 주의) */
+describe('ModelExplorerPanel — 그룹 폴더 트리 (v1.13)', () => {
+  /** 회원 도메인 그룹 1개 — memberIds는 시딩될 문서의 테이블 id에서 뽑는다(랜덤 id 주의) */
   function hydrateWithArea(init: Partial<ErdArea> = {}, members: 'first' | 'all' = 'first') {
     const doc = fixtureDoc()
     doc.diagram.areas = [
@@ -289,54 +297,112 @@ describe('ModelExplorerPanel — 주제 영역 필터 (v1.13)', () => {
     return doc
   }
 
-  function renderPanelWithArea(activeAreaId: string | null, onActiveAreaChange: (id: string | null) => void = () => {}) {
+  function renderPanelWithArea(
+    activeAreaId: string | null,
+    onActiveAreaChange: (id: string | null) => void = () => {},
+    canEdit = true,
+    onOpenAreaEdit: (id: string) => void = () => {},
+  ) {
     return renderWithProviders(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="both" activeAreaId={activeAreaId} onActiveAreaChange={onActiveAreaChange} />
+        <ModelExplorerPanel
+          open
+          focusSearchSignal={0}
+          nameDisplay="both"
+          activeAreaId={activeAreaId}
+          onActiveAreaChange={onActiveAreaChange}
+          canEdit={canEdit}
+          onOpenAreaEdit={onOpenAreaEdit}
+        />
       </ReactFlowProvider>,
       { wrapRoutes: false },
     )
   }
 
-  it('영역이 없으면 칩이 나오지 않는다', () => {
-    hydrate()
+  it('그룹이 없으면 폴더 없이 평면 목록이다', () => {
+    const doc = hydrate()
     renderPanelWithArea(null)
-    expect(screen.queryByTestId('explorer-area-chip-all')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('explorer-group-ungrouped')).not.toBeInTheDocument()
+    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument()
   })
 
-  it('칩 필터 — 그 영역 멤버만 목록에 남는다, 관계는 양끽 모두 영역 안일 때만', () => {
+  it('그룹 폴더 + 미분류 — 멤버는 그룹 아래, 비소속은 미분류 아래 렌더', () => {
     const doc = hydrateWithArea() // members: users
-    renderPanelWithArea('area-1')
+    renderPanelWithArea(null)
 
-    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument() // users
-    expect(document.getElementById(`explorer-table-${doc.model.tables[1].id}`)).not.toBeInTheDocument() // user_settings
-    // 관계는 한쪽끝(user_settings)이 영역 밖 — 목록에서 빠진다
-    expect(document.getElementById('explorer-rel-rel-1')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^관계/ })).toHaveTextContent('(0)')
-    // 메모는 영역 밖 객체라 칩 필터의 대상이 아니다
-    expect(screen.getByRole('button', { name: /^메모/ })).toHaveTextContent('(1)')
-
-    // 칩 상태 — 활성 칩은 눌림 표시
-    expect(screen.getByTestId('explorer-area-chip-all')).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByTestId('explorer-area-chip-area-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('explorer-group-area-1')).toHaveTextContent('회원 도메인')
+    expect(screen.getByTestId('explorer-group-area-1')).toHaveTextContent('1') // 멤버 수
+    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument() // users — 그룹 폴더 안
+    // user_settings는 어느 그룹에도 속하지 않아 미분류 아래 — 그룹 폴더 아래에는 없다
+    expect(screen.getByTestId('explorer-group-ungrouped')).toHaveTextContent('미분류')
+    expect(document.getElementById(`explorer-table-${doc.model.tables[1].id}`)).toBeInTheDocument()
   })
 
-  it('칩 재클릭·전체 칩은 해제(null)를 요청한다', () => {
+  it('폴더 헤더 클릭은 보기 필터 — 활성 폴더 눌림, 재클릭·미분류는 해제(null)', () => {
     hydrateWithArea()
     const onActiveAreaChange = vi.fn()
     renderPanelWithArea('area-1', onActiveAreaChange)
 
-    fireEvent.click(screen.getByTestId('explorer-area-chip-area-1'))
+    expect(screen.getByTestId('explorer-group-area-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('explorer-group-ungrouped')).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(screen.getByTestId('explorer-group-area-1'))
     expect(onActiveAreaChange).toHaveBeenCalledWith(null)
-    fireEvent.click(screen.getByTestId('explorer-area-chip-all'))
+    fireEvent.click(screen.getByTestId('explorer-group-ungrouped'))
     expect(onActiveAreaChange).toHaveBeenLastCalledWith(null)
   })
 
-  it('접힌 영역 멤버는 흐리게 남는다 — 클릭하면 영역을 펼친 뒤 선택한다', () => {
+  it('폴더 필터 — 그 그룹 멤버만 목록에 남는다, 관계는 양끽 모두 그룹 안일 때만', () => {
+    const doc = hydrateWithArea() // members: users
+    renderPanelWithArea('area-1')
+
+    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument() // users
+    expect(document.getElementById(`explorer-table-${doc.model.tables[1].id}`)).not.toBeInTheDocument() // user_settings(미분류)
+    // 관계는 한쪽끝(user_settings)이 그룹 밖 — 목록에서 빠진다
+    expect(document.getElementById('explorer-rel-rel-1')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^관계/ })).toHaveTextContent('(0)')
+    // 메모는 그룹 밖 객체라 폴더 필터의 대상이 아니다
+    expect(screen.getByRole('button', { name: /^메모/ })).toHaveTextContent('(1)')
+  })
+
+  it('폴더 접기(셰브론)는 문서의 그룹 접기다 — 멤버를 캔버스에서 숨기고 목록엔 흐리게 남는다', () => {
+    const doc = hydrateWithArea() // members: users
+    renderPanelWithArea(null)
+
+    fireEvent.click(screen.getByTestId('explorer-group-area-1-chevron'))
+    const state = useEditorStore.getState()
+    expect(state.present.diagram.areas[0].collapsed).toBe(true) // area/patch 1커밋
+    // 목록에는 남되 흐리다 — 클릭하면 그룹을 펼친 뒤 선택한다(아래 별도 케이스)
+    expect(hasClass(tableRow(doc.model.tables[0].id), 'opacity-50')).toBe(true)
+    expect(state.past).toHaveLength(1)
+  })
+
+  it('폴더 편집(✎)·삭제(🗑) — 편집은 다이얼로그 오픈, 삭제는 area/remove 커밋', () => {
+    hydrateWithArea()
+    const onOpenAreaEdit = vi.fn()
+    renderPanelWithArea(null, () => {}, true, onOpenAreaEdit)
+
+    fireEvent.click(screen.getByTestId('explorer-group-area-1-edit'))
+    expect(onOpenAreaEdit).toHaveBeenCalledWith('area-1')
+
+    fireEvent.click(screen.getByTestId('explorer-group-area-1-remove'))
+    expect(useEditorStore.getState().present.diagram.areas).toHaveLength(0) // 그룹만 사라진다
+  })
+
+  it('읽기 전용에서는 편집·삭제·접기 버튼이 없다 — 탐색·필터만', () => {
+    hydrateWithArea()
+    renderPanelWithArea(null, () => {}, false)
+
+    expect(screen.queryByTestId('explorer-group-area-1-edit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('explorer-group-area-1-remove')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('explorer-group-area-1-chevron')).not.toBeInTheDocument()
+  })
+
+  it('접힌 그룹 멤버는 흐리게 남는다 — 클릭하면 그룹을 펼친 뒤 선택한다', () => {
     const doc = hydrateWithArea({ collapsed: true }, 'all')
     renderPanelWithArea(null)
 
-    // 두 멤버 모두 목록에 있되 흐리다(접힌 영역 = 캔버스에서 숨겨진 테이블)
+    // 두 멤버 모두 목록에 있되 흐리다(접힌 그룹 = 캔버스에서 숨겨진 테이블)
     expect(hasClass(tableRow(doc.model.tables[0].id), 'opacity-50')).toBe(true)
     expect(hasClass(tableRow(doc.model.tables[1].id), 'opacity-50')).toBe(true)
 

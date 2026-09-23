@@ -54,14 +54,8 @@ export function contentBounds(
     maxX = Math.max(maxX, note.x + note.width)
     maxY = Math.max(maxY, note.y + NOTE_ESTIMATED_HEIGHT)
   }
-  // 주제 영역 사각형 — 배경 박스지만 팬 한계는 이 사각형을 감싸야 한다(v1.13).
-  // 겹침 해소(노트를 영역 밖으로 미는 등)는 하지 않는다 — 영역은 배경이므로 겹쳐도 된다
-  for (const area of doc.diagram.areas) {
-    minX = Math.min(minX, area.x)
-    minY = Math.min(minY, area.y)
-    maxX = Math.max(maxX, area.x + area.width)
-    maxY = Math.max(maxY, area.y + area.height)
-  }
+  // 그룹(주제 영역)은 캔버스 객체가 아니라(논리 소속) 경계 계산에서 빠진다 — 멤버 테이블이
+  // 이미 콘텐츠 AABB를 이룬다
   if (minX === Infinity) return null
   return { minX, minY, maxX, maxY }
 }

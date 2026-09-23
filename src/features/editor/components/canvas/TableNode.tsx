@@ -20,6 +20,8 @@
  * 그대로라 팬 한계·미니맵·엣지 앵커가 흔들리지 않는다.
  * 강조색 — 정보 다이얼로그에서 프리셋 10색 중 선택(node/color). 헤더 밴드·상자 테두리·축소
  * 라벨 판에 틴트로 얹고 미니맵에도 같은 색이 들어간다. 색은 diagram.nodes에 저장(표현).
+ * 그룹(주제 영역) 소속 테이블은 **그룹 색이 개별 색을 덮어 고정**한다(groupColorOf — 문서
+ * 순서 첫 소속 그룹, 그룹 색이 default면 개별 색 폴백). 미니맵도 같은 우선순위다.
  */
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
@@ -34,6 +36,7 @@ import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
+import { groupColorOf } from '@/features/editor/model/areas'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { DiffActionBadge } from '@/components/diff-action-badge'
 import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
@@ -535,7 +538,10 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   const compareMark = useCompareHighlight(id)
   const table = useEditorStore((s) => s.present.model.tables.find((tb) => tb.id === id))
   const width = useEditorStore((s) => s.present.diagram.nodes[id]?.width ?? null)
-  const color = useEditorStore((s) => s.present.diagram.nodes[id]?.color ?? 'default')
+  // 그룹 멤버는 그룹 색으로 고정, 소속 없는 테이블만 개별 색 — 미니맵·익스플로러와 같은 우선순위
+  const color = useEditorStore(
+    (s) => groupColorOf(s.present, id) ?? s.present.diagram.nodes[id]?.color ?? 'default',
+  )
   const dbmsId = useEditorCanvas().dbmsId
   const fkKey = useEditorStore((s) =>
     s.present.model.relationships

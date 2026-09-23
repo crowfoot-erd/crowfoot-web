@@ -601,7 +601,7 @@
         "share": "Share",
         "history": "Version history",
         "areaFilter": {
-          "label": "Subject area",
+          "label": "Group",
           "all": "Show all"
         }
       },
@@ -617,7 +617,7 @@
         "emptyDocument": "Document is empty",
         "matchCount": "{{count}} match(es)",
         "untitledNote": "Untitled note",
-        "areaFilter": "Filter by subject area"
+        "groupUngrouped": "Ungrouped"
       },
       "clipboard": {
         "copyLabel": "copy"
@@ -767,7 +767,7 @@
           "relationship": "Relationship",
           "note": "Note",
           "node": "Node",
-          "area": "Area"
+          "area": "Group"
         },
         "action": {
           "add": "added",
@@ -803,9 +803,10 @@
         "removeNote": "Delete note",
         "editRelationship": "Edit relationship",
         "removeRelationship": "Delete relationship",
-        "createArea": "Add area",
-        "areaInfo": "Edit area",
-        "removeArea": "Delete area"
+        "createGroup": "New group",
+        "addToGroup": "Add to group",
+        "removeFromGroup": "Remove from group",
+        "editGroup": "Edit group"
       },
       "table": {
         "addColumn": "Add column",
@@ -885,7 +886,9 @@
         "commentPlaceholder": "Table description",
         "nameRequired": "Physical name is required",
         "color": "Color",
-        "colorDefault": "Default"
+        "colorDefault": "Default",
+        "groupLabel": "Groups",
+        "colorGroupLocked": "Tables in a group use the group color — change it in group settings"
       },
       "savedToast": "Document saved",
       "draftRestored": "Recovered unsaved edits",
@@ -997,21 +1000,21 @@
         "button": "Migration DDL"
       },
       "area": {
-        "defaultName": "Area",
-        "expand": "Expand area",
-        "collapse": "Collapse area",
-        "edit": "Edit area",
+        "defaultName": "Group",
+        "expand": "Expand group",
+        "collapse": "Collapse group",
+        "edit": "Edit group",
         "memberCount": "Member tables"
       },
       "areaDialog": {
-        "title": "Edit subject area",
+        "title": "Edit group",
         "name": "Name",
         "nameRequired": "Name is required",
         "description": "Description",
-        "descriptionPlaceholder": "Purpose of this area (optional)",
+        "descriptionPlaceholder": "Purpose of this group (optional)",
         "color": "Color",
         "tables": "Member tables",
-        "tablesHint": "Check to include in this area",
+        "tablesHint": "Check to make it a member of this group",
         "noTables": "No tables in this document"
       }
     },

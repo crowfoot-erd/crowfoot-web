@@ -18,7 +18,7 @@
  *   토스트(클릭하면 패널 열림)·미읽음 배지로 알린다.
  * - 단축키는 input/textarea/select 포커스 시 스킵. dirty면 beforeunload 가드.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -52,6 +52,7 @@ import { fetchModel } from '@/features/models/api'
 import { modelKeys } from '@/features/models/hooks'
 import { errorMessage } from '@/lib/result-code'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
+import { AreaDialog } from './AreaDialog'
 import { ChatDock, chatPreview } from './ChatDock'
 import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
@@ -110,6 +111,24 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     activeAreaId !== null && areaIdSignature.length > 0 && areaIdSignature.split(';').includes(activeAreaId)
       ? activeAreaId
       : null
+  // 그룹 편집 다이얼로그 대상 — 캔버스(그룹 생성 직후)와 익스플로러(폴더 헤더)가 공유한다.
+  // 다이얼로그를 여기 두면 두 경로가 같은 인스턴스를 쓴다
+  const [areaEditId, setAreaEditId] = useState<string | null>(null)
+  const areaEdit = useEditorStore((s) =>
+    areaEditId ? (s.present.diagram.areas.find((a) => a.id === areaEditId) ?? null) : null,
+  )
+  /** 멤버 체크 목록 재료 — 표시 이름은 익스플로러 Names와 같은 규칙(물리 우선 + 논리 묵게).
+   *  셀렉터는 문서 배열 참조를 받고 파생은 memo로 — 셀렉터에서 새 배열을 만들면 무한 루프다 */
+  const modelTables = useEditorStore((s) => s.present.model.tables)
+  const areaEditTables = useMemo(
+    () =>
+      modelTables.map((table) => ({
+        id: table.id,
+        physical: table.physicalName,
+        logical: table.logicalName,
+      })),
+    [modelTables],
+  )
   // 모델 익스플로러 — 열림은 브라우저에 기억, focusSearchSignal은 Ctrl+F로 검색창에 데려오는 신호
   const [explorerOpen, setExplorerOpen] = useState(readExplorerOpen)
   const [explorerFocusSignal, setExplorerFocusSignal] = useState(0)
@@ -348,8 +367,6 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           if (layout) positions[id] = { x: layout.x + dx, y: layout.y + dy }
           const note = present.diagram.notes.find((n) => n.id === id)
           if (note) changes.push({ type: 'note/patch', noteId: id, patch: { x: note.x + dx, y: note.y + dy } })
-          const area = present.diagram.areas.find((a) => a.id === id)
-          if (area) changes.push({ type: 'area/patch', areaId: id, patch: { x: area.x + dx, y: area.y + dy } })
         }
         if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
         if (changes.length === 0) return
@@ -375,13 +392,13 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         event.preventDefault()
         openExplorerSearch()
       } else if (key === 'a') {
-        // 전체 선택 — 테이블+메모+영역(관계는 양끝 테이블 선택에 따라붙는다)
+        // 전체 선택 — 테이블+메모(관계는 양끝 테이블 선택에 따라붙는다). 그룹은 캔버스 객체가
+        // 아니라(논리 소속) 선택 대상에서 빠진다
         event.preventDefault()
         const { present, setSelection } = useEditorStore.getState()
         setSelection([
           ...present.model.tables.map((table) => table.id),
           ...present.diagram.notes.map((note) => note.id),
-          ...present.diagram.areas.map((area) => area.id),
         ])
       } else if (key === 'c') {
         if (!canEdit) return
@@ -578,6 +595,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           nameDisplay={nameDisplay}
           activeAreaId={activeArea}
           onActiveAreaChange={setActiveAreaId}
+          canEdit={canEdit}
+          onOpenAreaEdit={setAreaEditId}
         />
         <div className="relative min-w-0 flex-1">
           {remoteChangeOpen && !conflictOpen && (
@@ -630,6 +649,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
               dbmsId={dbmsId}
               modelId={model.modelId}
               activeAreaId={activeArea}
+              onOpenAreaEdit={setAreaEditId}
             />
           ) : (
             // 수화 게이트 — 문서 파싱·hydrate가 끝나기 전 캔버스 자리에 로딩을 보여준다
@@ -658,6 +678,23 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           )}
         </div>
       </main>
+
+      {/* 그룹 편집 — 캔버스 그룹 생성 직후·익스플로러 폴더 헤더에서 연다. 색·멤버 체크는
+          즉시 커밋이라 present에서 실시간으로 읽는다 */}
+      <AreaDialog
+        open={areaEdit !== null}
+        onOpenChange={(open) => {
+          if (!open) setAreaEditId(null)
+        }}
+        area={areaEdit}
+        tables={areaEditTables}
+        onColorChange={(areaId, color) =>
+          useEditorStore.getState().commit({ type: 'area/patch', areaId, patch: { color } })
+        }
+        onCommit={(areaId, patch) =>
+          useEditorStore.getState().commit({ type: 'area/patch', areaId, patch })
+        }
+      />
 
       <Dialog open={conflictOpen} onOpenChange={setConflictOpen}>
         <DialogContent className="sm:max-w-sm">

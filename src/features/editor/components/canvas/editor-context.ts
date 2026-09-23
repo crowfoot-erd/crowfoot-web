@@ -42,8 +42,6 @@ export interface EditorCanvasContextValue {
   openColumnInfo: (tableId: string, columnId: string) => void
   /** 키(유니크·인덱스) 정보 다이얼로그 열기 — 키 영역 행 클릭·추가 버튼. keyId null = 생성 */
   openKeyInfo: (tableId: string, keyId: string | null, kind: KeyKind) => void
-  /** 주제 영역 편집 다이얼로그 열기 — 영역 헤더 설정 버튼·컨텍스트 메뉴 */
-  openAreaEdit: (areaId: string) => void
   /** 진행 중 관계 — 핸들 팝업에서 유형 선택 후 대상 테이블 클릭 대기 중. Esc·빈 캔버스 클릭으로 취소 */
   pendingRelation: PendingRelation | null
   /** 관계 유형·종류·기수 선택 확정 — 이후 마우스를 따라 선이 움직인다 */
@@ -64,7 +62,6 @@ export const EditorCanvasContext = createContext<EditorCanvasContextValue>({
   openTableInfo: () => {},
   openColumnInfo: () => {},
   openKeyInfo: () => {},
-  openAreaEdit: () => {},
   pendingRelation: null,
   startPendingRelation: () => {},
   completeRelation: () => {},

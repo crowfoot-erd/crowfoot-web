@@ -38,9 +38,7 @@ export type RelationshipPatch = Partial<
   >
 >
 export type NotePatch = Partial<Pick<ErdNote, 'x' | 'y' | 'width' | 'text' | 'title' | 'color' | 'linkedTableId'>>
-export type AreaPatch = Partial<
-  Pick<ErdArea, 'name' | 'description' | 'x' | 'y' | 'width' | 'height' | 'collapsed' | 'color' | 'tableIds'>
->
+export type AreaPatch = Partial<Pick<ErdArea, 'name' | 'description' | 'collapsed' | 'color' | 'tableIds'>>
 
 export type ErdChange =
   | { type: 'table/create'; table: ErdTable; position: { x: number; y: number } }
@@ -102,19 +100,11 @@ export function createTable(physicalName: string, init: Partial<ErdTable> = {}):
   }
 }
 
-/** 신규 영역 기본 크기 — 대형 다이어그램 묶음용이라 넉넉하다(테이블 4~6개 폭) */
-export const AREA_DEFAULT_WIDTH = 800
-export const AREA_DEFAULT_HEIGHT = 560
-
 export function createArea(name: string, init: Partial<ErdArea> = {}): ErdArea {
   return {
     id: newId(),
     name,
     description: '',
-    x: 0,
-    y: 0,
-    width: AREA_DEFAULT_WIDTH,
-    height: AREA_DEFAULT_HEIGHT,
     collapsed: false,
     color: 'default',
     tableIds: [],
