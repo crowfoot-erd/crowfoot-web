@@ -44,7 +44,7 @@ import {
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
-import { arrangeAreaMembers, relocateNonMembers, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
+import { uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
 import { createArea, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
 import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
@@ -1318,23 +1318,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         area={areaEdit}
         tables={areaEditTables}
         onColorChange={(areaId, color) => commit({ type: 'area/patch', areaId, patch: { color } })}
-        onCommit={(areaId, patch) => {
-          // 멤버십이 바뀌면 멤버를 영역(그룹 박스) 안 그리드로 재배치하고(02-ui.md §6),
-          // 박스와 교차하는 비멤버는 박스 아래로 밀어낸다 — 배치+밀어내기를 undo 1스택으로
-          const present = useEditorStore.getState().present
-          const tableIds = patch.tableIds
-          const area = present.diagram.areas.find((a) => a.id === areaId)
-          const arranged = tableIds && area ? arrangeAreaMembers(present, area, tableIds) : null
-          if (!arranged || !tableIds) {
-            commit({ type: 'area/patch', areaId, patch })
-            return
-          }
-          const pushed = relocateNonMembers(present, arranged.bounds, tableIds)
-          commitAll([
-            { type: 'area/patch', areaId, patch: { ...patch, ...arranged.bounds } },
-            { type: 'node/move' as const, positions: { ...arranged.positions, ...pushed } },
-          ])
-        }}
+        onCommit={(areaId, patch) => commit({ type: 'area/patch', areaId, patch })}
       />
     </EditorCanvasContext.Provider>
   )
