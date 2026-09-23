@@ -56,6 +56,7 @@ import { ChatDock, chatPreview } from './ChatDock'
 import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
+import { ShortcutsDialog } from './ShortcutsDialog'
 
 /** 자동 저장 지연 — 마지막 편집 후 이 시간 동안 추가 편집이 없으면 저장한다 */
 const AUTOSAVE_DELAY_MS = 2000
@@ -96,6 +97,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const saveMutation = useSaveModelContent(model.workspaceId)
 
   const [conflictOpen, setConflictOpen] = useState(false)
+  // 단축키 치트시트 — Ctrl/Cmd+/ · 툴바 버튼으로도 연다(보기 기능이라 읽기 전용·공개 뷰어도 사용)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [parseError, setParseError] = useState(false)
   const [nameDisplay, setNameDisplay] = useState<NameDisplayMode>('both')
   const [columnDisplay, setColumnDisplay] = useState<ColumnDisplayMode>('all')
@@ -293,16 +296,24 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     [canEdit, putContent, rf, saveMutation],
   )
 
-  /* ---------- 단축키 — 입력 요소 포커스 시 스킵 ---------- */
+  /* ---------- 단축키 — 입력 요소 포커스 시 스킵(단축키 도움말 제외) ---------- */
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const mod = event.metaKey || event.ctrlKey
+      const key = event.key.toLowerCase()
+
+      // Ctrl/Cmd+/ — 단축키 치트시트. 도움말은 편집을 방해하지 않으므로 입력 요소
+      // 포커스 중에도 동작하는 유일한 단축키다(아래 가드보다 앞에서 처리)
+      if (mod && key === '/') {
+        event.preventDefault()
+        setShortcutsOpen(true)
+        return
+      }
+
       const target = event.target as HTMLElement | null
       // target이 window(포커스 없는 keydown)일 수 있다 — closest는 요소에만 있다
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return
-
-      const mod = event.metaKey || event.ctrlKey
-      const key = event.key.toLowerCase()
 
       // Esc — 선택 해제(보기 동작이라 읽기 전용도 동작)
       if (key === 'escape') {
@@ -544,6 +555,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         modelId={model.modelId}
         sourceConnectionId={model.sourceConnectionId}
         publicView={publicView}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
       />
       <main className="flex min-h-0 flex-1">
         {/* 모델 익스플로러 — 탐색은 보기 기능이라 읽기 전용·공개 뷰어에서도 쓸 수 있다 */}
@@ -641,6 +653,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} canEdit={canEdit} />
     </div>
   )
 }

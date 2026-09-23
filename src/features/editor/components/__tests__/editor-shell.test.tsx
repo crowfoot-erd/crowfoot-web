@@ -1866,4 +1866,40 @@ describe('EditorShell — 단축키: 클립보드·선택·이동 (§9)', () => 
 
     expect(useEditorStore.getState().present.model.tables).toHaveLength(1)
   })
+
+  it('Ctrl+/ — 단축키 치트시트를 연다(읽기 전용도)', async () => {
+    await renderEditor(false)
+
+    fireEvent.keyDown(window, { key: '/', ctrlKey: true })
+    expect(await screen.findByText('키보드 단축키')).toBeVisible()
+    expect(screen.getByText('편집 권한이 없으면 편집·이동·삭제 단축키는 동작하지 않습니다')).toBeVisible()
+  })
+
+  it('input 포커스 중에도 Ctrl+/ 치트시트는 동작한다 — 유일한 가드 예외', async () => {
+    await renderEditor()
+    const table = createTable('orders', {
+      columns: [createColumn({ id: 'c1', physicalName: 'id' })],
+    })
+    useEditorStore.getState().commit({ type: 'table/create', table, position: { x: 0, y: 0 } })
+
+    const input = await screen.findByLabelText('컬럼 물리명 — id')
+    input.focus()
+    fireEvent.keyDown(input, { key: '/', ctrlKey: true })
+
+    expect(await screen.findByText('키보드 단축키')).toBeVisible()
+  })
+
+  it('툴바 버튼으로 치트시트를 열고 Esc로 닫는다', async () => {
+    await renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: '단축키 도움말' }))
+    expect(await screen.findByText('키보드 단축키')).toBeVisible()
+
+    // Esc는 다이얼로그를 닫는다(Radix) — 닫힌 뒤 기존 Esc 동작(선택 해제)은 그대로다
+    fireEvent.keyDown(screen.getByText('키보드 단축키'), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByText('키보드 단축키')).toBeNull())
+
+    fireEvent.keyDown(window, { key: 'Escape' }) // 닫힌 뒤에도 window Esc는 정상 처리
+    expect(useEditorStore.getState().selectedIds).toEqual([])
+  })
 })

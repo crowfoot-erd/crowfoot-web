@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { ChevronDown, Database, History, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -66,6 +66,8 @@ export interface EditorToolbarProps {
   sourceConnectionId?: string | null
   /** 공개 공유 뷰어(/share/{token}) — 워크스페이스 API(DDL)·공유 관리를 숨긴다 */
   publicView?: boolean
+  /** 단축키 치트시트 열기 — 보기 기능이라 읽기 전용·공개 뷰어에서도 노출 */
+  onOpenShortcuts: () => void
 }
 
 export function EditorToolbar({
@@ -86,6 +88,7 @@ export function EditorToolbar({
   modelId,
   sourceConnectionId = null,
   publicView = false,
+  onOpenShortcuts,
 }: EditorToolbarProps) {
   const { t } = useTranslation()
   const dirty = useEditorStore(selectDirty)
@@ -168,6 +171,16 @@ export function EditorToolbar({
         onColumnDisplayChange={onColumnDisplayChange}
       />
       <ZoomControls />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onOpenShortcuts}
+        aria-label={t('model.editor.shortcuts.open')}
+        title={`${t('model.editor.shortcuts.open')} (Ctrl/Cmd+/)`}
+      >
+        <Keyboard aria-hidden />
+      </Button>
       <ThemeToggle />
     </div>
   )

@@ -616,6 +616,39 @@
       "clipboard": {
         "copyLabel": "copy"
       },
+      "shortcuts": {
+        "open": "Keyboard shortcuts",
+        "title": "Keyboard shortcuts",
+        "description": "While typing in an input, shortcuts are suspended except this help (Ctrl/Cmd+/)",
+        "group": {
+          "editing": "Editing",
+          "navigation": "Selection & navigation",
+          "move": "Move",
+          "canvas": "Canvas"
+        },
+        "row": {
+          "undo": "Undo",
+          "redo": "Redo",
+          "save": "Save now",
+          "copy": "Copy",
+          "paste": "Paste",
+          "duplicate": "Duplicate",
+          "search": "Search (explorer)",
+          "selectAll": "Select all",
+          "deselect": "Deselect",
+          "rangeSelect": "Add to selection",
+          "help": "This help",
+          "nudge": "Nudge selection (1px)",
+          "nudgeFast": "Nudge selection (10px)",
+          "pan": "Pan canvas",
+          "contextMenu": "Context menu",
+          "delete": "Delete"
+        },
+        "keys": {
+          "rightClick": "Right-click"
+        },
+        "readOnlyNote": "Editing, move and delete shortcuts require edit permission"
+      },
       "ddl": {
         "title": "SQL script",
         "tableCount": "{{tables}} tables · {{relationships}} relationships",
