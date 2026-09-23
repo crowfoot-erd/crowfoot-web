@@ -81,6 +81,22 @@ describe('edge-router — routeOrthogonal', () => {
     expect(points).toEqual([{ x: 0, y: 0 }, { x: 100, y: 0 }])
   })
 
+  it('경로가 복도 밖으로 새면 그곳의 장애물도 돌아간다 — 복도 AABB 필터 밖 관통 방지', () => {
+    // 복도(양 끝을 감싼 사각형) 중앙을 M이 막으면 레인은 위·아래로 새는데, 그 지점에
+    // 복도 밖 장애물(U·L)이 있어도 그리드가 보지 못해 선이 테이블 뒤로 숨는다(2026-09
+    // 실사용 회귀). 완성 경로를 전체 장애물로 재검증해 U·L도 피하는지 확인한다
+    const source = { x: 0, y: 100 }
+    const target = { x: 1000, y: 100 }
+    const corridor = box(450, 20, 100, 260) // 복도 중앙 가로막음 — 직선(y=100) 불가
+    const above = box(600, -100, 300, 140) // 복도 위쪽 탈출로(y≈20)에 붙은 박스
+    const below = box(600, 200, 300, 150) // 복도 아래쪽 탈출로(y≈304)에 붙은 박스
+
+    const points = routeOrthogonal(source, target, [corridor, above, below])
+    expect(points[0]).toEqual(source)
+    expect(points[points.length - 1]).toEqual(target)
+    assertOrthogonalClear(points, [corridor, above, below])
+  })
+
   it('여러 장애물이 있어도 모두 피해서 잇는다', () => {
     const source = { x: 0, y: 100 }
     const target = { x: 600, y: 100 }

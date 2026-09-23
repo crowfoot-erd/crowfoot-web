@@ -93,6 +93,18 @@ export function buildLayoutGraph(
   spacing: LayoutSpacing = DEFAULT_LAYOUT_SPACING,
   sizes?: TableSizes,
 ): ElkNode {
+  /** 간격 옵션 — 루트뿐 아니라 **그룹 컴파운드 노드에도** 걸어야 그룹 안 멤버에 적용된다.
+   *  루트에만 걸면 컴파운드 자식 사이는 ELK 기본 간격으로 무너진다(실측 2026-09-23:
+   *  nodeNode 140인데 그룹 안 같은 레이어 간격이 110 — 관계선이 테이블에 붙어 식별이
+   *  안 된다는 사용자 피드백). 같은 옵션을 양쪽에 명시하니 그룹 안 최소 간격이 208+로 회복 */
+  const spacingOptions: Record<string, string> = {
+    'elk.spacing.nodeNode': `${spacing.nodeNode}`,
+    'elk.spacing.edgeEdge': `${spacing.edgeEdge}`,
+    'elk.spacing.edgeNode': `${spacing.edgeNode}`,
+    'layered.spacing.nodeNodeBetweenLayers': `${spacing.betweenLayers}`,
+    'elk.spacing.componentComponent': `${spacing.component}`,
+  }
+
   const tableNode = (table: ErdTable): ElkNode => {
     const size = sizeOf(table, doc.diagram.nodes[table.id]?.width ?? null, sizes)
     return { id: table.id, width: size.w, height: size.h }
@@ -120,6 +132,7 @@ export function buildLayoutGraph(
       edges: [],
       layoutOptions: {
         'elk.padding': `[top=${GROUP_PADDING},left=${GROUP_PADDING},bottom=${GROUP_PADDING},right=${GROUP_PADDING}]`,
+        ...spacingOptions,
       },
     }
     groupNodes.push(group)
@@ -153,11 +166,7 @@ export function buildLayoutGraph(
       // 컴파운드 모드로 돌아 레이어 간격·엣지 레인 산출이 달라진다(2026-09-23 실사용 회귀 —
       // 그룹 없는 문서는 예전 결과와 완전히 같아야 한다)
       ...(groupNodes.length > 0 ? { 'elk.hierarchyHandling': 'INCLUDE_CHILDREN' } : {}),
-      'elk.spacing.nodeNode': `${spacing.nodeNode}`,
-      'elk.spacing.edgeEdge': `${spacing.edgeEdge}`,
-      'elk.spacing.edgeNode': `${spacing.edgeNode}`,
-      'layered.spacing.nodeNodeBetweenLayers': `${spacing.betweenLayers}`,
-      'elk.spacing.componentComponent': `${spacing.component}`,
+      ...spacingOptions,
       'elk.padding': `[top=${spacing.padding},left=${spacing.padding},bottom=${spacing.padding},right=${spacing.padding}]`,
     },
   }

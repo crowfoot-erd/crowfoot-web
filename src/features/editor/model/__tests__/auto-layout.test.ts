@@ -4,8 +4,9 @@ import { applyChange, createColumn, createTable } from '@/features/editor/model/
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { emptyContent } from '@/features/editor/model/content-io'
 import { buildRelationship } from '@/features/editor/model/relationship'
-import { buildLayoutGraph, layoutTablePositions, orderFkColumns, positionNotes } from '@/features/editor/model/auto-layout'
+import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutTablePositions, orderFkColumns, positionNotes } from '@/features/editor/model/auto-layout'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
+import { relationshipSharedRoutes } from '@/features/editor/components/canvas/edge-route-table'
 
 function doc(): EditorDocument {
   return { model: emptyContent().model, diagram: emptyContent().diagram }
@@ -280,6 +281,88 @@ describe('auto-layout — 그룹 클러스터링 (v1.13)', () => {
     const graph = buildLayoutGraph(d)
     expect(graph.children?.map((c) => c.id)).toEqual(['A', 'B']) // 루트에 테이블이 직접
     expect(graph.layoutOptions).not.toHaveProperty('elk.hierarchyHandling')
+  })
+
+  it('그룹 안 멤버 간격도 배치 간격 옵션을 따른다 — 같은 그룹 최소 간격 ≥ nodeNode', async () => {
+    // 루트에만 spacing 옵션을 걸면 ELK가 컴파운드 자식에는 기본 간격(실측 110)을 써서
+    // 그룹 안 테이블이 붙어 배치되고 관계선 식별이 안 되는 회귀(v1.13 실사용 피드백) —
+    // 그룹 노드에도 옵션이 전파돼야 같은 그룹 간격이 nodeNode(140) 이상으로 벌어진다
+    let d = doc()
+    for (const id of ['P', 'L', 'C', 'R', 'ISLAND']) d = seedTable(d, id, 12)
+    d = seedRelation(d, 'P', 'L')
+    d = seedRelation(d, 'P', 'C')
+    d = seedRelation(d, 'P', 'R')
+    d = seedAreas(d, { id: 'G1', name: '회원', tableIds: ['P', 'L', 'C', 'R'] })
+
+    const positions = await layoutTablePositions(d)
+    const boxes = boxesOf(d, positions).filter((b) => b.id !== 'ISLAND')
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const [p, q] = [boxes[i], boxes[j]]
+        const dx = Math.max(p.x - (q.x + q.w), q.x - (p.x + p.w), 0)
+        const dy = Math.max(p.y - (q.y + q.h), q.y - (p.y + p.h), 0)
+        const gap = dx === 0 ? dy : dy === 0 ? dx : Math.hypot(dx, dy)
+        expect(gap, `${p.id}↔${q.id} 간격 ${Math.round(gap)}`).toBeGreaterThanOrEqual(DEFAULT_LAYOUT_SPACING.nodeNode)
+      }
+    }
+  })
+
+  it('그룹 클러스터 배치 위 라우팅 — 어떤 관계선도 양 끝이 아닌 테이블 뒤로 지나가지 않는다', async () => {
+    // 클러스터링이 간격 전제를 무너뜨리면 라우터 복도 AABB 밖 장애물을 그리드가 못 보고
+    // 선이 테이블 뒤로 숨는다(2026-09 실사용 회귀 — 실문서 유형 18테이블·18관계로 재현).
+    // 배치→라우팅 통합 불변식: 관계선은 양 끝 테이블이 아닌 어떤 테이블 내부도 지나지 않는다
+    const shapes: Array<[id: string, columns: number]> = [
+      ['mbr', 12], ['mbr_grade', 8], ['mbr_addr', 10], ['login_hist', 14],
+      ['prd', 16], ['prd_cat', 9], ['prd_img', 7], ['inv', 11],
+      ['ord', 15], ['ord_item', 12], ['pay', 10], ['dlv', 8],
+      ['rvw', 9], ['cart', 7], ['stc', 12], ['sup', 6], ['cnf', 5], ['bbs', 8],
+    ]
+    const links: Array<[parent: string, child: string]> = [
+      ['mbr', 'mbr_grade'], ['mbr', 'mbr_addr'], ['mbr', 'login_hist'],
+      ['prd_cat', 'prd'], ['prd', 'prd_img'], ['prd', 'inv'],
+      ['mbr', 'ord'], ['ord', 'ord_item'], ['prd', 'ord_item'], ['ord', 'pay'], ['ord', 'dlv'],
+      ['mbr', 'rvw'], ['prd', 'rvw'], ['mbr', 'cart'], ['prd', 'cart'],
+      ['sup', 'stc'], ['prd', 'stc'], ['mbr', 'bbs'],
+    ]
+    let d = doc()
+    for (const [id, columns] of shapes) d = seedTable(d, id, columns)
+    for (const [parent, child] of links) d = seedRelation(d, parent, child)
+    // g1: 내부 관계가 하나도 없는 그룹(관계선이 전부 복도 밖으로 나가는 형태) + g2: 잔여
+    d = seedAreas(
+      d,
+      { id: 'G1', name: '내부무관계', tableIds: ['mbr', 'prd', 'ord', 'stc', 'cnf'] },
+      { id: 'G2', name: '잔여', tableIds: ['mbr_grade', 'mbr_addr', 'login_hist', 'prd_cat', 'prd_img', 'inv', 'ord_item', 'pay', 'dlv', 'rvw', 'cart', 'sup', 'bbs'] },
+    )
+
+    const positions = await layoutTablePositions(d)
+    const boxes = boxesOf(d, positions)
+    const boxById = Object.fromEntries(boxes.map((b) => [b.id, { x: b.x, y: b.y, w: b.w, h: b.h }]))
+    const { routes } = relationshipSharedRoutes(
+      d,
+      'sig-cluster-regression',
+      d.model.tables,
+      d.model.relationships,
+      (id) => boxById[id] ?? null,
+    )
+    expect(routes.size).toBe(d.model.relationships.length)
+
+    const EPS = 0.5 // 경계 스침 허용 — 내부 관통만 실패
+    for (const relationship of d.model.relationships) {
+      const points = routes.get(relationship.id)!.points
+      expect(points.length).toBeGreaterThanOrEqual(2)
+      for (let k = 1; k < points.length; k += 1) {
+        const [p1, p2] = [points[k - 1]!, points[k]!]
+        expect(p1.x === p2.x || p1.y === p2.y, `관계 ${relationship.id} 선분이 직교가 아님`).toBe(true)
+        for (const box of boxes) {
+          if (box.id === relationship.parentTableId || box.id === relationship.childTableId) continue
+          const hit =
+            p1.y === p2.y
+              ? p1.y > box.y + EPS && p1.y < box.y + box.h - EPS && Math.max(p1.x, p2.x) > box.x + EPS && Math.min(p1.x, p2.x) < box.x + box.w - EPS
+              : p1.x > box.x + EPS && p1.x < box.x + box.w - EPS && Math.max(p1.y, p2.y) > box.y + EPS && Math.min(p1.y, p2.y) < box.y + box.h - EPS
+          expect(hit, `관계 ${relationship.id} 선분 (${p1.x},${p1.y})→(${p2.x},${p2.y})가 테이블 ${box.id} 뒤로 지나감`).toBe(false)
+        }
+      }
+    }
   })
 })
 

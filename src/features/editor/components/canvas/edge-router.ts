@@ -3,7 +3,8 @@
  *
  * 레인 그리드 탐색: 후보 x/y 레인(양 끝 앵커 + 각 박스 좌우·상하 여백)의 교차점을 노드로
  * 놓고 다익스트라로 직교 최단 경로(굽음 페널티 포함 — 덜 꺾이는 경로를 선호)를 찾는다.
- * 장애물은 복도 AABB(양 끝을 감싼 사각형 + 여백)와 겹치는 박스만 고려해 그리드를 작게 유지한다.
+ * 장애물은 복도 AABB(양 끝을 감싼 사각형 + 여백)와 겹치는 박스만 우선 고려해 그리드를 작게
+ * 유지하고, 완성 경로가 복도 밖 장애물을 관통하면 그 박스를 더해 다시 푼다(관통 검증 루프).
  * 경계를 스치는 선분은 허용(내부 관통만 차단)하고, 막다른 길이면 L자로 물러난다.
  */
 export interface RouterBox {
@@ -97,143 +98,164 @@ export function routeOrthogonal(
   margin = 24,
   avoid: UsedSegment[] = [],
 ): RouterPoint[] {
-  // 복도 AABB — 이 안과 겹치는 박스만 회피 대상. 그리드 크기를 노드 수와 무관하게 유지한다
+  // 복도 AABB — 이 안과 겹치는 박스만 우선 회피 대상으로 삼아 그리드 크기를 노드 수와
+  // 무관하게 유지한다. 단, 후보 레인은 포함된 박스의 경계에서 나오므로 경로가 복도 밖으로
+  // 샐 수 있고, 복도 밖 장애물은 그리드가 보지 못한다 — 레인이 다른 박스 경계에서 나와
+  // 복도 밖으로 내려간 선이 아무도 모르게 테이블을 관통해 뒤로 숨는다(2026-09-23 그룹
+  // 클러스터링 배치 실측: 양 끝 AABB 아래에 있던 테이블 두 장을 지나갔다). 완성 경로를
+  // **전체** 장애물로 검증해 걸린 박스를 회피 집합에 더하고 다시 푼다 — 회피 집합은
+  // 늘기만 하므로 유한 번(≤ 장애물 수)에 수렴하고, 걸리지 않는 경로는 1번으로 끝난다.
   const minX = Math.min(source.x, target.x)
   const maxX = Math.max(source.x, target.x)
   const minY = Math.min(source.y, target.y)
   const maxY = Math.max(source.y, target.y)
-  const boxes = obstacles.filter(
-    (box) =>
-      box.x < maxX + margin && box.x + box.w > minX - margin && box.y < maxY + margin && box.y + box.h > minY - margin,
-  )
+  const overlapsCorridor = (box: RouterBox) =>
+    box.x < maxX + margin && box.x + box.w > minX - margin && box.y < maxY + margin && box.y + box.h > minY - margin
 
-  // 레인 후보 — 양 끝 앵커 + 각 박스 바깥 여백(박스를 돌아가는 길을 연다)
-  const xsSet = new Set<number>([source.x, target.x])
-  const ysSet = new Set<number>([source.y, target.y])
-  for (const box of boxes) {
-    xsSet.add(box.x - margin)
-    xsSet.add(box.x + box.w + margin)
-    ysSet.add(box.y - margin)
-    ysSet.add(box.y + box.h + margin)
-  }
-  const xs = [...xsSet].sort((a, b) => a - b)
-  const ys = [...ysSet].sort((a, b) => a - b)
-  const si = xs.indexOf(source.x)
-  const sj = ys.indexOf(source.y)
-  const ti = xs.indexOf(target.x)
-  const tj = ys.indexOf(target.y)
-  if (si < 0 || sj < 0 || ti < 0 || tj < 0) return [source, target]
-
-  // 다익스트라 — 노드 (i,j), 방향(0=가로 이동 후 도착, 1=세로)까지 포함해 굽음 비용을 반영
-  const cols = xs.length
-  const rows = ys.length
-  const nodeKey = (i: number, j: number, dir: 0 | 1) => (j * cols + i) * 2 + dir
-  const size = cols * rows * 2
-  const dist = new Float64Array(size).fill(Infinity)
-  const prev = new Int32Array(size).fill(-1)
-  const visited = new Uint8Array(size)
-
-  const point = (i: number, j: number): RouterPoint => ({ x: xs[i], y: ys[j] })
-  /** (i,j)로 이동하는 선분이 장애물에 막히지 않는지 — 레인 배열에 캐시한다 */
-  const hClearCache = new Map<number, boolean>()
-  const hClear = (i: number, j: number) => {
-    const key = j * cols + i
-    let clear = hClearCache.get(key)
-    if (clear === undefined) {
-      clear = segmentClear(point(i, j), point(i + 1, j), boxes)
-      hClearCache.set(key, clear)
+  /** 회피 집합 boxes로 그리드 다익스트라를 돌린다 — complete=false는 막다른 길(L자 폴백) */
+  const solve = (boxes: RouterBox[]): { points: RouterPoint[]; complete: boolean } => {
+    // 레인 후보 — 양 끝 앵커 + 각 박스 바깥 여백(박스를 돌아가는 길을 연다)
+    const xsSet = new Set<number>([source.x, target.x])
+    const ysSet = new Set<number>([source.y, target.y])
+    for (const box of boxes) {
+      xsSet.add(box.x - margin)
+      xsSet.add(box.x + box.w + margin)
+      ysSet.add(box.y - margin)
+      ysSet.add(box.y + box.h + margin)
     }
-    return clear
-  }
-  const vClearCache = new Map<number, boolean>()
-  const vClear = (i: number, j: number) => {
-    const key = j * cols + i
-    let clear = vClearCache.get(key)
-    if (clear === undefined) {
-      clear = segmentClear(point(i, j), point(i, j + 1), boxes)
-      vClearCache.set(key, clear)
+    const xs = [...xsSet].sort((a, b) => a - b)
+    const ys = [...ysSet].sort((a, b) => a - b)
+    const si = xs.indexOf(source.x)
+    const sj = ys.indexOf(source.y)
+    const ti = xs.indexOf(target.x)
+    const tj = ys.indexOf(target.y)
+    if (si < 0 || sj < 0 || ti < 0 || tj < 0) return { points: [source, target], complete: true }
+
+    // 다익스트라 — 노드 (i,j), 방향(0=가로 이동 후 도착, 1=세로)까지 포함해 굽음 비용을 반영
+    const cols = xs.length
+    const rows = ys.length
+    const nodeKey = (i: number, j: number, dir: 0 | 1) => (j * cols + i) * 2 + dir
+    const size = cols * rows * 2
+    const dist = new Float64Array(size).fill(Infinity)
+    const prev = new Int32Array(size).fill(-1)
+    const visited = new Uint8Array(size)
+
+    const point = (i: number, j: number): RouterPoint => ({ x: xs[i], y: ys[j] })
+    /** (i,j)로 이동하는 선분이 장애물에 막히지 않는지 — 레인 배열에 캐시한다 */
+    const hClearCache = new Map<number, boolean>()
+    const hClear = (i: number, j: number) => {
+      const key = j * cols + i
+      let clear = hClearCache.get(key)
+      if (clear === undefined) {
+        clear = segmentClear(point(i, j), point(i + 1, j), boxes)
+        hClearCache.set(key, clear)
+      }
+      return clear
     }
-    return clear
-  }
+    const vClearCache = new Map<number, boolean>()
+    const vClear = (i: number, j: number) => {
+      const key = j * cols + i
+      let clear = vClearCache.get(key)
+      if (clear === undefined) {
+        clear = segmentClear(point(i, j), point(i, j + 1), boxes)
+        vClearCache.set(key, clear)
+      }
+      return clear
+    }
 
-  // 시작 — 방향 미정(=-1 취급): 첫 이동에는 굽음 페널티 없음
-  const startKey = nodeKey(si, sj, 0)
-  const startKeyAlt = nodeKey(si, sj, 1)
-  dist[startKey] = 0
-  dist[startKeyAlt] = 0
+    // 시작 — 방향 미정(=-1 취급): 첫 이동에는 굽음 페널티 없음
+    const startKey = nodeKey(si, sj, 0)
+    const startKeyAlt = nodeKey(si, sj, 1)
+    dist[startKey] = 0
+    dist[startKeyAlt] = 0
 
-  let reached: number | null = null
-  for (;;) {
-    // 미방문 최소 노드 — 그리드가 작아 선형 스캔으로 충분하다
-    let u = -1
-    let best = Infinity
-    for (let k = 0; k < size; k += 1) {
-      if (!visited[k] && dist[k] < best) {
-        best = dist[k]
-        u = k
+    let reached: number | null = null
+    for (;;) {
+      // 미방문 최소 노드 — 그리드가 작아 선형 스캔으로 충분하다
+      let u = -1
+      let best = Infinity
+      for (let k = 0; k < size; k += 1) {
+        if (!visited[k] && dist[k] < best) {
+          best = dist[k]
+          u = k
+        }
+      }
+      if (u < 0) break
+      if (best === Infinity) break
+      visited[u] = 1
+
+      const isTarget = u === nodeKey(ti, tj, 0) || u === nodeKey(ti, tj, 1)
+      if (isTarget) {
+        reached = u
+        break
+      }
+
+      const dir = (u % 2) as 0 | 1
+      const i = Math.floor(u / 2) % cols
+      const j = Math.floor(u / 2 / cols)
+
+      // 가로 이동(다음 방향 0) — 세로로 도착한 노드면 굽음. 다른 관계가 쓴 통로 위라면 회피 비용
+      for (const [ni, ok] of [
+        [i - 1, i > 0 && hClear(i - 1, j)],
+        [i + 1, i + 1 < cols && hClear(i, j)],
+      ] as const) {
+        if (!ok) continue
+        let cost = Math.abs(xs[ni] - xs[i]) + (dir === 1 ? BEND_PENALTY : 0)
+        if (avoid.length > 0 && overlapsUsed('h', ys[j], Math.min(xs[ni], xs[i]), Math.max(xs[ni], xs[i]), avoid))
+          cost += CORRIDOR_AVOID_PENALTY
+        const v = nodeKey(ni, j, 0)
+        if (dist[u] + cost < dist[v]) {
+          dist[v] = dist[u] + cost
+          prev[v] = u
+        }
+      }
+      // 세로 이동(다음 방향 1)
+      for (const [nj, ok] of [
+        [j - 1, j > 0 && vClear(i, j - 1)],
+        [j + 1, j + 1 < rows && vClear(i, j)],
+      ] as const) {
+        if (!ok) continue
+        let cost = Math.abs(ys[nj] - ys[j]) + (dir === 0 ? BEND_PENALTY : 0)
+        if (avoid.length > 0 && overlapsUsed('v', xs[i], Math.min(ys[nj], ys[j]), Math.max(ys[nj], ys[j]), avoid))
+          cost += CORRIDOR_AVOID_PENALTY
+        const v = nodeKey(i, nj, 1)
+        if (dist[u] + cost < dist[v]) {
+          dist[v] = dist[u] + cost
+          prev[v] = u
+        }
       }
     }
-    if (u < 0) break
-    if (best === Infinity) break
-    visited[u] = 1
 
-    const isTarget = u === nodeKey(ti, tj, 0) || u === nodeKey(ti, tj, 1)
-    if (isTarget) {
-      reached = u
-      break
+    // 막다른 길 — L자로 물러간다(장애물 관통 가능. 완전히 갇힌 배치는 드물다)
+    if (reached === null) {
+      return { points: [source, { x: target.x, y: source.y }, target], complete: false }
     }
 
-    const dir = (u % 2) as 0 | 1
-    const i = Math.floor(u / 2) % cols
-    const j = Math.floor(u / 2 / cols)
-
-    // 가로 이동(다음 방향 0) — 세로로 도착한 노드면 굽음. 다른 관계가 쓴 통로 위라면 회피 비용
-    for (const [ni, ok] of [
-      [i - 1, i > 0 && hClear(i - 1, j)],
-      [i + 1, i + 1 < cols && hClear(i, j)],
-    ] as const) {
-      if (!ok) continue
-      let cost = Math.abs(xs[ni] - xs[i]) + (dir === 1 ? BEND_PENALTY : 0)
-      if (avoid.length > 0 && overlapsUsed('h', ys[j], Math.min(xs[ni], xs[i]), Math.max(xs[ni], xs[i]), avoid))
-        cost += CORRIDOR_AVOID_PENALTY
-      const v = nodeKey(ni, j, 0)
-      if (dist[u] + cost < dist[v]) {
-        dist[v] = dist[u] + cost
-        prev[v] = u
-      }
+    // 역추적 → waypoint (레인 교차점) → 시작·끝 앵커 확정
+    const reversed: RouterPoint[] = []
+    for (let k = reached; k >= 0; k = prev[k]) {
+      const i = Math.floor(k / 2) % cols
+      const j = Math.floor(k / 2 / cols)
+      reversed.push(point(i, j))
     }
-    // 세로 이동(다음 방향 1)
-    for (const [nj, ok] of [
-      [j - 1, j > 0 && vClear(i, j - 1)],
-      [j + 1, j + 1 < rows && vClear(i, j)],
-    ] as const) {
-      if (!ok) continue
-      let cost = Math.abs(ys[nj] - ys[j]) + (dir === 0 ? BEND_PENALTY : 0)
-      if (avoid.length > 0 && overlapsUsed('v', xs[i], Math.min(ys[nj], ys[j]), Math.max(ys[nj], ys[j]), avoid))
-        cost += CORRIDOR_AVOID_PENALTY
-      const v = nodeKey(i, nj, 1)
-      if (dist[u] + cost < dist[v]) {
-        dist[v] = dist[u] + cost
-        prev[v] = u
-      }
-    }
+    reversed.reverse()
+    return { points: collapseCollinear([source, ...reversed.slice(1), target]), complete: true }
   }
 
-  // 막다른 길 — L자로 물러간다(장애물 관통 가능. 완전히 갇힌 배치는 드물다)
-  if (reached === null) {
-    return [source, { x: target.x, y: source.y }, target]
+  let active = obstacles.filter(overlapsCorridor)
+  for (let round = 0; round < 8; round += 1) {
+    const { points, complete } = solve(active)
+    // L자 폴백 — 회피 집합을 늘려도 뚫리지 않으니 그대로 반환한다
+    if (!complete) return points
+    const hidden = obstacles.filter(
+      (box) =>
+        !active.includes(box) &&
+        points.some((p, i) => i > 0 && segmentHitsBox(points[i - 1], p, box)),
+    )
+    if (hidden.length === 0) return points
+    active = [...active, ...hidden]
   }
-
-  // 역추적 → waypoint (레인 교차점) → 시작·끝 앵커 확정
-  const reversed: RouterPoint[] = []
-  for (let k = reached; k >= 0; k = prev[k]) {
-    const i = Math.floor(k / 2) % cols
-    const j = Math.floor(k / 2 / cols)
-    reversed.push(point(i, j))
-  }
-  reversed.reverse()
-  const points = [source, ...reversed.slice(1), target]
-  return collapseCollinear(points)
+  return solve(obstacles).points
 }
 
 /** 같은 직선상의 점 제거 — 시작·끝은 유지 */
