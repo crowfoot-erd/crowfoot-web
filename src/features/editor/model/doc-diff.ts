@@ -9,13 +9,14 @@
  * · 매칭은 객체 id 기준 — 두 문서는 같은 계보(하나의 문서의 두 시점)라 id가 안정적이다.
  * · defaultValue는 ''≡null로 정규화해 비교한다(sync-merge 규칙과 동일 — 드리프트 방지).
  * · model 항목(table·column·primaryKey·uniqueKey·index·relationship)이 하나라도 있으면
- *   layoutOnly=false, diagram만(note·node·viewport) 바뀌었으면 layoutOnly=true.
+ *   layoutOnly=false, diagram만(note·node·area·viewport) 바뀌었으면 layoutOnly=true.
  * · 항목은 50개 상한 — 넘치면 자르고 truncated=true(서버 상한 64KB의 실질 방어선).
  * · detail은 언어 중립(필드명·물리명·개수)로만 채운다 — 요약은 서버에 저장되고
  *   렌더는 클라이언트 i18n이 맡으므로 한국어 문장을 심지 않는다(sync-merge과 다른 점).
  */
 import type {
   EditorDocument,
+  ErdArea,
   ErdColumn,
   ErdNote,
   ErdRelationship,
@@ -30,6 +31,7 @@ export type DocDiffKind =
   | 'index'
   | 'relationship'
   | 'note'
+  | 'area'
   | 'node'
 export type DocDiffAction = 'add' | 'update' | 'remove' | 'move'
 
@@ -47,7 +49,7 @@ export interface DocDiffItem {
 
 export interface DocumentDiffSummary {
   items: DocDiffItem[]
-  /** model 변경 없이 diagram(노트·레이아웃·뷰포트)만 바뀐 저장 */
+  /** model 변경 없이 diagram(노트·영역·레이아웃·뷰포트)만 바뀐 저장 */
   layoutOnly: boolean
   /** 항목 상한(50) 초과로 잘렸는가 */
   truncated: boolean
@@ -64,7 +66,7 @@ export function diffItemDisplayName(item: { kind: string; table: string; name: s
 /** 항목 상한 — 넉넉한 하루치 편집도 요약 목록에 다 들어가고 64KB 서버 상한에도 여유 */
 export const DOC_DIFF_ITEM_LIMIT = 50
 
-const DIAGRAM_KINDS: ReadonlySet<DocDiffKind> = new Set(['note', 'node'])
+const DIAGRAM_KINDS: ReadonlySet<DocDiffKind> = new Set(['note', 'area', 'node'])
 
 /** defaultValue 비교 정규화 — 빈 문자열과 null을 같은 취급 (sync-merge과 동일) */
 const normDefault = (v: string | null): string | null => (v == null || v === '' ? null : v)
@@ -270,6 +272,33 @@ function diffNotes(from: ErdNote[], to: ErdNote[], items: DocDiffItem[]): void {
   }
 }
 
+/** 주제 영역 차분 — 내용(이름·설명·색·접힘·멤버)은 update, 위치·크기는 move (노트와 동형) */
+function diffAreas(from: ErdArea[], to: ErdArea[], items: DocDiffItem[]): void {
+  const toById = new Map(to.map((a) => [a.id, a]))
+  for (const prev of from) {
+    const next = toById.get(prev.id)
+    if (!next) {
+      items.push({ kind: 'area', action: 'remove', table: '', name: prev.name, detail: '' })
+      continue
+    }
+    const contentFields = ['name', 'description', 'color', 'collapsed', 'tableIds'] as const
+    const changedContent = contentFields.filter((f) => prev[f] !== next[f])
+    if (changedContent.length > 0) {
+      items.push({ kind: 'area', action: 'update', table: '', name: next.name, detail: changedContent.join(', ') })
+    }
+    const moveFields = (['x', 'y', 'width', 'height'] as const).filter((f) => prev[f] !== next[f])
+    if (moveFields.length > 0) {
+      items.push({ kind: 'area', action: 'move', table: '', name: next.name, detail: moveFields.join(', ') })
+    }
+  }
+  const fromIds = new Set(from.map((a) => a.id))
+  for (const next of to) {
+    if (!fromIds.has(next.id)) {
+      items.push({ kind: 'area', action: 'add', table: '', name: next.name, detail: `tables ${next.tableIds.length}` })
+    }
+  }
+}
+
 /** 노드 레이아웃 차분 — 같은 테이블의 위치(x,y)=move, 폭·색=update. 신규/소멸 노드는 테이블 항목이 대신한다 */
 function diffNodes(from: EditorDocument, to: EditorDocument, items: DocDiffItem[]): void {
   const physOf = (tableId: string): string =>
@@ -322,6 +351,7 @@ export function diffDocuments(
 
   diffRelationships(from, to, items)
   diffNotes(from.diagram.notes, to.diagram.notes, items)
+  diffAreas(from.diagram.areas, to.diagram.areas, items)
   diffNodes(from, to, items)
 
   const viewportChanged =

@@ -599,7 +599,11 @@
         "image": "Export image",
         "crown": "Export document file",
         "share": "Share",
-        "history": "Version history"
+        "history": "Version history",
+        "areaFilter": {
+          "label": "Subject area",
+          "all": "Show all"
+        }
       },
       "explorer": {
         "title": "Model Explorer",
@@ -612,7 +616,8 @@
         "noResults": "No matching objects",
         "emptyDocument": "Document is empty",
         "matchCount": "{{count}} match(es)",
-        "untitledNote": "Untitled note"
+        "untitledNote": "Untitled note",
+        "areaFilter": "Filter by subject area"
       },
       "clipboard": {
         "copyLabel": "copy"
@@ -761,7 +766,8 @@
           "index": "Index",
           "relationship": "Relationship",
           "note": "Note",
-          "node": "Node"
+          "node": "Node",
+          "area": "Area"
         },
         "action": {
           "add": "added",
@@ -796,7 +802,10 @@
         "removeTable": "Delete table",
         "removeNote": "Delete note",
         "editRelationship": "Edit relationship",
-        "removeRelationship": "Delete relationship"
+        "removeRelationship": "Delete relationship",
+        "createArea": "Add area",
+        "areaInfo": "Edit area",
+        "removeArea": "Delete area"
       },
       "table": {
         "addColumn": "Add column",
@@ -986,6 +995,24 @@
         "loading": "Generating migration DDL…",
         "error": "Failed to generate migration DDL",
         "button": "Migration DDL"
+      },
+      "area": {
+        "defaultName": "Area",
+        "expand": "Expand area",
+        "collapse": "Collapse area",
+        "edit": "Edit area",
+        "memberCount": "Member tables"
+      },
+      "areaDialog": {
+        "title": "Edit subject area",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "description": "Description",
+        "descriptionPlaceholder": "Purpose of this area (optional)",
+        "color": "Color",
+        "tables": "Member tables",
+        "tablesHint": "Check to include in this area",
+        "noTables": "No tables in this document"
       }
     },
     "import": {

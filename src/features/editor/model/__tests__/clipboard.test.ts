@@ -52,6 +52,7 @@ function fixtureDoc(): EditorDocument {
         [orders.id]: { x: 500, y: 50, width: null, color: 'default' },
       },
       notes: [{ id: 'note-1', x: 0, y: 400, width: 200, text: '내용', title: '정책', color: 'yellow', linkedTableId: users.id }],
+      areas: [],
       viewport: null,
     },
   }
@@ -90,6 +91,35 @@ describe('copyToClipboard', () => {
     const doc = fixtureDoc()
     expect(copyToClipboard(doc, [])).toBe(false)
     expect(copyToClipboard(doc, ['rel-1'])).toBe(false) // 관계만으로는 복사 불가
+  })
+
+  it('주제 영역 id를 선택에 넣어도 복사 대상이 아니다 — 붙여넣기에 영역·소속은 늘지 않는다', () => {
+    const doc = fixtureDoc()
+    doc.diagram.areas = [
+      {
+        id: 'area-1',
+        name: '회원 도메인',
+        description: '',
+        x: 0,
+        y: 0,
+        width: 800,
+        height: 560,
+        collapsed: false,
+        color: 'default',
+        tableIds: [doc.model.tables[0].id],
+      },
+    ]
+    const [users, orders] = doc.model.tables
+
+    // 전체 선택(Ctrl+A가 영역 id를 포함한다)으로 복사해도
+    expect(copyToClipboard(doc, [users.id, orders.id, 'note-1', 'area-1'])).toBe(true)
+    const pasted = pasteAll(doc)
+    // 붙여넣기 후 영역은 1개 그대로 — 복제되지 않고 멤버 소속도 이어받지 않는다
+    expect(pasted.doc.diagram.areas).toHaveLength(1)
+    expect(pasted.doc.diagram.areas[0].tableIds).toEqual([users.id])
+
+    // 영역만 선택했을 때는 복사 가능한 객체가 없다
+    expect(copyToClipboard(doc, ['area-1'])).toBe(false)
   })
 })
 

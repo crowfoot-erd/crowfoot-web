@@ -6,11 +6,11 @@
  */
 import { ReactFlowProvider } from '@xyflow/react'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ModelExplorerPanel } from '@/features/editor/components/ModelExplorerPanel'
-import { createColumn, createTable } from '@/features/editor/model/changes'
-import type { EditorDocument } from '@/features/editor/model/content-schema'
+import { createArea, createColumn, createTable } from '@/features/editor/model/changes'
+import type { ErdArea, EditorDocument } from '@/features/editor/model/content-schema'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { renderWithProviders, resetSessionState } from '@/test/test-app'
 
@@ -59,6 +59,7 @@ function fixtureDoc(): EditorDocument {
         [settings.id]: { x: 400, y: 0, width: null, color: 'default' },
       },
       notes: [{ id: 'note-1', x: 0, y: 400, width: 200, text: '내용', title: '정책', color: 'yellow', linkedTableId: null }],
+      areas: [],
       viewport: null,
     },
   }
@@ -72,7 +73,7 @@ function hydrate(doc: EditorDocument = fixtureDoc()) {
 function renderPanel(nameDisplay: 'logical' | 'physical' | 'both' = 'both', open = true) {
   return renderWithProviders(
     <ReactFlowProvider>
-      <ModelExplorerPanel open={open} focusSearchSignal={0} nameDisplay={nameDisplay} />
+      <ModelExplorerPanel open={open} focusSearchSignal={0} nameDisplay={nameDisplay} activeAreaId={null} onActiveAreaChange={() => {}} />
     </ReactFlowProvider>,
     { wrapRoutes: false },
   )
@@ -142,7 +143,7 @@ describe('ModelExplorerPanel — 트리 렌더', () => {
   })
 
   it('빈 문서면 안내 문구', () => {
-    hydrate({ model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], viewport: null } })
+    hydrate({ model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], viewport: null } })
     renderPanel()
     expect(screen.getByText('문서가 비어 있습니다')).toBeInTheDocument()
   })
@@ -239,14 +240,14 @@ describe('ModelExplorerPanel — 검색', () => {
     hydrate()
     const { rerender } = render(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="both" />
+        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="both" activeAreaId={null} onActiveAreaChange={() => {}} />
       </ReactFlowProvider>,
     )
     expect(document.activeElement).not.toBe(screen.getByLabelText('객체 검색'))
 
     rerender(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={1} nameDisplay="both" />
+        <ModelExplorerPanel open focusSearchSignal={1} nameDisplay="both" activeAreaId={null} onActiveAreaChange={() => {}} />
       </ReactFlowProvider>,
     )
     expect(document.activeElement).toBe(screen.getByLabelText('객체 검색'))
@@ -264,11 +265,85 @@ describe('ModelExplorerPanel — nameMode 정합', () => {
 
     rerender(
       <ReactFlowProvider>
-        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="physical" />
+        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="physical" activeAreaId={null} onActiveAreaChange={() => {}} />
       </ReactFlowProvider>,
     )
     row = tableRow(doc.model.tables[0].id)
     expect(row.textContent).toContain('users')
     expect(row.textContent).not.toContain('회원')
+  })
+})
+
+describe('ModelExplorerPanel — 주제 영역 필터 (v1.13)', () => {
+  /** 회원 도메인 영역 1개 — memberIds는 시딩될 문서의 테이블 id에서 뽑는다(랜덤 id 주의) */
+  function hydrateWithArea(init: Partial<ErdArea> = {}, members: 'first' | 'all' = 'first') {
+    const doc = fixtureDoc()
+    doc.diagram.areas = [
+      createArea('회원 도메인', {
+        id: 'area-1',
+        tableIds: members === 'all' ? doc.model.tables.map((table) => table.id) : [doc.model.tables[0].id],
+        ...init,
+      }),
+    ]
+    hydrate(doc)
+    return doc
+  }
+
+  function renderPanelWithArea(activeAreaId: string | null, onActiveAreaChange: (id: string | null) => void = () => {}) {
+    return renderWithProviders(
+      <ReactFlowProvider>
+        <ModelExplorerPanel open focusSearchSignal={0} nameDisplay="both" activeAreaId={activeAreaId} onActiveAreaChange={onActiveAreaChange} />
+      </ReactFlowProvider>,
+      { wrapRoutes: false },
+    )
+  }
+
+  it('영역이 없으면 칩이 나오지 않는다', () => {
+    hydrate()
+    renderPanelWithArea(null)
+    expect(screen.queryByTestId('explorer-area-chip-all')).not.toBeInTheDocument()
+  })
+
+  it('칩 필터 — 그 영역 멤버만 목록에 남는다, 관계는 양끽 모두 영역 안일 때만', () => {
+    const doc = hydrateWithArea() // members: users
+    renderPanelWithArea('area-1')
+
+    expect(tableRow(doc.model.tables[0].id)).toBeInTheDocument() // users
+    expect(document.getElementById(`explorer-table-${doc.model.tables[1].id}`)).not.toBeInTheDocument() // user_settings
+    // 관계는 한쪽끝(user_settings)이 영역 밖 — 목록에서 빠진다
+    expect(document.getElementById('explorer-rel-rel-1')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^관계/ })).toHaveTextContent('(0)')
+    // 메모는 영역 밖 객체라 칩 필터의 대상이 아니다
+    expect(screen.getByRole('button', { name: /^메모/ })).toHaveTextContent('(1)')
+
+    // 칩 상태 — 활성 칩은 눌림 표시
+    expect(screen.getByTestId('explorer-area-chip-all')).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('explorer-area-chip-area-1')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('칩 재클릭·전체 칩은 해제(null)를 요청한다', () => {
+    hydrateWithArea()
+    const onActiveAreaChange = vi.fn()
+    renderPanelWithArea('area-1', onActiveAreaChange)
+
+    fireEvent.click(screen.getByTestId('explorer-area-chip-area-1'))
+    expect(onActiveAreaChange).toHaveBeenCalledWith(null)
+    fireEvent.click(screen.getByTestId('explorer-area-chip-all'))
+    expect(onActiveAreaChange).toHaveBeenLastCalledWith(null)
+  })
+
+  it('접힌 영역 멤버는 흐리게 남는다 — 클릭하면 영역을 펼친 뒤 선택한다', () => {
+    const doc = hydrateWithArea({ collapsed: true }, 'all')
+    renderPanelWithArea(null)
+
+    // 두 멤버 모두 목록에 있되 흐리다(접힌 영역 = 캔버스에서 숨겨진 테이블)
+    expect(hasClass(tableRow(doc.model.tables[0].id), 'opacity-50')).toBe(true)
+    expect(hasClass(tableRow(doc.model.tables[1].id), 'opacity-50')).toBe(true)
+
+    fireEvent.click(tableRow(doc.model.tables[0].id))
+    const state = useEditorStore.getState()
+    expect(state.present.diagram.areas[0].collapsed).toBe(false) // 펼침 area/patch 1커밋
+    expect(state.selectedIds).toEqual([doc.model.tables[0].id])
+    expect(state.past).toHaveLength(1)
   })
 })

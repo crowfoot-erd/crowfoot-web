@@ -44,7 +44,8 @@ import {
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
-import { createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
+import { uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
+import { createArea, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
 import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
 import { DEFAULT_CHILD_MULTIPLICITY, type ErdColumn } from '@/features/editor/model/content-schema'
@@ -63,6 +64,8 @@ import {
   type PendingRelation,
   type RelationHandleId,
 } from './canvas/editor-context'
+import { AreaDialog } from './AreaDialog'
+import { AreaNode, type AreaNodeType } from './canvas/AreaNode'
 import { ColumnInfoDialog } from './ColumnInfoDialog'
 import { KeyInfoDialog, type KeyInfoSubmit } from './KeyInfoDialog'
 import { NoteNode, type NoteNodeType } from './canvas/NoteNode'
@@ -74,13 +77,13 @@ import { tableColorHex } from './canvas/table-skin'
 import { RelationshipDialog } from './RelationshipDialog'
 import { TableInfoDialog } from './TableInfoDialog'
 
-type AppNode = TableNodeType | NoteNodeType
+type AppNode = TableNodeType | NoteNodeType | AreaNodeType
 type AppEdge = RelationshipEdgeType
 
 /** 노드 data는 비우고 공유 상수로 — 참조 안정이 노드 memo의 핵심 (editor-context 참조) */
 const EMPTY_NODE_DATA = {} as Record<string, never>
 
-const nodeTypes: NodeTypes = { table: TableNode, note: NoteNode }
+const nodeTypes: NodeTypes = { table: TableNode, note: NoteNode, area: AreaNode }
 const edgeTypes: EdgeTypes = { relationship: RelationshipEdge }
 
 /** 신규 테이블 기본 물리명 — 문서 내 고유 (physicalName min(1) 계약) */
@@ -105,11 +108,16 @@ function TableColorMiniMap(props: MiniMapProps) {
   const colorSignature = useEditorStore((s) =>
     Object.entries(s.present.diagram.nodes)
       .map(([id, layout]) => `${id}:${layout.color}`)
+      .concat(s.present.diagram.areas.map((a) => `${a.id}:${a.color}`))
       .join(';'),
   )
   const nodeColor = useCallback<MiniMapNodeColorFn>(
     (node) => {
-      const layout = useEditorStore.getState().present.diagram.nodes[node.id]
+      const state = useEditorStore.getState().present
+      // 주제 영역 박스도 같은 프리셋 색으로 — 미니맵에서 묶음이 색으로 읽힌다
+      const area = state.diagram.areas.find((a) => a.id === node.id)
+      if (area) return tableColorHex(area.color) ?? ''
+      const layout = state.diagram.nodes[node.id]
       // 기본(무색)은 빈 문자열 — RF가 클래스 기본색으로 폴백한다
       return tableColorHex(layout?.color ?? 'default') ?? ''
     },
@@ -120,18 +128,35 @@ function TableColorMiniMap(props: MiniMapProps) {
 
 /* ---------- 스토어 문서 → 표시 레이어 (마운트 초기 상태·빌드 이펙트 공용) ---------- */
 
-/** 노드 data는 비우고 공유 상수로 — 참조 안정이 노드 memo의 핵심 (editor-context 참조) */
-function buildNodes(doc: EditorDocument, selectedIds: Set<string>): AppNode[] {
-  const tableNodes: AppNode[] = doc.model.tables.map((table) => ({
-    id: table.id,
-    type: 'table',
-    position: {
-      x: doc.diagram.nodes[table.id]?.x ?? 0,
-      y: doc.diagram.nodes[table.id]?.y ?? 0,
-    },
-    data: EMPTY_NODE_DATA,
-    selected: selectedIds.has(table.id),
-  }))
+/** 노드 data는 비우고 공유 상수로 — 참조 안정이 노드 memo의 핵심 (editor-context 참조).
+ *  주제 영역은 배열 선두(zIndex 0) — 같은 z면 DOM 순서가 우선하므로 배경이 되고,
+ *  테이블·메모가 그 위에 뜬다. 영역 필터(activeAreaId)가 켜지면 다른 영역 박스도 접는다 —
+ *  멤버만 빠진 빈 박스가 화면에 떠 있는 것보다 집중 뷰가 깨끗하다.
+ *  접힌 영역의 멤버는 hiddenTableIds로 숨긴다(표시 집합 = 영역 필터 ∩ 접힘 제외 — 식 하나). */
+function buildNodes(doc: EditorDocument, selectedIds: Set<string>, activeAreaId: string | null): AppNode[] {
+  const visible = visibleTableIds(doc, activeAreaId)
+  const areaNodes: AppNode[] = (activeAreaId ? doc.diagram.areas.filter((a) => a.id === activeAreaId) : doc.diagram.areas).map(
+    (area) => ({
+      id: area.id,
+      type: 'area',
+      position: { x: area.x, y: area.y },
+      data: EMPTY_NODE_DATA,
+      selected: selectedIds.has(area.id),
+      zIndex: 0,
+    }),
+  )
+  const tableNodes: AppNode[] = doc.model.tables
+    .filter((table) => visible.has(table.id))
+    .map((table) => ({
+      id: table.id,
+      type: 'table',
+      position: {
+        x: doc.diagram.nodes[table.id]?.x ?? 0,
+        y: doc.diagram.nodes[table.id]?.y ?? 0,
+      },
+      data: EMPTY_NODE_DATA,
+      selected: selectedIds.has(table.id),
+    }))
   const noteNodes: AppNode[] = doc.diagram.notes.map((note) => ({
     id: note.id,
     type: 'note',
@@ -139,15 +164,20 @@ function buildNodes(doc: EditorDocument, selectedIds: Set<string>): AppNode[] {
     data: EMPTY_NODE_DATA,
     selected: selectedIds.has(note.id),
   }))
-  return tableNodes.concat(noteNodes)
+  return areaNodes.concat(tableNodes, noteNodes)
 }
 
 function buildEdges(
   doc: EditorDocument,
   sizeReports: Record<string, { w: number; h: number }>,
   selectedIds: Set<string>,
+  visible: Set<string>,
 ): AppEdge[] {
-  return doc.model.relationships.map((rel) => {
+  // 양 끝 테이블이 모두 보일 때만 선을 그린다 — 한쪽이 숨겨진(접힘·영역 밖) 관계는 끊어진 것처럼 보이면 안 된다
+  const shown = doc.model.relationships.filter(
+    (rel) => visible.has(rel.childTableId) && visible.has(rel.parentTableId),
+  )
+  return shown.map((rel) => {
     const childTable = doc.model.tables.find((t) => t.id === rel.childTableId)
     const parentTable = doc.model.tables.find((t) => t.id === rel.parentTableId)
     const childPos = doc.diagram.nodes[rel.childTableId] ?? { x: 0, y: 0, width: null }
@@ -275,9 +305,11 @@ export interface ErdCanvasProps {
   columnDisplay: ColumnDisplayMode
   /** 문서 식별자 — 마지막 화면(줌·팬)을 브라우저에 기억하는 키 */
   modelId: string | null
+  /** 보기 필터로 선택된 주제 영역 — null이면 전체. 뷰 상태라 undo 대상이 아니다(EditorShell 소유) */
+  activeAreaId: string | null
 }
 
-export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId }: ErdCanvasProps) {
+export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId, activeAreaId }: ErdCanvasProps) {
   const { t } = useTranslation()
   const present = useEditorStore((s) => s.present)
   const commit = useEditorStore((s) => s.commit)
@@ -289,7 +321,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
   if (initialRef.current === null) {
     const doc = useEditorStore.getState().present
     const selected = new Set(useEditorStore.getState().selectedIds)
-    initialRef.current = { nodes: buildNodes(doc, selected), edges: buildEdges(doc, {}, selected) }
+    initialRef.current = { nodes: buildNodes(doc, selected, null), edges: buildEdges(doc, {}, selected, visibleTableIds(doc, null)) }
   }
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialRef.current.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>(initialRef.current.edges)
@@ -315,6 +347,8 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
     | { mode: 'edit'; relationshipId: string }
     | null
   >(null)
+  /** 주제 영역 편집 다이얼로그 대상 — 헤더 설정 버튼·컨텍스트 메뉴로 연다 */
+  const [areaEditId, setAreaEditId] = useState<string | null>(null)
 
   /* ---------- 노드 크기 보고 — 콘텐츠 자동 폭·높이가 커지면 이웃 겹침을 해소한다 ---------- */
 
@@ -430,15 +464,15 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
   useEffect(() => {
     if (draggingRef.current) return
     setNodes((current) => {
-      const next = buildNodes(present, selectedSet)
+      const next = buildNodes(present, selectedSet, activeAreaId)
       // 값이 같으면 기존 배열 반환 — RF 노드 memo(객체 identity)가 살아있게
       return nodesEqual(current, next) ? current : next
     })
     setEdges((current) => {
-      const next = buildEdges(present, sizeReports, selectedSet)
+      const next = buildEdges(present, sizeReports, selectedSet, visibleTableIds(present, activeAreaId))
       return edgesEqual(current, next) ? current : next
     })
-  }, [present, sizeReports, selectedSet, setNodes, setEdges])
+  }, [present, sizeReports, selectedSet, activeAreaId, setNodes, setEdges])
 
   /* ---------- 초기 뷰: 브라우저에 기억한 마지막 화면 > 저장된 뷰포인트 > 전체 맞춤 ---------- */
 
@@ -482,13 +516,16 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
     [onEdgesChange],
   )
 
-  /** 삭제 키 — 테이블은 관계·FK cascade가 applyChange에서, 메모/관계는 자기 삭제 */
+  /** 삭제 키 — 테이블은 관계·FK cascade가 applyChange에서, 메모/영역/관계는 자기 삭제.
+   *  영역 삭제는 묶음 표시만 사라진다(area/remove는 멤버 테이블을 건드리지 않는다) */
   const handleNodesDelete = useCallback(
     (deleted: AppNode[]) => {
       const changes: ErdChange[] = deleted.map((node) =>
         node.type === 'note'
           ? { type: 'note/remove', noteId: node.id }
-          : { type: 'table/remove', tableId: node.id },
+          : node.type === 'area'
+            ? { type: 'area/remove', areaId: node.id }
+            : { type: 'table/remove', tableId: node.id },
       )
       commitAll(changes)
     },
@@ -514,6 +551,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
       const state = useEditorStore.getState()
       const positions: Record<string, { x: number; y: number }> = {}
       const noteChanges: ErdChange[] = []
+      const areaChanges: ErdChange[] = []
       /** 연관 지정 드롭 판정용 테이블 박스 — 드래그가 끝난 시점이라 스토어 좌표가 곧 화면 좌표다 */
       const dropBoxes =
         draggedNodes.some((n) => n.type === 'note') && draggedNodes.length === 1
@@ -563,6 +601,22 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
               patch: { x: node.position.x, y: node.position.y },
             })
           }
+        } else if (node.type === 'area') {
+          // 영역 이동 — 멤버 테이블을 델타만큼 동반 이동해 같은 커밋(undo 1스택)에 묶는다.
+          // 함께 선택돼 직접 드래그된 멤버는 자기 좌표가 우선(아래 table 분기가 덮어쓴다).
+          const area = state.present.diagram.areas.find((a) => a.id === node.id)
+          if (!area) continue
+          if (area.x !== node.position.x || area.y !== node.position.y) {
+            areaChanges.push({ type: 'area/patch', areaId: node.id, patch: { x: node.position.x, y: node.position.y } })
+          }
+          const dx = node.position.x - area.x
+          const dy = node.position.y - area.y
+          for (const memberId of area.tableIds) {
+            if (positions[memberId]) continue
+            const layout = state.present.diagram.nodes[memberId]
+            if (!layout) continue
+            positions[memberId] = { x: layout.x + dx, y: layout.y + dy }
+          }
         } else {
           const layout = state.present.diagram.nodes[node.id]
           if (layout && (layout.x !== node.position.x || layout.y !== node.position.y)) {
@@ -570,7 +624,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
           }
         }
       }
-      const changes = [...noteChanges]
+      const changes = [...noteChanges, ...areaChanges]
       if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
 
       /* 메모 겹침 해소 — 드래그한 메모는 놓인 자리에서, 드래그한 테이블이 덮친 메모는 밀려난다.
@@ -616,7 +670,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
           else noteChanges.push({ type: 'note/patch', noteId: note.id, patch: { x: free.x, y: free.y } })
         }
         changes.length = 0
-        changes.push(...noteChanges)
+        changes.push(...noteChanges, ...areaChanges)
         if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
       }
 
@@ -814,6 +868,19 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
           })
           return
         }
+        case 'createArea': {
+          // 클릭 지점 좌상단에 기본 크기 박스로 생성 — 멤버는 편집 다이얼로그·영역 필터로 붙인다
+          const doc = useEditorStore.getState().present
+          const name = uniqueAreaName(doc, t('model.editor.area.defaultName'))
+          commit({ type: 'area/create', area: createArea(name, { x: action.position.x, y: action.position.y }) })
+          return
+        }
+        case 'areaInfo':
+          setAreaEditId(action.areaId)
+          return
+        case 'removeArea':
+          commit({ type: 'area/remove', areaId: action.areaId })
+          return
         case 'tableInfo':
           setInfoTableId(action.tableId)
           return
@@ -830,7 +897,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
           commit({ type: 'relationship/remove', relationshipId: action.relationshipId })
       }
     },
-    [commit],
+    [commit, t],
   )
 
   /* ---------- 다이얼로그 재료 ---------- */
@@ -963,9 +1030,33 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
     [canEdit],
   )
 
+  /** 영역 편집 다이얼로그 대상 — 색·멤버 체크가 즉시 커밋이라 present에서 실시간으로 읽는다 */
+  const areaEdit = useMemo(
+    () => (areaEditId ? (present.diagram.areas.find((a) => a.id === areaEditId) ?? null) : null),
+    [areaEditId, present.diagram.areas],
+  )
+
+  /** 멤버 체크 목록 재료 — 표시 이름은 익스플로러 Names와 같은 규칙(물리 우선 + 논리 묵게) */
+  const areaEditTables = useMemo(
+    () =>
+      present.model.tables.map((table) => ({
+        id: table.id,
+        physical: table.physicalName,
+        logical: table.logicalName,
+      })),
+    [present.model.tables],
+  )
+
   const openKeyInfo = useCallback(
     (tableId: string, keyId: string | null, kind: KeyKind) => {
       if (canEdit) setKeyDialogRef({ tableId, keyId, kind })
+    },
+    [canEdit],
+  )
+
+  const openAreaEdit = useCallback(
+    (areaId: string) => {
+      if (canEdit) setAreaEditId(areaId)
     },
     [canEdit],
   )
@@ -977,6 +1068,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
       openTableInfo: canEdit ? setInfoTableId : () => {},
       openColumnInfo,
       openKeyInfo,
+      openAreaEdit,
       pendingRelation,
       startPendingRelation,
       completeRelation,
@@ -993,6 +1085,7 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
       reportSize,
       openColumnInfo,
       openKeyInfo,
+      openAreaEdit,
       pendingRelation,
       startPendingRelation,
       completeRelation,
@@ -1035,6 +1128,14 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         onEdgesDelete={canEdit ? handleEdgesDelete : undefined}
         onConnect={canEdit ? handleConnect : undefined}
         onPaneClick={pendingRelation ? () => setPendingRelation(null) : undefined}
+        onNodeClick={
+          // 관계 대기 중 영역 박스를 클릭하면 취소로 간주한다 — 박스는 대상 테이블이 아니므로
+          pendingRelation
+            ? (_event, node) => {
+                if (node.type === 'area') setPendingRelation(null)
+              }
+            : undefined
+        }
         onNodeDragStart={
           canEdit
             ? () => {
@@ -1207,6 +1308,17 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         isDuplicate={(parentId, childId) =>
           isDuplicateRelationship(useEditorStore.getState().present.model, parentId, childId)
         }
+      />
+
+      <AreaDialog
+        open={areaEdit !== null}
+        onOpenChange={(open) => {
+          if (!open) setAreaEditId(null)
+        }}
+        area={areaEdit}
+        tables={areaEditTables}
+        onColorChange={(areaId, color) => commit({ type: 'area/patch', areaId, patch: { color } })}
+        onCommit={(areaId, patch) => commit({ type: 'area/patch', areaId, patch })}
       />
     </EditorCanvasContext.Provider>
   )

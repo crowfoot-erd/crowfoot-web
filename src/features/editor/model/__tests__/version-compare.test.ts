@@ -27,7 +27,7 @@ function docWith(...tables: { id: string; name: string }[]): EditorDocument {
       tables: tables.map((t) => createTable(t.name, { id: t.id, columns: [] })),
       relationships: [],
     },
-    diagram: { nodes: {}, notes: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], viewport: null },
   }
 }
 

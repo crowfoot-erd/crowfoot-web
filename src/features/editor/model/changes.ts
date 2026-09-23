@@ -8,6 +8,7 @@
  */
 import {
   coerceChildMultiplicity,
+  type ErdArea,
   type ErdColumn,
   type ErdContent,
   type ErdIndex,
@@ -37,6 +38,9 @@ export type RelationshipPatch = Partial<
   >
 >
 export type NotePatch = Partial<Pick<ErdNote, 'x' | 'y' | 'width' | 'text' | 'title' | 'color' | 'linkedTableId'>>
+export type AreaPatch = Partial<
+  Pick<ErdArea, 'name' | 'description' | 'x' | 'y' | 'width' | 'height' | 'collapsed' | 'color' | 'tableIds'>
+>
 
 export type ErdChange =
   | { type: 'table/create'; table: ErdTable; position: { x: number; y: number } }
@@ -55,6 +59,9 @@ export type ErdChange =
   | { type: 'note/create'; note: ErdNote }
   | { type: 'note/patch'; noteId: string; patch: NotePatch }
   | { type: 'note/remove'; noteId: string }
+  | { type: 'area/create'; area: ErdArea }
+  | { type: 'area/patch'; areaId: string; patch: AreaPatch }
+  | { type: 'area/remove'; areaId: string }
   | { type: 'node/move'; positions: Record<string, { x: number; y: number }> }
   | { type: 'node/resize'; tableId: string; width: number | null }
   | { type: 'node/color'; tableId: string; color: TableColorValue }
@@ -91,6 +98,26 @@ export function createTable(physicalName: string, init: Partial<ErdTable> = {}):
     primaryKey: null,
     uniques: [],
     indexes: [],
+    ...init,
+  }
+}
+
+/** 신규 영역 기본 크기 — 대형 다이어그램 묶음용이라 넉넉하다(테이블 4~6개 폭) */
+export const AREA_DEFAULT_WIDTH = 800
+export const AREA_DEFAULT_HEIGHT = 560
+
+export function createArea(name: string, init: Partial<ErdArea> = {}): ErdArea {
+  return {
+    id: newId(),
+    name,
+    description: '',
+    x: 0,
+    y: 0,
+    width: AREA_DEFAULT_WIDTH,
+    height: AREA_DEFAULT_HEIGHT,
+    collapsed: false,
+    color: 'default',
+    tableIds: [],
     ...init,
   }
 }
@@ -231,7 +258,7 @@ function removeColumnEverywhere(doc: EditorDocument, tableId: string, columnId: 
 }
 
 /** 테이블 삭제 cascade — 붙은 관계 제거 + 관계 소유 FK 컬럼을 상대 테이블에서도 제거 + 노드 제거
- *  + 이 테이블을 가리키던 메모 연관 해제 */
+ *  + 이 테이블을 가리키던 메모 연관 해제 + 주제 영역 소속 목록 정리 */
 function removeTableCascade(doc: EditorDocument, tableId: string): EditorDocument {
   const attached = doc.model.relationships.filter(
     (rel) => rel.parentTableId === tableId || rel.childTableId === tableId,
@@ -247,6 +274,12 @@ function removeTableCascade(doc: EditorDocument, tableId: string): EditorDocumen
       ...doc.diagram,
       nodes: Object.fromEntries(Object.entries(doc.diagram.nodes).filter(([id]) => id !== tableId)),
       notes: doc.diagram.notes.map((n) => (n.linkedTableId === tableId ? { ...n, linkedTableId: null } : n)),
+      // 소속 정리는 해자 같은 정리다 — 영역은 남고 멤버 목록에서만 빠진다(노트 연관 해제와 동형)
+      areas: doc.diagram.areas.map((area) =>
+        area.tableIds.includes(tableId)
+          ? { ...area, tableIds: area.tableIds.filter((id) => id !== tableId) }
+          : area,
+      ),
     },
   }
   // 관계 소유 FK 컬럼 정리 — 상대 테이블이 살아 있는 쪽에서 제거한다
@@ -457,6 +490,22 @@ export function applyChange(doc: EditorDocument, change: ErdChange): EditorDocum
       return {
         ...doc,
         diagram: { ...doc.diagram, notes: doc.diagram.notes.filter((n) => n.id !== change.noteId) },
+      }
+    case 'area/create':
+      return { ...doc, diagram: { ...doc.diagram, areas: [...doc.diagram.areas, change.area] } }
+    case 'area/patch':
+      return {
+        ...doc,
+        diagram: {
+          ...doc.diagram,
+          areas: doc.diagram.areas.map((area) => (area.id === change.areaId ? { ...area, ...change.patch } : area)),
+        },
+      }
+    case 'area/remove':
+      // 영역 삭제는 멤버 테이블을 건드리지 않는다 — 묶음 표시만 사라진다
+      return {
+        ...doc,
+        diagram: { ...doc.diagram, areas: doc.diagram.areas.filter((area) => area.id !== change.areaId) },
       }
     case 'node/move':
       return {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createTable } from '@/features/editor/model/changes'
+import { createArea, createTable } from '@/features/editor/model/changes'
 import { emptyContent } from '@/features/editor/model/content-io'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import {
@@ -186,6 +186,29 @@ describe('editor-store — 선택 상태(selectedIds)', () => {
   it('수화(hydrate)는 선택을 초기화한다', () => {
     useEditorStore.getState().setSelection(['stale'])
     hydrate()
+    expect(useEditorStore.getState().selectedIds).toEqual([])
+  })
+})
+
+describe('editor-store — 주제 영역 (v1.13)', () => {
+  it('영역 생성·패치도 undo/redo 스택을 탄다 — 1커밋 1스택', () => {
+    const area = createArea('회원', { id: 'A1', tableIds: [] })
+    useEditorStore.getState().commit({ type: 'area/create', area })
+    useEditorStore.getState().commit({ type: 'area/patch', areaId: 'A1', patch: { collapsed: true } })
+    expect(useEditorStore.getState().present.diagram.areas[0].collapsed).toBe(true)
+
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.diagram.areas[0].collapsed).toBe(false)
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.diagram.areas).toHaveLength(0)
+    useEditorStore.getState().redo()
+    expect(useEditorStore.getState().present.diagram.areas).toHaveLength(1)
+  })
+
+  it('영역 삭제는 선택에서도 정리된다(pruneSelection)', () => {
+    useEditorStore.getState().commit({ type: 'area/create', area: createArea('회원', { id: 'A1' }) })
+    useEditorStore.getState().setSelection(['A1'])
+    useEditorStore.getState().commit({ type: 'area/remove', areaId: 'A1' })
     expect(useEditorStore.getState().selectedIds).toEqual([])
   })
 })

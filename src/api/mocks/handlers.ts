@@ -74,6 +74,7 @@ function buildSyncPair() {
           linkedTableId: docUsers.id,
         },
       ],
+      areas: [],
       viewport: null,
     },
   })
@@ -121,7 +122,7 @@ function buildSyncPair() {
   const schemaContent = serializeContent({
     schemaVersion: 1,
     model: { tables: [dbUsers, dbOrders, dbProducts], relationships: [dbRel.relationship] },
-    diagram: { nodes: {}, notes: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], viewport: null },
   })
 
   return {

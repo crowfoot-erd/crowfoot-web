@@ -23,6 +23,8 @@ import {
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
+import { hiddenTableIds, tablesOfArea } from '@/features/editor/model/areas'
+import type { ErdChange } from '@/features/editor/model/changes'
 import { searchObjects, type ObjectHit } from '@/features/editor/model/object-search'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { estimateTableHeight, tableRenderWidth } from './canvas/TableNode'
@@ -33,6 +35,9 @@ export interface ModelExplorerPanelProps {
   /** 외부에서 검색으로 데려오는 신호(Ctrl+F) — 값이 바뀔 때마다 검색 입력에 포커스 */
   focusSearchSignal: number
   nameDisplay: NameDisplayMode
+  /** 보기 필터로 선택된 주제 영역 — null이면 전체(캔버스·툴바 보기 메뉴와 같은 상태) */
+  activeAreaId: string | null
+  onActiveAreaChange: (areaId: string | null) => void
 }
 
 /** 포커스 클램프용 extent — 대상은 문서 안 객체라 사실상 무제한(캔버스 한계보다 안쪽) */
@@ -46,12 +51,29 @@ const FOCUS_MIN_ZOOM = 0.6
 
 export function ModelExplorerPanel(props: ModelExplorerPanelProps) {
   if (!props.open) return null
-  return <ExplorerBody nameDisplay={props.nameDisplay} focusSearchSignal={props.focusSearchSignal} />
+  return (
+    <ExplorerBody
+      nameDisplay={props.nameDisplay}
+      focusSearchSignal={props.focusSearchSignal}
+      activeAreaId={props.activeAreaId}
+      onActiveAreaChange={props.onActiveAreaChange}
+    />
+  )
 }
 
 type GroupKey = 'tables' | 'relationships' | 'notes'
 
-function ExplorerBody({ nameDisplay, focusSearchSignal }: { nameDisplay: NameDisplayMode; focusSearchSignal: number }) {
+function ExplorerBody({
+  nameDisplay,
+  focusSearchSignal,
+  activeAreaId,
+  onActiveAreaChange,
+}: {
+  nameDisplay: NameDisplayMode
+  focusSearchSignal: number
+  activeAreaId: string | null
+  onActiveAreaChange: (areaId: string | null) => void
+}) {
   const { t } = useTranslation()
   const rf = useReactFlow()
   const doc = useEditorStore((s) => s.present)
@@ -200,12 +222,31 @@ function ExplorerBody({ nameDisplay, focusSearchSignal }: { nameDisplay: NameDis
   }
 
   const searching = query.trim().length > 0
-  const tables = searching ? doc.model.tables.filter((table) => hitTableIds.has(table.id)) : doc.model.tables
-  const relationships = searching
-    ? doc.model.relationships.filter((rel) => hitRelationshipIds.has(rel.id))
-    : doc.model.relationships
+  /* 영역 필터 — 캔버스 표시 집합과 같은 식(members)을 목록에도 적용한다. 관계는 양끽 테이블이
+     모두 영역 안일 때만, 메모는 영역 밖 객체라 항상 전체(칩은 테이블·관계만 좁힌다) */
+  const areaMembers = activeAreaId ? tablesOfArea(doc, activeAreaId) : null
+  /** 접힌 영역의 멤버 — 목록에는 남기되 흐리게, 클릭하면 영역을 펼친 뒤 선택한다 */
+  const hiddenIds = hiddenTableIds(doc)
+  const tables = doc.model.tables
+    .filter((table) => !searching || hitTableIds.has(table.id))
+    .filter((table) => !areaMembers || areaMembers.has(table.id))
+  const relationships = doc.model.relationships
+    .filter((rel) => !searching || hitRelationshipIds.has(rel.id))
+    .filter((rel) => !areaMembers || (areaMembers.has(rel.childTableId) && areaMembers.has(rel.parentTableId)))
   const notes = searching ? doc.diagram.notes.filter((note) => hitNoteIds.has(note.id)) : doc.diagram.notes
   const documentEmpty = doc.model.tables.length === 0 && doc.model.relationships.length === 0 && doc.diagram.notes.length === 0
+
+  /** 접힌 영역의 멤버를 클릭했다 — 그 테이블을 숨긴 영역을 모두 펼치고 선택·포커스로 이어간다.
+   *  펼침을 생략하면 숨겨진 테이블만 포커스해 빈 화면을 보게 된다 */
+  const selectTableExpanded = (tableId: string) => {
+    if (hiddenIds.has(tableId)) {
+      const changes = doc.diagram.areas
+        .filter((area) => area.collapsed && area.tableIds.includes(tableId))
+        .map((area) => ({ type: 'area/patch', areaId: area.id, patch: { collapsed: false } }) as ErdChange)
+      if (changes.length > 0) useEditorStore.getState().commitAll(changes)
+    }
+    selectTarget({ kind: 'table', targetId: tableId })
+  }
 
   const physicalOf = (tableId: string) =>
     doc.model.tables.find((tb) => tb.id === tableId)?.physicalName ?? '?'
@@ -238,6 +279,37 @@ function ExplorerBody({ nameDisplay, focusSearchSignal }: { nameDisplay: NameDis
           </span>
         ) : null}
       </div>
+
+      {/* 주제 영역 칩 — 문서에 영역이 있을 때만. 캔버스 보기 필터와 같은 상태를 공유한다 */}
+      {doc.diagram.areas.length > 0 ? (
+        <div
+          className="flex flex-wrap gap-1 border-b px-2 py-1.5"
+          role="group"
+          aria-label={t('model.editor.explorer.areaFilter')}
+        >
+          <button
+            type="button"
+            data-testid="explorer-area-chip-all"
+            aria-pressed={activeAreaId === null}
+            className={areaChipClass(activeAreaId === null)}
+            onClick={() => onActiveAreaChange(null)}
+          >
+            {t('model.editor.toolbar.areaFilter.all')}
+          </button>
+          {doc.diagram.areas.map((area) => (
+            <button
+              key={area.id}
+              type="button"
+              data-testid={`explorer-area-chip-${area.id}`}
+              aria-pressed={activeAreaId === area.id}
+              className={areaChipClass(activeAreaId === area.id)}
+              onClick={() => onActiveAreaChange(activeAreaId === area.id ? null : area.id)}
+            >
+              <span className="max-w-24 truncate">{area.name}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
         {documentEmpty ? (
@@ -272,7 +344,8 @@ function ExplorerBody({ nameDisplay, focusSearchSignal }: { nameDisplay: NameDis
                   activeColumnId={
                     hits[activeHit]?.targetId === table.id ? hits[activeHit].columnId : undefined
                   }
-                  onSelect={() => selectTarget({ kind: 'table', targetId: table.id })}
+                  dimmed={hiddenIds.has(table.id)}
+                  onSelect={() => selectTableExpanded(table.id)}
                   onToggle={() => toggleTable(table.id)}
                 />
               ))}
@@ -338,6 +411,16 @@ function rowClass(selected: boolean, active: boolean): string {
   )
 }
 
+/** 영역 필터 칩 클래스 — 활성칩은 채워서, 나머지는 테두리만 */
+function areaChipClass(active: boolean): string {
+  return cn(
+    'flex max-w-32 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium',
+    active
+      ? 'border-primary bg-primary text-primary-foreground'
+      : 'border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+  )
+}
+
 /** 활성 순회 히트(Enter로 도착한 항목)인지 — 히트 대상 id가 행 객체와 같으면 */
 function isActiveHit(hits: ObjectHit[], activeHit: number, targetId: string): boolean {
   const hit = hits[activeHit]
@@ -386,6 +469,7 @@ function TableRow({
   selected,
   active,
   activeColumnId,
+  dimmed,
   onSelect,
   onToggle,
 }: {
@@ -401,6 +485,8 @@ function TableRow({
   active: boolean
   /** 활성 히트가 이 테이블의 컬럼이면 그 컬럼 id — 컬럼 행 링 표시용 */
   activeColumnId?: string
+  /** 접힌 영역의 멤버 — 캔버스에 숨겨진 테이블. 클릭하면 영역을 펼친 뒤 선택한다 */
+  dimmed: boolean
   onSelect: () => void
   onToggle: () => void
 }) {
@@ -416,7 +502,7 @@ function TableRow({
     <>
       <div
         id={`explorer-table-${table.id}`}
-        className={rowClass(selected, active)}
+        className={cn(rowClass(selected, active), dimmed && 'opacity-50')}
         onClick={onSelect}
         onKeyDown={(event) => {
           if (event.key === 'Enter') onSelect()

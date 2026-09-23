@@ -102,6 +102,14 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const [parseError, setParseError] = useState(false)
   const [nameDisplay, setNameDisplay] = useState<NameDisplayMode>('both')
   const [columnDisplay, setColumnDisplay] = useState<ColumnDisplayMode>('all')
+  // 주제 영역 보기 필터 — nameDisplay와 같은 층위의 뷰 상태라 undo 대상이 아니다.
+  // 대상 영역이 삭제되면(undo·원격 동기화 포함) 필터는 자동으로 풀린다
+  const [activeAreaId, setActiveAreaId] = useState<string | null>(null)
+  const areaIdSignature = useEditorStore((s) => s.present.diagram.areas.map((a) => a.id).join(';'))
+  const activeArea =
+    activeAreaId !== null && areaIdSignature.length > 0 && areaIdSignature.split(';').includes(activeAreaId)
+      ? activeAreaId
+      : null
   // 모델 익스플로러 — 열림은 브라우저에 기억, focusSearchSignal은 Ctrl+F로 검색창에 데려오는 신호
   const [explorerOpen, setExplorerOpen] = useState(readExplorerOpen)
   const [explorerFocusSignal, setExplorerFocusSignal] = useState(0)
@@ -340,6 +348,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           if (layout) positions[id] = { x: layout.x + dx, y: layout.y + dy }
           const note = present.diagram.notes.find((n) => n.id === id)
           if (note) changes.push({ type: 'note/patch', noteId: id, patch: { x: note.x + dx, y: note.y + dy } })
+          const area = present.diagram.areas.find((a) => a.id === id)
+          if (area) changes.push({ type: 'area/patch', areaId: id, patch: { x: area.x + dx, y: area.y + dy } })
         }
         if (Object.keys(positions).length > 0) changes.push({ type: 'node/move', positions })
         if (changes.length === 0) return
@@ -365,12 +375,13 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         event.preventDefault()
         openExplorerSearch()
       } else if (key === 'a') {
-        // 전체 선택 — 테이블+메모(관계는 양끝 테이블 선택에 따라붙는다)
+        // 전체 선택 — 테이블+메모+영역(관계는 양끝 테이블 선택에 따라붙는다)
         event.preventDefault()
         const { present, setSelection } = useEditorStore.getState()
         setSelection([
           ...present.model.tables.map((table) => table.id),
           ...present.diagram.notes.map((note) => note.id),
+          ...present.diagram.areas.map((area) => area.id),
         ])
       } else if (key === 'c') {
         if (!canEdit) return
@@ -547,6 +558,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         onNameDisplayChange={setNameDisplay}
         columnDisplay={columnDisplay}
         onColumnDisplayChange={setColumnDisplay}
+        activeAreaId={activeArea}
+        onActiveAreaChange={setActiveAreaId}
         dbmsId={dbmsId}
         modelName={model.name}
         databaseType={model.databaseType}
@@ -563,6 +576,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           open={explorerOpen}
           focusSearchSignal={explorerFocusSignal}
           nameDisplay={nameDisplay}
+          activeAreaId={activeArea}
+          onActiveAreaChange={setActiveAreaId}
         />
         <div className="relative min-w-0 flex-1">
           {remoteChangeOpen && !conflictOpen && (
@@ -608,7 +623,14 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
             </div>
           )}
           {hydrated ? (
-            <ErdCanvas canEdit={canEdit} nameDisplay={nameDisplay} columnDisplay={columnDisplay} dbmsId={dbmsId} modelId={model.modelId} />
+            <ErdCanvas
+              canEdit={canEdit}
+              nameDisplay={nameDisplay}
+              columnDisplay={columnDisplay}
+              dbmsId={dbmsId}
+              modelId={model.modelId}
+              activeAreaId={activeArea}
+            />
           ) : (
             // 수화 게이트 — 문서 파싱·hydrate가 끝나기 전 캔버스 자리에 로딩을 보여준다
             <div

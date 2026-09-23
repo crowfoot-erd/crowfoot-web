@@ -15,7 +15,7 @@ import type { Model } from '@/api/types'
 import { fail, fixtures, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
 import { EditorShell } from '@/features/editor'
-import { createColumn, createTable, type ErdChange } from '@/features/editor/model/changes'
+import { createArea, createColumn, createTable, type ErdChange } from '@/features/editor/model/changes'
 import type { DocumentDiffSummary } from '@/features/editor/model/doc-diff'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
@@ -101,7 +101,7 @@ function remoteContent() {
   return serializeContent({
     schemaVersion: 1,
     model: { tables: [table], relationships: [] },
-    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], viewport: null },
+    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], viewport: null },
   })
 }
 
@@ -1913,5 +1913,50 @@ describe('EditorShell — 단축키: 클립보드·선택·이동 (§9)', () => 
 
     fireEvent.keyDown(window, { key: 'Escape' }) // 닫힌 뒤에도 window Esc는 정상 처리
     expect(useEditorStore.getState().selectedIds).toEqual([])
+  })
+})
+
+describe('EditorShell — 단축키: 주제 영역 (v1.13 §6)', () => {
+  function seedArea(name: string, x = 100, y = 50) {
+    const area = createArea(name, { x, y })
+    useEditorStore.getState().commit({ type: 'area/create', area })
+    return area
+  }
+
+  it('Ctrl+A 전체 선택에 영역도 포함된다', async () => {
+    await renderEditor()
+    const orders = createTable('orders')
+    useEditorStore.getState().commit({ type: 'table/create', table: orders, position: { x: 0, y: 0 } })
+    const area = seedArea('회원 도메인')
+
+    fireEvent.keyDown(window, { key: 'a', ctrlKey: true })
+    expect([...useEditorStore.getState().selectedIds].sort()).toEqual([orders.id, area.id].sort())
+  })
+
+  it('Arrow — 선택 영역 1px 이동, Shift+Arrow 10px(area/patch)', async () => {
+    await renderEditor()
+    const area = seedArea('회원 도메인', 100, 50)
+    useEditorStore.getState().setSelection([area.id])
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 101, y: 50 })
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', shiftKey: true })
+    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 101, y: 60 })
+
+    // 키 입력당 1스택 — undo 2회로 이동 전(100, 50)으로 돌아간다
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 101, y: 50 })
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 100, y: 50 })
+  })
+
+  it('읽기 전용에서는 영역도 이동하지 않는다', async () => {
+    await renderEditor(false)
+    const area = seedArea('회원 도메인', 100, 50)
+    useEditorStore.getState().setSelection([area.id])
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(useEditorStore.getState().present.diagram.areas[0]).toMatchObject({ x: 100, y: 50 })
   })
 })

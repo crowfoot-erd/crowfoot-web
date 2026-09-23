@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyChange, applyChanges, createColumn, createTable, pkToggleChanges } from '@/features/editor/model/changes'
+import { applyChange, applyChanges, createArea, createColumn, createTable, pkToggleChanges } from '@/features/editor/model/changes'
 import {
   DEFAULT_CHILD_MULTIPLICITY,
   type EditorDocument,
@@ -459,5 +459,51 @@ describe('applyChange — 관계 제약 동기화', () => {
     const parent = after.model.tables.find((t) => t.id === 'PARENT')
     expect(parent?.columns).toHaveLength(0)
     expect(parent?.primaryKey).toBeNull()
+  })
+})
+
+describe('applyChange — 주제 영역 (v1.13)', () => {
+  function docWithArea() {
+    const table = createTable('users', { id: 'T-USERS' })
+    const other = createTable('logs', { id: 'T-LOGS' })
+    const area = createArea('회원', { id: 'A1', tableIds: ['T-USERS'] })
+    let d = doc()
+    d = applyChange(d, { type: 'table/create', table, position: { x: 0, y: 0 } })
+    d = applyChange(d, { type: 'table/create', table: other, position: { x: 400, y: 0 } })
+    return applyChange(d, { type: 'area/create', area })
+  }
+
+  it('area/create는 기본값(800×560·펼침·무색)으로 diagram.areas에 추가한다', () => {
+    const area = createArea('영역')
+    expect(area.width).toBe(800)
+    expect(area.height).toBe(560)
+    expect(area.collapsed).toBe(false)
+    const next = applyChange(doc(), { type: 'area/create', area })
+    expect(next.diagram.areas).toHaveLength(1)
+    expect(next.diagram.areas[0].name).toBe('영역')
+  })
+
+  it('area/patch는 이름·설명·색·접힘·멤버·위치·크기를 바꾼다', () => {
+    const next = applyChange(docWithArea(), {
+      type: 'area/patch',
+      areaId: 'A1',
+      patch: { name: '회원 도메인', description: '계정·프로필', color: 'sky', collapsed: true, x: 10, y: 20, width: 900, tableIds: ['T-USERS', 'T-LOGS'] },
+    })
+    const area = next.diagram.areas[0]
+    expect(area).toMatchObject({ name: '회원 도메인', description: '계정·프로필', color: 'sky', collapsed: true, x: 10, y: 20, width: 900, tableIds: ['T-USERS', 'T-LOGS'] })
+    // 원본 불변
+    expect(docWithArea().diagram.areas[0].name).toBe('회원')
+  })
+
+  it('area/remove는 묶음 표시만 지운다 — 멤버 테이블은 그대로 남는다', () => {
+    const after = applyChange(docWithArea(), { type: 'area/remove', areaId: 'A1' })
+    expect(after.diagram.areas).toHaveLength(0)
+    expect(after.model.tables).toHaveLength(2)
+  })
+
+  it('table/remove는 남은 영역의 tableIds에서 그 id를 정리한다 (notes linkedTableId와 동형 cascade)', () => {
+    const after = applyChange(docWithArea(), { type: 'table/remove', tableId: 'T-USERS' })
+    expect(after.model.tables.map((t) => t.physicalName)).toEqual(['logs'])
+    expect(after.diagram.areas[0].tableIds).toEqual([])
   })
 })

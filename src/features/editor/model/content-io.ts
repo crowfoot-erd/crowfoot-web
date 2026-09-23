@@ -15,7 +15,7 @@ export function emptyContent(): ErdContent {
   return {
     schemaVersion: 1,
     model: { tables: [], relationships: [] },
-    diagram: { nodes: {}, notes: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], viewport: null },
   }
 }
 
@@ -37,7 +37,7 @@ function normalizeV0(json: { tables: unknown[]; relationships: unknown[] }): Erd
       tables: json.tables as ErdModelData['tables'],
       relationships: json.relationships as ErdModelData['relationships'],
     },
-    diagram: { nodes: {}, notes: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], viewport: null },
   }
 }
 

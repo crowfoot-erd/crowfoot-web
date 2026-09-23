@@ -599,7 +599,11 @@
         "image": "이미지 내보내기",
         "crown": "문서 파일 내보내기",
         "share": "공유",
-        "history": "버전 기록"
+        "history": "버전 기록",
+        "areaFilter": {
+          "label": "주제 영역",
+          "all": "전체 보기"
+        }
       },
       "explorer": {
         "title": "모델 익스플로러",
@@ -612,7 +616,8 @@
         "noResults": "일치하는 객체가 없습니다",
         "emptyDocument": "문서가 비어 있습니다",
         "matchCount": "{{count}}건",
-        "untitledNote": "제목 없는 메모"
+        "untitledNote": "제목 없는 메모",
+        "areaFilter": "주제 영역 필터"
       },
       "clipboard": {
         "copyLabel": "사본"
@@ -761,7 +766,8 @@
           "index": "인덱스",
           "relationship": "관계",
           "note": "메모",
-          "node": "노드"
+          "node": "노드",
+          "area": "영역"
         },
         "action": {
           "add": "추가",
@@ -796,7 +802,10 @@
         "removeTable": "테이블 삭제",
         "removeNote": "메모 삭제",
         "editRelationship": "관계 편집",
-        "removeRelationship": "관계 삭제"
+        "removeRelationship": "관계 삭제",
+        "createArea": "영역 추가",
+        "areaInfo": "영역 편집",
+        "removeArea": "영역 삭제"
       },
       "table": {
         "addColumn": "컬럼 추가",
@@ -986,6 +995,24 @@
         "loading": "마이그레이션 DDL 생성 중…",
         "error": "마이그레이션 DDL 생성에 실패했습니다",
         "button": "마이그레이션 DDL"
+      },
+      "area": {
+        "defaultName": "영역",
+        "expand": "영역 펼치기",
+        "collapse": "영역 접기",
+        "edit": "영역 편집",
+        "memberCount": "멤버 테이블 수"
+      },
+      "areaDialog": {
+        "title": "주제 영역 편집",
+        "name": "이름",
+        "nameRequired": "이름을 입력하세요",
+        "description": "설명",
+        "descriptionPlaceholder": "영역의 용도(선택)",
+        "color": "강조색",
+        "tables": "포함 테이블",
+        "tablesHint": "체크하면 이 영역에 포함됩니다",
+        "noTables": "문서에 테이블이 없습니다"
       }
     },
     "import": {

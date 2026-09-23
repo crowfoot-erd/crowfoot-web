@@ -13,7 +13,7 @@ describe('content-io', () => {
     const parsed = parseContent('{"tables":[],"relationships":[]}')
     expect(parsed.schemaVersion).toBe(1)
     expect(parsed.model).toEqual({ tables: [], relationships: [] })
-    expect(parsed.diagram).toEqual({ nodes: {}, notes: [], viewport: null })
+    expect(parsed.diagram).toEqual({ nodes: {}, notes: [], areas: [], viewport: null })
   })
 
   it('v1 문서는 round-trip으로 동일하게 복원된다', () => {
@@ -64,6 +64,7 @@ describe('content-io', () => {
       diagram: {
         nodes: { t1: { x: 120, y: 80, width: null, color: 'default' } },
         notes: [],
+        areas: [], // v1.13 주제 영역 — 수화 결과와 round-trip이 동일한 문서가 되도록 픽스처에 명시
         viewport: null,
       },
     }
@@ -81,6 +82,17 @@ describe('content-io', () => {
       }),
     )
     expect(parsed.model.tables).toEqual([])
+  })
+
+  it('주제 영역 없는 v1.12 문서는 areas []로 정규화된다 (v1.13 하위호환)', () => {
+    const parsed = parseContent(
+      JSON.stringify({
+        schemaVersion: 1,
+        model: { tables: [], relationships: [] },
+        diagram: { nodes: {}, notes: [], viewport: null },
+      }),
+    )
+    expect(parsed.diagram.areas).toEqual([])
   })
 
   it('노드 강조색이 없는 레거시 문서는 default로 정규화된다 — 프리셋 외 값은 거부', () => {

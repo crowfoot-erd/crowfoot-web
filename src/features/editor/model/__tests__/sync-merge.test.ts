@@ -28,11 +28,15 @@ const dbCol = (id: string, physicalName: string, init: Partial<ErdColumn> = {}):
 function makeDoc(
   tables: ErdTable[],
   relationships: ErdRelationship[] = [],
-  diagram: { nodes?: EditorDocument['diagram']['nodes']; notes?: ErdNote[] } = {},
+  diagram: {
+    nodes?: EditorDocument['diagram']['nodes']
+    notes?: ErdNote[]
+    areas?: EditorDocument['diagram']['areas']
+  } = {},
 ): EditorDocument {
   return {
     model: { tables, relationships },
-    diagram: { nodes: diagram.nodes ?? {}, notes: diagram.notes ?? [], viewport: null },
+    diagram: { nodes: diagram.nodes ?? {}, notes: diagram.notes ?? [], areas: diagram.areas ?? [], viewport: null },
   }
 }
 

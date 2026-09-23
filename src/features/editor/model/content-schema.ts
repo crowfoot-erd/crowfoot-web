@@ -208,6 +208,27 @@ export const viewportSchema = z.object({
 })
 export type ErdViewport = z.infer<typeof viewportSchema>
 
+/** 주제 영역 — 다이어그램 종속 배경 박스 (05-editor/02-ui.md §6, v1.13).
+ *  tableIds는 모델(테이블)을 참조하는 표현 계층의 소프트 참조다 — 노트의 linkedTableId와
+ *  같은 패턴(테이블 삭제 시 cascade에서 정리, 존재하지 않는 id는 무시).
+ *  같은 테이블이 여러 영역에 소속될 수 있다(다중 소속 허용). */
+export const areaSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().default(''),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+  /** 접기 — 멤버 테이블을 캔버스에서 숨긴다(ERDCloud·erwin 표준). 이전 문서는 펼침으로 정규화 */
+  collapsed: z.boolean().default(false),
+  /** 배경 틴트 — 테이블 강조색 프리셋 재사용 */
+  color: tableColorSchema.default('default'),
+  /** 소속 테이블 — 문서 순서 그대로 */
+  tableIds: z.array(z.string().min(1)).default([]),
+})
+export type ErdArea = z.infer<typeof areaSchema>
+
 export const modelDataSchema = z.object({
   tables: z.array(tableSchema),
   relationships: z.array(relationshipSchema),
@@ -218,6 +239,8 @@ export const diagramDataSchema = z.object({
   /** Record<tableId, 레이아웃> */
   nodes: z.record(z.string(), nodeLayoutSchema),
   notes: z.array(noteSchema),
+  /** 주제 영역 목록 — v1.13 추가. 이전 문서는 빈 배열로 정규화된다 */
+  areas: z.array(areaSchema).default([]),
   viewport: viewportSchema.nullable(),
 })
 export type ErdDiagramData = z.infer<typeof diagramDataSchema>

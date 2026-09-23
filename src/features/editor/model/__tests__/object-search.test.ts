@@ -35,6 +35,7 @@ function fixtureDoc(): EditorDocument {
     diagram: {
       nodes: {},
       notes: [{ id: 'note-1', x: 0, y: 0, width: 200, text: '배치 정책 메모', title: '정책', color: 'yellow', linkedTableId: null }],
+      areas: [],
       viewport: null,
     },
   }

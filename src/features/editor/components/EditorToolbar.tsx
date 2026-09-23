@@ -40,6 +40,9 @@ import { SqlPreviewDialog } from './SqlPreviewDialog'
 import { SyncDialog } from './SyncDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
 
+/** 영역 필터 라디오의 "전체" 값 — 영역 id와 충돌하지 않는 센티넬 */
+const AREA_FILTER_ALL = '__all__'
+
 export interface EditorToolbarProps {
   canEdit: boolean
   saving: boolean
@@ -51,6 +54,9 @@ export interface EditorToolbarProps {
   onNameDisplayChange: (mode: NameDisplayMode) => void
   columnDisplay: ColumnDisplayMode
   onColumnDisplayChange: (mode: ColumnDisplayMode) => void
+  /** 보기 필터로 선택된 주제 영역 — null이면 전체. 영역 목록은 스토어에서 직접 읽는다 */
+  activeAreaId: string | null
+  onActiveAreaChange: (areaId: string | null) => void
   /** 문서 대상 DBMS 템플릿 id — 모델 메타에서 파생된 고정값 */
   dbmsId: string
   /** 문서명 — SQL·이미지·.crown 다운로드 파일명 */
@@ -81,6 +87,8 @@ export function EditorToolbar({
   onNameDisplayChange,
   columnDisplay,
   onColumnDisplayChange,
+  activeAreaId,
+  onActiveAreaChange,
   dbmsId,
   modelName,
   databaseType,
@@ -171,6 +179,8 @@ export function EditorToolbar({
         onNameDisplayChange={onNameDisplayChange}
         columnDisplay={columnDisplay}
         onColumnDisplayChange={onColumnDisplayChange}
+        activeAreaId={activeAreaId}
+        onActiveAreaChange={onActiveAreaChange}
       />
       <ZoomControls />
       <Button
@@ -206,19 +216,25 @@ function DbmsIndicator({ dbmsId }: { dbmsId: string }) {
   )
 }
 
-/** 뷰 옵션 드롭다운 — 이름 표시 모드(erwin·aQueryTool의 logical/physical 뷰 전환)·컬럼 표시 모드(전체/키만) */
+/** 뷰 옵션 드롭다운 — 이름 표시 모드(erwin·aQueryTool의 logical/physical 뷰 전환)·컬럼 표시 모드(전체/키만)·
+ *  주제 영역 필터(영역이 있을 때만 — 문서의 영역은 스토어에서 직접 읽어 셸을 거치지 않는다) */
 function ViewMenu({
   nameDisplay,
   onNameDisplayChange,
   columnDisplay,
   onColumnDisplayChange,
+  activeAreaId,
+  onActiveAreaChange,
 }: {
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
   columnDisplay: ColumnDisplayMode
   onColumnDisplayChange: (mode: ColumnDisplayMode) => void
+  activeAreaId: string | null
+  onActiveAreaChange: (areaId: string | null) => void
 }) {
   const { t } = useTranslation()
+  const areas = useEditorStore((s) => s.present.diagram.areas)
 
   return (
     <DropdownMenu>
@@ -248,6 +264,23 @@ function ViewMenu({
           <DropdownMenuRadioItem value="all">{t('model.editor.toolbar.columnMode.all')}</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="keys">{t('model.editor.toolbar.columnMode.keys')}</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
+        {areas.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t('model.editor.toolbar.areaFilter.label')}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={activeAreaId ?? AREA_FILTER_ALL}
+              onValueChange={(value) => onActiveAreaChange(value === AREA_FILTER_ALL ? null : value)}
+            >
+              <DropdownMenuRadioItem value={AREA_FILTER_ALL}>{t('model.editor.toolbar.areaFilter.all')}</DropdownMenuRadioItem>
+              {areas.map((area) => (
+                <DropdownMenuRadioItem key={area.id} value={area.id}>
+                  {area.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )

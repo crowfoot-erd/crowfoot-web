@@ -9,7 +9,7 @@
  */
 import { useRef, useState } from 'react'
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
-import { Info, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
+import { BoxSelect, Info, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
@@ -22,9 +22,12 @@ export interface CanvasPoint {
 export type ContextMenuAction =
   | { type: 'createTable'; position: CanvasPoint }
   | { type: 'createNote'; position: CanvasPoint }
+  | { type: 'createArea'; position: CanvasPoint }
   | { type: 'tableInfo'; tableId: string }
   | { type: 'removeTable'; tableId: string }
   | { type: 'removeNote'; noteId: string }
+  | { type: 'areaInfo'; areaId: string }
+  | { type: 'removeArea'; areaId: string }
   | { type: 'editRelationship'; relationshipId: string }
   | { type: 'removeRelationship'; relationshipId: string }
 
@@ -39,15 +42,20 @@ type MenuTarget =
   | { kind: 'canvas' }
   | { kind: 'table'; tableId: string }
   | { kind: 'note'; noteId: string }
+  | { kind: 'area'; areaId: string }
   | { kind: 'relationship'; relationshipId: string }
 
 /** 우클릭 타깃 분류 — 노드 루트 data-nodekind + react-flow 래퍼 data-id */
 function resolveTarget(target: HTMLElement): MenuTarget {
   const nodeKind = target.closest('[data-nodekind]')?.getAttribute('data-nodekind')
-  if (nodeKind === 'table' || nodeKind === 'note') {
+  if (nodeKind === 'table' || nodeKind === 'note' || nodeKind === 'area') {
     const flowNode = target.closest('.react-flow__node')
     const id = flowNode?.getAttribute('data-id')
-    if (id) return nodeKind === 'table' ? { kind: 'table', tableId: id } : { kind: 'note', noteId: id }
+    if (id) {
+      if (nodeKind === 'table') return { kind: 'table', tableId: id }
+      if (nodeKind === 'note') return { kind: 'note', noteId: id }
+      return { kind: 'area', areaId: id }
+    }
   }
   const edge = target.closest('.react-flow__edge')
   if (edge) {
@@ -94,6 +102,13 @@ export function CanvasContextMenu({ toFlow, onAction, children }: CanvasContextM
                 <StickyNote aria-hidden />
                 {t('model.editor.contextMenu.createNote')}
               </ContextMenuPrimitive.Item>
+              <ContextMenuPrimitive.Item
+                className={ITEM_CLASS}
+                onSelect={() => onAction({ type: 'createArea', position: toFlow(screenRef.current) })}
+              >
+                <BoxSelect aria-hidden />
+                {t('model.editor.contextMenu.createArea')}
+              </ContextMenuPrimitive.Item>
             </>
           ) : null}
 
@@ -125,6 +140,26 @@ export function CanvasContextMenu({ toFlow, onAction, children }: CanvasContextM
               <Trash2 aria-hidden />
               {t('model.editor.contextMenu.removeNote')}
             </ContextMenuPrimitive.Item>
+          ) : null}
+
+          {target.kind === 'area' ? (
+            <>
+              <ContextMenuPrimitive.Item
+                className={ITEM_CLASS}
+                onSelect={() => onAction({ type: 'areaInfo', areaId: target.areaId })}
+              >
+                <Pencil aria-hidden />
+                {t('model.editor.contextMenu.areaInfo')}
+              </ContextMenuPrimitive.Item>
+              <ContextMenuPrimitive.Separator className="mx-1 my-1 h-px bg-border" />
+              <ContextMenuPrimitive.Item
+                className={cn(ITEM_CLASS, 'text-destructive focus:bg-destructive/10 focus:text-destructive')}
+                onSelect={() => onAction({ type: 'removeArea', areaId: target.areaId })}
+              >
+                <Trash2 aria-hidden />
+                {t('model.editor.contextMenu.removeArea')}
+              </ContextMenuPrimitive.Item>
+            </>
           ) : null}
 
           {target.kind === 'relationship' ? (
