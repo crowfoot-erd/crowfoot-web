@@ -7,7 +7,9 @@ import type { EditorDocument } from '@/features/editor/model/content-schema'
 import {
   AREA_MIN_HEIGHT,
   AREA_MIN_WIDTH,
+  AREA_PUSH_GAP,
   fitAreaToMembers,
+  relocateNonMembers,
   tablesOfArea,
   uniqueAreaName,
   visibleTableIds,
@@ -116,5 +118,44 @@ describe('fitAreaToMembers — 멤버십 변경 시 영역이 멤버를 감싼�
     // 죽은 id·레이아웃 없는 id만으로도 null
     expect(fitAreaToMembers(docWithLayouts(), ['T-GONE'])).toBeNull()
     expect(fitAreaToMembers(docWithArea(), ['T-USERS'])).toBeNull()
+  })
+})
+
+describe('relocateNonMembers — 감싸기 확정 시 비멤버를 박스 밖으로 밀어낸다 (v1.13)', () => {
+  /** 컬럼 0개 테이블(추정 370×112)을 지정 좌표에 배치한 문서 */
+  function docForPushout(nodes: Record<string, { x: number; y: number }>): EditorDocument {
+    return {
+      model: { tables: Object.keys(nodes).map((id) => createTable(id.toLowerCase(), { id })), relationships: [] },
+      diagram: {
+        nodes: Object.fromEntries(
+          Object.entries(nodes).map(([id, p]) => [id, { ...p, width: null, color: 'default' as const }]),
+        ),
+        notes: [],
+        areas: [],
+        viewport: null,
+      },
+    }
+  }
+
+  it('박스와 교차하는 비멤버만 박스 아래(GAP 60)로 밀어낸다 — x 유지, 멤버·밖 테이블은 그대로', () => {
+    const d = docForPushout({ tusr: { x: 150, y: 150 }, tlog: { x: 300, y: 200 }, tout: { x: 1500, y: 100 } })
+    // bounds (100,100)~(900,500): tusr=멤버, tlog 교차, tout 밖
+    expect(relocateNonMembers(d, { x: 100, y: 100, width: 800, height: 400 }, ['tusr'])).toEqual({
+      tlog: { x: 300, y: 560 },
+    })
+  })
+
+  it('밀어낸 테이블끼리 x가 겹치면 위에서부터 세로로 쌓는다', () => {
+    const d = docForPushout({ ta: { x: 300, y: 200 }, tb: { x: 320, y: 250 } })
+    const moves = relocateNonMembers(d, { x: 100, y: 100, width: 800, height: 400 }, [])
+    expect(moves.ta).toEqual({ x: 300, y: 560 })
+    expect(moves.tb).toEqual({ x: 320, y: 560 + 112 + AREA_PUSH_GAP })
+  })
+
+  it('경계에 걸친(부분 교차) 테이블도 밀어낸다', () => {
+    const d = docForPushout({ tc: { x: 870, y: 200 } }) // rect 870~1240 vs bounds x 100~900 → 30px 교차
+    expect(relocateNonMembers(d, { x: 100, y: 100, width: 800, height: 400 }, [])).toEqual({
+      tc: { x: 870, y: 560 },
+    })
   })
 })

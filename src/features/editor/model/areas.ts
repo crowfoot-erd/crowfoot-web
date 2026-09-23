@@ -24,6 +24,9 @@ export interface AreaBounds {
   height: number
 }
 
+/** 감싸기 확정 시 박스 안에 남게 된 비멤버를 박스 아래로 밀어낼 때의 아래쪽 여유 */
+export const AREA_PUSH_GAP = 60
+
 /** 멤버 테이블들을 감싸는 영역 경계 — 멤버십이 바뀔 때 영역이 멤버를 감싸게 재계산한다.
  *  테이블 위치는 옮기지 않는다(박스가 테이블을 감싼다 — 레이아웃을 해치지 않는 방향).
  *  테이블 크기는 캔버스 경계(contentBounds 폴백)와 같은 렌더 추정식으로 계산한다.
@@ -52,6 +55,46 @@ export function fitAreaToMembers(doc: EditorDocument, tableIds: readonly string[
     width: Math.max(maxX - minX + AREA_MEMBER_PADDING * 2, AREA_MIN_WIDTH),
     height: Math.max(maxY - minY + AREA_MEMBER_PADDING * 2 + AREA_HEADER_RESERVE, AREA_MIN_HEIGHT),
   }
+}
+
+/** 감싸기 확정 경계 안(걸침 포함)에 있는 **비멤버** 테이블을 박스 아래로 밀어낸 좌표 —
+ *  영역은 선택한 테이블만 담는다는 규칙(02-ui.md §6). 멤버·경계 밖 테이블은 그대로 두고,
+ *  이미 밖에 있는 테이블은 결과에 없다(node/move positions와 같은 모양). x는 유지하고
+ *  밀어낸 테이블끼리 x가 겹치면 위에서부터 세로로 쌓는다 — 상대 배치를 최대한 보존. */
+export function relocateNonMembers(
+  doc: EditorDocument,
+  bounds: AreaBounds,
+  memberIds: readonly string[],
+): Record<string, { x: number; y: number }> {
+  const members = new Set(memberIds)
+  const movers: Array<{ id: string; x: number; y: number; w: number; h: number }> = []
+  for (const table of doc.model.tables) {
+    if (members.has(table.id)) continue
+    const layout = doc.diagram.nodes[table.id]
+    if (!layout) continue
+    const w = tableRenderWidth(layout.width ?? null, 0)
+    const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
+    const intersects = layout.x < bounds.x + bounds.width
+      && layout.x + w > bounds.x
+      && layout.y < bounds.y + bounds.height
+      && layout.y + h > bounds.y
+    if (intersects) movers.push({ id: table.id, x: layout.x, y: layout.y, w, h })
+  }
+  movers.sort((a, b) => a.y - b.y || a.x - b.x)
+  const positions: Record<string, { x: number; y: number }> = {}
+  const placed: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
+  for (const m of movers) {
+    let top = bounds.y + bounds.height + AREA_PUSH_GAP
+    // 아래 행에 먼저 놓인 것과 겹치면 그 아래로 — 놓인 것은 y 오름차순이라 재확인 1회면 충분
+    for (let guard = 0; guard < movers.length; guard += 1) {
+      const hit = placed.find((p) => m.x < p.x2 && m.x + m.w > p.x1 && top < p.y2 && top + m.h > p.y1)
+      if (!hit) break
+      top = Math.max(top, hit.y2 + AREA_PUSH_GAP)
+    }
+    placed.push({ x1: m.x, y1: top, x2: m.x + m.w, y2: top + m.h })
+    positions[m.id] = { x: m.x, y: top }
+  }
+  return positions
 }
 
 /** 문서에서 유일한 영역 이름 — "영역 N" 기본명의 접미 규칙(테이블 물리명 유일화와 같은 방식) */

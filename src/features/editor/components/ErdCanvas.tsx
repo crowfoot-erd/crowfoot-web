@@ -44,7 +44,7 @@ import {
   viewportCenteredOn,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
-import { fitAreaToMembers, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
+import { fitAreaToMembers, relocateNonMembers, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
 import { createArea, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
 import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
@@ -1319,11 +1319,20 @@ export function ErdCanvas({ canEdit, nameDisplay, columnDisplay, dbmsId, modelId
         tables={areaEditTables}
         onColorChange={(areaId, color) => commit({ type: 'area/patch', areaId, patch: { color } })}
         onCommit={(areaId, patch) => {
-          // 멤버십이 바뀌면 영역이 멤버를 감싸게 경계도 함께 재계산(02-ui.md §6) — 체크 한 번 = patch 1커밋
-          const fit = patch.tableIds
-            ? fitAreaToMembers(useEditorStore.getState().present, patch.tableIds)
-            : null
-          commit({ type: 'area/patch', areaId, patch: fit ? { ...patch, ...fit } : patch })
+          // 멤버십이 바뀌면 영역이 멤버를 감싸게 경계를 재계산하고(02-ui.md §6),
+          // 박스 안에 남게 된 비멤버는 박스 아래로 밀어낸다 — 감싸기+밀어내기를 undo 1스택으로
+          const present = useEditorStore.getState().present
+          const tableIds = patch.tableIds
+          const fit = tableIds ? fitAreaToMembers(present, tableIds) : null
+          if (!fit || !tableIds) {
+            commit({ type: 'area/patch', areaId, patch })
+            return
+          }
+          const positions = relocateNonMembers(present, fit, tableIds)
+          commitAll([
+            { type: 'area/patch', areaId, patch: { ...patch, ...fit } },
+            ...(Object.keys(positions).length > 0 ? [{ type: 'node/move' as const, positions }] : []),
+          ])
         }}
       />
     </EditorCanvasContext.Provider>
