@@ -170,7 +170,8 @@
       "noTeams": "You're not in any teams.",
       "communityTitle": "Community",
       "communityReleaseNotes": "Release notes",
-      "communityFeedback": "Feedback"
+      "communityFeedback": "Feedback",
+      "adminSystemTerms": "System dictionary"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -517,6 +518,50 @@
       "empty": {
         "search": "No results found.",
         "all": "No audit logs recorded yet."
+      }
+    },
+    "systemTerms": {
+      "title": "System dictionary",
+      "cardTitle": "Global terms",
+      "notice": "A global term dictionary shared by every workspace. Terms registered here are immediately reflected in the editor’s logical name inference and system dictionary tab.",
+      "searchPlaceholder": "Search token or label",
+      "newTerm": "New term",
+      "table": {
+        "term": "Token",
+        "labels": "Labels",
+        "type": "Type",
+        "updatedAt": "Updated"
+      },
+      "empty": {
+        "title": "No terms yet",
+        "description": "Registered terms are used for logical name inference in every workspace."
+      },
+      "delete": {
+        "title": "Delete term '{{term}}'",
+        "description": "This removes '{{term}}' from the system dictionary. The change applies to every workspace immediately.",
+        "successToast": "Term deleted."
+      },
+      "dialog": {
+        "createTitle": "New term",
+        "editTitle": "Edit term",
+        "notice": "The token is a globally unique key — re-registering the same token overwrites it. Enter labels per language; at least one language is required.",
+        "term": "Token",
+        "termPlaceholder": "user_id",
+        "labelsHint": "Labels — at least one language",
+        "type": "Type",
+        "typePlaceholder": "e.g. VARCHAR(100) — optional",
+        "fieldRequired": "Required.",
+        "termPattern": "Token cannot contain spaces",
+        "labelRequired": "Enter at least one label",
+        "tooLong": "Must be 100 characters or fewer",
+        "createSuccess": "Term registered.",
+        "updateSuccess": "Term updated.",
+        "locale": {
+          "ko": "한국어",
+          "en": "English",
+          "ja": "日本語",
+          "zh": "中文"
+        }
       }
     }
   },

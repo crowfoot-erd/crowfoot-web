@@ -28,6 +28,7 @@ import { WorkspacesPage } from '@/pages/workspaces'
 import { AdminAuditLogsPage } from '@/pages/admin/audit-logs'
 import { AdminCodesPage } from '@/pages/admin/codes'
 import { AdminManagedPage } from '@/pages/admin/managed'
+import { AdminSystemTermsPage } from '@/pages/admin/system-terms'
 import { AdminUserDetailPage } from '@/pages/admin/user-detail'
 import { AdminUsersPage } from '@/pages/admin/users'
 import { CommunityBoardPage } from '@/pages/community/board'
@@ -83,6 +84,7 @@ export function AppRoutes() {
             <Route path="users/:userId" element={<AdminUserDetailPage />} />
             <Route path="codes" element={<AdminCodesPage />} />
             <Route path="managed" element={<AdminManagedPage />} />
+            <Route path="system-terms" element={<AdminSystemTermsPage />} />
             <Route path="audit-logs" element={<AdminAuditLogsPage />} />
           </Route>
         </Route>
