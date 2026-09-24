@@ -33,6 +33,7 @@ const ISSUE_KEYS: Record<TermBulkIssueReason, string> = {
   missingSeparator: 'model.editor.termDictionary.bulkIssueMissingSeparator',
   emptyLabel: 'model.editor.termDictionary.bulkIssueEmptyLabel',
   spaceInTerm: 'model.editor.termDictionary.bulkIssueSpaceInTerm',
+  tooManyColumns: 'model.editor.termDictionary.bulkIssueTooManyColumns',
 }
 
 export function TermBulkImportDialog({ open, onOpenChange, workspaceId }: TermBulkImportDialogProps) {

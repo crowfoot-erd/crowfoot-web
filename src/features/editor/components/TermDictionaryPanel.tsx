@@ -3,10 +3,12 @@
  *
  * 워크스페이스 표준 자산으로 승격된 용어 사전의 본체. 두 탭:
  * - 표준 사전: 이 워크스페이스가 등록한 용어(workspace_terms — 문서끼리 공유).
- *   상단의 비표준 단어 섹션은 현재 문서의 물리명 토큰 중 병합 사전에 없는 토큰을
- *   출처와 함께 모은다(term-lint). 등록은 upsert(수정 = 같은 토큰 재등록).
- * - 시스템 사전: 내장 사전(BUILTIN_TERMS, 읽기 전용). 표준 등록이 우선하므로
- *   내장 라벨은 제안일 뿐 — "표준으로 재정의"는 폼을 프리필하기만 한다(즉시 등록 아님).
+ *   처음에는 빈 목록에서 시작한다 — 비표준 검사는 상시 노출이 아니라 [비표준 검사]
+ *   버튼을 누를 때만 문서 물리명 토큰 × 병합 사전을 검사해 결과를 보여준다(term-lint).
+ *   등록은 upsert(수정 = 같은 토큰 재등록)이며 타입(데이터 타입)도 함께 지정할 수 있다.
+ * - 시스템 사전: 관리자가 등록한 전역 사전(system_terms, 읽기 전용·다국어 labels).
+ *   라벨은 UI 언어로 해석해 보여준다. 표준 등록이 우선하므로 시스템 라벨은 제안일 뿐 —
+ *   "표준으로 재정의"는 폼을 프리필하기만 한다(즉시 등록 아님).
  *
  * 쓰기(폼·삭제·대량 등록·재정의·비표준 등록)는 Editor 이상(canEdit), 열람은 멤버 전체.
  * 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러와 같은 패턴) — 닫힘 동안
@@ -15,29 +17,37 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown, ChevronRight, Loader2, Pencil, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Pencil, ScanSearch, Search, Trash2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import type { SystemTerm, WorkspaceTerm } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BUILTIN_TERMS } from '@/features/editor/model/logical-name-dictionary'
-import { buildTermMap } from '@/features/editor/model/logical-name-inference'
+import { buildTermMap, resolveLabel } from '@/features/editor/model/logical-name-inference'
 import { lintNonStandardTerms, type TermLintFinding } from '@/features/editor/model/term-lint'
 import { useEditorStore } from '@/features/editor/store/editor-store'
-import { useDeleteTerm, useUpsertTerm, useWorkspaceTerms } from '@/features/terms/hooks'
+import {
+  useDeleteTerm,
+  useSystemTerms,
+  useUpsertTerm,
+  useWorkspaceTerms,
+} from '@/features/terms/hooks'
 import { errorMessage } from '@/lib/result-code'
 import { TermBulkImportDialog } from './TermBulkImportDialog'
+
+/** 등록 폼 타입 제안(datalist) — 자유 입력도 된다, 입력을 막는 목록이 아니다 */
+const TYPE_SUGGESTIONS = ['VARCHAR(50)', 'VARCHAR(100)', 'INTEGER', 'DECIMAL(15,2)', 'BOOLEAN', 'DATE', 'TIMESTAMP']
 
 export interface TermDictionaryPanelProps {
   open: boolean
   workspaceId: string
-  /** 편집 권한 — 쓰기 affordance만 게이트(목록·검색·비표준 섹션은 읽기 전용도 가능) */
+  /** 편집 권한 — 쓰기 affordance만 게이트(목록·검색·비표준 검사는 읽기 전용도 가능) */
   canEdit: boolean
 }
 
@@ -50,12 +60,13 @@ export function TermDictionaryPanel({ open, workspaceId, canEdit }: TermDictiona
 interface TermDraft {
   term: string
   label: string
+  type: string
 }
 
 function PanelBody({ workspaceId, canEdit }: { workspaceId: string; canEdit: boolean }) {
-  const { t } = useTranslation()
-  const doc = useEditorStore((s) => s.present)
+  const { t, i18n } = useTranslation()
   const terms = useWorkspaceTerms(workspaceId)
+  const system = useSystemTerms()
 
   const [tab, setTab] = useState<'standard' | 'system'>('standard')
   const [standardQuery, setStandardQuery] = useState('')
@@ -63,17 +74,15 @@ function PanelBody({ workspaceId, canEdit }: { workspaceId: string; canEdit: boo
   const [draft, setDraft] = useState<TermDraft | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 
-  /** 병합 사전(표준 > 시스템) — 비표준 검증 기준. 추론 다이얼로그과 같은 termKeys.list 쿼리를
+  /** 병합 사전(표준 > 시스템 언어 해석) — 비표준 검사 기준. 추론 다이얼로그와 같은 쿼리 키를
      쓴다 — 패널에서 등록하면 열려 있는 추론 미리보기도 즉시 갱신된다 */
-  const dict = useMemo(() => buildTermMap(terms.data?.items), [terms.data])
-  const findings = useMemo(() => lintNonStandardTerms(doc, dict), [doc, dict])
+  const dict = useMemo(
+    () => buildTermMap(system.data?.items, terms.data?.items, i18n.language),
+    [system.data, terms.data, i18n.language],
+  )
   const standardTerms = terms.data?.items ?? []
   /** 시스템 사전에서 표준이 재정의한 토큰 — "재정의됨" 배지 */
   const overridden = useMemo(() => new Set(standardTerms.map((row) => row.term)), [standardTerms])
-  const builtinEntries = useMemo(
-    () => Object.entries(BUILTIN_TERMS).sort(([a], [b]) => a.localeCompare(b)),
-    [],
-  )
 
   return (
     <aside
@@ -102,8 +111,8 @@ function PanelBody({ workspaceId, canEdit }: { workspaceId: string; canEdit: boo
             workspaceId={workspaceId}
             canEdit={canEdit}
             termsStatus={terms}
+            dict={dict}
             standardTerms={standardTerms}
-            findings={findings}
             query={standardQuery}
             onQueryChange={setStandardQuery}
             draft={draft}
@@ -115,12 +124,13 @@ function PanelBody({ workspaceId, canEdit }: { workspaceId: string; canEdit: boo
         <TabsContent value="system" className="flex min-h-0 flex-1 flex-col">
           <SystemTab
             canEdit={canEdit}
-            builtinEntries={builtinEntries}
+            systemStatus={system}
+            locale={i18n.language}
             overridden={overridden}
             query={systemQuery}
             onQueryChange={setSystemQuery}
-            onRedefine={(term, label) => {
-              setDraft({ term, label })
+            onRedefine={(term, label, type) => {
+              setDraft({ term, label, type })
               setTab('standard')
             }}
           />
@@ -144,8 +154,8 @@ function StandardTab({
   workspaceId,
   canEdit,
   termsStatus,
+  dict,
   standardTerms,
-  findings,
   query,
   onQueryChange,
   draft,
@@ -155,8 +165,8 @@ function StandardTab({
   workspaceId: string
   canEdit: boolean
   termsStatus: ReturnType<typeof useWorkspaceTerms>
-  standardTerms: Array<{ termId: string; term: string; label: string }>
-  findings: TermLintFinding[]
+  dict: ReturnType<typeof buildTermMap>
+  standardTerms: readonly WorkspaceTerm[]
   query: string
   onQueryChange: (query: string) => void
   draft: TermDraft | null
@@ -165,7 +175,15 @@ function StandardTab({
 }) {
   const { t } = useTranslation()
   const deleteMutation = useDeleteTerm(workspaceId)
+  const doc = useEditorStore((s) => s.present)
+  /** 비표준 검사는 요청 시에만 — 상시 노출하지 않는다(빈 목록 시작 원칙). 결과가 붙은
+      상태에서 사전·문서가 바뀌어도 다시 누르면 최신으로 다시 계산된다 */
+  const [lintOpen, setLintOpen] = useState(false)
   const [lintCollapsed, setLintCollapsed] = useState(false)
+  const findings = useMemo(
+    () => (lintOpen ? lintNonStandardTerms(doc, dict) : []),
+    [lintOpen, doc, dict],
+  )
 
   const q = query.trim().toLowerCase()
   const filtered = q
@@ -176,15 +194,6 @@ function StandardTab({
 
   return (
     <>
-      {/* 비표준 단어 — 발견 시 기본 펼침. 접기는 패널 보기 상태(문서를 고치지 않는다) */}
-      <LintSection
-        findings={findings}
-        collapsed={lintCollapsed}
-        onToggle={() => setLintCollapsed((prev) => !prev)}
-        canEdit={canEdit}
-        onRegister={(token) => onConsumeDraft({ term: token, label: '' })}
-      />
-
       <div className="flex items-center gap-2 border-b px-2 py-1.5">
         <div className="relative min-w-0 flex-1">
           <Search
@@ -200,12 +209,35 @@ function StandardTab({
             data-testid="term-standard-search"
           />
         </div>
+        <Button
+          type="button"
+          variant={lintOpen ? 'secondary' : 'outline'}
+          size="sm"
+          className="h-8 shrink-0 px-2 text-xs"
+          onClick={() => setLintOpen((prev) => !prev)}
+          aria-pressed={lintOpen}
+          data-testid="term-lint-toggle"
+        >
+          <ScanSearch aria-hidden className="size-3.5" />
+          {t('model.editor.termDictionary.lintButton')}
+        </Button>
         {q ? (
           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
             {t('model.editor.termDictionary.count', { count: filtered.length })}
           </span>
         ) : null}
       </div>
+
+      {/* 비표준 검사 결과 — 버튼을 눌렀을 때만 렌더. 접기는 패널 보기 상태(문서를 고치지 않는다) */}
+      {lintOpen ? (
+        <LintSection
+          findings={findings}
+          collapsed={lintCollapsed}
+          onToggle={() => setLintCollapsed((prev) => !prev)}
+          canEdit={canEdit}
+          onRegister={(token) => onConsumeDraft({ term: token, label: '', type: '' })}
+        />
+      ) : null}
 
       {/* 표준 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 프리필(재등록으로 덮어쓴다) */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
@@ -239,12 +271,15 @@ function StandardTab({
                   : 'flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left'
               }
               onClick={
-                canEdit ? () => onConsumeDraft({ term: row.term, label: row.label }) : undefined
+                canEdit
+                  ? () => onConsumeDraft({ term: row.term, label: row.label, type: row.type ?? '' })
+                  : undefined
               }
               onKeyDown={
                 canEdit
                   ? (event) => {
-                      if (event.key === 'Enter') onConsumeDraft({ term: row.term, label: row.label })
+                      if (event.key === 'Enter')
+                        onConsumeDraft({ term: row.term, label: row.label, type: row.type ?? '' })
                     }
                   : undefined
               }
@@ -258,6 +293,11 @@ function StandardTab({
                 →
               </span>
               <span className="min-w-0 flex-1 truncate">{row.label}</span>
+              {row.type ? (
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  {row.type}
+                </span>
+              ) : null}
               {canEdit ? (
                 <Button
                   type="button"
@@ -316,7 +356,7 @@ function StandardTabForm({
   const { t } = useTranslation()
   const upsertMutation = useUpsertTerm(workspaceId)
 
-  const form = useForm<{ term: string; label: string }>({
+  const form = useForm<{ term: string; label: string; type: string }>({
     resolver: zodResolver(
       z.object({
         term: z
@@ -325,9 +365,10 @@ function StandardTabForm({
           .min(1, t('model.editor.termDictionary.fieldRequired'))
           .refine((v) => !/\s/.test(v), t('model.editor.termDictionary.termPattern')),
         label: z.string().trim().min(1, t('model.editor.termDictionary.fieldRequired')),
+        type: z.string().trim().max(100, t('model.editor.termDictionary.typeTooLong')),
       }),
     ),
-    defaultValues: { term: '', label: '' },
+    defaultValues: { term: '', label: '', type: '' },
   })
 
   // 프리필은 요청 시 1회 — 적용 후 draft를 클리어해 사용자 입력을 되돌리지 않는다.
@@ -336,16 +377,17 @@ function StandardTabForm({
     if (!draft) return
     form.setValue('term', draft.term, { shouldValidate: false })
     form.setValue('label', draft.label, { shouldValidate: false })
+    form.setValue('type', draft.type, { shouldValidate: false })
     form.setFocus('label')
     onConsumeDraft(null)
   }, [draft, form, onConsumeDraft])
 
   const submit = form.handleSubmit((values) => {
     upsertMutation.mutate(
-      { term: values.term.trim(), label: values.label.trim() },
+      { term: values.term.trim(), label: values.label.trim(), type: values.type.trim() || null },
       {
         onSuccess: () => {
-          // term만 비운다 — 라벨은 같은 계열이 많아 남겨둔다(연속 등록 UX)
+          // term만 비운다 — 라벨·타입은 같은 계열이 많아 남겨둔다(연속 등록 UX)
           form.setValue('term', '')
           form.setFocus('term')
         },
@@ -397,6 +439,30 @@ function StandardTabForm({
               )}
             />
           </div>
+          {/* 타입(데이터 타입) — 선택. datalist는 제안일 뿐 자유 입력도 된다 */}
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem className="space-y-1">
+                <FormLabel className="text-xs">{t('model.editor.termDictionary.type')}</FormLabel>
+                <FormControl>
+                  <Input
+                    list="term-type-suggestions"
+                    placeholder={t('model.editor.termDictionary.typePlaceholder')}
+                    className="h-8 font-mono text-xs"
+                    {...field}
+                  />
+                </FormControl>
+                <datalist id="term-type-suggestions">
+                  {TYPE_SUGGESTIONS.map((suggestion) => (
+                    <option key={suggestion} value={suggestion} />
+                  ))}
+                </datalist>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <div className="flex items-center gap-2">
             <Button type="submit" size="sm" className="h-7 px-2" disabled={pending}>
               {upsertMutation.isPending ? (
@@ -517,27 +583,32 @@ function LintSection({
 
 function SystemTab({
   canEdit,
-  builtinEntries,
+  systemStatus,
+  locale,
   overridden,
   query,
   onQueryChange,
   onRedefine,
 }: {
   canEdit: boolean
-  builtinEntries: Array<[string, string]>
+  systemStatus: ReturnType<typeof useSystemTerms>
+  locale: string
   overridden: ReadonlySet<string>
   query: string
   onQueryChange: (query: string) => void
-  onRedefine: (term: string, label: string) => void
+  onRedefine: (term: string, label: string, type: string) => void
 }) {
   const { t } = useTranslation()
 
+  const items = systemStatus.data?.items ?? []
   const q = query.trim().toLowerCase()
+  /** 검색은 토큰 + 해석 라벨 기준 — 언어를 바꾸면 검색 대상 라벨도 바뀐다 */
   const filtered = q
-    ? builtinEntries.filter(
-        ([term, label]) => term.toLowerCase().includes(q) || label.toLowerCase().includes(q),
-      )
-    : builtinEntries
+    ? items.filter((row) => {
+        const label = resolveLabel(row.labels, locale)
+        return row.term.toLowerCase().includes(q) || label.toLowerCase().includes(q)
+      })
+    : items
 
   return (
     <>
@@ -567,40 +638,69 @@ function SystemTab({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
-        {filtered.map(([term, label]) => (
+        {systemStatus.isPending ? (
           <div
-            key={term}
-            data-testid={`term-builtin-${term}`}
-            className="flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left"
+            role="status"
+            className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
           >
-            <code className="min-w-0 shrink-0 truncate font-mono text-xs text-muted-foreground">
-              {term}
-            </code>
-            <span aria-hidden className="shrink-0 text-muted-foreground">
-              →
-            </span>
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-            {overridden.has(term) ? (
-              <Badge variant="secondary" className="shrink-0 px-1 text-[9px]">
-                {t('model.editor.termDictionary.overridden')}
-              </Badge>
-            ) : null}
-            {canEdit ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label={`${t('model.editor.termDictionary.redefine')} — ${term}`}
-                title={t('model.editor.termDictionary.redefine')}
-                onClick={() => onRedefine(term, label)}
-                data-testid={`term-redefine-${term}`}
-              >
-                <Pencil aria-hidden className="size-3.5" />
-              </Button>
-            ) : null}
+            <Loader2 aria-hidden className="size-4 animate-spin" />
+            {t('common.loading')}
           </div>
-        ))}
+        ) : systemStatus.isError ? (
+          <p
+            data-testid="term-system-error"
+            className="px-3 py-4 text-center text-xs text-muted-foreground"
+          >
+            {t('model.editor.termDictionary.systemLoadFailed')}
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+            {q ? t('model.editor.explorer.noResults') : t('model.editor.termDictionary.systemEmpty')}
+          </p>
+        ) : (
+          filtered.map((row: SystemTerm) => {
+            const label = resolveLabel(row.labels, locale)
+            return (
+              <div
+                key={row.termId}
+                data-testid={`term-builtin-${row.term}`}
+                className="flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left"
+              >
+                <code className="min-w-0 shrink-0 truncate font-mono text-xs text-muted-foreground">
+                  {row.term}
+                </code>
+                <span aria-hidden className="shrink-0 text-muted-foreground">
+                  →
+                </span>
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {row.type ? (
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                    {row.type}
+                  </span>
+                ) : null}
+                {overridden.has(row.term) ? (
+                  <Badge variant="secondary" className="shrink-0 px-1 text-[9px]">
+                    {t('model.editor.termDictionary.overridden')}
+                  </Badge>
+                ) : null}
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label={`${t('model.editor.termDictionary.redefine')} — ${row.term}`}
+                    title={t('model.editor.termDictionary.redefine')}
+                    onClick={() => onRedefine(row.term, label, row.type ?? '')}
+                    data-testid={`term-redefine-${row.term}`}
+                  >
+                    <Pencil aria-hidden className="size-3.5" />
+                  </Button>
+                ) : null}
+              </div>
+            )
+          })
+        )}
       </div>
     </>
   )

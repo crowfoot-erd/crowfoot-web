@@ -1,5 +1,5 @@
 /**
- * 논리명 자동 추론 (05-editor/04-dbms-engineering.md §3.2 — v1.13)
+ * 논리명 자동 추론 (05-editor/04-dbms-engineering.md §3.2 — v1.13, 사전 서버화 v1.14)
  *
  * 리버스·SQL Import 문서는 DB 코멘트 없는 객체의 논리명이 물리명과 같다
  * (ReverseContentAssembler가 코멘트 없으면 복제). 이 모듈이 사전으로 그런
@@ -7,25 +7,39 @@
  *
  * 순수 모듈(스토어·API 무관)이라 미리보기·적용·테스트가 같은 계산을 공유한다.
  *
+ * - 사전은 2층이다 — 시스템 사전(전역, 관리자 관리·다국어 labels)을 바닥에 깔고
+ *   표준 사전(워크스페이스) 등록이 우선한다. 시스템 라벨은 여기서 UI 언어로 해석한다
+ *   (resolveLabel 폴백). 해석된 라벨이 적용 시점에 문서 논리명으로 영구 기록되는 것은
+ *   v1.13과 같다 — 언어를 바꿔도 이미 적용된 논리명은 바뀌지 않는다.
  * - 후보 필터: 논리명이 ''이거나 물리명과 **같은** 객체만. 이 필터 자체가 보존 장치다 —
  *   리버스가 DB 코멘트를 논리명으로 옮겨 뒀으면(논리명≠물리명) 추론이 건드리지 않는다.
  *   sync-merge의 보존 규칙(§3.3)과 같은 신호 구조라 동기화와도 충돌하지 않는다.
- * - 전체 이름 조회 우선: 커스텀 사전에 user_id처럼 통째로 등록했으면 토큰 결합보다 이긴다.
+ * - 전체 이름 조회 우선: 표준 사전에 user_id처럼 통째로 등록했으면 토큰 결합보다 이긴다.
  * - 토큰화: '_'·camelCase로 분해 → 사전 조회 → 미등록 토큰은 원문 유지 → 공백 결합.
  *   토큰이 하나도 사전에 걸리지 않으면 추론이 아니라 재포맷이니 결과를 내지 않는다(null).
  * - 결과는 기존 table/patch·column/patch 체인지 재사용 — 신규 체인지 타입이 없고,
  *   commitAll 한 덩어리라 undo 한 번으로 전체 취소된다.
  */
 import type { ErdChange } from '@/features/editor/model/changes'
-import type { WorkspaceTerm } from '@/api/types'
-import { BUILTIN_TERMS } from '@/features/editor/model/logical-name-dictionary'
+import type { SystemTerm, WorkspaceTerm } from '@/api/types'
 
 /** 추론 사전 — 물리명(전체·토큰, 소문자) → 라벨 */
 export type TermMap = Record<string, string>
 
-/** 커스텀 사전 병합 — 내장을 덮어쓴다(워크스페이스가 표준을 재정의할 수 있다) */
-export function buildTermMap(custom: readonly WorkspaceTerm[] | undefined): TermMap {
-  const map: TermMap = { ...BUILTIN_TERMS }
+/** 다국어 라벨 해석 — UI 언어 → en → ko → 첫 값 폴백. 어느 언어로 등록됐어도 항상 라벨이 나온다 */
+export function resolveLabel(labels: Record<string, string>, locale: string): string {
+  return labels[locale] ?? labels.en ?? labels.ko ?? Object.values(labels)[0] ?? ''
+}
+
+/** 병합 사전 — 시스템 사전(전역, 로케일로 해석)을 바닥에 깔고 표준 사전(워크스페이스)이 덮어쓴다.
+ *  어느 쪽이 undefined여도 나머지 한쪽으로 계산한다(로드 실패 안내는 UI가 담당) */
+export function buildTermMap(
+  system: readonly SystemTerm[] | undefined,
+  custom: readonly WorkspaceTerm[] | undefined,
+  locale: string,
+): TermMap {
+  const map: TermMap = {}
+  for (const term of system ?? []) map[term.term] = resolveLabel(term.labels, locale)
   for (const term of custom ?? []) map[term.term] = term.label
   return map
 }

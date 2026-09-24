@@ -49,10 +49,10 @@ describe('TermBulkImportDialog', () => {
   })
 
   it('실행 → 순차 upsert 후 성공 N건 요약을 보여준다', async () => {
-    const posts: Array<{ term: string; label: string }> = []
+    const posts: Array<{ term: string; label: string; type: string | null }> = []
     server.use(
       http.post(TERMS_URL, async ({ request }) => {
-        posts.push((await request.json()) as { term: string; label: string })
+        posts.push((await request.json()) as { term: string; label: string; type: string | null })
         return okItem('x', 'x')
       }),
     )
@@ -64,8 +64,30 @@ describe('TermBulkImportDialog', () => {
       expect(screen.getByTestId('term-bulk-result').textContent).toContain('2건 등록 · 0건 실패'),
     )
     expect(posts).toEqual([
-      { term: 'ordr', label: '주문' },
-      { term: 'user_id', label: '회원 식별자' },
+      { term: 'ordr', label: '주문', type: null },
+      { term: 'user_id', label: '회원 식별자', type: null },
+    ])
+  })
+
+  it('3열 줄은 타입까지 POST 본문에 실는다', async () => {
+    const posts: Array<{ term: string; label: string; type: string | null }> = []
+    server.use(
+      http.post(TERMS_URL, async ({ request }) => {
+        posts.push((await request.json()) as { term: string; label: string; type: string | null })
+        return okItem('x', 'x')
+      }),
+    )
+    renderDialog()
+    await paste('email,이메일,VARCHAR(100)\nyn,여부,')
+    fireEvent.click(screen.getByTestId('term-bulk-run'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('term-bulk-result').textContent).toContain('2건 등록 · 0건 실패'),
+    )
+    // 비운 타입 열은 null로 전송된다(선택 값)
+    expect(posts).toEqual([
+      { term: 'email', label: '이메일', type: 'VARCHAR(100)' },
+      { term: 'yn', label: '여부', type: null },
     ])
   })
 
