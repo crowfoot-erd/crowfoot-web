@@ -544,7 +544,7 @@ export const fixtures = {
     totalCount: 2,
     responses: [
       { termId: '401', workspaceId: '101', term: 'member', label: '회원', types: null, updatedAt: '2026-09-23T00:00:00Z' },
-      { termId: '402', workspaceId: '101', term: 'user', label: '사용자', types: { postgresql: 'VARCHAR(50)' }, updatedAt: '2026-09-23T00:00:00Z' },
+      { termId: '402', workspaceId: '101', term: 'user', label: '사용자', types: { mysql: 'VARCHAR(60)', postgresql: 'VARCHAR(50)' }, updatedAt: '2026-09-23T00:00:00Z' },
     ],
   },
   /** 시스템 사전(§4.5) — 관리자가 등록하는 전역 사전. labels는 언어→라벨 맵(ko 단일 항목 포함),

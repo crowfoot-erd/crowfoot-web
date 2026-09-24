@@ -1,12 +1,13 @@
 /**
- * 용어 사전 패널 테스트 — 두 탭(표준·시스템)·비표준 검사 온디맨드·DBMS별 타입 입력·
- * 시스템탭 서버 페이징·알파벳 이니셜·열람 전용·권한 게이트 (용어 사전 패널, 05-editor/02-ui.md)
+ * 용어 사전 패널 테스트 — 두 탭(표준·시스템)·비표준 검사 온디맨드·등록·수정 다이얼로그
+ * (타입 문서 DB 1칸)·시스템탭 서버 페이징·알파벳 이니셜·열람 전용·권한 게이트
+ * (용어 사전 패널, 05-editor/02-ui.md)
  *
- * 표준 사전은 MSW 목업(fixtures.terms: member→회원, user→사용자 types {postgresql:
- * VARCHAR(50)}), 시스템 사전은 fixtures.systemTerms 5건(email·id·user·yn·zipcode — types는
- * DBMS별 맵, '#' 이니셜 없음). 문서의 DB 종류는 postgresql — 타입 접미는 그 키 값.
+ * 표준 사전은 MSW 목업(fixtures.terms: member→회원, user→사용자 types {mysql:
+ * VARCHAR(60), postgresql: VARCHAR(50)}), 시스템 사전은 fixtures.systemTerms 5건(email·id·user·yn·zipcode — types는
+ * DBMS별 맵, '#' 이니셜 없음). 문서의 DB 종류는 postgresql — 타입 접미·다이얼로그 저장 키.
  * 문서는 스토어에 직접 시딩한다. 목업은 픽스처 불변 원칙이라 등록·삭제 후 목록이 원본으로
- * 돌아온다 — 요청 반영은 스파이로, 화면 반영은 폼 프리필·삭제 응답으로 검증한다.
+ * 돌아온다 — 요청 반영은 스파이로, 화면 반영은 다이얼로그 프리필·닫힘으로 검증한다.
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -24,7 +25,7 @@ import { renderWithProviders, resetSessionState } from '@/test/test-app'
 const TERMS_URL = '/api/v1/core/workspaces/101/terms'
 const SYSTEM_TERMS_URL = '/api/v1/core/system-terms'
 
-/** 문서의 DB 종류 — fixtures 모델(postgresql)과 같은 값. 타입 접미·폼 프리필의 기준 */
+/** 문서의 DB 종류 — fixtures 모델(postgresql)과 같은 값. 타입 접미·다이얼로그 저장 키의 기준 */
 const DATABASE_TYPE = 'postgresql'
 
 afterEach(() => {
@@ -61,11 +62,13 @@ function seedCleanDoc() {
   ])
 }
 
-const termInput = () => screen.getByPlaceholderText('user_id')
-const labelInput = () => screen.getByPlaceholderText('예: 사용자')
-/** 타입 입력은 DBMS별 — 활성 database_types(fixtures: mysql·postgresql) 칸마다 하나 */
-const mysqlTypeInput = () => screen.getByLabelText('타입 (MySQL)')
-const pgTypeInput = () => screen.getByLabelText('타입 (PostgreSQL)')
+/* 등록·수정 다이얼로그 내부 입력 — 폼이 다이얼로그(포털)로 옮겨졌다 */
+const termInput = (dialog: HTMLElement) => within(dialog).getByPlaceholderText('user_id')
+const labelInput = (dialog: HTMLElement) => within(dialog).getByPlaceholderText('예: 사용자')
+const typeInput = (dialog: HTMLElement) =>
+  within(dialog).getByPlaceholderText('예: VARCHAR(100) — 선택')
+const submitDialog = (dialog: HTMLElement) =>
+  fireEvent.click(within(dialog).getByRole('button', { name: '등록' }))
 
 /** POST upsert 스파이 — 요청 본문을 남기고 정상 응답을 돌려준다 */
 function spyUpsert() {
@@ -113,52 +116,48 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     seedCleanDoc()
     renderPanel()
 
-    // fixtures.terms의 user는 types {postgresql: VARCHAR(50)} — 문서 종류 값이 접미로
-    expect(await screen.findByTestId('term-row-user')).toHaveTextContent('VARCHAR(50)')
+    // fixtures.terms의 user는 types {mysql: VARCHAR(60), postgresql: VARCHAR(50)} —
+    // 문서 종류 값만 접미로 (mysql 값은 숨는다)
+    const row = await screen.findByTestId('term-row-user')
+    expect(row).toHaveTextContent('VARCHAR(50)')
+    expect(row).not.toHaveTextContent('VARCHAR(60)')
   })
 
-  it('등록 폼은 DBMS별 타입 칸을 갖고, 채운 종류만 맵으로 POST 후 term만 비워진다(연속 등록)', async () => {
+  it('[등록] 버튼 → 다이얼로그가 열린다 — 타입 칸은 문서의 DB 종류 1칸뿐이다', async () => {
+    seedCleanDoc()
+    renderPanel()
+    await screen.findByTestId('term-row-member')
+
+    fireEvent.click(screen.getByTestId('term-upsert-open'))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('용어 등록')).toBeVisible()
+    // DBMS별 칸이 아니라 문서 종류 기준 1칸 — 제안(datalist)은 자유 입력
+    expect(
+      within(dialog).getAllByPlaceholderText('예: VARCHAR(100) — 선택'),
+    ).toHaveLength(1)
+
+    // 닫기 버튼으로 끈다
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('채운 타입은 문서 종류 키 하나짜리 맵으로 POST되고 성공하면 다이얼로그가 닫힌다', async () => {
     seedCleanDoc()
     const posts = spyUpsert()
     renderPanel()
     await screen.findByTestId('term-row-member')
 
-    expect(mysqlTypeInput()).toBeVisible()
-    expect(pgTypeInput()).toBeVisible()
+    fireEvent.click(screen.getByTestId('term-upsert-open'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(termInput(dialog), { target: { value: 'ordr' } })
+    fireEvent.change(labelInput(dialog), { target: { value: '주문' } })
+    fireEvent.change(typeInput(dialog), { target: { value: 'VARCHAR(10)' } })
+    submitDialog(dialog)
 
-    fireEvent.change(termInput(), { target: { value: 'ordr' } })
-    fireEvent.change(labelInput(), { target: { value: '주문' } })
-    fireEvent.change(pgTypeInput(), { target: { value: 'VARCHAR(10)' } })
-    fireEvent.click(screen.getByRole('button', { name: '등록' }))
-
-    // PostgreSQL 칸만 채웠다 — 그 키만 맵으로 간다
     await waitFor(() =>
       expect(posts).toEqual([{ term: 'ordr', label: '주문', types: { postgresql: 'VARCHAR(10)' } }]),
     )
-    // term만 비운다 — 라벨·타입은 같은 계열이 많아 남겨둔다
-    await waitFor(() => expect(termInput()).toHaveValue(''))
-    expect(labelInput()).toHaveValue('주문')
-    expect(pgTypeInput()).toHaveValue('VARCHAR(10)')
-    expect(mysqlTypeInput()).toHaveValue('')
-  })
-
-  it('DBMS별 칸에 따로 입력하면 둘 다 맵에 실린다', async () => {
-    seedCleanDoc()
-    const posts = spyUpsert()
-    renderPanel()
-    await screen.findByTestId('term-row-member')
-
-    fireEvent.change(termInput(), { target: { value: 'ordr' } })
-    fireEvent.change(labelInput(), { target: { value: '주문' } })
-    fireEvent.change(mysqlTypeInput(), { target: { value: 'VARCHAR(30)' } })
-    fireEvent.change(pgTypeInput(), { target: { value: 'VARCHAR(10)' } })
-    fireEvent.click(screen.getByRole('button', { name: '등록' }))
-
-    await waitFor(() =>
-      expect(posts).toEqual([
-        { term: 'ordr', label: '주문', types: { mysql: 'VARCHAR(30)', postgresql: 'VARCHAR(10)' } },
-      ]),
-    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
   it('타입을 비우고 제출하면 null로 전송된다(선택 값)', async () => {
@@ -167,34 +166,68 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     renderPanel()
     await screen.findByTestId('term-row-member')
 
-    fireEvent.change(termInput(), { target: { value: 'ordr' } })
-    fireEvent.change(labelInput(), { target: { value: '주문' } })
-    fireEvent.click(screen.getByRole('button', { name: '등록' }))
+    fireEvent.click(screen.getByTestId('term-upsert-open'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(termInput(dialog), { target: { value: 'ordr' } })
+    fireEvent.change(labelInput(dialog), { target: { value: '주문' } })
+    submitDialog(dialog)
 
     await waitFor(() =>
       expect(posts).toEqual([{ term: 'ordr', label: '주문', types: null }]),
     )
   })
 
-  it('행 클릭 → 수정 프리필(라벨+DBMS별 타입), 같은 term 재등록으로 덮어쓴다', async () => {
+  it('행 클릭 → 수정 다이얼로그(기존 값 프리필 — 문서 종류 타입만), 같은 term 재등록으로 덮어쓴다', async () => {
     seedCleanDoc()
     const posts = spyUpsert()
     renderPanel()
     await screen.findByTestId('term-row-user')
 
     fireEvent.click(screen.getByTestId('term-row-user'))
-    expect(termInput()).toHaveValue('user')
-    expect(labelInput()).toHaveValue('사용자')
-    // fixtures.terms의 user types — 종류별 칸에 각각 프리필된다
-    expect(pgTypeInput()).toHaveValue('VARCHAR(50)')
-    expect(mysqlTypeInput()).toHaveValue('')
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('용어 수정')).toBeVisible()
+    expect(termInput(dialog)).toHaveValue('user')
+    expect(labelInput(dialog)).toHaveValue('사용자')
+    // fixtures.terms의 user types — 문서 종류(postgresql) 값이 그대로 실린다
+    expect(typeInput(dialog)).toHaveValue('VARCHAR(50)')
 
-    fireEvent.change(labelInput(), { target: { value: '회원 계정' } })
-    fireEvent.click(screen.getByRole('button', { name: '등록' }))
+    fireEvent.change(labelInput(dialog), { target: { value: '회원 계정' } })
+    submitDialog(dialog)
+
+    // 서버는 types를 통째로 치환한다 — 다른 종류(mysql) 값은 그대로 실려 보존된다
+    await waitFor(() =>
+      expect(posts).toEqual([
+        { term: 'user', label: '회원 계정', types: { mysql: 'VARCHAR(60)', postgresql: 'VARCHAR(50)' } },
+      ]),
+    )
+  })
+
+  it('수정에서 타입을 지우면 문서 종류 키만 빠진 맵이 간다(다른 종류 값은 보존)', async () => {
+    seedCleanDoc()
+    const posts = spyUpsert()
+    renderPanel()
+    await screen.findByTestId('term-row-user')
+
+    fireEvent.click(screen.getByTestId('term-row-user'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(typeInput(dialog), { target: { value: '' } })
+    submitDialog(dialog)
 
     await waitFor(() =>
-      expect(posts).toEqual([{ term: 'user', label: '회원 계정', types: { postgresql: 'VARCHAR(50)' } }]),
+      expect(posts).toEqual([{ term: 'user', label: '사용자', types: { mysql: 'VARCHAR(60)' } }]),
     )
+  })
+
+  it('행의 연필 아이콘도 수정 다이얼로그를 연다(행 클릭과 같은 동작)', async () => {
+    seedCleanDoc()
+    renderPanel()
+    await screen.findByTestId('term-row-user')
+
+    fireEvent.click(screen.getByRole('button', { name: '수정 — user' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('용어 수정')).toBeVisible()
+    expect(termInput(dialog)).toHaveValue('user')
   })
 
   it('삭제 버튼 → DELETE 호출 후 목록을 다시 불러온다', async () => {
@@ -214,17 +247,19 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     await waitFor(() => expect(deletes).toEqual(['401'])) // fixtures.terms의 member termId
   })
 
-  it('Viewer(canEdit=false)는 목록·검색·비표준 검사만 되고 등록 폼·삭제·대량 등록이 없다', async () => {
+  it('Viewer(canEdit=false)는 목록·검색·비표준 검사만 되고 등록 버튼·삭제·대량 등록이 없다', async () => {
     seedCleanDoc()
     renderPanel({ canEdit: false })
     await screen.findByTestId('term-row-member')
 
     expect(screen.getByTestId('term-standard-search')).toBeVisible()
     expect(screen.getByText('열람 전용 — 등록·수정은 편집 권한이 필요합니다')).toBeVisible()
-    expect(screen.queryByPlaceholderText('user_id')).toBeNull()
-    expect(screen.queryByRole('button', { name: '등록' })).toBeNull()
+    expect(screen.queryByTestId('term-upsert-open')).toBeNull()
     expect(screen.queryByRole('button', { name: '대량 등록' })).toBeNull()
     expect(screen.queryByRole('button', { name: '삭제 — member' })).toBeNull()
+    // 행 클릭 수정 진입도 없다
+    fireEvent.click(screen.getByTestId('term-row-member'))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('사전 조회 실패 시 안내 문구와 빈 목록을 보여준다', async () => {
@@ -369,7 +404,7 @@ describe('TermDictionaryPanel — 비표준 단어 섹션(요청 시 검사)', (
     expect(screen.queryByTestId('term-lint-section')).toBeNull()
   })
 
-  it('문서 토큰(usr)이 출처(테이블.컬럼)와 함께 나오고 표준 등록이 폼을 프리필한다', async () => {
+  it('문서 토큰(usr)이 출처(테이블.컬럼)와 함께 나오고 표준 등록이 다이얼로그를 프리필해 연다', async () => {
     seedLintDoc()
     renderPanel()
     await screen.findByTestId('term-row-member')
@@ -381,10 +416,11 @@ describe('TermDictionaryPanel — 비표준 단어 섹션(요청 시 검사)', (
     expect(screen.getByText('비표준 단어 (1)')).toBeVisible()
 
     fireEvent.click(screen.getByTestId('term-lint-register-usr'))
-    await waitFor(() => expect(termInput()).toHaveValue('usr'))
-    expect(labelInput()).toHaveValue('') // 라벨은 사용자가 채운다
-    expect(pgTypeInput()).toHaveValue('')
-    expect(mysqlTypeInput()).toHaveValue('')
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('용어 등록')).toBeVisible()
+    expect(termInput(dialog)).toHaveValue('usr') // 토큰만 실려 있다
+    expect(labelInput(dialog)).toHaveValue('')
+    expect(typeInput(dialog)).toHaveValue('')
   })
 
   it('문서 토큰이 모두 사전에 있으면 비표준 없음 문구를 보여준다', async () => {

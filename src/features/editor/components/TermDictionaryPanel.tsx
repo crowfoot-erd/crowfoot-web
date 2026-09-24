@@ -5,8 +5,9 @@
  * - 표준 사전: 이 워크스페이스가 등록한 용어(workspace_terms — 문서끼리 공유).
  *   처음에는 빈 목록에서 시작한다 — 비표준 검사는 상시 노출이 아니라 [비표준 검사]
  *   버튼을 누를 때만 문서 물리명 토큰 × 병합 사전을 검사해 결과를 보여준다(term-lint).
- *   등록은 upsert(수정 = 같은 토큰 재등록)이며 타입(데이터 타입)도 지정할 수 있다 —
- *   타입은 DBMS 종류별로 따로 입력한다(활성 database_types 칸마다, 키 = 코드).
+ *   등록·수정은 하단 [등록] 버튼·행 클릭으로 여는 다이얼로그(TermUpsertDialog)에서
+ *   받는다 — upsert(수정 = 같은 토큰 재등록)라 한 폼이고, 타입(데이터 타입)은
+ *   문서의 DB 종류 1가지 기준으로만 입력받아 그 키 하나짜리 맵으로 저장한다.
  * - 시스템 사전: 관리자가 등록한 전역 사전(system_terms, 읽기 전용·다국어 labels).
  *   라벨은 UI 언어로 해석해 보여준다. 열람 전용 — 사용자가 시스템 사전을 고치는
  *   진입(수정·재정의 프리필)은 없다. 표준 사전이 토큰을 덮어 쓰고 있으면 배지로 안내한다.
@@ -15,41 +16,32 @@
  * 행의 타입 접미는 문서의 DB 종류(databaseType — database_types 코드)에 맞는 값을
  * 보여준다. 대량 등록 3열 타입도 같은 키 하나로 저장된다.
  *
- * 쓰기(폼·삭제·대량 등록·비표준 등록)는 Editor 이상(canEdit), 열람은 멤버 전체.
- * 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러와 같은 패턴) — 닫힘 동안
- * 문서 구독·쿼리 비용이 0이다. draft(폼 프리필)는 요청 시 1회 적용 후 클리어된다 —
- * 탭 전환으로 표준 탭이 리마운트돼도 부모가 든 draft가 마운트 직후 적용된다.
+ * 쓰기(등록·수정 다이얼로그·삭제·대량 등록·비표준 등록)는 Editor 이상(canEdit),
+ * 열람은 멤버 전체. 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러와
+ * 같은 패턴) — 닫힘 동안 문서 구독·쿼리 비용이 0이다.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, ScanSearch, Search, Trash2 } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, ScanSearch, Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { z } from 'zod'
 
 import type { SystemTerm, WorkspaceTerm } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { buildTermMap, resolveLabel } from '@/features/editor/model/logical-name-inference'
 import { lintNonStandardTerms, type TermLintFinding } from '@/features/editor/model/term-lint'
 import { useEditorStore } from '@/features/editor/store/editor-store'
-import { useDatabaseTypes } from '@/features/models/hooks'
 import {
   useAllSystemTerms,
   useDeleteTerm,
   useSystemTermsPage,
-  useUpsertTerm,
   useWorkspaceTerms,
 } from '@/features/terms/hooks'
 import { errorMessage } from '@/lib/result-code'
 import { TermBulkImportDialog } from './TermBulkImportDialog'
-
-/** 등록 폼 타입 제안(datalist) — 자유 입력도 된다, 입력을 막는 목록이 아니다 */
-const TYPE_SUGGESTIONS = ['VARCHAR(50)', 'VARCHAR(100)', 'INTEGER', 'DECIMAL(15,2)', 'BOOLEAN', 'DATE', 'TIMESTAMP']
+import { TermUpsertDialog } from './TermUpsertDialog'
 
 /** 알파벳 인덱스 — 소문자 토큰의 이니셜. '#'은 알파벳 외(숫자 등) */
 const ALPHABET = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'] as const
@@ -71,13 +63,6 @@ export function TermDictionaryPanel({ open, workspaceId, databaseType, canEdit }
   return <PanelBody workspaceId={workspaceId} databaseType={databaseType} canEdit={canEdit} />
 }
 
-/** 등록 폼에 실을 프리필 — 요청 시 1회 적용 후 클리어(입력 중인 값을 되돌리지 않는다) */
-interface TermDraft {
-  term: string
-  label: string
-  types: Record<string, string>
-}
-
 function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string; databaseType: string; canEdit: boolean }) {
   const { t, i18n } = useTranslation()
   const terms = useWorkspaceTerms(workspaceId)
@@ -86,7 +71,6 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
   const [tab, setTab] = useState<'standard' | 'system'>('standard')
   const [standardQuery, setStandardQuery] = useState('')
   const [systemQuery, setSystemQuery] = useState('')
-  const [draft, setDraft] = useState<TermDraft | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 
   /** 병합 사전(표준 > 시스템 언어 해석) — 비표준 검사 기준. 추론 다이얼로그와 같은 쿼리 키를
@@ -131,8 +115,6 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
             standardTerms={standardTerms}
             query={standardQuery}
             onQueryChange={setStandardQuery}
-            draft={draft}
-            onConsumeDraft={setDraft}
             onOpenBulk={() => setBulkOpen(true)}
           />
         </TabsContent>
@@ -171,8 +153,6 @@ function StandardTab({
   standardTerms,
   query,
   onQueryChange,
-  draft,
-  onConsumeDraft,
   onOpenBulk,
 }: {
   workspaceId: string
@@ -183,8 +163,6 @@ function StandardTab({
   standardTerms: readonly WorkspaceTerm[]
   query: string
   onQueryChange: (query: string) => void
-  draft: TermDraft | null
-  onConsumeDraft: (draft: TermDraft | null) => void
   onOpenBulk: () => void
 }) {
   const { t } = useTranslation()
@@ -198,6 +176,28 @@ function StandardTab({
     () => (lintOpen ? lintNonStandardTerms(doc, dict) : []),
     [lintOpen, doc, dict],
   )
+
+  /** 등록·수정 다이얼로그 상태 — mode가 폼 제목·토스트를 정한다(비표준 등록은 토큰이
+      실린 채 '등록'이다). 타입은 문서의 DB 종류 값 하나만 오간다 — initial.types에 기존
+      DBMS별 맵 전체를 실어 다른 종류 값이 지워지지 않게 한다 */
+  const [upsert, setUpsert] = useState<{
+    open: boolean
+    mode: 'create' | 'edit'
+    initial: { term: string; label: string; type: string; types: Record<string, string> | null }
+  }>({ open: false, mode: 'create', initial: { term: '', label: '', type: '', types: null } })
+  const openCreate = () =>
+    setUpsert({ open: true, mode: 'create', initial: { term: '', label: '', type: '', types: null } })
+  const openEdit = (row: WorkspaceTerm) =>
+    setUpsert({
+      open: true,
+      mode: 'edit',
+      initial: {
+        term: row.term,
+        label: row.label,
+        type: row.types?.[databaseType] ?? '',
+        types: row.types ?? null,
+      },
+    })
 
   const q = query.trim().toLowerCase()
   const filtered = q
@@ -249,11 +249,13 @@ function StandardTab({
           collapsed={lintCollapsed}
           onToggle={() => setLintCollapsed((prev) => !prev)}
           canEdit={canEdit}
-          onRegister={(token) => onConsumeDraft({ term: token, label: '', types: {} })}
+          onRegister={(token) =>
+            setUpsert({ open: true, mode: 'create', initial: { term: token, label: '', type: '', types: null } })
+          }
         />
       ) : null}
 
-      {/* 표준 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 프리필(재등록으로 덮어쓴다) */}
+      {/* 표준 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 다이얼로그(재등록으로 덮어쓴다) */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
         {termsStatus.isPending ? (
           <div
@@ -284,16 +286,11 @@ function StandardTab({
                   ? 'group flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-sm px-2 text-left hover:bg-accent/60'
                   : 'flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left'
               }
-              onClick={
-                canEdit
-                  ? () => onConsumeDraft({ term: row.term, label: row.label, types: row.types ?? {} })
-                  : undefined
-              }
+              onClick={canEdit ? () => openEdit(row) : undefined}
               onKeyDown={
                 canEdit
                   ? (event) => {
-                      if (event.key === 'Enter')
-                        onConsumeDraft({ term: row.term, label: row.label, types: row.types ?? {} })
+                      if (event.key === 'Enter') openEdit(row)
                     }
                   : undefined
               }
@@ -313,23 +310,40 @@ function StandardTab({
                 </span>
               ) : null}
               {canEdit ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-                  aria-label={`${t('common.delete')} — ${row.term}`}
-                  title={`${t('common.delete')} — ${row.term}`}
-                  disabled={deleteMutation.isPending}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    deleteMutation.mutate(row.termId, {
-                      onError: (error) => toast.error(errorMessage(error)),
-                    })
-                  }}
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                </Button>
+                <>
+                  {/* 수정 진입 — 연필 아이콘(행 클릭과 같은 동작) */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                    aria-label={`${t('common.edit')} — ${row.term}`}
+                    title={`${t('common.edit')} — ${row.term}`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openEdit(row)
+                    }}
+                  >
+                    <Pencil aria-hidden className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                    aria-label={`${t('common.delete')} — ${row.term}`}
+                    title={`${t('common.delete')} — ${row.term}`}
+                    disabled={deleteMutation.isPending}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      deleteMutation.mutate(row.termId, {
+                        onError: (error) => toast.error(errorMessage(error)),
+                      })
+                    }}
+                  >
+                    <Trash2 aria-hidden className="size-3.5" />
+                  </Button>
+                </>
               ) : null}
             </div>
           ))
@@ -337,201 +351,46 @@ function StandardTab({
       </div>
 
       {canEdit ? (
-        <StandardTabForm
-          workspaceId={workspaceId}
-          draft={draft}
-          onConsumeDraft={onConsumeDraft}
-          onOpenBulk={onOpenBulk}
-          deletePending={deleteMutation.isPending}
-        />
+        /* 하단 액션 바 — 등록(다이얼로그)·대량 등록. 폼은 다이얼로그로 옮겨 패널은 목록에 집중한다 */
+        <div className="flex items-center gap-2 border-t p-2">
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 px-2"
+            onClick={openCreate}
+            data-testid="term-upsert-open"
+          >
+            <Plus aria-hidden className="size-3.5" />
+            {t('model.editor.termDictionary.add')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            onClick={onOpenBulk}
+            data-testid="term-bulk-open"
+          >
+            {t('model.editor.termDictionary.bulkOpen')}
+          </Button>
+        </div>
       ) : (
         <p className="border-t px-3 py-2 text-xs text-muted-foreground">
           {t('model.editor.termDictionary.viewerNote')}
         </p>
       )}
+
+      {canEdit ? (
+        <TermUpsertDialog
+          open={upsert.open}
+          onOpenChange={(nextOpen) => setUpsert((prev) => ({ ...prev, open: nextOpen }))}
+          workspaceId={workspaceId}
+          databaseType={databaseType}
+          mode={upsert.mode}
+          initial={upsert.initial}
+        />
+      ) : null}
     </>
-  )
-}
-
-/** 표준 탭 하단 고정 영역 — 등록 폼 + 대량 등록 버튼. 등록 후 term만 비워 연속 등록을 돕는다.
- *  타입 입력은 활성 DBMS(database_types) 칸마다 하나씩 — 채운 것만 맵으로 전송한다.
- *  DBMS 목록은 코드 테이블이 원천이라 종류를 추가하면(시드 행) 칸이 자동으로 늘어난다 */
-function StandardTabForm({
-  workspaceId,
-  draft,
-  onConsumeDraft,
-  onOpenBulk,
-  deletePending,
-}: {
-  workspaceId: string
-  draft: TermDraft | null
-  onConsumeDraft: (draft: TermDraft | null) => void
-  onOpenBulk: () => void
-  deletePending: boolean
-}) {
-  const { t } = useTranslation()
-  const upsertMutation = useUpsertTerm(workspaceId)
-  const databaseTypes = useDatabaseTypes()
-  const activeTypes = databaseTypes.data?.items ?? []
-
-  const form = useForm<{ term: string; label: string; types: Record<string, string> }>({
-    resolver: zodResolver(
-      z.object({
-        term: z
-          .string()
-          .trim()
-          .min(1, t('model.editor.termDictionary.fieldRequired'))
-          .refine((v) => !/\s/.test(v), t('model.editor.termDictionary.termPattern')),
-        label: z.string().trim().min(1, t('model.editor.termDictionary.fieldRequired')),
-        types: z.record(
-          z.string(),
-          z.string().trim().max(100, t('model.editor.termDictionary.typeTooLong')),
-        ),
-      }),
-    ),
-    defaultValues: { term: '', label: '', types: {} },
-  })
-
-  // DBMS 목록 도착·변경 시 칸별 기본값('')을 확정한다 — 미입력 칸이 undefined로
-  // 남으면 레코드 값 검증(문자열)에 걸려 제출이 막힌다
-  useEffect(() => {
-    for (const dbms of activeTypes) {
-      if (form.getValues(`types.${dbms.code}`) === undefined) {
-        form.setValue(`types.${dbms.code}`, '')
-      }
-    }
-  }, [activeTypes, form])
-
-  // 프리필은 요청 시 1회 — 적용 후 draft를 클리어해 사용자 입력을 되돌리지 않는다.
-  // 탭 전환 리마운트 직후에도 이 effect가 마운트 시점의 draft를 받아 적용한다.
-  useEffect(() => {
-    if (!draft) return
-    form.setValue('term', draft.term, { shouldValidate: false })
-    form.setValue('label', draft.label, { shouldValidate: false })
-    form.setValue('types', draft.types, { shouldValidate: false })
-    form.setFocus('label')
-    onConsumeDraft(null)
-  }, [draft, form, onConsumeDraft])
-
-  const submit = form.handleSubmit((values) => {
-    // 채운 종류만 맵으로 — 빈 칸은 키를 아예 보내지 않는다(그 종류 값을 지운다)
-    const types = Object.fromEntries(
-      Object.entries(values.types ?? {}).filter(([, value]) => value.trim() !== ''),
-    )
-    upsertMutation.mutate(
-      {
-        term: values.term.trim(),
-        label: values.label.trim(),
-        types: Object.keys(types).length > 0 ? types : null,
-      },
-      {
-        onSuccess: () => {
-          // term만 비운다 — 라벨·타입은 같은 계열이 많아 남겨둔다(연속 등록 UX)
-          form.setValue('term', '')
-          form.setFocus('term')
-        },
-        onError: (error) => toast.error(errorMessage(error)),
-      },
-    )
-  })
-
-  const pending = upsertMutation.isPending || deletePending
-
-  return (
-    <div className="grid gap-2 border-t p-2">
-      <Form {...form}>
-        {/* form 요소로 감싸 엔터 등록이 된다 */}
-        <form className="grid gap-2" onSubmit={submit} noValidate>
-          <div className="grid grid-cols-2 gap-2">
-            <FormField
-              control={form.control}
-              name="term"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FormLabel className="text-xs">
-                    {t('model.editor.termDictionary.term')}
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="user_id" className="h-8 text-sm" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="label"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FormLabel className="text-xs">
-                    {t('model.editor.termDictionary.label')}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('model.editor.termDictionary.labelPlaceholder')}
-                      className="h-8 text-sm"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          {/* 타입(데이터 타입) — DBMS 종류별 입력, 선택. datalist는 제안일 뿐 자유 입력도 된다 */}
-          {activeTypes.map((dbms) => (
-            <FormField
-              key={dbms.code}
-              control={form.control}
-              name={`types.${dbms.code}`}
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FormLabel className="text-xs">
-                    {t('model.editor.termDictionary.typeForDbms', { dbms: dbms.displayName })}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      list="term-type-suggestions"
-                      placeholder={t('model.editor.termDictionary.typePlaceholder')}
-                      className="h-8 font-mono text-xs"
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                    />
-                  </FormControl>
-                  <datalist id="term-type-suggestions">
-                    {TYPE_SUGGESTIONS.map((suggestion) => (
-                      <option key={suggestion} value={suggestion} />
-                    ))}
-                  </datalist>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ))}
-          <div className="flex items-center gap-2">
-            <Button type="submit" size="sm" className="h-7 px-2" disabled={pending}>
-              {upsertMutation.isPending ? (
-                <Loader2 aria-hidden className="size-3.5 animate-spin" />
-              ) : null}
-              {t('model.editor.termDictionary.add')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 px-2"
-              onClick={onOpenBulk}
-              data-testid="term-bulk-open"
-            >
-              {t('model.editor.termDictionary.bulkOpen')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-      <p className="text-xs text-muted-foreground">{t('model.editor.termDictionary.hint')}</p>
-    </div>
   )
 }
 
