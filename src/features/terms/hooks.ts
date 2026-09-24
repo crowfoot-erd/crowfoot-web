@@ -60,14 +60,19 @@ export function useAdminSystemTermsPage(params: SystemTermPageParams) {
 /** 시스템 사전 전체 — 논리명 추론·비표준 검사의 원천. size 100으로 1페이지를 먼저 얻고
  *  totalPages가 1을 넘으면 나머지 페이지를 순차 이어붙인다(현재 276어 = 3요청).
  *  화면 표시는 useSystemTermsPage가 맡는다 — 여기는 원천 데이터만 담는다 */
+/** 추론이 전체 시스템 사전을 받아오는 단위 — 서버 size 상한(100,000)에 맞춘 한 번의 요청 */
+const ALL_TERMS_PAGE_SIZE = 100_000
+
 export function useAllSystemTerms() {
   return useQuery({
     queryKey: systemTermKeys.allTerms,
     queryFn: async ({ signal }) => {
-      const first = await fetchSystemTermsPage({ page: 1, size: 100 }, signal)
+      // 시스템 사전은 수만 토큰급이라 한 번의 대량 요청(size 상한 100,000)으로 받는다 —
+      // size 100 순차 로딩이면 3.4만 토큰 = 340요청이 된다. 그래도 남는 페이지(10만 초과)는 이어 붙인다
+      const first = await fetchSystemTermsPage({ page: 1, size: ALL_TERMS_PAGE_SIZE }, signal)
       const items = [...first.items]
       for (let page = 2; page <= first.totalPages; page++) {
-        const next = await fetchSystemTermsPage({ page, size: 100 }, signal)
+        const next = await fetchSystemTermsPage({ page, size: ALL_TERMS_PAGE_SIZE }, signal)
         items.push(...next.items)
       }
       return items

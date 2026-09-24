@@ -318,7 +318,8 @@ function normalizeTermTypes(raw: Record<string, string> | null | undefined): {
 function systemTermsPage(request: Request) {
   const params = new URL(request.url).searchParams
   const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
-  const size = Math.min(100, Math.max(1, Number(params.get('size') ?? '20') || 20))
+  // size 상한은 실물 TermPageParams(100,000)를 따른다 — 추론의 전체 로딩이 한 번의 요청
+  const size = Math.min(100_000, Math.max(1, Number(params.get('size') ?? '20') || 20))
   const keyword = params.get('keyword')?.trim().toLowerCase() ?? ''
   const letter = params.get('letter')?.trim().toLowerCase() ?? ''
   const matched = fixtures.systemTerms.responses.filter((row) => {
