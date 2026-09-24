@@ -45,9 +45,14 @@ function seedInferableDoc(): void {
   })
 }
 
-function renderDialog() {
+function renderDialog(onManageDictionary = vi.fn()) {
   return renderWithProviders(
-    <LogicalNamesDialog open onOpenChange={vi.fn()} workspaceId="101" />,
+    <LogicalNamesDialog
+      open
+      onOpenChange={vi.fn()}
+      workspaceId="101"
+      onManageDictionary={onManageDictionary}
+    />,
     { wrapRoutes: false },
   )
 }
@@ -124,5 +129,25 @@ describe('LogicalNamesDialog — 미리보기·적용', () => {
       await screen.findByText('워크스페이스 표준 사전을 불러오지 못했습니다 — 시스템 사전만으로 계산합니다'),
     ).toBeVisible()
     expect(screen.getByText('사용자 ID')).toBeVisible()
+  })
+
+  it("'사전 관리' 클릭 → 다이얼로그를 닫고 패널 열기 액션을 호출한다", async () => {
+    seedInferableDoc()
+    const onManageDictionary = vi.fn()
+    const onOpenChange = vi.fn()
+    renderWithProviders(
+      <LogicalNamesDialog
+        open
+        onOpenChange={onOpenChange}
+        workspaceId="101"
+        onManageDictionary={onManageDictionary}
+      />,
+      { wrapRoutes: false },
+    )
+    await termsLoaded()
+
+    fireEvent.click(screen.getByRole('button', { name: '사전 관리' }))
+    expect(onManageDictionary).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledWith(false) // 중첩 다이얼로그 폐지 — 패널으로 갈아탄다
   })
 })

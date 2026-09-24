@@ -670,7 +670,6 @@
       },
       "termDictionary": {
         "title": "Workspace term dictionary",
-        "description": "Custom dictionary for logical name inference — overrides the built-in one",
         "toggle": "Term dictionary",
         "tabStandard": "Standard",
         "tabSystem": "System",

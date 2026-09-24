@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { BookOpenText, ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -51,6 +51,11 @@ export interface EditorToolbarProps {
   /** 모델 익스플로러 패널 열림 — 토글 버튼 상태 */
   explorerOpen: boolean
   onToggleExplorer: () => void
+  /** 용어 사전 패널 열림 — 토글 버튼 상태. 열람은 멤버 전체라 공개 뷰어만 숨긴다 */
+  termsOpen: boolean
+  onToggleTermsPanel: () => void
+  /** 용어 사전 패널 열기(토글 아님) — 추론 다이얼로그의 '사전 관리'가 연다 */
+  onOpenTermsPanel: () => void
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
   columnDisplay: ColumnDisplayMode
@@ -84,6 +89,9 @@ export function EditorToolbar({
   onSave,
   explorerOpen,
   onToggleExplorer,
+  termsOpen,
+  onToggleTermsPanel,
+  onOpenTermsPanel,
   nameDisplay,
   onNameDisplayChange,
   columnDisplay,
@@ -123,6 +131,21 @@ export function EditorToolbar({
         <PanelLeft aria-hidden />
       </Button>
 
+      {/* 용어 사전 패널 — 워크스페이스 API라 공개 뷰어에서는 숨긴다(멤버 Viewer는 열람 가능) */}
+      {!publicView ? (
+        <Button
+          type="button"
+          variant={termsOpen ? 'secondary' : 'ghost'}
+          size="icon"
+          onClick={onToggleTermsPanel}
+          aria-label={t('model.editor.termDictionary.toggle')}
+          aria-pressed={termsOpen}
+          title={t('model.editor.termDictionary.toggle')}
+        >
+          <BookMarked aria-hidden />
+        </Button>
+      ) : null}
+
       <Button type="button" variant="ghost" size="icon" onClick={undo} disabled={!canEdit || !canUndo} aria-label={t('model.editor.toolbar.undo')} title={t('model.editor.toolbar.undo')}>
         <Undo2 aria-hidden />
       </Button>
@@ -145,7 +168,9 @@ export function EditorToolbar({
       </Button>
 
       <AutoLayoutButton canEdit={canEdit} />
-      {!publicView && canEdit ? <LogicalNamesButton workspaceId={workspaceId} /> : null}
+      {!publicView && canEdit ? (
+        <LogicalNamesButton workspaceId={workspaceId} onManageDictionary={onOpenTermsPanel} />
+      ) : null}
       {!publicView && canEdit && sourceConnectionId ? (
         <SyncButton
           workspaceId={workspaceId}
@@ -355,8 +380,15 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
 
 /** 논리명 자동 추론 — 코멘트 없는 객체의 논리명(물리명과 같은 것)을 사전으로 채운다
  *  (05-editor/04-dbms-engineering.md §3.2). 이미 있는 논리명은 건드리지 않고,
- *  적용은 undo 1회로 복구된다. 커스텀 사전은 워크스페이스 API라 공개 뷰어에서 숨긴다. */
-function LogicalNamesButton({ workspaceId }: { workspaceId: string }) {
+ *  적용은 undo 1회로 복구된다. 커스텀 사전은 워크스페이스 API라 공개 뷰어에서 숨긴다.
+ *  '사전 관리'는 사전 패널을 여는 액션(중첩 다이얼로그 폐지, v1.14) — 셸이 소유한다. */
+function LogicalNamesButton({
+  workspaceId,
+  onManageDictionary,
+}: {
+  workspaceId: string
+  onManageDictionary: () => void
+}) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -374,7 +406,12 @@ function LogicalNamesButton({ workspaceId }: { workspaceId: string }) {
         <BookOpenText aria-hidden className="size-3.5" />
         {t('model.editor.toolbar.logicalNames')}
       </Button>
-      <LogicalNamesDialog open={open} onOpenChange={setOpen} workspaceId={workspaceId} />
+      <LogicalNamesDialog
+        open={open}
+        onOpenChange={setOpen}
+        workspaceId={workspaceId}
+        onManageDictionary={onManageDictionary}
+      />
     </>
   )
 }

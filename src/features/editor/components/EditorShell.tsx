@@ -58,6 +58,7 @@ import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
+import { TermDictionaryPanel } from './TermDictionaryPanel'
 
 /** 자동 저장 지연 — 마지막 편집 후 이 시간 동안 추가 편집이 없으면 저장한다 */
 const AUTOSAVE_DELAY_MS = 2000
@@ -71,6 +72,17 @@ function readExplorerOpen(): boolean {
     return raw === null ? true : raw === 'true'
   } catch {
     return true
+  }
+}
+
+/** 용어 사전 패널 열림 기억 — 익스플로러와 같은 관례. 보조 자산이라 기본은 닫힘 */
+const TERMS_OPEN_KEY = 'crowfoot.editor.terms-open'
+
+function readTermsOpen(): boolean {
+  try {
+    return localStorage.getItem(TERMS_OPEN_KEY) === 'true'
+  } catch {
+    return false
   }
 }
 
@@ -145,6 +157,27 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const openExplorerSearch = useCallback(() => {
     setExplorerOpen(true)
     setExplorerFocusSignal((signal) => signal + 1)
+  }, [])
+  // 용어 사전 패널 — 열림은 브라우저에 기억(기본 닫힘). openTermsPanel은 토글이 아니라
+  // 확장 열기라 추론 다이얼로그의 '사전 관리'가 쓴다
+  const [termsOpen, setTermsOpen] = useState(readTermsOpen)
+  const toggleTermsPanel = useCallback(() => {
+    setTermsOpen((open) => {
+      try {
+        localStorage.setItem(TERMS_OPEN_KEY, String(!open))
+      } catch {
+        // 시크릿 모드 등 저장 실패는 무시 — 상태만 전환한다
+      }
+      return !open
+    })
+  }, [])
+  const openTermsPanel = useCallback(() => {
+    setTermsOpen(true)
+    try {
+      localStorage.setItem(TERMS_OPEN_KEY, 'true')
+    } catch {
+      // 저장 실패는 무시 — 상태만 연다
+    }
   }, [])
   const reloadingRef = useRef(false)
   const [remoteChangeOpen, setRemoteChangeOpen] = useState(false)
@@ -571,6 +604,9 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         onSave={() => handleSave()}
         explorerOpen={explorerOpen}
         onToggleExplorer={toggleExplorer}
+        termsOpen={termsOpen}
+        onToggleTermsPanel={toggleTermsPanel}
+        onOpenTermsPanel={openTermsPanel}
         nameDisplay={nameDisplay}
         onNameDisplayChange={setNameDisplay}
         columnDisplay={columnDisplay}
@@ -598,6 +634,15 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           canEdit={canEdit}
           onOpenAreaEdit={setAreaEditId}
         />
+        {/* 용어 사전 패널 — 워크스페이스 표준 자산이라 멤버 전체가 열람한다. 공개 뷰어는
+            워크스페이스 API를 못 쓰므로 패널 자체를 렌더하지 않는다 */}
+        {!publicView ? (
+          <TermDictionaryPanel
+            open={termsOpen}
+            workspaceId={model.workspaceId}
+            canEdit={canEdit}
+          />
+        ) : null}
         <div className="relative min-w-0 flex-1">
           {remoteChangeOpen && !conflictOpen && (
             <div

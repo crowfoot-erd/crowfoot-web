@@ -670,7 +670,6 @@
       },
       "termDictionary": {
         "title": "워크스페이스 용어 사전",
-        "description": "논리명 추론이 참조하는 커스텀 사전 — 내장 사전보다 우선합니다",
         "toggle": "용어 사전",
         "tabStandard": "표준 사전",
         "tabSystem": "시스템 사전",

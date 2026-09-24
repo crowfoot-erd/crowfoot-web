@@ -1206,6 +1206,37 @@ describe('EditorShell — DB 동기화 버튼 노출 조건', () => {
   })
 })
 
+// 용어 사전 패널(v1.14) — 토글 버튼·localStorage 영속·권한·공개 뷰어 게이트.
+// 패널 본체(두 탭·비표준·대량 등록)는 term-dictionary-panel.test.tsx가 담당한다
+describe('EditorShell — 용어 사전 패널', () => {
+  it('토글 버튼이 패널을 열고 닫는다 — 열림이 localStorage(crowfoot.editor.terms-open)에 남는다', async () => {
+    await renderEditor()
+    expect(screen.queryByTestId('term-dictionary-panel')).toBeNull() // 기본 닫힘
+
+    fireEvent.click(screen.getByRole('button', { name: '용어 사전' }))
+    expect(await screen.findByTestId('term-dictionary-panel')).toBeVisible()
+    expect(window.localStorage.getItem('crowfoot.editor.terms-open')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: '용어 사전' }))
+    expect(screen.queryByTestId('term-dictionary-panel')).toBeNull()
+    expect(window.localStorage.getItem('crowfoot.editor.terms-open')).toBe('false')
+  })
+
+  it('읽기 전용 멤버도 토글·패널을 쓸 수 있다(쓰기 affordance는 패널 안에서 게이트)', async () => {
+    await renderEditor(false)
+    fireEvent.click(screen.getByRole('button', { name: '용어 사전' }))
+    expect(await screen.findByTestId('term-dictionary-panel')).toBeVisible()
+    expect(screen.getByText('열람 전용 — 등록·수정은 편집 권한이 필요합니다')).toBeVisible()
+  })
+
+  it('publicView(공개 뷰어)는 용어 사전 토글 버튼·패널을 렌더하지 않는다', async () => {
+    renderWithProviders(<EditorShell model={modelFixture()} canEdit={false} publicView />, { wrapRoutes: false })
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+    expect(screen.queryByRole('button', { name: '용어 사전' })).toBeNull()
+    expect(screen.queryByTestId('term-dictionary-panel')).toBeNull()
+  })
+})
+
 describe('EditorShell — 관계 생성 UX (밴드 팝업 → 대상 클릭)', () => {
   /** 부모(users, PK 있음)·자식(orders) 2테이블 문서 — 노드 렌더까지 기다린다 */
   async function setupTwoTables(withParentPk = true) {
