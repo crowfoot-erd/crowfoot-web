@@ -319,7 +319,7 @@ export interface ConnectionTestResult {
   message: string | null
 }
 
-/** 워크스페이스 용어 사전 항목 (08-core/01-workspace.md §4) — 논리명 자동 추론의 커스텀 사전 */
+/** 워크스페이스 표준 사전 항목 (08-core/01-workspace.md §4) — 논리명 자동 추론의 워크스페이스 사전 */
 export interface WorkspaceTerm {
   termId: string
   workspaceId: string
@@ -327,6 +327,18 @@ export interface WorkspaceTerm {
   term: string
   /** 논리명 라벨 — 추론 결과에 그대로 쓰이는 표기(한글 등) */
   label: string
+  /** 데이터 타입 예: VARCHAR(100) — 선택(선택 안 하면 null). 컬럼 생성 제안 등 부가 정보 */
+  type: string | null
+  updatedAt: string
+}
+
+/** 시스템 사전 항목 (08-core/01-workspace.md §4.5) — 관리자가 등록하는 전역 사전(읽기 전용).
+ *  labels는 언어→라벨 맵 전체 — 어떤 언어를 보여줄지는 클라이언트가 정한다(resolveLabel 폴백) */
+export interface SystemTerm {
+  termId: string
+  term: string
+  labels: Record<string, string>
+  type: string | null
   updatedAt: string
 }
 

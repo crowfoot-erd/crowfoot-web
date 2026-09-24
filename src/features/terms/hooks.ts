@@ -1,18 +1,29 @@
 /**
- * 용어 사전 쿼리/뮤테이션 훅 — 목록(멤버 전체)·upsert·삭제·대량 등록.
+ * 용어 사전 쿼리/뮤테이션 훅 — 표준 사전(워크스페이스)·시스템 사전(전역)·대량 등록.
  * 목록은 추론 미리보기·사전 패널이 열릴 때 페치한다(발급 시점 재조회 — 고정점 패턴).
+ * 시스템 사전은 워크스페이스와 무관한 전역 쿼리 — 관리 화면에서 바꾸면 에디터 캐시도 함께 무효화한다.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  deleteAdminSystemTerm,
   deleteWorkspaceTerm,
+  fetchAdminSystemTerms,
+  fetchSystemTerms,
   fetchWorkspaceTerms,
+  upsertAdminSystemTerm,
   upsertWorkspaceTerm,
 } from '@/features/terms/api'
 import { errorMessage } from '@/lib/result-code'
 
 export const termKeys = {
   list: (workspaceId: string) => ['workspaces', workspaceId, 'terms'] as const,
+}
+
+/** 시스템 사전 쿼리 키 — 사용자 목록(에디터 추론)과 관리 목록을 함께 무효화할 때 쓴다 */
+export const systemTermKeys = {
+  list: ['systemTerms'] as const,
+  admin: ['admin', 'systemTerms'] as const,
 }
 
 export function useWorkspaceTerms(workspaceId: string) {
@@ -23,11 +34,27 @@ export function useWorkspaceTerms(workspaceId: string) {
   })
 }
 
+/** 시스템 사전(전역) — 에디터 추론의 바닥 사전. 워크스페이스 무관하게 1회 페치된다 */
+export function useSystemTerms() {
+  return useQuery({
+    queryKey: systemTermKeys.list,
+    queryFn: ({ signal }) => fetchSystemTerms(signal),
+  })
+}
+
+export function useAdminSystemTerms() {
+  return useQuery({
+    queryKey: systemTermKeys.admin,
+    queryFn: ({ signal }) => fetchAdminSystemTerms(signal),
+  })
+}
+
 export function useUpsertTerm(workspaceId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (body: { term: string; label: string }) => upsertWorkspaceTerm(workspaceId, body),
+    mutationFn: (body: { term: string; label: string; type?: string | null }) =>
+      upsertWorkspaceTerm(workspaceId, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: termKeys.list(workspaceId) })
     },
@@ -45,11 +72,38 @@ export function useDeleteTerm(workspaceId: string) {
   })
 }
 
-/** 대량 등록 한 줄 결과 — editor의 term-bulk-parse와 같은 구조(줄 번호 포함) */
+/** 시스템 사전 관리 뮤테이션 — 성공 시 관리 목록과 에디터 캐시(사용자 목록) 둘 다 무효화한다 */
+export function useUpsertAdminSystemTerm() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: { term: string; labels: Record<string, string>; type?: string | null }) =>
+      upsertAdminSystemTerm(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: systemTermKeys.list })
+      void queryClient.invalidateQueries({ queryKey: systemTermKeys.admin })
+    },
+  })
+}
+
+export function useDeleteAdminSystemTerm() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (termId: string) => deleteAdminSystemTerm(termId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: systemTermKeys.list })
+      void queryClient.invalidateQueries({ queryKey: systemTermKeys.admin })
+    },
+  })
+}
+
+/** 대량 등록 한 줄 결과 — editor의 term-bulk-parse와 같은 구조(줄 번호 포함). type은 선택 */
 export interface TermBulkLine {
   line: number
   term: string
   label: string
+  type?: string | null
 }
 
 export interface BulkUpsertOutcome {
@@ -78,7 +132,11 @@ export function useBulkUpsertTerms(workspaceId: string) {
       for (let index = 0; index < entries.length; index++) {
         const entry = entries[index]
         try {
-          await upsertWorkspaceTerm(workspaceId, { term: entry.term, label: entry.label })
+          await upsertWorkspaceTerm(workspaceId, {
+            term: entry.term,
+            label: entry.label,
+            type: entry.type ?? null,
+          })
           outcome.succeeded.push({ line: entry.line, term: entry.term })
         } catch (error) {
           outcome.failed.push({ line: entry.line, term: entry.term, message: errorMessage(error) })
