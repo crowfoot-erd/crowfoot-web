@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- 검색 최적화(SEO) 기본 메타 — 사전 렌더 문구는 ko로 고정하고, 런타임은 usePageMeta 훅이
          라우트·언어별 문구로 덮어쓴다. 색인 대상·noindex 정책은 public/sitemap.xml과 같다
-         (04-front/storyboard/00-common.md §3.11) -->
+         (04-front/storyboard/00-common.md §3.11)
+         이 파일과 public/ 정적 파일의 주석은 빌드 시 scripts/strip-deploy-comments.mjs가
+         배포 산물에서 걷어낸다 — 인라인 스크립트 안의 주석은 못 걷으니 HTML 주석으로만 단다 -->
     <title>Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지</title>
     <meta
       name="description"
@@ -44,8 +46,9 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
       }
     </script>
+    <!-- 테마 FOUC 방지 — 본문 렌더 전에 localStorage 테마 적용 (04-front/storyboard/00-common.md §3.9).
+         catch는 localStorage 접근 불가 시 라이트 기본으로 두는 것 -->
     <script>
-      // 테마 FOUC 방지 — 본문 렌더 전에 localStorage 테마 적용 (04-front/storyboard/00-common.md §3.9)
       ;(function () {
         try {
           var stored = localStorage.getItem('crowfoot.theme')
@@ -54,9 +57,7 @@
             ((stored === null || stored === 'system') &&
               window.matchMedia('(prefers-color-scheme: dark)').matches)
           if (dark) document.documentElement.classList.add('dark')
-        } catch (e) {
-          /* localStorage 접근 불가 시 라이트 기본 */
-        }
+        } catch (e) {}
       })()
     </script>
   </head>
