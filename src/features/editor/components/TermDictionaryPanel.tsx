@@ -3,8 +3,6 @@
  *
  * 워크스페이스 표준 자산으로 승격된 용어 사전의 본체. 두 탭:
  * - 표준 사전: 이 워크스페이스가 등록한 용어(workspace_terms — 문서끼리 공유).
- *   처음에는 빈 목록에서 시작한다 — 비표준 검사는 상시 노출이 아니라 [비표준 검사]
- *   버튼을 누를 때만 문서 물리명 토큰 × 병합 사전을 검사해 결과를 보여준다(term-lint).
  *   등록·수정은 하단 [등록] 버튼·행 클릭으로 여는 다이얼로그(TermUpsertDialog)에서
  *   받는다 — upsert(수정 = 같은 토큰 재등록)라 한 폼이고, 타입(데이터 타입)은
  *   문서의 DB 종류 1가지 기준으로만 입력받아 그 키 하나짜리 맵으로 저장한다.
@@ -14,14 +12,14 @@
  *   목록은 서버 페이징 + 알파벳 이니셜(a-z·#) 인덱스 + keyword 검색(토큰·labels 값).
  *
  * 행의 타입 접미는 문서의 DB 종류(databaseType — database_types 코드)에 맞는 값을
- * 보여준다. 대량 등록 3열 타입도 같은 키 하나로 저장된다.
+ * 보여준다.
  *
- * 쓰기(등록·수정 다이얼로그·삭제·대량 등록·비표준 등록)는 Editor 이상(canEdit),
- * 열람은 멤버 전체. 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러와
- * 같은 패턴) — 닫힘 동안 문서 구독·쿼리 비용이 0이다.
+ * 쓰기(등록·수정 다이얼로그·삭제)는 Editor 이상(canEdit), 열람은 멤버 전체.
+ * 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러와 같은 패턴) —
+ * 닫힘 동안 문서 구독·쿼리 비용이 0이다.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, ScanSearch, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -30,17 +28,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { buildTermMap, resolveLabel } from '@/features/editor/model/logical-name-inference'
-import { lintNonStandardTerms, type TermLintFinding } from '@/features/editor/model/term-lint'
-import { useEditorStore } from '@/features/editor/store/editor-store'
+import { resolveLabel } from '@/features/editor/model/logical-name-inference'
 import {
-  useAllSystemTerms,
   useDeleteTerm,
   useSystemTermsPage,
   useWorkspaceTerms,
 } from '@/features/terms/hooks'
 import { errorMessage } from '@/lib/result-code'
-import { TermBulkImportDialog } from './TermBulkImportDialog'
 import { TermUpsertDialog } from './TermUpsertDialog'
 
 /** 알파벳 인덱스 — 소문자 토큰의 이니셜. '#'은 알파벳 외(숫자 등) */
@@ -66,19 +60,11 @@ export function TermDictionaryPanel({ open, workspaceId, databaseType, canEdit }
 function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string; databaseType: string; canEdit: boolean }) {
   const { t, i18n } = useTranslation()
   const terms = useWorkspaceTerms(workspaceId)
-  const system = useAllSystemTerms()
 
   const [tab, setTab] = useState<'standard' | 'system'>('standard')
   const [standardQuery, setStandardQuery] = useState('')
   const [systemQuery, setSystemQuery] = useState('')
-  const [bulkOpen, setBulkOpen] = useState(false)
 
-  /** 병합 사전(표준 > 시스템 언어 해석) — 비표준 검사 기준. 추론 다이얼로그와 같은 쿼리 키를
-     쓴다 — 패널에서 등록하면 열려 있는 추론 미리보기도 즉시 갱신된다 */
-  const dict = useMemo(
-    () => buildTermMap(system.data, terms.data?.items, i18n.language),
-    [system.data, terms.data, i18n.language],
-  )
   const standardTerms = terms.data?.items ?? []
   /** 시스템 사전에서 표준이 재정의한 토큰 — "재정의됨" 배지 */
   const overridden = useMemo(() => new Set(standardTerms.map((row) => row.term)), [standardTerms])
@@ -111,11 +97,9 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
             databaseType={databaseType}
             canEdit={canEdit}
             termsStatus={terms}
-            dict={dict}
             standardTerms={standardTerms}
             query={standardQuery}
             onQueryChange={setStandardQuery}
-            onOpenBulk={() => setBulkOpen(true)}
           />
         </TabsContent>
 
@@ -129,15 +113,6 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
           />
         </TabsContent>
       </Tabs>
-
-      {canEdit ? (
-        <TermBulkImportDialog
-          open={bulkOpen}
-          onOpenChange={setBulkOpen}
-          workspaceId={workspaceId}
-          databaseType={databaseType}
-        />
-      ) : null}
     </aside>
   )
 }
@@ -149,37 +124,24 @@ function StandardTab({
   databaseType,
   canEdit,
   termsStatus,
-  dict,
   standardTerms,
   query,
   onQueryChange,
-  onOpenBulk,
 }: {
   workspaceId: string
   databaseType: string
   canEdit: boolean
   termsStatus: ReturnType<typeof useWorkspaceTerms>
-  dict: ReturnType<typeof buildTermMap>
   standardTerms: readonly WorkspaceTerm[]
   query: string
   onQueryChange: (query: string) => void
-  onOpenBulk: () => void
 }) {
   const { t } = useTranslation()
   const deleteMutation = useDeleteTerm(workspaceId)
-  const doc = useEditorStore((s) => s.present)
-  /** 비표준 검사는 요청 시에만 — 상시 노출하지 않는다(빈 목록 시작 원칙). 결과가 붙은
-      상태에서 사전·문서가 바뀌어도 다시 누르면 최신으로 다시 계산된다 */
-  const [lintOpen, setLintOpen] = useState(false)
-  const [lintCollapsed, setLintCollapsed] = useState(false)
-  const findings = useMemo(
-    () => (lintOpen ? lintNonStandardTerms(doc, dict) : []),
-    [lintOpen, doc, dict],
-  )
 
-  /** 등록·수정 다이얼로그 상태 — mode가 폼 제목·토스트를 정한다(비표준 등록은 토큰이
-      실린 채 '등록'이다). 타입은 문서의 DB 종류 값 하나만 오간다 — initial.types에 기존
-      DBMS별 맵 전체를 실어 다른 종류 값이 지워지지 않게 한다 */
+  /** 등록·수정 다이얼로그 상태 — mode가 폼 제목·토스트를 정한다. 타입은 문서의 DB 종류
+      값 하나만 오간다 — initial.types에 기존 DBMS별 맵 전체를 실어 다른 종류 값이
+      지워지지 않게 한다 */
   const [upsert, setUpsert] = useState<{
     open: boolean
     mode: 'create' | 'edit'
@@ -223,37 +185,12 @@ function StandardTab({
             data-testid="term-standard-search"
           />
         </div>
-        <Button
-          type="button"
-          variant={lintOpen ? 'secondary' : 'outline'}
-          size="sm"
-          className="h-8 shrink-0 px-2 text-xs"
-          onClick={() => setLintOpen((prev) => !prev)}
-          aria-pressed={lintOpen}
-          data-testid="term-lint-toggle"
-        >
-          <ScanSearch aria-hidden className="size-3.5" />
-          {t('model.editor.termDictionary.lintButton')}
-        </Button>
         {q ? (
           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
             {t('model.editor.termDictionary.count', { count: filtered.length })}
           </span>
         ) : null}
       </div>
-
-      {/* 비표준 검사 결과 — 버튼을 눌렀을 때만 렌더. 접기는 패널 보기 상태(문서를 고치지 않는다) */}
-      {lintOpen ? (
-        <LintSection
-          findings={findings}
-          collapsed={lintCollapsed}
-          onToggle={() => setLintCollapsed((prev) => !prev)}
-          canEdit={canEdit}
-          onRegister={(token) =>
-            setUpsert({ open: true, mode: 'create', initial: { term: token, label: '', type: '', types: null } })
-          }
-        />
-      ) : null}
 
       {/* 표준 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 다이얼로그(재등록으로 덮어쓴다) */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
@@ -351,8 +288,8 @@ function StandardTab({
       </div>
 
       {canEdit ? (
-        /* 하단 액션 바 — 등록(다이얼로그)·대량 등록. 폼은 다이얼로그로 옮겨 패널은 목록에 집중한다 */
-        <div className="flex items-center gap-2 border-t p-2">
+        /* 하단 액션 바 — 등록(다이얼로그). 폼은 다이얼로그로 옮겨 패널은 목록에 집중한다 */
+        <div className="border-t p-2">
           <Button
             type="button"
             size="sm"
@@ -362,16 +299,6 @@ function StandardTab({
           >
             <Plus aria-hidden className="size-3.5" />
             {t('model.editor.termDictionary.add')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 px-2"
-            onClick={onOpenBulk}
-            data-testid="term-bulk-open"
-          >
-            {t('model.editor.termDictionary.bulkOpen')}
           </Button>
         </div>
       ) : (
@@ -391,97 +318,6 @@ function StandardTab({
         />
       ) : null}
     </>
-  )
-}
-
-/* ---------- 비표준 단어 섹션 ---------- */
-
-function LintSection({
-  findings,
-  collapsed,
-  onToggle,
-  canEdit,
-  onRegister,
-}: {
-  findings: TermLintFinding[]
-  collapsed: boolean
-  onToggle: () => void
-  canEdit: boolean
-  onRegister: (token: string) => void
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <section data-testid="term-lint-section" className="border-b">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        className="flex h-7 w-full items-center gap-1 rounded-sm px-2 text-xs font-semibold text-muted-foreground hover:bg-accent/60"
-      >
-        {collapsed ? (
-          <ChevronRight aria-hidden className="size-3" />
-        ) : (
-          <ChevronDown aria-hidden className="size-3" />
-        )}
-        <span>{t('model.editor.termDictionary.lintTitle', { count: findings.length })}</span>
-      </button>
-      {collapsed ? null : (
-        <div className="grid gap-1 px-2 pb-2">
-          {findings.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t('model.editor.termDictionary.lintEmpty')}
-            </p>
-          ) : (
-            <>
-              <p className="text-[10px] text-muted-foreground">
-                {t('model.editor.termDictionary.lintHint')}
-              </p>
-              {findings.map((finding) => (
-                <div
-                  key={finding.token}
-                  data-testid={`term-lint-${finding.token}`}
-                  className="grid gap-0.5 rounded-md border px-2 py-1 text-xs"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <code className="min-w-0 flex-1 truncate font-mono text-xs">
-                      {finding.token}
-                    </code>
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                      {t('model.editor.termDictionary.lintPlaces', {
-                        count: finding.occurrences.length,
-                      })}
-                    </span>
-                    {canEdit ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-1.5 text-[10px]"
-                        onClick={() => onRegister(finding.token)}
-                        data-testid={`term-lint-register-${finding.token}`}
-                      >
-                        {t('model.editor.termDictionary.lintRegister')}
-                      </Button>
-                    ) : null}
-                  </div>
-                  {/* 출처 — 테이블 이름이면 테이블물리명, 컬럼이면 테이블.컬럼물리명 */}
-                  <ul className="grid gap-0.5 text-[10px] text-muted-foreground">
-                    {finding.occurrences.map((occurrence) => (
-                      <li key={`${occurrence.tableId}:${occurrence.columnId ?? '-'}`} className="truncate">
-                        {occurrence.columnPhysicalName
-                          ? `${occurrence.tablePhysicalName}.${occurrence.columnPhysicalName}`
-                          : occurrence.tablePhysicalName}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </section>
   )
 }
 

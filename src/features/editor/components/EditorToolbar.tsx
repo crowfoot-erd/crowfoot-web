@@ -119,16 +119,19 @@ export function EditorToolbar({
     <div className="flex h-10 items-center gap-1 border-b bg-background px-2">
       {!canEdit ? <Badge variant="secondary" className="mr-1">{t('model.editor.toolbar.readOnly')}</Badge> : null}
 
+      {/* 패널 토글 — 아이콘만이 아니라 메뉴명과 함께(무엇을 여는지 알 수 있게) */}
       <Button
         type="button"
         variant={explorerOpen ? 'secondary' : 'ghost'}
-        size="icon"
+        size="sm"
+        className="h-7 gap-1.5 px-2"
         onClick={onToggleExplorer}
         aria-label={t('model.editor.explorer.toggle')}
         aria-pressed={explorerOpen}
         title={t('model.editor.explorer.toggle')}
       >
-        <PanelLeft aria-hidden />
+        <PanelLeft aria-hidden className="size-3.5" />
+        {t('model.editor.explorer.toggle')}
       </Button>
 
       {/* 용어 사전 패널 — 워크스페이스 API라 공개 뷰어에서는 숨긴다(멤버 Viewer는 열람 가능) */}
@@ -136,13 +139,15 @@ export function EditorToolbar({
         <Button
           type="button"
           variant={termsOpen ? 'secondary' : 'ghost'}
-          size="icon"
+          size="sm"
+          className="h-7 gap-1.5 px-2"
           onClick={onToggleTermsPanel}
           aria-label={t('model.editor.termDictionary.toggle')}
           aria-pressed={termsOpen}
           title={t('model.editor.termDictionary.toggle')}
         >
-          <BookMarked aria-hidden />
+          <BookMarked aria-hidden className="size-3.5" />
+          {t('model.editor.termDictionary.toggle')}
         </Button>
       ) : null}
 

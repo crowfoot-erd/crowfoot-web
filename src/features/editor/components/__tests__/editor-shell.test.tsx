@@ -1207,7 +1207,7 @@ describe('EditorShell — DB 동기화 버튼 노출 조건', () => {
 })
 
 // 용어 사전 패널(v1.14) — 토글 버튼·localStorage 영속·권한·공개 뷰어 게이트.
-// 패널 본체(두 탭·비표준·대량 등록)는 term-dictionary-panel.test.tsx가 담당한다
+// 패널 본체(두 탭)는 term-dictionary-panel.test.tsx가 담당한다
 describe('EditorShell — 용어 사전 패널', () => {
   it('토글 버튼이 패널을 열고 닫는다 — 열림이 localStorage(crowfoot.editor.terms-open)에 남는다', async () => {
     await renderEditor()
