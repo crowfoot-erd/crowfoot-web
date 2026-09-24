@@ -120,7 +120,9 @@ describe('LogicalNamesDialog — 미리보기·적용', () => {
     renderDialog()
 
     // 내장 사전에도 user→사용자가 있어 계산은 된다 — 사전 의존이 아닌 기능 보존
-    expect(await screen.findByText('커스텀 사전을 불러오지 못했습니다 — 내장 사전만으로 계산합니다')).toBeVisible()
+    expect(
+      await screen.findByText('워크스페이스 표준 사전을 불러오지 못했습니다 — 시스템 사전만으로 계산합니다'),
+    ).toBeVisible()
     expect(screen.getByText('사용자 ID')).toBeVisible()
   })
 })
