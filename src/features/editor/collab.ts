@@ -6,8 +6,8 @@
  *   기존 감지 경로(자동 동기화·충돌 배너)가 그대로 재사용된다.
  * - chat: 문서별 실시간 채팅 — join 시 최근 50건 history로 목록을 교체하고 이후 발언이
  *   append된다. 발신자 에코(자기 발언)도 목록에 남는다 — UI가 우측 정렬로 구분한다.
- * - 연결 대상: 운영은 협업 서버 전용 도메인(VITE_WS_URL = ws://crowfoot-ws.java21.net:80),
- *   로컬은 Vite 프록시(/ws → 8083)로 브라우저 주소 기준 조립.
+ * - 연결 대상: 운영은 협업 서버 전용 도메인(VITE_WS_URL = wss://crowfoot-ws.java21.net, 443 —
+ *   HTTPS 페이지에서 ws:// 는 Mixed Content 로 차단된다), 로컬은 Vite 프록시(/ws → 8083)로 브라우저 주소 기준 조립.
  *   실패해도 조용히: 채널이 없으면 v1 폴링(5초)이 세이프티넷이다.
  * - 신원(HEADER X-USER-*)은 로컬 계약 — 운영은 게이트웨이가 주입한다.
  *   X-USER-AVATAR·X-USER-LOGIN은 선택(있는 계정만 실어 보낸다 — 사진·GitHub 핸들).
