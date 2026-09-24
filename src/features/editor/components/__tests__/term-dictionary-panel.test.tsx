@@ -223,21 +223,16 @@ describe('TermDictionaryPanel — 시스템 사전 탭', () => {
     expect(within(screen.getByTestId('term-builtin-email')).queryByText('재정의됨')).toBeNull()
   })
 
-  it('표준으로 재정의 → 표준 탭으로 전환되고 폼이 {term,label,type}으로 프리필된다', async () => {
+  it('시스템 사전은 열람 전용이다 — 수정 진입(재정의 프리필) 버튼이 없다', async () => {
     seedCleanDoc()
     renderPanel()
     await screen.findByTestId('term-row-member')
     await openSystemTab()
 
-    fireEvent.click(screen.getByTestId('term-redefine-email'))
-
-    // 탭 전환 + 프리필 — 즉시 등록이 아니라 폼 프리필이다
-    await waitFor(() => {
-      expect(termInput()).toHaveValue('email')
-      expect(labelInput()).toHaveValue('이메일')
-      expect(typeInput()).toHaveValue('VARCHAR(100)') // 시스템 사전의 타입 제안도 함께
-    })
-    expect(screen.getByRole('tab', { name: '표준 사전' }).getAttribute('data-state')).toBe('active')
+    expect(screen.queryByTestId('term-redefine-email')).toBeNull()
+    expect(screen.queryByRole('button', { name: /재정의/ })).toBeNull()
+    // 시스템탭에는 쓰기 버튼이 전혀 없다(검색 입력만 있다)
+    expect(screen.getByTestId('term-system-search')).toBeVisible()
   })
 
   it('시스템 사전 조회 실패 시 안내 문구를 보여준다', async () => {

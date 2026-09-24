@@ -737,7 +737,6 @@
         "lintRegister": "표준 등록",
         "lintPlaces": "{{count}}곳",
         "systemHint": "관리자가 등록한 전역 사전(읽기 전용) — 표준 사전 등록이 우선합니다",
-        "redefine": "표준으로 재정의",
         "overridden": "재정의됨",
         "bulkOpen": "대량 등록",
         "bulkTitle": "용어 대량 등록",

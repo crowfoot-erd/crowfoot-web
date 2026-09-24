@@ -7,17 +7,17 @@
  *   버튼을 누를 때만 문서 물리명 토큰 × 병합 사전을 검사해 결과를 보여준다(term-lint).
  *   등록은 upsert(수정 = 같은 토큰 재등록)이며 타입(데이터 타입)도 함께 지정할 수 있다.
  * - 시스템 사전: 관리자가 등록한 전역 사전(system_terms, 읽기 전용·다국어 labels).
- *   라벨은 UI 언어로 해석해 보여준다. 표준 등록이 우선하므로 시스템 라벨은 제안일 뿐 —
- *   "표준으로 재정의"는 폼을 프리필하기만 한다(즉시 등록 아님).
+ *   라벨은 UI 언어로 해석해 보여준다. 열람 전용 — 사용자가 시스템 사전을 고치는
+ *   진입(수정·재정의 프리필)은 없다. 표준 사전이 토큰을 덮어 쓰고 있으면 배지로 안내한다.
  *
- * 쓰기(폼·삭제·대량 등록·재정의·비표준 등록)는 Editor 이상(canEdit), 열람은 멤버 전체.
+ * 쓰기(폼·삭제·대량 등록·비표준 등록)는 Editor 이상(canEdit), 열람은 멤버 전체.
  * 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러와 같은 패턴) — 닫힘 동안
  * 문서 구독·쿼리 비용이 0이다. draft(폼 프리필)는 요청 시 1회 적용 후 클리어된다 —
  * 탭 전환으로 표준 탭이 리마운트돼도 부모가 든 draft가 마운트 직후 적용된다.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown, ChevronRight, Loader2, Pencil, ScanSearch, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, ScanSearch, Search, Trash2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -123,16 +123,11 @@ function PanelBody({ workspaceId, canEdit }: { workspaceId: string; canEdit: boo
 
         <TabsContent value="system" className="flex min-h-0 flex-1 flex-col">
           <SystemTab
-            canEdit={canEdit}
             systemStatus={system}
             locale={i18n.language}
             overridden={overridden}
             query={systemQuery}
             onQueryChange={setSystemQuery}
-            onRedefine={(term, label, type) => {
-              setDraft({ term, label, type })
-              setTab('standard')
-            }}
           />
         </TabsContent>
       </Tabs>
@@ -582,21 +577,17 @@ function LintSection({
 /* ---------- 시스템 사전 탭 ---------- */
 
 function SystemTab({
-  canEdit,
   systemStatus,
   locale,
   overridden,
   query,
   onQueryChange,
-  onRedefine,
 }: {
-  canEdit: boolean
   systemStatus: ReturnType<typeof useSystemTerms>
   locale: string
   overridden: ReadonlySet<string>
   query: string
   onQueryChange: (query: string) => void
-  onRedefine: (term: string, label: string, type: string) => void
 }) {
   const { t } = useTranslation()
 
@@ -682,20 +673,6 @@ function SystemTab({
                   <Badge variant="secondary" className="shrink-0 px-1 text-[9px]">
                     {t('model.editor.termDictionary.overridden')}
                   </Badge>
-                ) : null}
-                {canEdit ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
-                    aria-label={`${t('model.editor.termDictionary.redefine')} — ${row.term}`}
-                    title={t('model.editor.termDictionary.redefine')}
-                    onClick={() => onRedefine(row.term, label, row.type ?? '')}
-                    data-testid={`term-redefine-${row.term}`}
-                  >
-                    <Pencil aria-hidden className="size-3.5" />
-                  </Button>
                 ) : null}
               </div>
             )

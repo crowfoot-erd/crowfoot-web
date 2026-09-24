@@ -737,7 +737,6 @@
         "lintRegister": "Register as standard",
         "lintPlaces": "{{count}} places",
         "systemHint": "Global dictionary maintained by admins (read-only) — standard dictionary entries take precedence",
-        "redefine": "Override as standard",
         "overridden": "Overridden",
         "bulkOpen": "Bulk import",
         "bulkTitle": "Bulk import terms",
