@@ -54,8 +54,6 @@ export interface EditorToolbarProps {
   /** 용어 사전 패널 열림 — 토글 버튼 상태. 열람은 멤버 전체라 공개 뷰어만 숨긴다 */
   termsOpen: boolean
   onToggleTermsPanel: () => void
-  /** 용어 사전 패널 열기(토글 아님) — 추론 다이얼로그의 '사전 관리'가 연다 */
-  onOpenTermsPanel: () => void
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
   columnDisplay: ColumnDisplayMode
@@ -91,7 +89,6 @@ export function EditorToolbar({
   onToggleExplorer,
   termsOpen,
   onToggleTermsPanel,
-  onOpenTermsPanel,
   nameDisplay,
   onNameDisplayChange,
   columnDisplay,
@@ -174,7 +171,7 @@ export function EditorToolbar({
 
       <AutoLayoutButton canEdit={canEdit} />
       {!publicView && canEdit ? (
-        <LogicalNamesButton workspaceId={workspaceId} onManageDictionary={onOpenTermsPanel} />
+        <LogicalNamesButton workspaceId={workspaceId} />
       ) : null}
       {!publicView && canEdit && sourceConnectionId ? (
         <SyncButton
@@ -386,14 +383,8 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
 /** 논리명 자동 추론 — 코멘트 없는 객체의 논리명(물리명과 같은 것)을 사전으로 채운다
  *  (05-editor/04-dbms-engineering.md §3.2). 이미 있는 논리명은 건드리지 않고,
  *  적용은 undo 1회로 복구된다. 커스텀 사전은 워크스페이스 API라 공개 뷰어에서 숨긴다.
- *  '사전 관리'는 사전 패널을 여는 액션(중첩 다이얼로그 폐지, v1.14) — 셸이 소유한다. */
-function LogicalNamesButton({
-  workspaceId,
-  onManageDictionary,
-}: {
-  workspaceId: string
-  onManageDictionary: () => void
-}) {
+ *  시스템 라벨 해석 언어는 다이얼로그 안에서 고른다(v1.14) — 사전 편집은 용어 사전 패널이 맡는다. */
+function LogicalNamesButton({ workspaceId }: { workspaceId: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -415,7 +406,6 @@ function LogicalNamesButton({
         open={open}
         onOpenChange={setOpen}
         workspaceId={workspaceId}
-        onManageDictionary={onManageDictionary}
       />
     </>
   )

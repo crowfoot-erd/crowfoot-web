@@ -547,15 +547,16 @@ export const fixtures = {
       { termId: '402', workspaceId: '101', term: 'user', label: '사용자', types: { mysql: 'VARCHAR(60)', postgresql: 'VARCHAR(50)' }, updatedAt: '2026-09-23T00:00:00Z' },
     ],
   },
-  /** 시스템 사전(§4.5) — 관리자가 등록하는 전역 사전. labels는 언어→라벨 맵(ko 단일 항목 포함),
+  /** 시스템 사전(§4.5) — 관리자가 등록하는 전역 사전. labels는 언어→라벨 맵(시드 4개 언어 +
+   *  ko 단일 항목 폴백 포함 — 추론 언어 선택기 목록은 이 키의 합집합이다),
    *  types는 DBMS별 맵(키 = database_types 코드) null·값 혼합 — 추론 폴백·패널 표시 테스트가 함께 쓴다.
    *  사용자·관리 목록이 같은 형태를 공유한다 */
   systemTerms: {
     totalCount: 5,
     responses: [
-      { termId: '501', term: 'email', labels: { ko: '이메일', en: 'Email' }, types: { mysql: 'VARCHAR(100)', postgresql: 'VARCHAR(100)' }, updatedAt: '2026-09-24T00:00:00Z' },
-      { termId: '502', term: 'id', labels: { ko: 'ID', en: 'ID' }, types: { mysql: 'BIGINT' }, updatedAt: '2026-09-24T00:00:00Z' },
-      { termId: '503', term: 'user', labels: { ko: '사용자', en: 'User' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '501', term: 'email', labels: { ko: '이메일', en: 'Email', ja: 'メール', zh: '邮件' }, types: { mysql: 'VARCHAR(100)', postgresql: 'VARCHAR(100)' }, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '502', term: 'id', labels: { ko: 'ID', en: 'ID', ja: 'ID', zh: 'ID' }, types: { mysql: 'BIGINT' }, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '503', term: 'user', labels: { ko: '사용자', en: 'User', ja: 'ユーザー', zh: '用户' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
       { termId: '504', term: 'yn', labels: { ko: '여부' }, types: { mysql: 'CHAR(1)' }, updatedAt: '2026-09-24T00:00:00Z' },
       { termId: '505', term: 'zipcode', labels: { ko: '우편번호' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
     ],

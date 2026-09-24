@@ -145,7 +145,6 @@ describe('useAreaViewFit — 보기 메뉴 라디오', () => {
           onToggleExplorer={() => {}}
           termsOpen={false}
           onToggleTermsPanel={() => {}}
-          onOpenTermsPanel={() => {}}
           nameDisplay="both"
           onNameDisplayChange={() => {}}
           columnDisplay="all"

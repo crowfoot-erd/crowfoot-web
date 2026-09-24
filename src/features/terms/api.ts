@@ -1,6 +1,6 @@
 /**
- * 용어 사전 API (08-core/01-workspace.md §4·§4.5) — 표준 사전(워크스페이스)·시스템 사전(전역).
- * 논리명 자동 추론이 시스템 사전을 바닥으로, 표준 사전 등록이 우선해 참조한다.
+ * 용어 사전 API (08-core/01-workspace.md §4·§4.5) — 워크스페이스 사전·시스템 사전(전역).
+ * 논리명 자동 추론이 시스템 사전을 바닥으로, 워크스페이스 사전 등록이 우선해 참조한다.
  * 타입은 DBMS 종류별 맵(키 = database_types 코드)로 주고받는다.
  */
 import { apiDelete, apiGetList, apiGetPage, apiPost, type RequestOptions } from '@/api/client'

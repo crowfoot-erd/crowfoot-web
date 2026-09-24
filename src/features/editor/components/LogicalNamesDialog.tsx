@@ -2,11 +2,11 @@
  * 논리명 자동 추론 다이얼로그 (05-editor/04-dbms-engineering.md §3.2 — v1.13, 사전 서버화 v1.14)
  *
  * 리버스·SQL Import는 DB 코멘트 없는 객체의 논리명을 물리명과 같게 복제해 둔다.
- * 여기서 시스템 사전(전역·다국어) + 워크스페이스 표준 사전으로 그런 논리명을 채운다(미리보기 → 적용).
- * 시스템 라벨은 UI 언어로 해석해 쓴다(resolveLabel 폴백) — 해석된 표기가 적용 시점에
- * 문서 논리명으로 영구 기록되므로, 나중에 언어를 바꿔도 이미 적용된 논리명은 바뀌지 않는다.
- * 추론은 사전의 소비자다 — 사전 편집은 용어 사전 패널(v1.14)이 맡고, 여기서는
- * '사전 관리'가 그 패널을 여는 액션(onManageDictionary)일 뿐이다.
+ * 여기서 시스템 사전(전역·다국어) + 워크스페이스 사전으로 그런 논리명을 채운다(미리보기 → 적용).
+ * 시스템 라벨은 **추론 언어 선택기**에서 고른 언어 표기로 해석해 쓴다(resolveLabel 폴백) —
+ * 기본값은 UI 언어, 선택 목록은 시스템 사전 labels에 실제 등록된 언어의 합집합이다(데이터가 원천).
+ * 해석된 표기가 적용 시점에 문서 논리명으로 영구 기록되므로, 나중에 언어를 바꿔도
+ * 이미 적용된 논리명은 바뀌지 않는다. 사전 편집은 용어 사전 패널(v1.14)이 맡는다.
  *
  * - 후보는 "논리명이 비었거나 물리명과 같은" 객체뿐 — 이미 있는 논리명(DB 코멘트)은
  *   건드리지 않는다(보존 규칙 §3.3과 같은 신호 구조라 DB 동기화와 충돌하지 않는다).
@@ -16,7 +16,7 @@
  * - 적용은 commitAll 한 덩어리 — undo 한 번으로 전체를 되돌린다.
  */
 import { useMemo, useState } from 'react'
-import { BookOpenText, ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -30,6 +30,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useAllSystemTerms, useWorkspaceTerms } from '@/features/terms/hooks'
 import {
   buildTermMap,
@@ -43,16 +50,9 @@ export interface LogicalNamesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string
-  /** '사전 관리' 클릭 — 용어 사전 패널을 여는 액션(셸이 소유). 다이얼로그는 닫힌다 */
-  onManageDictionary: () => void
 }
 
-export function LogicalNamesDialog({
-  open,
-  onOpenChange,
-  workspaceId,
-  onManageDictionary,
-}: LogicalNamesDialogProps) {
+export function LogicalNamesDialog({ open, onOpenChange, workspaceId }: LogicalNamesDialogProps) {
   const { t } = useTranslation()
 
   return (
@@ -63,14 +63,7 @@ export function LogicalNamesDialog({
           <DialogDescription>{t('model.editor.logicalNames.description')}</DialogDescription>
         </DialogHeader>
         {open ? (
-          <LogicalNamesBody
-            workspaceId={workspaceId}
-            onDone={() => onOpenChange(false)}
-            onManageDictionary={() => {
-              onManageDictionary()
-              onOpenChange(false)
-            }}
-          />
+          <LogicalNamesBody workspaceId={workspaceId} onDone={() => onOpenChange(false)} />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -82,29 +75,44 @@ function entryKey(entry: InferenceEntry): string {
   return `${entry.tableId}:${entry.columnId ?? '*'}`
 }
 
-function LogicalNamesBody({
-  workspaceId,
-  onDone,
-  onManageDictionary,
-}: {
-  workspaceId: string
-  onDone: () => void
-  onManageDictionary: () => void
-}) {
+/** 언어 코드의 UI 로캘 표기명 — DisplayNames을 못 쓰는 환경은 코드 그대로 */
+function languageName(code: string, uiLocale: string): string {
+  try {
+    return new Intl.DisplayNames([uiLocale], { type: 'language' }).of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
+function LogicalNamesBody({ workspaceId, onDone }: { workspaceId: string; onDone: () => void }) {
   const { t, i18n } = useTranslation()
   const terms = useWorkspaceTerms(workspaceId)
   const system = useAllSystemTerms()
   // 해제한 행만 기억 — 기본 전체 선택이고, 사전 도착으로 늘어난 행도 자동 선택이다
   const [unchecked, setUnchecked] = useState<ReadonlySet<string>>(new Set())
+  // 추론 언어 — 기본 UI 언어. 목록은 시스템 사전 labels에 등록된 언어의 합집합(데이터가 원천)
+  const [chosenLocale, setChosenLocale] = useState(i18n.language)
 
   const present = useEditorStore((s) => s.present)
   const commitAll = useEditorStore((s) => s.commitAll)
 
-  // 미리보기 — 문서·사전 변화를 그대로 반영하는 살아있는 계산.
+  const languages = useMemo(() => {
+    const codes = new Set<string>()
+    for (const term of system.data ?? []) {
+      for (const code of Object.keys(term.labels ?? {})) codes.add(code)
+    }
+    return [...codes].sort((a, b) => a.localeCompare(b))
+  }, [system.data])
+  // 선택값이 목록에 없으면(라벨 미등록 언어) 첫 언어로 표시한다 — resolveLabel 폴백과 같은 규칙
+  const inferenceLocale = languages.includes(chosenLocale)
+    ? chosenLocale
+    : (languages[0] ?? chosenLocale)
+
+  // 미리보기 — 문서·사전·언어 변화를 그대로 반영하는 살아있는 계산.
   // 한쪽 사전 실패해도 나머지로 계산한다(안내문은 아래에 띄운다)
   const dict = useMemo(
-    () => buildTermMap(system.data, terms.data?.items, i18n.language),
-    [system.data, terms.data, i18n.language],
+    () => buildTermMap(system.data, terms.data?.items, inferenceLocale),
+    [system.data, terms.data, inferenceLocale],
   )
   const plan = useMemo(() => planLogicalNameInference(present, dict), [present, dict])
 
@@ -140,11 +148,7 @@ function LogicalNamesBody({
   const apply = () => {
     // 고정점 — 클릭 시점의 문서·사전으로 다시 계산한다(미리보기 후 편집이 끼어도 정합)
     const freshDoc = useEditorStore.getState().present
-    const freshDict = buildTermMap(
-      system.data,
-      terms.data?.items,
-      i18n.language,
-    )
+    const freshDict = buildTermMap(system.data, terms.data?.items, inferenceLocale)
     const freshPlan = planLogicalNameInference(freshDoc, freshDict).filter(
       (entry) => !unchecked.has(entryKey(entry)),
     )
@@ -159,6 +163,25 @@ function LogicalNamesBody({
 
   return (
     <>
+      {languages.length > 1 ? (
+        <div className="flex items-center justify-end gap-2 pb-1">
+          <label htmlFor="logical-name-language" className="text-xs text-muted-foreground">
+            {t('model.editor.logicalNames.languageLabel')}
+          </label>
+          <Select value={inferenceLocale} onValueChange={setChosenLocale}>
+            <SelectTrigger id="logical-name-language" className="h-8 w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {languages.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {languageName(code, i18n.language)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
       <div className="grid max-h-[55vh] gap-3 overflow-y-auto py-2">
         {system.isError ? (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
@@ -223,14 +246,6 @@ function LogicalNamesBody({
         <span className="mr-auto text-xs text-muted-foreground">
           {t('model.editor.logicalNames.customCount', { count: terms.data?.totalCount ?? 0 })}
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onManageDictionary}
-        >
-          <BookOpenText aria-hidden className="size-3.5" />
-          {t('model.editor.logicalNames.manageDictionary')}
-        </Button>
         <Button type="button" onClick={apply} disabled={checkedCount === 0}>
           {t('model.editor.logicalNames.apply', { count: checkedCount })}
         </Button>

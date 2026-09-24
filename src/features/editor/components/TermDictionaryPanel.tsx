@@ -2,13 +2,13 @@
  * 용어 사전 패널 — 에디터 좌측 보조 패널 (v1.14, 05-editor/02-ui.md)
  *
  * 워크스페이스 표준 자산으로 승격된 용어 사전의 본체. 두 탭:
- * - 표준 사전: 이 워크스페이스가 등록한 용어(workspace_terms — 문서끼리 공유).
- *   등록·수정은 하단 [등록] 버튼·행 클릭으로 여는 다이얼로그(TermUpsertDialog)에서
+ * - 워크스페이스 사전: 이 워크스페이스가 등록한 용어(workspace_terms — 문서끼리 공유).
+ *   등록·수정은 상단 검색창 옆 [등록] 버튼·행 클릭으로 여는 다이얼로그(TermUpsertDialog)에서
  *   받는다 — upsert(수정 = 같은 토큰 재등록)라 한 폼이고, 타입(데이터 타입)은
  *   문서의 DB 종류 1가지 기준으로만 입력받아 그 키 하나짜리 맵으로 저장한다.
  * - 시스템 사전: 관리자가 등록한 전역 사전(system_terms, 읽기 전용·다국어 labels).
  *   라벨은 UI 언어로 해석해 보여준다. 열람 전용 — 사용자가 시스템 사전을 고치는
- *   진입(수정·재정의 프리필)은 없다. 표준 사전이 토큰을 덮어 쓰고 있으면 배지로 안내한다.
+ *   진입(수정·재정의 프리필)은 없다. 워크스페이스 사전이 토큰을 덮어 쓰고 있으면 배지로 안내한다.
  *   목록은 서버 페이징 + 알파벳 이니셜(a-z·#) 인덱스 + keyword 검색(토큰·labels 값).
  *
  * 행의 타입 접미는 문서의 DB 종류(databaseType — database_types 코드)에 맞는 값을
@@ -46,9 +46,9 @@ const SYSTEM_PAGE_SIZE = 20
 export interface TermDictionaryPanelProps {
   open: boolean
   workspaceId: string
-  /** 문서의 DB 종류(database_types 코드) — 타입 접미·대량 등록 3열 타입의 저장 키 */
+  /** 문서의 DB 종류(database_types 코드) — 타입 접미·등록 다이얼로그 타입의 저장 키 */
   databaseType: string
-  /** 편집 권한 — 쓰기 affordance만 게이트(목록·검색·비표준 검사는 읽기 전용도 가능) */
+  /** 편집 권한 — 쓰기 affordance만 게이트(목록·검색은 읽기 전용도 가능) */
   canEdit: boolean
 }
 
@@ -117,7 +117,7 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
   )
 }
 
-/* ---------- 표준 사전 탭 ---------- */
+/* ---------- 워크스페이스 사전 탭 ---------- */
 
 function StandardTab({
   workspaceId,
@@ -190,9 +190,22 @@ function StandardTab({
             {t('model.editor.termDictionary.count', { count: filtered.length })}
           </span>
         ) : null}
+        {canEdit ? (
+          /* 등록(다이얼로그) — 검색창 옆 상단. 폼은 다이얼로그로 옮겨 패널은 목록에 집중한다 */
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 shrink-0 px-2"
+            onClick={openCreate}
+            data-testid="term-upsert-open"
+          >
+            <Plus aria-hidden className="size-3.5" />
+            {t('model.editor.termDictionary.add')}
+          </Button>
+        ) : null}
       </div>
 
-      {/* 표준 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 다이얼로그(재등록으로 덮어쓴다) */}
+      {/* 워크스페이스 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 다이얼로그(재등록으로 덮어쓴다) */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
         {termsStatus.isPending ? (
           <div
@@ -287,25 +300,11 @@ function StandardTab({
         )}
       </div>
 
-      {canEdit ? (
-        /* 하단 액션 바 — 등록(다이얼로그). 폼은 다이얼로그로 옮겨 패널은 목록에 집중한다 */
-        <div className="border-t p-2">
-          <Button
-            type="button"
-            size="sm"
-            className="h-7 px-2"
-            onClick={openCreate}
-            data-testid="term-upsert-open"
-          >
-            <Plus aria-hidden className="size-3.5" />
-            {t('model.editor.termDictionary.add')}
-          </Button>
-        </div>
-      ) : (
+      {!canEdit ? (
         <p className="border-t px-3 py-2 text-xs text-muted-foreground">
           {t('model.editor.termDictionary.viewerNote')}
         </p>
-      )}
+      ) : null}
 
       {canEdit ? (
         <TermUpsertDialog

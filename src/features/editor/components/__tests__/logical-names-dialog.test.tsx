@@ -1,8 +1,9 @@
 /**
- * 논리명 자동 추론 다이얼로그 테스트 — 미리보기(커스텀 사전 우선)·체크 해제·적용 commitAll·undo
- * (05-editor/04-dbms-engineering.md §3.2)
+ * 논리명 자동 추론 다이얼로그 테스트 — 미리보기(커스텀 사전 우선)·추론 언어 선택·체크 해제·
+ * 적용 commitAll·undo (05-editor/04-dbms-engineering.md §3.2)
  *
- * 사전은 MSW 목업(fixtures.terms: member→회원, user→사용자). 문서는 스토어에 직접 시딩한다.
+ * 사전은 MSW 목업(fixtures.terms: member→회원, user→사용자 / fixtures.systemTerms: 4개 언어).
+ * 문서는 스토어에 직접 시딩한다.
  */
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -45,14 +46,9 @@ function seedInferableDoc(): void {
   })
 }
 
-function renderDialog(onManageDictionary = vi.fn()) {
+function renderDialog() {
   return renderWithProviders(
-    <LogicalNamesDialog
-      open
-      onOpenChange={vi.fn()}
-      workspaceId="101"
-      onManageDictionary={onManageDictionary}
-    />,
+    <LogicalNamesDialog open onOpenChange={vi.fn()} workspaceId="101" />,
     { wrapRoutes: false },
   )
 }
@@ -126,28 +122,41 @@ describe('LogicalNamesDialog — 미리보기·적용', () => {
 
     // 내장 사전에도 user→사용자가 있어 계산은 된다 — 사전 의존이 아닌 기능 보존
     expect(
-      await screen.findByText('워크스페이스 표준 사전을 불러오지 못했습니다 — 시스템 사전만으로 계산합니다'),
+      await screen.findByText('워크스페이스 사전을 불러오지 못했습니다 — 시스템 사전만으로 계산합니다'),
     ).toBeVisible()
     expect(screen.getByText('사용자 ID')).toBeVisible()
   })
 
-  it("'사전 관리' 클릭 → 다이얼로그를 닫고 패널 열기 액션을 호출한다", async () => {
-    seedInferableDoc()
-    const onManageDictionary = vi.fn()
-    const onOpenChange = vi.fn()
-    renderWithProviders(
-      <LogicalNamesDialog
-        open
-        onOpenChange={onOpenChange}
-        workspaceId="101"
-        onManageDictionary={onManageDictionary}
-      />,
-      { wrapRoutes: false },
-    )
-    await termsLoaded()
+  it('추론 언어를 일본어로 바꾸면 시스템 라벨이 일본어 표기로 다시 계산된다', async () => {
+    // email은 시스템 사전 전용 토큰(커스텀 user·member가 덮지 않는다) — 언어 전환의 순수 관찰 대상
+    const content = emptyContent()
+    content.model.tables = [
+      createTable('user', {
+        logicalName: 'user',
+        columns: [createColumn({ physicalName: 'email_id', logicalName: 'email_id' })],
+      }),
+    ]
+    useEditorStore.getState().hydrate({
+      modelId: '501',
+      baseVersion: 1,
+      document: { model: content.model, diagram: content.diagram },
+    })
+    renderDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: '사전 관리' }))
-    expect(onManageDictionary).toHaveBeenCalledTimes(1)
-    expect(onOpenChange).toHaveBeenCalledWith(false) // 중첩 다이얼로그 폐지 — 패널으로 갈아탄다
+    // 기본은 UI 언어(ko) — email_id → 이메일 ID
+    expect(await screen.findByText('이메일 ID')).toBeVisible()
+
+    // 언어 목록은 시스템 사전 labels 키의 합집합(ko/en/ja/zh) — ko 로캘 표기명은 일본어
+    const trigger = screen.getByRole('combobox', { name: '추론 언어' })
+    fireEvent.pointerDown(trigger, { button: 0 })
+    fireEvent.click(trigger)
+    fireEvent.click(await screen.findByRole('option', { name: '일본어' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('メール ID')).toBeVisible()
+    })
+    expect(screen.queryByText('이메일 ID')).toBeNull()
+    // 커스텀 사전(user→사용자)은 언어 맵이 없어 어느 언어에서나 그대로다
+    expect(screen.getByText('사용자')).toBeVisible()
   })
 })

@@ -319,7 +319,7 @@ export interface ConnectionTestResult {
   message: string | null
 }
 
-/** 워크스페이스 표준 사전 항목 (08-core/01-workspace.md §4) — 논리명 자동 추론의 워크스페이스 사전 */
+/** 워크스페이스 사전 항목 (08-core/01-workspace.md §4) — 논리명 자동 추론의 워크스페이스 사전 */
 export interface WorkspaceTerm {
   termId: string
   workspaceId: string

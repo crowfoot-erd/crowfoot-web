@@ -43,9 +43,9 @@ describe('시스템 사전 관리 화면', () => {
     renderAdminSystemTerms()
 
     const email = await screen.findByTestId('system-term-row-email')
-    // ko 라벨이 기본 행, en 라벨은 보조 표기된다
+    // ko 라벨이 기본 행, 나머지 언어(en·ja·zh)는 "언어: 라벨" 결합 보조 표기된다
     expect(within(email).getByText('이메일')).toBeVisible()
-    expect(within(email).getByText('en: Email')).toBeVisible()
+    expect(within(email).getByText('en: Email · ja: メール · zh: 邮件')).toBeVisible()
     // types는 채운 종류만 "표시명: 값" 결합 — email은 mysql·postgresql 둘 다
     expect(within(email).getByText('MySQL: VARCHAR(100) · PostgreSQL: VARCHAR(100)')).toBeVisible()
 

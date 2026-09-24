@@ -158,8 +158,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     setExplorerOpen(true)
     setExplorerFocusSignal((signal) => signal + 1)
   }, [])
-  // 용어 사전 패널 — 열림은 브라우저에 기억(기본 닫힘). openTermsPanel은 토글이 아니라
-  // 확장 열기라 추론 다이얼로그의 '사전 관리'가 쓴다
+  // 용어 사전 패널 — 열림은 브라우저에 기억(기본 닫힘)
   const [termsOpen, setTermsOpen] = useState(readTermsOpen)
   const toggleTermsPanel = useCallback(() => {
     setTermsOpen((open) => {
@@ -170,14 +169,6 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       }
       return !open
     })
-  }, [])
-  const openTermsPanel = useCallback(() => {
-    setTermsOpen(true)
-    try {
-      localStorage.setItem(TERMS_OPEN_KEY, 'true')
-    } catch {
-      // 저장 실패는 무시 — 상태만 연다
-    }
   }, [])
   const reloadingRef = useRef(false)
   const [remoteChangeOpen, setRemoteChangeOpen] = useState(false)
@@ -606,7 +597,6 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         onToggleExplorer={toggleExplorer}
         termsOpen={termsOpen}
         onToggleTermsPanel={toggleTermsPanel}
-        onOpenTermsPanel={openTermsPanel}
         nameDisplay={nameDisplay}
         onNameDisplayChange={setNameDisplay}
         columnDisplay={columnDisplay}
