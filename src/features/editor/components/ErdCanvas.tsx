@@ -287,6 +287,10 @@ export interface ErdCanvasProps {
   canEdit: boolean
   /** 문서 대상 DBMS 템플릿 id — 모델 메타에서 파생된 고정값(문서 수명 동안 불변) */
   dbmsId: string
+  /** 워크스페이스 id — 컬럼 물리명 사전 제안의 조회 키. 공개 뷰어는 null(제안 없음) */
+  workspaceId: string | null
+  /** 문서 DB 종류(database_types 코드) — 용어 types 맵 키(템플릿 id와 다른 원본 코드) */
+  databaseType: string
   nameDisplay: NameDisplayMode
   columnDisplay: ColumnDisplayMode
   /** 문서 식별자 — 마지막 화면(줌·팬)을 브라우저에 기억하는 키 */
@@ -304,6 +308,8 @@ export function ErdCanvas({
   nameDisplay,
   columnDisplay,
   dbmsId,
+  workspaceId,
+  databaseType,
   modelId,
   activeAreaId,
   onActiveAreaChange,
@@ -1071,6 +1077,8 @@ export function ErdCanvas({
     () => ({
       canEdit,
       dbmsId,
+      workspaceId,
+      databaseType,
       openTableInfo: canEdit ? setInfoTableId : () => {},
       openColumnInfo,
       openKeyInfo,
@@ -1085,6 +1093,8 @@ export function ErdCanvas({
     [
       canEdit,
       dbmsId,
+      workspaceId,
+      databaseType,
       nameDisplay,
       columnDisplay,
       reportSize,

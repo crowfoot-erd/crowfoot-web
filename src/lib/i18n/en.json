@@ -881,6 +881,7 @@
       "table": {
         "addColumn": "Add column",
         "columnName": "Column name",
+        "termSuggestLabel": "Workspace dictionary suggestions",
         "physicalName": "Table name",
         "dataType": "Data type",
         "length": "Length",

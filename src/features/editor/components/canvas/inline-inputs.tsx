@@ -10,9 +10,16 @@
  * 커밋한다. Safari는 keydown의 isComposing을 거짓으로 알리는 경우가 있어 조립 상태를
  * 직접 추적한다.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type Ref } from 'react'
 
 import { cn } from 'cn'
+
+/** 외부에서 확정값을 밀어 넣는 핸들 — 제안(사전 용어) 선택이 초안 커밋 없이
+ *  부모가 이미 적용한 값으로 입력을 마무리할 때 쓴다 */
+export interface CommitInputHandle {
+  /** 초안 커밋을 건너뛰고 draft를 next로 맞춘 뒤 blur한다 (부모 패치와 이중 커밋 방지) */
+  commitExternal: (next: string) => void
+}
 
 interface CommitInputProps {
   value: string
@@ -30,7 +37,11 @@ interface CommitInputProps {
   /** 초안 변화 통보 — null은 편집 종료(blur)로 원본 기준 복귀.
    *  입력 중에도 부모가 폭 측정 등에 초안을 반영할 수 있게 한다. */
   onDraftChange?: (draft: string | null) => void
+  /** 키 가로채기 — true를 반환하면 기본 처리(Enter blur·Esc 되돌리기)를 건너뛴다.
+   *  제안 목록(↑↓ 이동·Enter 선택)이 내장 처리보다 먼저 키를 판정할 때 쓴다. */
+  onKeyDownIntercept?: (event: KeyboardEvent<HTMLInputElement>) => boolean
   className?: string
+  ref?: Ref<CommitInputHandle>
 }
 
 export function CommitInput({
@@ -44,12 +55,29 @@ export function CommitInput({
   autoFocus = false,
   onFocused,
   onDraftChange,
+  onKeyDownIntercept,
   className,
+  ref,
 }: CommitInputProps) {
   const [draft, setDraft] = useState(value)
   const focused = useRef(false)
   const composing = useRef(false)
   const enterDuringComposition = useRef(false)
+  /** commitExternal로 blur 중 — 초안 커밋을 건너뛴다(값은 부모가 이미 패치했다) */
+  const externalBlur = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      commitExternal: (next: string) => {
+        externalBlur.current = true
+        setDraft(next)
+        inputRef.current?.blur()
+      },
+    }),
+    [],
+  )
 
   useEffect(() => {
     if (!focused.current) setDraft(value)
@@ -67,6 +95,7 @@ export function CommitInput({
 
   return (
     <input
+      ref={inputRef}
       className={cn('nodrag nowheel rounded-sm bg-transparent px-1 py-0.5 outline-none focus:bg-accent focus:text-accent-foreground', className)}
       type={type}
       value={draft}
@@ -83,6 +112,10 @@ export function CommitInput({
         focused.current = false
         enterDuringComposition.current = false // 조립 취소 등으로 흘러넘친 플래그 청소
         onDraftChange?.(null)
+        if (externalBlur.current) {
+          externalBlur.current = false
+          return // 부모가 적용한 값으로 마무리 — 초안 커밋 없음
+        }
         commit()
       }}
       onChange={(event) => {
@@ -104,6 +137,10 @@ export function CommitInput({
         }
       }}
       onKeyDown={(event) => {
+        if (onKeyDownIntercept?.(event)) {
+          event.preventDefault()
+          return
+        }
         const imeComposing = composing.current || event.nativeEvent.isComposing || event.keyCode === 229
         if (event.key === 'Enter') {
           if (imeComposing) {

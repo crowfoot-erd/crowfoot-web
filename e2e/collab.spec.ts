@@ -117,6 +117,14 @@ async function openEditor(
       ),
     }),
   )
+  // 컬럼 물리명 사전 제안이 문서 화면에서 던지는 워크스페이스 사전 조회 — 목킹이 없으면
+  // 실물 게이트웨이로 나가 가짜 토큰(token-N)이 401 → 재로그인 다이얼로그가 캔버스를 막는다
+  await page.route('**/api/v1/core/workspaces/101/terms', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(envelope({ totalCount: 0, responses: [] })),
+    }),
+  )
 
   let saved = false
   await page.route(`**/api/v1/core/workspaces/101/models/${modelId}/version`, (route) =>

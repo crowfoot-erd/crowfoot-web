@@ -167,3 +167,52 @@ export function templateIdForDatabase(databaseType: string): string {
 export function physicalType(code: string, dbmsId: string): string {
   return dbmsTemplate(dbmsId).types[code] ?? code
 }
+
+/** 물리 타입 표기를 공용 논리 코드로 되돌린 파싱 결과 — length는 CHAR·VARCHAR 계열,
+ *  precision·scale은 DECIMAL·NUMERIC 계열에만 들어간다(나머지는 null) */
+export interface ParsedPhysicalType {
+  code: string
+  length: number | null
+  precision: number | null
+  scale: number | null
+}
+
+/** 물리 타입 표기(예: 'VARCHAR(100)', 'DECIMAL(15,2)') → 공용 논리 코드 + 파라미터.
+ *  용어 사전 types 값(키 = 문서 DB 종류, 물리 표기로 저장)을 컬럼에 적용할 때 쓴다.
+ *  이름은 ① 문서 DBMS 물리 표기 역매핑(postgres 'INTEGER'→INT, mssql 'BIT'→BOOLEAN —
+ *  사전 값이 그 DBMS 방언으로 적혀 있기 때문) ② 공용 코드 직접 매칭 순서로 찾고,
+ *  못 찾으면 null(호환되는 논리 타입이 없으면 타입 칸은 건드리지 않는다).
+ *  인자는 타입 스펙에 맞게만 해석한다 — DECIMAL(15,2) → precision 15·scale 2,
+ *  'VARCHAR(MAX)'처럼 숫자가 아니면 그 파라미터는 null(스펙상 무기본). */
+export function parsePhysicalType(raw: string, dbmsId: string): ParsedPhysicalType | null {
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  const match = /^([A-Za-z][A-Za-z0-9_ ]*?)\s*(?:\(([^()]*)\))?$/.exec(trimmed)
+  if (!match) return null
+  // 비교는 인자를 뺀 기본 이름으로 — 'TINYINT(1)'과 'TINYINT'가 같은 타입으로 만난다
+  const base = (text: string) => text.replace(/\(.*$/, '').replace(/\s+/g, ' ').trim().toUpperCase()
+  const name = base(match[1])
+  const args = (match[2] ?? '').split(',').map((part) => part.trim())
+
+  const matches = DATA_TYPES.filter((t) => base(physicalType(t.code, dbmsId)) === name)
+  // 같은 방언 이름에 여러 공용 코드가 걸릴 수 있다(Oracle NUMBER ← TINYINT(3)·DECIMAL·NUMERIC).
+  // 인자가 붙은 값은 정밀도형(DECIMAL 계열)을 우선한다 — NUMBER(19)를 TINYINT가 아닌 DECIMAL로.
+  // 그 외엔 카탈로그 순서 첫 승자(best-effort — MySQL 'TINYINT(1)'은 TINYINT, BOOLEAN은 'BOOLEAN'로 적힌다)
+  const hasArgs = args.some((part) => part !== '')
+  const spec =
+    (hasArgs ? matches.find((t) => t.precision) : undefined) ??
+    matches[0] ??
+    DATA_TYPES.find((t) => t.code === name)
+  if (!spec) return null
+
+  const int = (value: string | undefined) => {
+    const parsed = Number.parseInt(value ?? '', 10)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+  return {
+    code: spec.code,
+    length: spec.length ? int(args[0]) : null,
+    precision: spec.precision ? int(args[0]) : null,
+    scale: spec.precision ? int(args[1]) : null,
+  }
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyChange, applyChanges, createArea, createColumn, createTable, pkToggleChanges } from '@/features/editor/model/changes'
+import { applyChange, applyChanges, createArea, createColumn, createTable, pkToggleChanges, termColumnPatch } from '@/features/editor/model/changes'
 import {
   DEFAULT_CHILD_MULTIPLICITY,
   type EditorDocument,
@@ -504,5 +504,58 @@ describe('applyChange — 주제 영역 (v1.13)', () => {
     const after = applyChange(docWithArea(), { type: 'table/remove', tableId: 'T-USERS' })
     expect(after.model.tables.map((t) => t.physicalName)).toEqual(['logs'])
     expect(after.diagram.areas[0].tableIds).toEqual([])
+  })
+})
+
+describe('termColumnPatch — 사전 용어 적용 (v1.14)', () => {
+  it('물리명·논리명·타입을 한 패치로 채운다 — DECIMAL(15,2)는 precision·scale까지', () => {
+    expect(
+      termColumnPatch(
+        { term: 'amount', label: '금액', types: { mysql: 'DECIMAL(15,2)' } },
+        'mysql',
+        'mysql',
+      ),
+    ).toEqual({
+      physicalName: 'amount',
+      logicalName: '금액',
+      dataType: 'DECIMAL',
+      length: null,
+      precision: 15,
+      scale: 2,
+    })
+  })
+
+  it('문서 DB 종류 키의 값으로 적용한다 — 방언 표기는 공용 코드로 되돌린다', () => {
+    expect(
+      termColumnPatch(
+        { term: 'user', label: '사용자', types: { mysql: 'VARCHAR(60)', postgresql: 'VARCHAR(50)' } },
+        'postgresql',
+        'postgres',
+      ),
+    ).toEqual({
+      physicalName: 'user',
+      logicalName: '사용자',
+      dataType: 'VARCHAR',
+      length: 50,
+      precision: null,
+      scale: null,
+    })
+  })
+
+  it('용어에 문서 DB 종류 타입이 없거나 파싱 불가면 이름만 바꾼다 — 타입 칸은 그대로', () => {
+    expect(termColumnPatch({ term: 'member', label: '회원', types: null }, 'mysql', 'mysql')).toEqual({
+      physicalName: 'member',
+      logicalName: '회원',
+    })
+    // 다른 DB 종류 키에만 값이 있어도 문서 종류에는 적용하지 않는다
+    expect(termColumnPatch({ term: 'yn', label: '여부', types: { oracle: 'CHAR(1)' } }, 'mysql', 'mysql')).toEqual({
+      physicalName: 'yn',
+      logicalName: '여부',
+    })
+    // 호환 논리 타입이 없는 값 — 이름만
+    expect(termColumnPatch({ term: 'etc', label: '기타', types: { mysql: 'FOO(1)' } }, 'mysql', 'mysql')).toEqual({
+      physicalName: 'etc',
+      logicalName: '기타',
+    })
   })
 })

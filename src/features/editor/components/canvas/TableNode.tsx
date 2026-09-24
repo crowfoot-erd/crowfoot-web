@@ -10,6 +10,8 @@
  * 이름 더블클릭 = 컬럼 정보 다이얼로그(논리명·기본값·코멘트), 노드 더블클릭 = 테이블 정보와 구분.
  * 노드는 자기 테이블만 구독한다(구조 공유로 다른 테이블 편집 시 이 노드는 리렌더 0).
  * 컬럼 추가 시 새 행 물리명 input에 autofocus(DataGrip 그리드 UX).
+ * 물리명 input은 워크스페이스 사전 용어를 서제스트한다(ColumnTermInput — 포커스·입력으로
+ * 좁히고 선택하면 물리명·논리명·타입을 1커밋으로 채운다).
  * 컬럼 표시 모드(보기 옵션) — 'keys'면 일반 컬럼 행을 감추고 PK·FK만 그린다.
  * 높이는 줄어들고(모드 전환마다 reportSize), 폭은 측정 미러가 전체 컬럼을 재므로 흔들리지 않는다.
  * 관계 그리기 — 점(source 핸들)·엣지 밴드는 그대로 있되, 점을 눌러 끌어 선을 그리는
@@ -30,8 +32,14 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { cn } from 'cn'
-import { createColumn, pkToggleChanges, type ColumnPatch } from '@/features/editor/model/changes'
-import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
+import type { WorkspaceTerm } from '@/api/types'
+import { createColumn, pkToggleChanges, termColumnPatch, type ColumnPatch } from '@/features/editor/model/changes'
+import {
+  DATA_TYPES,
+  dataTypeSpec,
+  isAutoIncrementType,
+  physicalType,
+} from '@/features/editor/model/dbms'
 import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
@@ -43,6 +51,7 @@ import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from '
 import { useCompareHighlight } from './compare-context'
 import { tableSkin } from './table-skin'
 import { CommitInput, CommitSelect } from './inline-inputs'
+import { ColumnTermInput } from './column-term-input'
 
 export type TableNodeData = Record<string, never>
 export type TableNodeType = Node<TableNodeData, 'table'>
@@ -242,11 +251,14 @@ function ColumnRow({
   typeOptions,
 }: ColumnRowProps) {
   const { t } = useTranslation()
-  const { nameDisplay, openColumnInfo } = useEditorCanvas()
+  const { nameDisplay, openColumnInfo, dbmsId, databaseType } = useEditorCanvas()
   const commit = useEditorStore((s) => s.commit)
   const commitAll = useEditorStore((s) => s.commitAll)
 
   const patch = (next: ColumnPatch) => commit({ type: 'column/patch', tableId, columnId: column.id, patch: next })
+
+  /** 사전 용어 제안 선택 — 물리명·논리명·타입을 1커밋으로 채운다(규칙은 termColumnPatch) */
+  const applyTerm = (term: WorkspaceTerm) => patch(termColumnPatch(term, databaseType, dbmsId))
 
   /** PK 토글 — 1커밋 스택 (켜면 NN 강제·최상단 이동, 끄면 AI 해제 + FK면 FK 영역·아니면 일반 블록 이동) */
   const togglePk = () => {
@@ -330,12 +342,12 @@ function ColumnRow({
       ) : (
         <div className="flex min-w-0 flex-col" onDoubleClick={openInfo}>
           <div className="flex min-w-0 items-center gap-0.5">
-            <CommitInput
-              className="min-w-0 flex-1 text-sm font-medium"
+            <ColumnTermInput
+              className="text-sm font-medium"
               value={column.physicalName}
               onCommit={(value) => patch({ physicalName: value })}
+              onApplyTerm={applyTerm}
               ariaLabel={`${t('model.editor.table.columnName')} — ${column.physicalName}`}
-              required
               disabled={!canEdit}
               autoFocus={autoFocus}
               onFocused={onFocusedAuto}

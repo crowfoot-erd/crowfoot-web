@@ -6,6 +6,7 @@
  * 협업 이관 경로를 열어 둔다. 적용은 항상 불변(구조 공유) — 안 바뀐 테이블 객체는 참조가 유지되어
  * 노드 단위 셀렉터 구독에서 해당 노드만 리렌더된다.
  */
+import type { WorkspaceTerm } from '@/api/types'
 import {
   coerceChildMultiplicity,
   type ErdArea,
@@ -20,6 +21,7 @@ import {
   type EditorDocument,
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
+import { parsePhysicalType } from '@/features/editor/model/dbms'
 import { defaultKeyName } from '@/features/editor/model/keys'
 
 export type TablePatch = Partial<Pick<ErdTable, 'logicalName' | 'physicalName' | 'comment'>>
@@ -174,6 +176,26 @@ export function pkToggleChanges(
     }
   }
   return changes
+}
+
+/** 워크스페이스 사전 용어 → 컬럼 패치 — 물리명 제안 선택 시 이름·타입을 한 커밋으로 채운다.
+ *  타입은 용어 types 맵의 문서 DB 종류 값(물리 표기)을 parsePhysicalType로 공용 코드 +
+ *  length/precision/scale로 되돌려 적용한다(DECIMAL(15,2) → precision 15·scale 2).
+ *  용어에 그 종류 타입이 없거나 호환 논리 타입이 없으면(파싱 null) 타입 칸은 그대로 둔다.
+ *  컬럼 물리명 입력(ColumnTermInput)과 컬럼 정보 다이얼로그가 같은 규칙을 쓸 수 있다 */
+export function termColumnPatch(
+  term: Pick<WorkspaceTerm, 'term' | 'label' | 'types'>,
+  databaseType: string,
+  dbmsId: string,
+): ColumnPatch {
+  const parsed = parsePhysicalType(term.types?.[databaseType] ?? '', dbmsId)
+  return {
+    physicalName: term.term,
+    logicalName: term.label,
+    ...(parsed
+      ? { dataType: parsed.code, length: parsed.length, precision: parsed.precision, scale: parsed.scale }
+      : {}),
+  }
 }
 
 function toDoc(content: ErdContent): EditorDocument {

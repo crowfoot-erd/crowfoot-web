@@ -36,6 +36,11 @@ export interface EditorCanvasContextValue {
   canEdit: boolean
   /** 문서 대상 DBMS 템플릿 id — 문서 생성 시점의 모델 메타에서 파생, 문서 수명 동안 불변 */
   dbmsId: string
+  /** 워크스페이스 id — 컬럼 물리명의 사전 용어 제안이 워크스페이스 사전을 읽는 키.
+   *  공개 뷰어(비회원 게스트)는 null — 제안 없음 */
+  workspaceId: string | null
+  /** 문서 DB 종류(database_types 코드) — 용어 types 맵의 키. dbmsId(템플릿 id)와 다르다 */
+  databaseType: string
   /** 테이블 정보 다이얼로그 열기 — 노드 헤더 ⓘ·더블클릭·컨텍스트 메뉴 */
   openTableInfo: (tableId: string) => void
   /** 컬럼 정보 다이얼로그 열기 — 컬럼 행 이름 더블클릭 */
@@ -59,6 +64,8 @@ export interface EditorCanvasContextValue {
 export const EditorCanvasContext = createContext<EditorCanvasContextValue>({
   canEdit: false,
   dbmsId: 'common',
+  workspaceId: null,
+  databaseType: '',
   openTableInfo: () => {},
   openColumnInfo: () => {},
   openKeyInfo: () => {},
