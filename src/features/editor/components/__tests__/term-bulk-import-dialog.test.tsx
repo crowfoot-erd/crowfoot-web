@@ -28,7 +28,7 @@ afterEach(() => {
 
 function renderDialog() {
   return renderWithProviders(
-    <TermBulkImportDialog open onOpenChange={() => {}} workspaceId="101" />,
+    <TermBulkImportDialog open onOpenChange={() => {}} workspaceId="101" databaseType="postgresql" />,
     { wrapRoutes: false },
   )
 }
@@ -49,10 +49,10 @@ describe('TermBulkImportDialog', () => {
   })
 
   it('실행 → 순차 upsert 후 성공 N건 요약을 보여준다', async () => {
-    const posts: Array<{ term: string; label: string; type: string | null }> = []
+    const posts: Array<{ term: string; label: string; types: Record<string, string> | null }> = []
     server.use(
       http.post(TERMS_URL, async ({ request }) => {
-        posts.push((await request.json()) as { term: string; label: string; type: string | null })
+        posts.push((await request.json()) as { term: string; label: string; types: Record<string, string> | null })
         return okItem('x', 'x')
       }),
     )
@@ -64,16 +64,16 @@ describe('TermBulkImportDialog', () => {
       expect(screen.getByTestId('term-bulk-result').textContent).toContain('2건 등록 · 0건 실패'),
     )
     expect(posts).toEqual([
-      { term: 'ordr', label: '주문', type: null },
-      { term: 'user_id', label: '회원 식별자', type: null },
+      { term: 'ordr', label: '주문', types: null },
+      { term: 'user_id', label: '회원 식별자', types: null },
     ])
   })
 
-  it('3열 줄은 타입까지 POST 본문에 실는다', async () => {
-    const posts: Array<{ term: string; label: string; type: string | null }> = []
+  it('3열 줄은 타입을 문서 DB 종류 키의 맵으로 POST 본문에 실는다', async () => {
+    const posts: Array<{ term: string; label: string; types: Record<string, string> | null }> = []
     server.use(
       http.post(TERMS_URL, async ({ request }) => {
-        posts.push((await request.json()) as { term: string; label: string; type: string | null })
+        posts.push((await request.json()) as { term: string; label: string; types: Record<string, string> | null })
         return okItem('x', 'x')
       }),
     )
@@ -84,10 +84,10 @@ describe('TermBulkImportDialog', () => {
     await waitFor(() =>
       expect(screen.getByTestId('term-bulk-result').textContent).toContain('2건 등록 · 0건 실패'),
     )
-    // 비운 타입 열은 null로 전송된다(선택 값)
+    // 비운 타입 열은 null로 전송된다(선택 값) — 3열 타입은 문서 DB 종류(postgresql) 키 하나로
     expect(posts).toEqual([
-      { term: 'email', label: '이메일', type: 'VARCHAR(100)' },
-      { term: 'yn', label: '여부', type: null },
+      { term: 'email', label: '이메일', types: { postgresql: 'VARCHAR(100)' } },
+      { term: 'yn', label: '여부', types: null },
     ])
   })
 

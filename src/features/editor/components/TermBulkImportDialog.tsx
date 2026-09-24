@@ -27,6 +27,8 @@ export interface TermBulkImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string
+  /** 문서의 DB 종류(database_types 코드) — 3열 타입의 저장 키 */
+  databaseType: string
 }
 
 const ISSUE_KEYS: Record<TermBulkIssueReason, string> = {
@@ -36,7 +38,7 @@ const ISSUE_KEYS: Record<TermBulkIssueReason, string> = {
   tooManyColumns: 'model.editor.termDictionary.bulkIssueTooManyColumns',
 }
 
-export function TermBulkImportDialog({ open, onOpenChange, workspaceId }: TermBulkImportDialogProps) {
+export function TermBulkImportDialog({ open, onOpenChange, workspaceId, databaseType }: TermBulkImportDialogProps) {
   const { t } = useTranslation()
 
   return (
@@ -46,18 +48,18 @@ export function TermBulkImportDialog({ open, onOpenChange, workspaceId }: TermBu
           <DialogTitle>{t('model.editor.termDictionary.bulkTitle')}</DialogTitle>
           <DialogDescription>{t('model.editor.termDictionary.bulkDescription')}</DialogDescription>
         </DialogHeader>
-        {open ? <BulkImportBody workspaceId={workspaceId} /> : null}
+        {open ? <BulkImportBody workspaceId={workspaceId} databaseType={databaseType} /> : null}
       </DialogContent>
     </Dialog>
   )
 }
 
-function BulkImportBody({ workspaceId }: { workspaceId: string }) {
+function BulkImportBody({ workspaceId, databaseType }: { workspaceId: string; databaseType: string }) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [outcome, setOutcome] = useState<BulkUpsertOutcome | null>(null)
-  const bulk = useBulkUpsertTerms(workspaceId)
+  const bulk = useBulkUpsertTerms(workspaceId, databaseType)
 
   const parsed = useMemo(() => parseTermBulkText(text), [text])
   const running = bulk.isPending || progress !== null

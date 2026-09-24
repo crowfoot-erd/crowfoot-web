@@ -548,7 +548,6 @@
         "term": "Token",
         "termPlaceholder": "user_id",
         "labelsHint": "Labels — at least one language",
-        "type": "Type",
         "typePlaceholder": "e.g. VARCHAR(100) — optional",
         "fieldRequired": "Required.",
         "termPattern": "Token cannot contain spaces",
@@ -561,8 +560,13 @@
           "en": "English",
           "ja": "日本語",
           "zh": "中文"
-        }
-      }
+        },
+        "typeForDbms": "Type ({{dbms}})"
+      },
+      "alphabetAll": "All",
+      "alphabetLabel": "Initial letter",
+      "letterEtc": "#",
+      "noResults": "No terms match the filter"
     }
   },
   "notFound": {
@@ -740,7 +744,7 @@
         "overridden": "Overridden",
         "bulkOpen": "Bulk import",
         "bulkTitle": "Bulk import terms",
-        "bulkDescription": "Paste one term per line as 'token,label' or 'token,label,type' (comma or tab separated). With a type column, labels cannot contain separators",
+        "bulkDescription": "Paste one term per line as 'token,label' or 'token,label,type' (comma or tab separated). With a type column, labels cannot contain separators. Types are registered under this document's database type",
         "bulkPlaceholder": "user_id,member id,VARCHAR(50)\nordr,order",
         "bulkParsed": "{{count}} to import · {{issues}} malformed",
         "bulkRun": "Import {{count}}",
@@ -751,12 +755,15 @@
         "bulkIssueSpaceInTerm": "Token contains a space",
         "bulkNoEntries": "Nothing to import",
         "lintButton": "Check non-standard",
-        "type": "Type",
         "typePlaceholder": "e.g. VARCHAR(100) — optional",
         "typeTooLong": "Type must be 100 characters or fewer",
         "systemLoadFailed": "Could not load the system dictionary",
         "systemEmpty": "The system dictionary is empty — terms registered by admins appear here",
-        "bulkIssueTooManyColumns": "Too many columns — up to three: token,label,type"
+        "bulkIssueTooManyColumns": "Too many columns — up to three: token,label,type",
+        "typeForDbms": "Type ({{dbms}})",
+        "alphabetAll": "All",
+        "alphabetLabel": "Initial letter",
+        "letterEtc": "#"
       },
       "ddl": {
         "title": "SQL script",

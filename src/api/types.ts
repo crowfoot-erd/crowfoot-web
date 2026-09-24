@@ -327,8 +327,9 @@ export interface WorkspaceTerm {
   term: string
   /** 논리명 라벨 — 추론 결과에 그대로 쓰이는 표기(한글 등) */
   label: string
-  /** 데이터 타입 예: VARCHAR(100) — 선택(선택 안 하면 null). 컬럼 생성 제안 등 부가 정보 */
-  type: string | null
+  /** DBMS 종류별 데이터 타입 맵(키 = database_types 코드, 예: {mysql: "VARCHAR(100)"}) —
+   *  선택(설정 안 하면 null). 표시는 문서의 DB 종류에 맞는 값을 고른다 */
+  types: Record<string, string> | null
   updatedAt: string
 }
 
@@ -338,7 +339,8 @@ export interface SystemTerm {
   termId: string
   term: string
   labels: Record<string, string>
-  type: string | null
+  /** DBMS 종류별 데이터 타입 맵(키 = database_types 코드) — 선택. 표시는 문서의 DB 종류 값 */
+  types: Record<string, string> | null
   updatedAt: string
 }
 

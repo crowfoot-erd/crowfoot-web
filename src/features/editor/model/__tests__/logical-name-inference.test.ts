@@ -18,7 +18,7 @@ import {
 
 /** 시스템 사전 픽스처 — 서버(system_terms) 형태 그대로. labels는 언어→라벨 맵 */
 function systemTerm(term: string, labels: Record<string, string>): SystemTerm {
-  return { termId: term, term, labels, type: null, updatedAt: '2026-09-24T00:00:00Z' }
+  return { termId: term, term, labels, types: null, updatedAt: '2026-09-24T00:00:00Z' }
 }
 
 const SYSTEM: SystemTerm[] = [
@@ -32,8 +32,8 @@ const SYSTEM: SystemTerm[] = [
   systemTerm('ja_only', { ja: '일본어전용' }), // 폴백 검증용 — ko/en이 없는 항목
 ]
 
-function workspaceTerm(term: string, label: string, type: string | null = null): WorkspaceTerm {
-  return { termId: term, workspaceId: '101', term, label, type, updatedAt: '2026-09-24T00:00:00Z' }
+function workspaceTerm(term: string, label: string, types: Record<string, string> | null = null): WorkspaceTerm {
+  return { termId: term, workspaceId: '101', term, label, types, updatedAt: '2026-09-24T00:00:00Z' }
 }
 
 /** 한국어 해석 병합 사전 — 구 BUILTIN 사전에 해당하는 기준 사전 */

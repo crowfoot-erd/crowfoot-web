@@ -30,7 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useSystemTerms, useWorkspaceTerms } from '@/features/terms/hooks'
+import { useAllSystemTerms, useWorkspaceTerms } from '@/features/terms/hooks'
 import {
   buildTermMap,
   inferenceChanges,
@@ -93,7 +93,7 @@ function LogicalNamesBody({
 }) {
   const { t, i18n } = useTranslation()
   const terms = useWorkspaceTerms(workspaceId)
-  const system = useSystemTerms()
+  const system = useAllSystemTerms()
   // 해제한 행만 기억 — 기본 전체 선택이고, 사전 도착으로 늘어난 행도 자동 선택이다
   const [unchecked, setUnchecked] = useState<ReadonlySet<string>>(new Set())
 
@@ -103,7 +103,7 @@ function LogicalNamesBody({
   // 미리보기 — 문서·사전 변화를 그대로 반영하는 살아있는 계산.
   // 한쪽 사전 실패해도 나머지로 계산한다(안내문은 아래에 띄운다)
   const dict = useMemo(
-    () => buildTermMap(system.data?.items, terms.data?.items, i18n.language),
+    () => buildTermMap(system.data, terms.data?.items, i18n.language),
     [system.data, terms.data, i18n.language],
   )
   const plan = useMemo(() => planLogicalNameInference(present, dict), [present, dict])
@@ -141,7 +141,7 @@ function LogicalNamesBody({
     // 고정점 — 클릭 시점의 문서·사전으로 다시 계산한다(미리보기 후 편집이 끼어도 정합)
     const freshDoc = useEditorStore.getState().present
     const freshDict = buildTermMap(
-      system.data?.items,
+      system.data,
       terms.data?.items,
       i18n.language,
     )

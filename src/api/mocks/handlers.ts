@@ -299,6 +299,50 @@ export function fail(resultCode: string, status: number, errors?: ApiEnvelope['e
   )
 }
 
+/** DBMS별 타입 맵 목업 정규화 — 빈 값 키는 버리고 전부 비면 null, 키가 database_types
+ *  등록 코드가 아니면 hasUnknownCode(→400 INVALID_REQUEST). 실물 검증과 같은 규칙 */
+function normalizeTermTypes(raw: Record<string, string> | null | undefined): {
+  types: Record<string, string> | null
+  hasUnknownCode: boolean
+} {
+  const entries = Object.entries(raw ?? {})
+    .filter(([, value]) => Boolean(value?.trim()))
+    .map(([code, value]) => [code, value.trim()] as const)
+  const registeredCodes = fixtures.databaseTypes.responses.map((row) => row.code)
+  const hasUnknownCode = entries.some(([code]) => !registeredCodes.includes(code))
+  return { types: entries.length > 0 ? Object.fromEntries(entries) : null, hasUnknownCode }
+}
+
+/** 시스템 사전 목업 페이지 조회 — page·size·letter·keyword를 실물 규칙(§4.5)대로 적용.
+ *  fixtures는 term 오름차순으로 정의돼 있어 슬라이스만 하면 된다 */
+function systemTermsPage(request: Request) {
+  const params = new URL(request.url).searchParams
+  const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
+  const size = Math.min(100, Math.max(1, Number(params.get('size') ?? '20') || 20))
+  const keyword = params.get('keyword')?.trim().toLowerCase() ?? ''
+  const letter = params.get('letter')?.trim().toLowerCase() ?? ''
+  const matched = fixtures.systemTerms.responses.filter((row) => {
+    if (keyword) {
+      const labelText = Object.values(row.labels).join(' ').toLowerCase()
+      if (!row.term.includes(keyword) && !labelText.includes(keyword)) return false
+    }
+    if (letter === '#') {
+      if (/^[a-z]/.test(row.term)) return false
+    } else if (letter && !row.term.startsWith(letter)) {
+      return false
+    }
+    return true
+  })
+  const totalCount = matched.length
+  return {
+    page,
+    size,
+    totalPages: Math.ceil(totalCount / size),
+    totalCount,
+    responses: matched.slice((page - 1) * size, page * size),
+  }
+}
+
 /* ---------- 공통 픽스처 (테스트에서 재사용) ---------- */
 
 export const fixtures = {
@@ -499,20 +543,21 @@ export const fixtures = {
   terms: {
     totalCount: 2,
     responses: [
-      { termId: '401', workspaceId: '101', term: 'member', label: '회원', type: null, updatedAt: '2026-09-23T00:00:00Z' },
-      { termId: '402', workspaceId: '101', term: 'user', label: '사용자', type: 'VARCHAR(50)', updatedAt: '2026-09-23T00:00:00Z' },
+      { termId: '401', workspaceId: '101', term: 'member', label: '회원', types: null, updatedAt: '2026-09-23T00:00:00Z' },
+      { termId: '402', workspaceId: '101', term: 'user', label: '사용자', types: { postgresql: 'VARCHAR(50)' }, updatedAt: '2026-09-23T00:00:00Z' },
     ],
   },
-  /** 시스템 사전(§4.5) — 관리자가 등록하는 전역 사전. labels는 언어→라벨 맵(ko 단일 항목 포함,
-   *  type null·값 혼합 — 추론 폴백·패널 표시 테스트가 함께 쓴다). 사용자·관리 목록이 같은 형태를 공유 */
+  /** 시스템 사전(§4.5) — 관리자가 등록하는 전역 사전. labels는 언어→라벨 맵(ko 단일 항목 포함),
+   *  types는 DBMS별 맵(키 = database_types 코드) null·값 혼합 — 추론 폴백·패널 표시 테스트가 함께 쓴다.
+   *  사용자·관리 목록이 같은 형태를 공유한다 */
   systemTerms: {
     totalCount: 5,
     responses: [
-      { termId: '501', term: 'email', labels: { ko: '이메일', en: 'Email' }, type: 'VARCHAR(100)', updatedAt: '2026-09-24T00:00:00Z' },
-      { termId: '502', term: 'id', labels: { ko: 'ID', en: 'ID' }, type: 'BIGINT', updatedAt: '2026-09-24T00:00:00Z' },
-      { termId: '503', term: 'user', labels: { ko: '사용자', en: 'User' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-      { termId: '504', term: 'yn', labels: { ko: '여부' }, type: 'CHAR(1)', updatedAt: '2026-09-24T00:00:00Z' },
-      { termId: '505', term: 'zipcode', labels: { ko: '우편번호' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '501', term: 'email', labels: { ko: '이메일', en: 'Email' }, types: { mysql: 'VARCHAR(100)', postgresql: 'VARCHAR(100)' }, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '502', term: 'id', labels: { ko: 'ID', en: 'ID' }, types: { mysql: 'BIGINT' }, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '503', term: 'user', labels: { ko: '사용자', en: 'User' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '504', term: 'yn', labels: { ko: '여부' }, types: { mysql: 'CHAR(1)' }, updatedAt: '2026-09-24T00:00:00Z' },
+      { termId: '505', term: 'zipcode', labels: { ko: '우편번호' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
     ],
   },
   /** DB 동기화(§3.7) — 문서 측 content(테스트가 스토어 수화에 쓴다) + 스키마 조회 응답(DB 측) */
@@ -1334,28 +1379,30 @@ export const handlers = [
     HttpResponse.json(ok(fixtures.terms)),
   ),
 
-  // 용어 upsert — (workspace_id, term) 자연키라 항상 200. 검증: 공백 포함 term은 400
+  // 용어 upsert — (workspace_id, term) 자연키라 항상 200. 검증: 공백 포함 term,
+  // types 키가 database_types 등록 코드가 아니면 400(빈 값 키는 버리고 전부 비면 null)
   http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/terms`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as {
       term?: string
       label?: string
-      type?: string | null
+      types?: Record<string, string> | null
     }
     if (!body.term || !body.label) return fail('INVALID_REQUEST', 400)
     const term = body.term.trim().toLowerCase()
     if (/\s/.test(term)) return fail('INVALID_REQUEST', 400)
-    const type = body.type?.trim() || null
+    const { types, hasUnknownCode } = normalizeTermTypes(body.types)
+    if (hasUnknownCode) return fail('INVALID_REQUEST', 400)
     const existing = fixtures.terms.responses.find((row) => row.term === term)
     return HttpResponse.json(
       ok({
         response: existing
-          ? { ...existing, label: body.label.trim(), type }
+          ? { ...existing, label: body.label.trim(), types }
           : {
               termId: String(400 + fixtures.terms.responses.length + 1),
               workspaceId: '101',
               term,
               label: body.label.trim(),
-              type,
+              types,
               updatedAt: '2026-09-23T00:00:00Z',
             },
       }),
@@ -1371,37 +1418,43 @@ export const handlers = [
 
   /* ---------- 시스템 사전 (08-core/01-workspace.md §4.5 — 전역, 관리자 관리) ---------- */
 
-  // 시스템 사전 사용자 목록 — 인증 전체(역할 검사 없음), term 오름차순
-  http.get(`${BASE}/api/v1/core/system-terms`, () => HttpResponse.json(ok(fixtures.systemTerms))),
-
-  // 관리 목록 — AdminGuard는 실물 게이트웨이 담당(목업은 200)
-  http.get(`${BASE}/api/v1/core/admin/system-terms`, () =>
-    HttpResponse.json(ok(fixtures.systemTerms)),
+  // 시스템 사전 사용자 목록 — 인증 전체(역할 검사 없음), term 오름차순.
+  // page(1부터)·size(기본 20, 상한 100 클램프)·letter(a-z·'#'=알파벳 외 이니셜)·
+  // keyword(토큰·labels 값 부분 일치)를 실물 규칙대로 적용해 페이징 엔벨로프로 내린다
+  http.get(`${BASE}/api/v1/core/system-terms`, ({ request }) =>
+    HttpResponse.json(ok(systemTermsPage(request))),
   ),
 
-  // 시스템 사전 upsert — term 전역 자연키라 항상 200. 검증: labels 누락·빈 맵은 400
+  // 관리 목록 — 같은 조회 조건. AdminGuard는 실물 게이트웨이 담당(목업은 200)
+  http.get(`${BASE}/api/v1/core/admin/system-terms`, ({ request }) =>
+    HttpResponse.json(ok(systemTermsPage(request))),
+  ),
+
+  // 시스템 사전 upsert — term 전역 자연키라 항상 200. 검증: labels 누락·빈 맵,
+  // types 키가 database_types 등록 코드가 아니면 400(빈 값 키는 버리고 전부 비면 null)
   http.post(`${BASE}/api/v1/core/admin/system-terms`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as {
       term?: string
       labels?: Record<string, string>
-      type?: string | null
+      types?: Record<string, string> | null
     }
     if (!body.term || !body.labels || Object.keys(body.labels).length === 0) {
       return fail('INVALID_REQUEST', 400)
     }
     const term = body.term.trim().toLowerCase()
     if (/\s/.test(term)) return fail('INVALID_REQUEST', 400)
-    const type = body.type?.trim() || null
+    const { types, hasUnknownCode } = normalizeTermTypes(body.types)
+    if (hasUnknownCode) return fail('INVALID_REQUEST', 400)
     const existing = fixtures.systemTerms.responses.find((row) => row.term === term)
     return HttpResponse.json(
       ok({
         response: existing
-          ? { ...existing, labels: body.labels, type }
+          ? { ...existing, labels: body.labels, types }
           : {
               termId: String(500 + fixtures.systemTerms.responses.length + 1),
               term,
               labels: body.labels,
-              type,
+              types,
               updatedAt: '2026-09-24T00:00:00Z',
             },
       }),

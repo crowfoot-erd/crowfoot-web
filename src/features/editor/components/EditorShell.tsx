@@ -640,6 +640,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           <TermDictionaryPanel
             open={termsOpen}
             workspaceId={model.workspaceId}
+            databaseType={model.databaseType}
             canEdit={canEdit}
           />
         ) : null}

@@ -548,7 +548,6 @@
         "term": "토큰",
         "termPlaceholder": "user_id",
         "labelsHint": "라벨 — 최소 1개 언어",
-        "type": "타입",
         "typePlaceholder": "예: VARCHAR(100) — 선택",
         "fieldRequired": "필수 입력입니다.",
         "termPattern": "토큰에 공백을 쓸 수 없습니다",
@@ -561,8 +560,13 @@
           "en": "English",
           "ja": "日本語",
           "zh": "中文"
-        }
-      }
+        },
+        "typeForDbms": "타입 ({{dbms}})"
+      },
+      "alphabetAll": "전체",
+      "alphabetLabel": "이니셜",
+      "letterEtc": "#",
+      "noResults": "검색 조건에 맞는 용어가 없습니다"
     }
   },
   "notFound": {
@@ -740,7 +744,7 @@
         "overridden": "재정의됨",
         "bulkOpen": "대량 등록",
         "bulkTitle": "용어 대량 등록",
-        "bulkDescription": "한 줄에 한 용어씩 '토큰,라벨' 또는 '토큰,라벨,타입'(쉼표·탭 구분)으로 붙여넣어 등록합니다. 타입 열을 쓰면 라벨에 구분자를 쓸 수 없습니다",
+        "bulkDescription": "한 줄에 한 용어씩 '토큰,라벨' 또는 '토큰,라벨,타입'(쉼표·탭 구분)으로 붙여넣어 등록합니다. 타입 열을 쓰면 라벨에 구분자를 쓸 수 없습니다. 타입은 이 문서의 DB 종류로 등록됩니다",
         "bulkPlaceholder": "user_id,회원 식별자,VARCHAR(50)\nordr,주문",
         "bulkParsed": "등록 {{count}}건 · 형식 오류 {{issues}}건",
         "bulkRun": "{{count}}건 등록",
@@ -751,12 +755,15 @@
         "bulkIssueSpaceInTerm": "토큰에 공백이 있습니다",
         "bulkNoEntries": "등록할 줄이 없습니다",
         "lintButton": "비표준 검사",
-        "type": "타입",
         "typePlaceholder": "예: VARCHAR(100) — 선택",
         "typeTooLong": "타입은 100자 이하여야 합니다",
         "systemLoadFailed": "시스템 사전을 불러오지 못했습니다",
         "systemEmpty": "시스템 사전이 비어 있습니다 — 관리자가 등록하면 여기에 나타납니다",
-        "bulkIssueTooManyColumns": "열이 너무 많습니다 — 토큰,라벨,타입 3열까지"
+        "bulkIssueTooManyColumns": "열이 너무 많습니다 — 토큰,라벨,타입 3열까지",
+        "typeForDbms": "타입 ({{dbms}})",
+        "alphabetAll": "전체",
+        "alphabetLabel": "이니셜",
+        "letterEtc": "#"
       },
       "ddl": {
         "title": "SQL 스크립트",

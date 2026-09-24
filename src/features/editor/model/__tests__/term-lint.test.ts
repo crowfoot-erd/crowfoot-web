@@ -12,14 +12,14 @@ import { lintNonStandardTerms } from '@/features/editor/model/term-lint'
 
 /** 인라인 시스템 사전 — 판정은 키 존재만 보므로 라벨 값은 임의로 쓴다 */
 const SYSTEM: SystemTerm[] = [
-  { termId: '1', term: 'user', labels: { ko: '사용자' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '2', term: 'id', labels: { ko: 'ID' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '3', term: 'nm', labels: { ko: '이름' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '4', term: 'order', labels: { ko: '주문' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '5', term: 'flag', labels: { ko: '구분' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '6', term: 'member', labels: { ko: '회원' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '7', term: 'account', labels: { ko: '계정' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
-  { termId: '8', term: 'no', labels: { ko: '번호' }, type: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '1', term: 'user', labels: { ko: '사용자' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '2', term: 'id', labels: { ko: 'ID' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '3', term: 'nm', labels: { ko: '이름' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '4', term: 'order', labels: { ko: '주문' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '5', term: 'flag', labels: { ko: '구분' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '6', term: 'member', labels: { ko: '회원' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '7', term: 'account', labels: { ko: '계정' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
+  { termId: '8', term: 'no', labels: { ko: '번호' }, types: null, updatedAt: '2026-09-24T00:00:00Z' },
 ]
 
 /** 표준 사전 없음 — 시스템 사전만 */
@@ -45,7 +45,7 @@ describe('lintNonStandardTerms — 판정', () => {
   it('표준 사전 등록이 시스템 사전을 덮은 병합 사전 기준으로 판정한다 — usr 등록으로 finding이 사라진다', () => {
     const table = createTable('usr', { columns: [] })
     const standard: WorkspaceTerm[] = [
-      { termId: '1', workspaceId: '101', term: 'usr', label: '회원', type: null, updatedAt: '2026-09-23T00:00:00Z' },
+      { termId: '1', workspaceId: '101', term: 'usr', label: '회원', types: null, updatedAt: '2026-09-23T00:00:00Z' },
     ]
     expect(lintNonStandardTerms(docWith([table]), BUILTIN)).toHaveLength(1)
     expect(lintNonStandardTerms(docWith([table]), buildTermMap(SYSTEM, standard, 'ko'))).toEqual([])
