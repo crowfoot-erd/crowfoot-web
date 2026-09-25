@@ -13,6 +13,7 @@ import i18n, {
   currentLanguage,
 } from '@/lib/i18n'
 import { fetchMe, fetchProviders, logout, updateMyLocale } from '@/features/auth/api'
+import type { Me } from '@/api/types'
 import { resetSession, useSessionStore } from '@/stores/session'
 
 /** 공개 — 로그인 방식 목록 */
@@ -98,7 +99,7 @@ export function useUpdateMyLocale() {
   return useMutation({
     mutationFn: (locale: Language) => updateMyLocale(locale),
     onSuccess: (_data, locale) => {
-      queryClient.setQueryData<import('@/api/types').Me | undefined>(['me'], (me) =>
+      queryClient.setQueryData<Me | undefined>(['me'], (me) =>
         me ? { ...me, locale } : me,
       )
     },
