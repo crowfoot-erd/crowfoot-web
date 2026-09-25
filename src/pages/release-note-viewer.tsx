@@ -84,12 +84,15 @@ export function ReleaseNoteViewerPage() {
                 {note.data.author.name} · {formatDate(note.data.createdAt)}
               </p>
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/">
-                <Home aria-hidden />
-                {t('releaseNoteViewer.home')}
-              </Link>
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <LanguageSelect />
+              <Button asChild variant="outline" size="sm">
+                <Link to="/">
+                  <Home aria-hidden />
+                  {t('releaseNoteViewer.home')}
+                </Link>
+              </Button>
+            </div>
           </header>
           <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 py-8">
             {/* 콘텐츠 언어 전환기 — 여러 언어로 작성된 노트만 노출 */}
@@ -142,11 +145,6 @@ export function ReleaseNoteViewerPage() {
           </main>
         </>
       )}
-
-      {/* 우하단 고정 — 언어(terms 관례) */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-1">
-        <LanguageSelect />
-      </div>
     </div>
   )
 }

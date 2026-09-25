@@ -3,7 +3,7 @@
  *
  * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 공유 문서 갤러리(새 창) + 최근 릴리스(공개 — 문서 하단, 새 창)
  * - 인증 상태에서도 열람 가능(리다이렉트 없음) — CTA는 로그인/앱 진입으로 전환, 헤더에 앱 셸과 같은 사용자 메뉴(정보·로그아웃)
- * - 우하단 언어·테마 토글 — 로그인 페이지와 동일 배치
+ * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, Cable, Code2, Database, Layers, ShieldCheck, Users } from 'lucide-react'
@@ -52,21 +52,27 @@ export function LandingPage() {
         <div className="flex items-center gap-2 text-lg font-semibold">
           <Logo className="size-6" />
           {t('common.appName')}
-          <span className="text-sm font-normal text-muted-foreground">{t('common.appTagline')}</span>
+          <span className="hidden text-sm font-normal text-muted-foreground sm:inline">
+            {t('common.appTagline')}
+          </span>
         </div>
-        {/* 인증 상태 — 앱 셸과 같은 사용자 메뉴(정보·로그아웃)를 헤더에 둔다 */}
-        {authenticated ? (
-          <div className="flex items-center gap-1">
+        {/* 언어·테마는 행동 버튼 왼쪽 — 인증 상태 — 앱 셸과 같은 사용자 메뉴(정보·로그아웃)를 헤더에 둔다 */}
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <LanguageSelect />
+          {authenticated ? (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/dashboard">{t('landing.cta.dashboard')}</Link>
+              </Button>
+              <UserMenu />
+            </>
+          ) : (
             <Button asChild variant="ghost" size="sm">
-              <Link to="/dashboard">{t('landing.cta.dashboard')}</Link>
+              <Link to="/login">{t('landing.cta.login')}</Link>
             </Button>
-            <UserMenu />
-          </div>
-        ) : (
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/login">{t('landing.cta.login')}</Link>
-          </Button>
-        )}
+          )}
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-20 px-4 py-16">
@@ -228,12 +234,6 @@ export function LandingPage() {
           </span>
         </div>
       </footer>
-
-      {/* 우하단 고정 — 언어·테마 */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-1">
-        <ThemeToggle />
-        <LanguageSelect />
-      </div>
     </div>
   )
 }

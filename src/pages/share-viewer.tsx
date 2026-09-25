@@ -91,21 +91,19 @@ export function ShareViewerPage() {
                 <p className="truncate text-xs text-muted-foreground">{share.data.description}</p>
               ) : null}
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/">
-                <Home aria-hidden />
-                {t('shareViewer.home')}
-              </Link>
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <LanguageSelect />
+              <Button asChild variant="outline" size="sm">
+                <Link to="/">
+                  <Home aria-hidden />
+                  {t('shareViewer.home')}
+                </Link>
+              </Button>
+            </div>
           </header>
           <EditorShell model={toViewerModel(token, share.data)} canEdit={false} publicView />
         </>
       )}
-
-      {/* 우하단 고정 — 언어(terms 관례) */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-1">
-        <LanguageSelect />
-      </div>
     </div>
   )
 }

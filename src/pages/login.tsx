@@ -6,7 +6,7 @@
  * - 상태: 로딩(스켈레톤 2) / 실패(문구+재시도) / 0건 안내
  * - 이용약관 동의(최초 1회 — 브라우저 기록)까지 버튼 비활성
  * - 이미 인증 상태면 next||/dashboard 로 이동 (앱 홈 — 랜딩은 인증 상태에서도 머무르므로)
- * - 우하단 언어·테마 토글
+ * - 우상단 언어·테마 토글 — 카드 바깥 코너(로그인 버튼 근처 발견성)
  */
 import { useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
@@ -134,7 +134,8 @@ export function LoginPage() {
         )}
       </div>
 
-      <div className="fixed bottom-4 right-4 flex items-center gap-1">
+      {/* 우상단 고정 — 언어·테마 */}
+      <div className="absolute top-4 right-4 flex items-center gap-1">
         <ThemeToggle />
         <LanguageSelect />
       </div>

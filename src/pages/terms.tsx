@@ -3,7 +3,7 @@
  *
  * - 게스트·인증 모두 접근 가능한 공개 문서 (랜딩 푸터 링크 → /terms)
  * - 본문은 i18n terms.sections(returnObjects) — 화면 문구는 리소스에만
- * - 우하단 언어·테마 토글 — 공개 페이지 공통 배치
+ * - 헤더 우측 언어·테마 토글 — 공개 페이지 공통 배치(v1.16 이동)
  */
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -27,11 +27,15 @@ export function TermsPage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="mx-auto flex h-16 w-full max-w-3xl items-center px-4">
+      <header className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 text-lg font-semibold hover:opacity-80">
           <Logo className="size-6" />
           {t('common.appName')}
         </Link>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <LanguageSelect />
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12">
@@ -62,12 +66,6 @@ export function TermsPage() {
           <span>{t('common.footer')}</span>
         </div>
       </footer>
-
-      {/* 우하단 고정 — 언어·테마 */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-1">
-        <ThemeToggle />
-        <LanguageSelect />
-      </div>
     </div>
   )
 }
