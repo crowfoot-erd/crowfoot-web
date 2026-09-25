@@ -31,10 +31,14 @@ function GlobalToaster() {
   )
 }
 
+/** 계정 로케일 동기화 — useMe(QueryClient)를 쓰므로 프로바이더 안에서 호출돼야 한다 */
+function AccountLanguageSync() {
+  useAccountLanguage()
+  return null
+}
+
 export default function App() {
   const bootstrap = useSessionStore((state) => state.bootstrap)
-  // 로그인 사용자의 계정 로케일 동기화 — me 도착 시 1회(적용 또는 감지 언어 등록)
-  useAccountLanguage()
 
   useEffect(() => {
     void bootstrap()
@@ -46,6 +50,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <AccountLanguageSync />
         <AppRoutes />
         <SessionExpiredOverlay />
         <GlobalToaster />
