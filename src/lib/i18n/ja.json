@@ -37,8 +37,7 @@
     "theme": {
       "label": "テーマ",
       "light": "ライト",
-      "dark": "ダーク",
-      "system": "システム"
+      "dark": "ダーク"
     },
     "language": {
       "label": "言語",

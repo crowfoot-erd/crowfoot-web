@@ -22,7 +22,7 @@ interface MarkdownViewerProps {
 
 export default function MarkdownViewer({ markdown, className }: MarkdownViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const { resolved } = useTheme()
+  const { theme } = useTheme()
 
   useEffect(() => {
     const container = containerRef.current
@@ -37,7 +37,7 @@ export default function MarkdownViewer({ markdown, className }: MarkdownViewerPr
   return (
     <div
       ref={containerRef}
-      className={cn(className, resolved === 'dark' && 'toastui-editor-dark')}
+      className={cn(className, theme === 'dark' && 'toastui-editor-dark')}
       data-testid="markdown-viewer"
     />
   )

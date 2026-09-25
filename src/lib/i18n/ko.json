@@ -37,8 +37,7 @@
     "theme": {
       "label": "테마",
       "light": "라이트",
-      "dark": "다크",
-      "system": "시스템"
+      "dark": "다크"
     },
     "language": {
       "label": "언어",

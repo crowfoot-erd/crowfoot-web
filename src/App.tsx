@@ -8,7 +8,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { SessionExpiredOverlay } from '@/components/session-expired-overlay'
 import { Toaster } from '@/components/ui/sonner'
 import { useAccountLanguage } from '@/features/auth'
-import { watchSystemTheme, useTheme } from '@/lib/theme'
+import { useTheme } from '@/lib/theme'
 import { AppRoutes } from '@/routes/app-routes'
 import { useSessionStore } from '@/stores/session'
 
@@ -20,11 +20,11 @@ const queryClient = new QueryClient({
 })
 
 function GlobalToaster() {
-  const { resolved } = useTheme()
+  const { theme } = useTheme()
 
   return (
     <Toaster
-      theme={resolved}
+      theme={theme}
       position="bottom-center"
       duration={3000}
     />
@@ -43,9 +43,6 @@ export default function App() {
   useEffect(() => {
     void bootstrap()
   }, [bootstrap])
-
-  // system 모드에서 OS 테마 변경 실시간 반영
-  useEffect(() => watchSystemTheme(), [])
 
   return (
     <QueryClientProvider client={queryClient}>

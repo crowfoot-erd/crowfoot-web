@@ -52,7 +52,7 @@ export default function MarkdownEditor({
   language,
 }: MarkdownEditorProps) {
   const { t } = useTranslation()
-  const { resolved } = useTheme()
+  const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement | null>(null)
   // 최신 콜백/문구를 쓰되 에디터 재생성은 일어나지 않도록 ref로만 전달
   const onChangeRef = useRef(onChange)
@@ -61,8 +61,8 @@ export default function MarkdownEditor({
   labelsRef.current = { tooLarge: t('community.form.imageTooLarge'), failed: t('community.form.imageFailed') }
   const localeRef = useRef(language ?? INTL_LOCALES[currentLanguage()])
   // 생성은 1회 고정이므로 그 시점의 테마를 ref로 — 이후 전환은 별도 이펙트가 루트에 반영
-  const resolvedRef = useRef(resolved)
-  resolvedRef.current = resolved
+  const themeRef = useRef(theme)
+  themeRef.current = theme
 
   useEffect(() => {
     const container = containerRef.current
@@ -101,7 +101,7 @@ export default function MarkdownEditor({
       })
       editor.on('change', () => onChangeRef.current(editor!.getMarkdown()))
       // 생성 시점 테마를 루트에 반영 — 래퍼 클래스만으론 defaultUI 테두리가 라이트로 남는다
-      applyEditorTheme(container, resolvedRef.current === 'dark')
+      applyEditorTheme(container, themeRef.current === 'dark')
     })
 
     return () => {
@@ -114,13 +114,13 @@ export default function MarkdownEditor({
   // 테마 전환 — 에디터 재생성 없이 루트 클래스만 교체(작성 중인 본문·커서 보존)
   useEffect(() => {
     const container = containerRef.current
-    if (container) applyEditorTheme(container, resolved === 'dark')
-  }, [resolved])
+    if (container) applyEditorTheme(container, theme === 'dark')
+  }, [theme])
 
   return (
     <div
       ref={containerRef}
-      className={resolved === 'dark' ? 'toastui-editor-dark' : undefined}
+      className={theme === 'dark' ? 'toastui-editor-dark' : undefined}
       data-testid="markdown-editor"
     />
   )

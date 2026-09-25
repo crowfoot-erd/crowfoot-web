@@ -55,12 +55,8 @@
     <script>
       ;(function () {
         try {
-          var stored = localStorage.getItem('crowfoot.theme')
-          var dark =
-            stored === 'dark' ||
-            ((stored === null || stored === 'system') &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches)
-          if (dark) document.documentElement.classList.add('dark')
+          if (localStorage.getItem('crowfoot.theme') === 'dark')
+            document.documentElement.classList.add('dark')
         } catch (e) {}
       })()
     </script>
