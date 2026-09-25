@@ -7,7 +7,7 @@ import { BrowserRouter } from 'react-router-dom'
 
 import { SessionExpiredOverlay } from '@/components/session-expired-overlay'
 import { Toaster } from '@/components/ui/sonner'
-import i18n from '@/lib/i18n'
+import { useAccountLanguage } from '@/features/auth'
 import { watchSystemTheme, useTheme } from '@/lib/theme'
 import { AppRoutes } from '@/routes/app-routes'
 import { useSessionStore } from '@/stores/session'
@@ -27,13 +27,14 @@ function GlobalToaster() {
       theme={resolved}
       position="bottom-center"
       duration={3000}
-      dir={i18n.language.startsWith('en') ? 'ltr' : undefined}
     />
   )
 }
 
 export default function App() {
   const bootstrap = useSessionStore((state) => state.bootstrap)
+  // 로그인 사용자의 계정 로케일 동기화 — me 도착 시 1회(적용 또는 감지 언어 등록)
+  useAccountLanguage()
 
   useEffect(() => {
     void bootstrap()

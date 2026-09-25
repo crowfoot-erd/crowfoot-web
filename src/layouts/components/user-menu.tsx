@@ -1,9 +1,9 @@
 /**
  * 사용자 드롭다운 (storyboard 00-common §3.1 [6]~[8])
- * 내 정보(이메일·가입일·연결 계정 배지) · 로그아웃(즉시 실행)
+ * 내 정보(이메일·가입일·연결 계정 배지) · 언어(계정 저장) · 로그아웃(즉시 실행)
  * 관리자 메뉴는 코드 테이블 링크 대신 /admin/* 좌측 사이드바로 노출한다.
  */
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, Languages, LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Avatar } from '@/components/ui/avatar'
@@ -13,17 +13,23 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useLogout, useMe } from '@/features/auth'
+import { useChangeLanguage } from '@/hooks/use-change-language'
+import { useLogout, useMe, useUpdateMyLocale } from '@/features/auth'
 import { formatDate } from '@/lib/format'
+import { SUPPORTED_LANGUAGES, type Language, currentLanguage } from '@/lib/i18n'
 
 export function UserMenu() {
   const { t } = useTranslation()
   const me = useMe()
   const logout = useLogout()
+  const changeLanguage = useChangeLanguage()
+  const updateLocale = useUpdateMyLocale()
 
   if (me.isPending) {
     return <Skeleton className="h-8 w-8 rounded-full" aria-label={t('common.loading')} />
@@ -65,6 +71,26 @@ export function UserMenu() {
             {t('shell.userMenu.joinedAt')}: {formatDate(profile.createdAt)}
           </p>
         </div>
+        <DropdownMenuSeparator />
+        {/* 언어 — 계정 단위 저장(users.locale). 즉시 PATCH + URL prefix 전환 */}
+        <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+          <Languages aria-hidden className="h-3.5 w-3.5" />
+          {t('shell.userMenu.language')}
+        </div>
+        <DropdownMenuRadioGroup
+          value={currentLanguage()}
+          onValueChange={(value) => {
+            const language = value as Language
+            changeLanguage(language)
+            updateLocale.mutate(language)
+          }}
+        >
+          {SUPPORTED_LANGUAGES.map((language) => (
+            <DropdownMenuRadioItem key={language} value={language}>
+              {t(`common.language.${language}`)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

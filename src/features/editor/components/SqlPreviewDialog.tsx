@@ -102,7 +102,7 @@ export function SqlPreviewDialog({
             <span aria-hidden>·</span>
             <span className="flex items-center gap-1">
               <Lock aria-hidden className="size-3" />
-              {template.label}
+              {template.id === 'common' ? t('model.editor.dbms.common') : template.label}
             </span>
             {result ? (
               <>

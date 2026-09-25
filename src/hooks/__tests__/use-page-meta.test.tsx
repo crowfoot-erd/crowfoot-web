@@ -7,8 +7,9 @@
  */
 import { render, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import i18n from '@/lib/i18n'
 import { SITE_ORIGIN, usePageMeta, type PageMeta } from '@/hooks/usePageMeta'
 
 const DEFAULT_TITLE = 'Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지'
@@ -28,6 +29,11 @@ beforeEach(() => {
   document.title = DEFAULT_TITLE
   seedMeta('name', 'description', DEFAULT_DESCRIPTION)
   seedMeta('name', 'robots', 'index, follow')
+})
+
+afterEach(() => {
+  // 언어 케이스가 남긴 i18n 상태 원복 — 파일 뒤의 기대값(ko) 보호
+  void i18n.changeLanguage('ko')
 })
 
 function Probe(props: PageMeta) {
@@ -87,5 +93,16 @@ describe('usePageMeta', () => {
     )
 
     await waitFor(() => expect(document.title).toBe('이용약관 — Crowfoot'))
+  })
+
+  it('언어별 canonical — ja면 /ja prefix·og:locale ja_JP·html lang=ja', async () => {
+    // LocaleRoute가 /ja 영역에서 언어를 강제한 상태를 만든다
+    await i18n.changeLanguage('ja')
+    render(<Probe title="v1.16 — 글로벌" canonicalPath="/release-notes/17" ogType="article" />)
+
+    expect(canonical()).toHaveAttribute('href', `${SITE_ORIGIN}/ja/release-notes/17`)
+    expect(og('url')).toHaveAttribute('content', `${SITE_ORIGIN}/ja/release-notes/17`)
+    expect(og('locale')).toHaveAttribute('content', 'ja_JP')
+    expect(document.documentElement.lang).toBe('ja')
   })
 })

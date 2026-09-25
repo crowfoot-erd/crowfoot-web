@@ -162,7 +162,7 @@ export function AdminUserDetailPage() {
                 [t('admin.userDetail.fields.createdAt'), formatDateTime(data.createdAt)],
               ] as Array<[string, React.ReactNode]>
             ).map(([label, value]) => (
-              <div key={label} className="grid grid-cols-[8rem_1fr] gap-4 px-1 py-2.5 text-sm">
+              <div key={label} className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-4 px-1 py-2.5 text-sm">
                 <dt className="text-muted-foreground">{label}</dt>
                 <dd className="min-w-0 break-words">{value}</dd>
               </div>

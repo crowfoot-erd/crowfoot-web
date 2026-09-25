@@ -176,19 +176,19 @@ export function TeamDetailPage() {
           <CardTitle className="text-base">{t('common.overview')}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
-          <div className="grid grid-cols-[8rem_1fr] gap-4">
+          <div className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-4">
             <span className="text-muted-foreground">{t('team.detail.fields.name')}</span>
             <span className="min-w-0 break-words">{data.name}</span>
           </div>
-          <div className="grid grid-cols-[8rem_1fr] gap-4">
+          <div className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-4">
             <span className="text-muted-foreground">{t('team.detail.fields.description')}</span>
             <span className="min-w-0 break-words">{data.description ?? t('common.none')}</span>
           </div>
-          <div className="grid grid-cols-[8rem_1fr] gap-4">
+          <div className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-4">
             <span className="text-muted-foreground">{t('team.detail.fields.memberCount')}</span>
             <span>{t('common.memberCount', { count: data.memberCount })}</span>
           </div>
-          <div className="grid grid-cols-[8rem_1fr] gap-4">
+          <div className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-4">
             <span className="text-muted-foreground">{t('team.detail.fields.createdAt')}</span>
             <span>{formatDate(data.createdAt)}</span>
           </div>

@@ -4,98 +4,191 @@
   - 보호 경로(/dashboard, /workspaces, /teams, /community, /admin …)는 로그인이 필요해 제외
   - /share/{token}은 토큰이 곧 자격이라 제외(공개 갤러리 링크로 크롤러가 발견하게 둔다)
   - /login, /auth/callback은 색인 가치가 없어 제외
-  운영 원칙(docs README 릴리스 표와 동일): 릴리스 노트 게시마다 아래에 <url> 행 1개씩 추가, 삭제 금지.
+  hreflang(v1.16): 모든 url은 4개 언어 + x-default alternate 세트를 갖는다 —
+  ko는 무prefix(/), en/ja/zh는 /en·/ja·/zh prefix다. 프리렌더 산출(랜딩·/terms)과
+  usePageMeta canonical이 같은 규칙을 쓴다.
+  운영 원칙(docs README 릴리스 표와 동일): 릴리스 노트 게시마다 아래에 <url> 행 1개씩 추가(Alternate 5개 세트 포함), 삭제 금지.
   게시물 id는 community_posts(board=RELEASE_NOTE)의 id다.
 -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+          xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://crowfoot.java21.net/</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/" />
     <lastmod>2026-09-22</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/terms</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/terms" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/terms" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/terms" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/terms" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/terms" />
     <lastmod>2026-09-15</lastmod>
     <priority>0.3</priority>
   </url>
-  <!-- 릴리스 노트 공개 뷰어 /release-notes/{postId} -->
   <url>
     <loc>https://crowfoot.java21.net/release-notes/1</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/1" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/1" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/1" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/1" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/1" />
     <lastmod>2026-09-12</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/2</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/2" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/2" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/2" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/2" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/2" />
     <lastmod>2026-09-14</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/3</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/3" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/3" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/3" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/3" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/3" />
     <lastmod>2026-09-14</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/4</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/4" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/4" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/4" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/4" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/4" />
     <lastmod>2026-09-15</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/5</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/5" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/5" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/5" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/5" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/5" />
     <lastmod>2026-09-15</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/6</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/6" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/6" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/6" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/6" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/6" />
     <lastmod>2026-09-16</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/7</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/7" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/7" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/7" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/7" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/7" />
     <lastmod>2026-09-16</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/8</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/8" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/8" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/8" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/8" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/8" />
     <lastmod>2026-09-18</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/9</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/9" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/9" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/9" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/9" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/9" />
     <lastmod>2026-09-18</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/10</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/10" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/10" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/10" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/10" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/10" />
     <lastmod>2026-09-20</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/11</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/11" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/11" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/11" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/11" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/11" />
     <lastmod>2026-09-20</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/13</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/13" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/13" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/13" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/13" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/13" />
     <lastmod>2026-09-21</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/14</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/14" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/14" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/14" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/14" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/14" />
     <lastmod>2026-09-23</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/15</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/15" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/15" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/15" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/15" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/15" />
     <lastmod>2026-09-24</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/16</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/16" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/16" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/16" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/16" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/16" />
     <lastmod>2026-09-25</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://crowfoot.java21.net/release-notes/17</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/17" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/17" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/17" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/17" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/17" />
     <lastmod>2026-09-25</lastmod>
     <priority>0.5</priority>
   </url>

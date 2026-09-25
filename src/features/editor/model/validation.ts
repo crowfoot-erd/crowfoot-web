@@ -15,7 +15,6 @@ export interface ValidationIssue {
   code: ValidationCode
   /** 관련 테이블 — 캔버스 하이라이트용 */
   tableId?: string
-  message: string
 }
 
 /** 다른 테이블이 이미 같은 물리명을 쓰는지 — 확정(생성) 시점 차단용.
@@ -68,7 +67,7 @@ export function validateModel(model: ErdModelData): ValidationIssue[] {
   }
   for (const table of model.tables) {
     if ((tableNames.get(table.physicalName.toLowerCase()) ?? 0) > 1) {
-      issues.push({ level: 'error', code: 'DUPLICATE_TABLE_NAME', tableId: table.id, message: `테이블 물리명이 중복입니다: ${table.physicalName}` })
+      issues.push({ level: 'error', code: 'DUPLICATE_TABLE_NAME', tableId: table.id })
     }
 
     const columnNames = new Map<string, number>()
@@ -78,23 +77,23 @@ export function validateModel(model: ErdModelData): ValidationIssue[] {
     }
     for (const column of table.columns) {
       if ((columnNames.get(column.physicalName.toLowerCase()) ?? 0) > 1) {
-        issues.push({ level: 'error', code: 'DUPLICATE_COLUMN_NAME', tableId: table.id, message: `컬럼 물리명이 중복입니다: ${table.physicalName}.${column.physicalName}` })
+        issues.push({ level: 'error', code: 'DUPLICATE_COLUMN_NAME', tableId: table.id })
       }
     }
 
     for (const unique of table.uniques) {
       if ((keyCounts.get(unique.name.toLowerCase()) ?? 0) > 1) {
-        issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id, message: `키 이름이 문서 내에서 중복입니다: ${unique.name}` })
+        issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id })
       }
     }
     for (const index of table.indexes) {
       if ((keyCounts.get(index.name.toLowerCase()) ?? 0) > 1) {
-        issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id, message: `키 이름이 문서 내에서 중복입니다: ${index.name}` })
+        issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id })
       }
     }
 
     if (!table.primaryKey) {
-      issues.push({ level: 'warning', code: 'MISSING_PK', tableId: table.id, message: `PK가 없는 테이블입니다: ${table.physicalName}` })
+      issues.push({ level: 'warning', code: 'MISSING_PK', tableId: table.id })
     }
   }
   return issues

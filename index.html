@@ -4,11 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- 검색 최적화(SEO) 기본 메타 — 사전 렌더 문구는 ko로 고정하고, 런타임은 usePageMeta 훅이
-         라우트·언어별 문구로 덮어쓴다. 색인 대상·noindex 정책은 public/sitemap.xml과 같다
-         (04-front/storyboard/00-common.md §3.11)
+    <!-- 검색 최적화(SEO) 기본 메타 — 이 파일은 곧 프리렌더 템플릿이다: scripts/prerender.mjs가
+         빌드 후 이 head를 i18n 번들(landing.seo.*)로 치환해 랜딩·/terms × ko·en·ja·zh 8개 HTML을
+         산출한다(ko 랜딩은 이 자리를 덮어쓰고 hreflang 5개를 canonical 뒤에 주입한다).
+         아래 기본 문구는 ko 랜딩 분이며, 런타임은 usePageMeta 훅이 라우트·언어별 문구로 덮어쓴다.
+         색인 대상·noindex 정책은 public/sitemap.xml과 같다 (04-front/storyboard/00-common.md §3.11)
          이 파일과 public/ 정적 파일의 주석은 빌드 시 scripts/strip-deploy-comments.mjs가
-         배포 산물에서 걷어낸다 — 인라인 스크립트 안의 주석은 못 걷으니 HTML 주석으로만 단다 -->
+         배포 산물에서 걷어낸다 — 인라인 스크립트 안의 주석은 못 걷으니 HTML 주석으로만 단다.
+         메타 태그 구조(title·description·og:*·canonical·JSON-LD·html lang)를 바꾸면
+         prerender.mjs의 셀렉터가 빌드를 실패시킨다 — 그 게이트를 피하려면 두 파일을 같이 고친다 -->
     <title>Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지</title>
     <meta
       name="description"

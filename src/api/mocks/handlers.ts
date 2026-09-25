@@ -283,6 +283,7 @@ function appendSnapshot(modelId: string, version: number, changeSummary: string 
 export function resetModelContentState(): void {
   contentStates.clear()
   fixtures.versions = buildVersionRows()
+  fixtures.me = { ...fixtures.me, locale: null } // 계정 로케일 PATCH 오염 방지
 }
 
 export function ok(data: Partial<ApiEnvelope>): ApiEnvelope {
@@ -351,6 +352,7 @@ export const fixtures = {
     userId: '2',
     email: 'bootstrap@example.com',
     name: '부트스트랩 관리자',
+    locale: null as string | null, // PATCH 핸들러가 string으로 교체한다(리터럴 null 추론 방지)
     providers: ['github'],
     admin: true,
     createdAt: '2026-01-02T00:00:00Z',
@@ -775,6 +777,8 @@ export const fixtures = {
         postId: '902',
         board: 'RELEASE_NOTE',
         title: 'v1.4.0 — 커뮤니티 게시판',
+        /** 언어 전환기·폴백 배지 검증용 — ko/en 2벌 작성된 글 */
+        availableLangs: ['ko', 'en'],
         author: { userId: '2', name: '부트스트랩 관리자' },
         commentCount: 0,
         createdAt: '2026-09-16T10:00:00Z',
@@ -784,6 +788,7 @@ export const fixtures = {
         postId: '901',
         board: 'RELEASE_NOTE',
         title: 'v1.3.0 — 관리형 데이터베이스',
+        availableLangs: ['ko'],
         author: { userId: '2', name: '부트스트랩 관리자' },
         commentCount: 0,
         createdAt: '2026-09-10T09:00:00Z',
@@ -871,6 +876,43 @@ export const fixtures = {
   },
 }
 
+/** 릴리스 노트 902 — 4탭 폼 시드·뷰어 언어 전환 검증용 ko/en 2벌 */
+const RELEASE_NOTE_902: Record<string, { title: string; content: string }> = {
+  ko: {
+    title: 'v1.4.0 — 커뮤니티 게시판',
+    content:
+      '# 개요\n\n이번 릴리스의 주요 변경 사항입니다.\n\n| 항목 | 내용 |\n| --- | --- |\n| 기능 | 커뮤니티 |\n\n- 릴리스 노트는 관리자가 작성합니다',
+  },
+  en: {
+    title: 'v1.4.0 — Community board',
+    content: '# Overview\n\nMain changes in this release.\n\n- Release notes are written by administrators',
+  },
+}
+
+/** 커뮤니티 게시글 ?lang= 해석(서버 계약 모사 §2.1) — 요청언어 → en → 첫값 */
+function resolvePostLang(available: string[] | undefined, lang: string | null): string {
+  const langs = available && available.length > 0 ? available : ['ko']
+  if (lang && langs.includes(lang)) return lang
+  if (langs.includes('en')) return 'en'
+  return langs[0]
+}
+
+/** 쓰기 다형 해석(§2.1) — 문자열은 {ko}, 객체는 값 있는 언어만 남긴다 */
+function asLocalized(value: unknown): Record<string, string> {
+  if (typeof value === 'string') return value.trim().length > 0 ? { ko: value } : {}
+  if (value == null || typeof value !== 'object') return {}
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => typeof v === 'string' && v.trim().length > 0,
+    ),
+  ) as Record<string, string>
+}
+
+/** 다국어 맵의 응답용 단일 문자열 — lang 우선, en → 첫값 폴백 */
+function displayLocalized(map: Record<string, string>, lang: string): string {
+  return map[lang] ?? map.en ?? Object.values(map)[0] ?? ''
+}
+
 /* ---------- auth ---------- */
 
 export const handlers = [
@@ -899,6 +941,13 @@ export const handlers = [
   /* ---------- core ---------- */
 
   http.get(`${BASE}/api/v1/core/accounts/me`, () => HttpResponse.json(ok({ response: fixtures.me }))),
+
+  // 계정 로케일 저장(08-core/05-account.md) — 반영된 me를 돌려준다
+  http.patch(`${BASE}/api/v1/core/accounts/me`, async ({ request }) => {
+    const body = (await request.json()) as { locale?: string | null }
+    fixtures.me = { ...fixtures.me, locale: body.locale ?? null }
+    return HttpResponse.json(ok({ response: fixtures.me }))
+  }),
 
   http.get(`${BASE}/api/v1/core/accounts/me/workspaces`, () =>
     HttpResponse.json(ok(fixtures.myWorkspaces)),
@@ -1785,20 +1834,25 @@ export const handlers = [
     )
   }),
 
-  // 공개 릴리스 노트 상세 — 무인증. RELEASE_NOTE가 아니면(802 등) 존재 은닉 404
-  http.get(`${BASE}/api/v1/core/community/release-notes/:postId`, ({ params }) => {
+  // 공개 릴리스 노트 상세 — 무인증. RELEASE_NOTE가 아니면(802 등) 존재 은닉 404.
+  // ?lang= 해석(폴백: 요청언어 → en → 첫값) — 902는 ko/en 2벌, 나머지는 ko 원문
+  http.get(`${BASE}/api/v1/core/community/release-notes/:postId`, ({ params, request }) => {
     const summary = fixtures.communityPosts.responses.find(
       (post) => post.board === 'RELEASE_NOTE' && post.postId === params.postId,
     )
     if (!summary) return fail('COMMUNITY_POST_NOT_FOUND', 404)
+    const lang = resolvePostLang(summary.availableLangs, new URL(request.url).searchParams.get('lang'))
+    const localized = summary.postId === '902' ? RELEASE_NOTE_902[lang] : undefined
     return HttpResponse.json(
       ok({
         response: {
           postId: summary.postId,
           board: summary.board,
-          title: summary.title,
+          title: localized?.title ?? summary.title,
           content:
+            localized?.content ??
             '# 개요\n\n이번 릴리스의 주요 변경 사항입니다.\n\n| 항목 | 내용 |\n| --- | --- |\n| 기능 | 커뮤니티 |\n\n- 릴리스 노트는 관리자가 작성합니다',
+          availableLangs: summary.availableLangs,
           author: summary.author,
           createdAt: summary.createdAt,
           updatedAt: summary.updatedAt,
@@ -1807,20 +1861,24 @@ export const handlers = [
     )
   }),
 
-  // 게시글 상세 — content(마크다운) 포함. 999는 존재하지 않는 글(404 계약)
-  http.get(`${BASE}/api/v1/core/community/posts/:postId`, ({ params }) => {
+  // 게시글 상세 — content(마크다운) 포함. 999는 존재하지 않는 글(404 계약). ?lang= 해석은 공개 상세와 동일
+  http.get(`${BASE}/api/v1/core/community/posts/:postId`, ({ params, request }) => {
     const summary = fixtures.communityPosts.responses.find((post) => post.postId === params.postId)
     if (!summary) return fail('COMMUNITY_POST_NOT_FOUND', 404)
+    const lang = resolvePostLang(summary.availableLangs, new URL(request.url).searchParams.get('lang'))
+    const localized = summary.postId === '902' ? RELEASE_NOTE_902[lang] : undefined
     return HttpResponse.json(
       ok({
         response: {
           postId: summary.postId,
           board: summary.board,
-          title: summary.title,
+          title: localized?.title ?? summary.title,
           content:
             summary.postId === '802'
               ? '## 제안 배경\n\nERD 내보내기에 **PostgreSQL** 포맷이 필요합니다.\n\n- 현재 MySQL만 지원\n- 스키마 검증 통과'
-              : '# 개요\n\n이번 릴리스의 주요 변경 사항입니다.\n\n| 항목 | 내용 |\n| --- | --- |\n| 기능 | 커뮤니티 |\n\n- 릴리스 노트는 관리자가 작성합니다',
+              : (localized?.content ??
+                '# 개요\n\n이번 릴리스의 주요 변경 사항입니다.\n\n| 항목 | 내용 |\n| --- | --- |\n| 기능 | 커뮤니티 |\n\n- 릴리스 노트는 관리자가 작성합니다'),
+          availableLangs: summary.availableLangs,
           author: summary.author,
           createdAt: summary.createdAt,
           updatedAt: summary.updatedAt,
@@ -1829,17 +1887,20 @@ export const handlers = [
     )
   }),
 
-  // 게시글 생성 — 201 + Location(외부 URI) + 상세 본문
+  // 게시글 생성 — 201 + Location(외부 URI) + 상세 본문.
+  // 쓰기 다형(§2.1) — 문자열은 {ko}, 객체는 값 있는 언어만. 최소 1개 언어 필요
   http.post(`${BASE}/api/v1/core/community/posts`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as {
       board?: string
-      title?: string
-      content?: string
+      title?: string | Record<string, string>
+      content?: string | Record<string, string>
     }
     if (body.board !== 'RELEASE_NOTE' && body.board !== 'FEEDBACK') {
       return fail('INVALID_REQUEST', 400)
     }
-    if (!body.title?.trim() || !body.content?.trim()) {
+    const title = asLocalized(body.title)
+    const content = asLocalized(body.content)
+    if (Object.keys(title).length === 0 || Object.keys(content).length === 0) {
       return fail('VALIDATION_ERROR', 400, [{ field: 'title', code: 'NotBlank', message: 'must not be blank' }])
     }
     const postId = String(1000 + fixtures.communityPosts.responses.length)
@@ -1848,8 +1909,9 @@ export const handlers = [
         response: {
           postId,
           board: body.board,
-          title: body.title,
-          content: body.content,
+          title: displayLocalized(title, 'ko'),
+          content: displayLocalized(content, 'ko'),
+          availableLangs: Object.keys(title),
           author: { userId: '2', name: '부트스트랩 관리자' },
           createdAt: '2026-09-17T00:00:00Z',
           updatedAt: '2026-09-17T00:00:00Z',
@@ -1859,21 +1921,29 @@ export const handlers = [
     )
   }),
 
-  // 게시글 수정 — board는 변경 불가(계약상 title·content만 수용)
+  // 게시글 수정 — board는 변경 불가(계약상 title·content만 수용). 쓰기 다형·값 있는 언어만 병합(나머지 유지)
   http.patch(`${BASE}/api/v1/core/community/posts/:postId`, async ({ request, params }) => {
     const summary = fixtures.communityPosts.responses.find((post) => post.postId === params.postId)
     if (!summary) return fail('COMMUNITY_POST_NOT_FOUND', 404)
-    const body = (await request.json().catch(() => ({}))) as { title?: string; content?: string }
-    if (!body.title?.trim() || !body.content?.trim()) {
+    const body = (await request.json().catch(() => ({}))) as {
+      title?: string | Record<string, string>
+      content?: string | Record<string, string>
+    }
+    const title = asLocalized(body.title)
+    const content = asLocalized(body.content)
+    if (Object.keys(title).length === 0 || Object.keys(content).length === 0) {
       return fail('VALIDATION_ERROR', 400, [{ field: 'title', code: 'NotBlank', message: 'must not be blank' }])
     }
+    // 병합 모사 — 기존 언어 ∪ 전송 언어(값 있는 키만 왔으므로 삭제는 일어나지 않는다)
+    const available = Array.from(new Set([...(summary.availableLangs ?? []), ...Object.keys(title)]))
     return HttpResponse.json(
       ok({
         response: {
           postId: summary.postId,
           board: summary.board,
-          title: body.title,
-          content: body.content,
+          title: displayLocalized(title, 'ko'),
+          content: displayLocalized(content, 'ko'),
+          availableLangs: available,
           author: summary.author,
           createdAt: summary.createdAt,
           updatedAt: '2026-09-17T01:00:00Z',

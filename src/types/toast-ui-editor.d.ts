@@ -17,6 +17,9 @@ declare module '@toast-ui/editor/dist/toastui-editor-viewer' {
   export default Viewer
 }
 
-// 사이드이펙트 임포트 — ko-KR 문구 등록(Editor.setLanguage), 노출 면 없음.
-// exports 맵 패턴상 확장자 없는 지정자("./dist/i18n/*" → "./dist/esm/i18n/*.js")
+// 사이드이펙트 임포트 — 각 로케일 문구 등록(Editor.setLanguage), 노출 면 없음.
+// exports 맵 패턴상 확장자 없는 지정자("./dist/i18n/*" → "./dist/esm/i18n/*.js").
+// en-US는 에디터 기본 내장이라 번들 파일이 없다.
 declare module '@toast-ui/editor/dist/i18n/ko-kr'
+declare module '@toast-ui/editor/dist/i18n/ja-jp'
+declare module '@toast-ui/editor/dist/i18n/zh-cn'

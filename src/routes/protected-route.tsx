@@ -8,6 +8,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { SplashScreen } from '@/components/splash-screen'
+import { LANGUAGE_PREFIXES, languageFromPath } from '@/lib/i18n'
 import { useSessionStore } from '@/stores/session'
 
 export function ProtectedRoute() {
@@ -28,7 +29,10 @@ export function ProtectedRoute() {
     if (loggingOut) return null
 
     const next = location.pathname + location.search
-    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
+    // 로그인은 같은 언어 영역 안으로 — URL prefix를 경로에서 다시 읽어 보존한다(렌더 시점 결정,
+    // LocaleRoute effect와 경쟁하지 않는다). 무prefix(ko)는 LANGUAGE_PREFIXES.ko = ''
+    const prefix = LANGUAGE_PREFIXES[languageFromPath(location.pathname) ?? 'ko']
+    return <Navigate to={`${prefix}/login?next=${encodeURIComponent(next)}`} replace />
   }
 
   return <Outlet />

@@ -43,7 +43,9 @@
     "language": {
       "label": "Language",
       "ko": "한국어",
-      "en": "English"
+      "en": "English",
+      "ja": "Japanese",
+      "zh": "Chinese (Simplified)"
     },
     "role": {
       "OWNER": "Owner",
@@ -178,7 +180,8 @@
       "profile": "My profile",
       "joinedAt": "Joined",
       "linkedAccounts": "Linked accounts",
-      "logout": "Sign out"
+      "logout": "Sign out",
+      "language": "Language"
     },
     "defaultBadge": "Default"
   },
@@ -797,6 +800,15 @@
           "add": "added",
           "update": "changed",
           "remove": "removed"
+        },
+        "detail": {
+          "reasonMissingInDb": "Not present in the database",
+          "reasonRemapping": "Mapping reassigned",
+          "tableNotInDb": "Table not present in the database",
+          "columnNotInDb": "Column not present in the database",
+          "pkAbsentInDb": "No primary key in the database",
+          "columnCount": "{{count}} columns",
+          "uniqueCount": "{{from}} → {{to}}"
         }
       },
       "history": {
@@ -1132,7 +1144,9 @@
   "releaseNoteViewer": {
     "badge": "Release note",
     "home": "Home",
-    "notFound": "Release note not found."
+    "notFound": "Release note not found.",
+    "contentLanguage": "Content language",
+    "fallbackNotice": "No {{lang}} content — showing another language."
   },
   "connection": {
     "list": {
@@ -1329,6 +1343,10 @@
     },
     "releaseNotes": {
       "heading": "Latest releases"
+    },
+    "seo": {
+      "title": "Crowfoot — Free ERD Editor · From Design to a Running Database",
+      "description": "A free data modeling tool that lets you draw ERDs in your browser, collaborate in real time, and even provision a real database."
     }
   },
   "terms": {
@@ -1405,7 +1423,10 @@
       "createdToast": "Post created.",
       "updatedToast": "Post updated.",
       "imageTooLarge": "The image is too large. Only images up to 512KB can be attached.",
-      "imageFailed": "Failed to add the image."
+      "imageFailed": "Failed to add the image.",
+      "titleRequiredOne": "Enter a title in at least one language.",
+      "contentRequiredOne": "Enter content in at least one language.",
+      "untranslated": "Not written"
     },
     "comment": {
       "placeholder": "Write a comment",

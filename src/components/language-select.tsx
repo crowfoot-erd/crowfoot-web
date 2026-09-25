@@ -1,6 +1,8 @@
 /**
- * 언어 선택기 (storyboard 00-common §3.1 [11] — 한국어/English)
+ * 언어 선택기 (storyboard 00-common §3.1 [11] — 한국어·English·日本語·中文)
+ * 항목은 각 언어의 자칭 라벨(common.language.*)로 표시하고, 선택 시 URL prefix를 교체한다.
  */
+import { Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -11,28 +13,30 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { setLanguage, SUPPORTED_LANGUAGES, type Language } from '@/lib/i18n'
+import { useChangeLanguage } from '@/hooks/use-change-language'
+import { SUPPORTED_LANGUAGES, type Language, currentLanguage } from '@/lib/i18n'
 
 export function LanguageSelect() {
-  const { t, i18n } = useTranslation()
-  const current = (SUPPORTED_LANGUAGES as readonly string[]).includes(i18n.language)
-    ? (i18n.language as Language)
-    : 'ko'
+  const { t } = useTranslation()
+  const changeLanguage = useChangeLanguage()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="icon" aria-label={t('common.language.label')}>
-          {/* lucide Languages 아이콘은 文A(중문·영문) 글리프라 한국어·English 전환과 어긋난다 — 한/EN 표기 */}
-          <span aria-hidden className="text-[11px] font-semibold leading-none tracking-tight">
-            한/EN
-          </span>
+          <Languages aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup value={current} onValueChange={(value) => setLanguage(value as Language)}>
-          <DropdownMenuRadioItem value="ko">{t('common.language.ko')}</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="en">{t('common.language.en')}</DropdownMenuRadioItem>
+        <DropdownMenuRadioGroup
+          value={currentLanguage()}
+          onValueChange={(value) => changeLanguage(value as Language)}
+        >
+          {SUPPORTED_LANGUAGES.map((language) => (
+            <DropdownMenuRadioItem key={language} value={language}>
+              {t(`common.language.${language}`)}
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

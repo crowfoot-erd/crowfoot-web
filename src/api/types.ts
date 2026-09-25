@@ -60,6 +60,8 @@ export interface Me {
   userId: string
   email: string
   name: string
+  /** 계정 단위 UI 언어(ko/en/ja/zh) — 최초 로그인 null(브라우저 감지 따름), 메뉴에서 변경하면 저장된다 */
+  locale?: string | null
   /** 제공자 프로필 사진 — GitHub 계정만 도출되는 URL, 그 외 null(이니셜 폴백) */
   avatarUrl?: string | null
   /** GitHub 핸들(login) — 로그인 시 저장된 값. Google 계정은 null(@표시 생략) */
@@ -468,6 +470,8 @@ export interface CommunityPostSummary {
   postId: string
   board: CommunityBoard
   title: string
+  /** 본문이 작성된 언어 코드 목록(내림차순 우선순위 없음) — 폴백 배지·언어 전환기 근거 */
+  availableLangs?: string[]
   author: UserRef
   commentCount: number
   createdAt: string
@@ -480,6 +484,8 @@ export interface CommunityPostDetail {
   board: CommunityBoard
   title: string
   content: string
+  /** 본문이 작성된 언어 코드 목록 — 폴백 배지·언어 전환기 근거 (§2.1) */
+  availableLangs?: string[]
   author: UserRef
   createdAt: string
   updatedAt: string
@@ -490,6 +496,7 @@ export interface CommunityRecentPost {
   postId: string
   board: CommunityBoard
   title: string
+  availableLangs?: string[]
   author: UserRef
   commentCount: number
   createdAt: string

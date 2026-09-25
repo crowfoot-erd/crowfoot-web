@@ -1,9 +1,18 @@
 /**
- * 인증 관련 훅 — me(1회)·providers(공개)·로그아웃
+ * 인증 관련 훅 — me(1회)·providers(공개)·로그아웃·계정 로케일 동기화
  */
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchMe, fetchProviders, logout } from '@/features/auth/api'
+import i18n, {
+  LANGUAGE_STORAGE_KEY,
+  htmlLang,
+  isLanguage,
+  languageFromPath,
+  type Language,
+  currentLanguage,
+} from '@/lib/i18n'
+import { fetchMe, fetchProviders, logout, updateMyLocale } from '@/features/auth/api'
 import { resetSession, useSessionStore } from '@/stores/session'
 
 /** 공개 — 로그인 방식 목록 */
@@ -50,6 +59,48 @@ export function useLogout() {
       resetSession()
       void queryClient.clear()
       window.location.assign('/')
+    },
+  })
+}
+
+/**
+ * 계정 로케일 동기화 (storyboard 00-common §3.3 — 언어 상태 우선순위)
+ * me 도착 시 1회:
+ * - locale이 저장돼 있고 수동 변경 흔적(localStorage)이 없으면 → 계정 언어 적용(재로그인 유지)
+ * - locale이 null이고 흔적도 없으면 → 감지 언어를 계정에 등록(1회 PATCH)
+ * 흔적이 있으면 수동값이 이긴다 — 저장하지 않는다. URL prefix가 있는 영역은 LocaleRoute가 이미 처리했다.
+ */
+export function useAccountLanguage() {
+  const me = useMe()
+
+  useEffect(() => {
+    const user = me.data
+    if (!user) return
+    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+    if (isLanguage(stored)) return // 수동 변경 흔적 — 최우선
+
+    if (isLanguage(user.locale)) {
+      if (!languageFromPath(window.location.pathname) && currentLanguage() !== user.locale) {
+        document.documentElement.lang = htmlLang(user.locale)
+        void i18n.changeLanguage(user.locale)
+      }
+      return
+    }
+    // 첫 로그인 — 감지 언어 등록. 실패해도 UI는 유지된다(다음 로그인 재시도)
+    void updateMyLocale(currentLanguage()).catch(() => undefined)
+  }, [me.data])
+}
+
+/** 계정 로케일 변경 — 서버 저장 + me 캐시 갱신(URL·i18n 전환은 호출부의 useChangeLanguage이 담당) */
+export function useUpdateMyLocale() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (locale: Language) => updateMyLocale(locale),
+    onSuccess: (_data, locale) => {
+      queryClient.setQueryData<import('@/api/types').Me | undefined>(['me'], (me) =>
+        me ? { ...me, locale } : me,
+      )
     },
   })
 }

@@ -36,11 +36,15 @@ import type {
 } from '@/features/editor/model/content-schema'
 import { documentKeyNames, nextName } from '@/features/editor/model/keys'
 import { contentBounds } from '@/features/editor/model/canvas-bounds'
+import i18n from '@/lib/i18n'
 
 export type SyncItemKind = 'table' | 'column' | 'primaryKey' | 'uniqueKey' | 'relationship'
 export type SyncItemAction = 'add' | 'update' | 'remove'
 
-/** 미리보기 목록 항목 — i18n은 kind·action으로, 상세는 detail 원문으로 표시한다 */
+/** 관계 제거 사유 — 문구가 아니라 식별자로 판정한다(action 분기·렌더 키) */
+type RemoveReason = 'missing-in-db' | 'remapping'
+
+/** 미리보기 목록 항목 — kind·action·사유 문구는 i18n 키로, 상세 나머지는 원시 값으로 표시한다 */
 export interface SyncDiffItem {
   kind: SyncItemKind
   action: SyncItemAction
@@ -48,7 +52,7 @@ export interface SyncDiffItem {
   table: string
   /** 대상 이름 — 컬럼 물리명·관계 fkName 등 */
   name: string
-  /** update 상세 — 바뀐 필드 목록 등 원시 문자열 */
+  /** update 상세 — 사유 문구(로케일 해석)·바뀐 필드 목록 등 */
   detail: string
 }
 
@@ -170,7 +174,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
     doc: ErdRelationship | null
   }
   const relPlans: RelPlan[] = []
-  const toRemove: { rel: ErdRelationship; reason: string }[] = []
+  const toRemove: { rel: ErdRelationship; reason: RemoveReason }[] = []
   const consumedDbRelIds = new Set<string>()
 
   const dbRelsByChild = new Map<string, ErdRelationship[]>()
@@ -193,7 +197,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
       free.find((d) => nameKey(d.fkName) === nameKey(rel.fkName)) ??
       free.find((d) => nameKey(dbPhysOf(d.parentTableId)) === nameKey(physOf(current, rel.parentTableId)))
     if (!match) {
-      toRemove.push({ rel, reason: 'DB에 없는 관계' })
+      toRemove.push({ rel, reason: 'missing-in-db' })
       continue
     }
     consumedDbRelIds.add(match.id)
@@ -201,7 +205,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
       mappingPairs(current, rel).join('\0') !== mappingPairs(db, match).join('\0')
     if (diverged) {
       // 매핑이 달라지면 patch로 고칠 수 없다(columnMappings은 patch 대상이 아님) — 재생성
-      toRemove.push({ rel, reason: '매핑 재지정' })
+      toRemove.push({ rel, reason: 'remapping' })
       relPlans.push({ db: match, doc: null })
     } else {
       relPlans.push({ db: match, doc: rel })
@@ -215,9 +219,15 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
 
   for (const { rel, reason } of toRemove) {
     const childPhys = physOf(current, rel.childTableId)
-    const action = reason === '매핑 재지정' ? 'update' : 'remove'
+    const action = reason === 'remapping' ? 'update' : 'remove'
     emit({ type: 'relationship/remove', relationshipId: rel.id })
-    items.push({ kind: 'relationship', action, table: childPhys, name: rel.fkName, detail: reason })
+    items.push({
+      kind: 'relationship',
+      action,
+      table: childPhys,
+      name: rel.fkName,
+      detail: i18n.t(reason === 'remapping' ? 'model.editor.sync.detail.reasonRemapping' : 'model.editor.sync.detail.reasonMissingInDb'),
+    })
   }
 
   /* ---------- 2단계 — 테이블 제거(DB에 없는 것 — cascade) ---------- */
@@ -225,7 +235,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
   for (const t of current.model.tables) {
     if (dbTableByKey.has(nameKey(t.physicalName))) continue
     emit({ type: 'table/remove', tableId: t.id })
-    items.push({ kind: 'table', action: 'remove', table: t.physicalName, name: t.physicalName, detail: 'DB에 없는 테이블' })
+    items.push({ kind: 'table', action: 'remove', table: t.physicalName, name: t.physicalName, detail: i18n.t('model.editor.sync.detail.tableNotInDb') })
   }
 
   /* ---------- 3단계 — 테이블 생성(DB 신규 — 콘텐츠 우측 세로 배치) ---------- */
@@ -241,7 +251,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
       position: { x: bounds ? bounds.maxX + 120 : 80, y: 80 + created * 320 },
     })
     created += 1
-    items.push({ kind: 'table', action: 'add', table: dbTable.physicalName, name: dbTable.physicalName, detail: `컬럼 ${table.columns.length}개` })
+    items.push({ kind: 'table', action: 'add', table: dbTable.physicalName, name: dbTable.physicalName, detail: i18n.t('model.editor.sync.detail.columnCount', { count: table.columns.length }) })
   }
 
   /* ---------- 4단계 — 테이블별 동기(컬럼 확보 → PK → UK, DB 우선) ---------- */
@@ -264,7 +274,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
       if (dbColumnsByKey.has(nameKey(c.physicalName))) continue
       emit({ type: 'column/remove', tableId: cur.id, columnId: c.id })
       changedTables.add(cur.id)
-      items.push({ kind: 'column', action: 'remove', table: dbTable.physicalName, name: c.physicalName, detail: 'DB에 없는 컬럼' })
+      items.push({ kind: 'column', action: 'remove', table: dbTable.physicalName, name: c.physicalName, detail: i18n.t('model.editor.sync.detail.columnNotInDb') })
     }
 
     // 컬럼 추가·패치 — 추가는 끝에 붙고(존 배치는 6단계), 패치는 스칼라만.
@@ -334,7 +344,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
     } else if (live.primaryKey) {
       emit({ type: 'primaryKey/set', tableId: cur.id, primaryKey: null })
       changedTables.add(cur.id)
-      items.push({ kind: 'primaryKey', action: 'remove', table: dbTable.physicalName, name: live.primaryKey.name, detail: 'DB에 PK 없음' })
+      items.push({ kind: 'primaryKey', action: 'remove', table: dbTable.physicalName, name: live.primaryKey.name, detail: i18n.t('model.editor.sync.detail.pkAbsentInDb') })
     }
 
     // UK — DB 우선 전체 교체(v1 정책). 같은 이름의 기존 UK는 id를 재사용해 표현을 유지한다
@@ -362,7 +372,7 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
         action: nextUniques.length === 0 ? 'remove' : 'update',
         table: dbTable.physicalName,
         name: nextUniques.map((u) => u.name).join(', '),
-        detail: `${live.uniques.length} → ${nextUniques.length}개`,
+        detail: i18n.t('model.editor.sync.detail.uniqueCount', { from: live.uniques.length, to: nextUniques.length }),
       })
     }
   }

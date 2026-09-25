@@ -1,0 +1,1451 @@
+{
+  "common": {
+    "appName": "Crowfoot",
+    "appTagline": "ERDエディター",
+    "footer": "© 2026 Crowfoot — ERDエディター",
+    "loading": "読み込み中…",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "save": "保存",
+    "create": "作成",
+    "delete": "削除",
+    "close": "閉じる",
+    "search": "検索",
+    "searchKeywordHint": "2文字以上入力してください",
+    "searching": "検索中…",
+    "total": "合計 {{count}}件",
+    "memberCount": "{{count}}人",
+    "overview": "概要",
+    "members": "メンバー",
+    "settings": "設定",
+    "name": "名前",
+    "description": "説明",
+    "email": "メールアドレス",
+    "none": "-",
+    "createdAt": "作成日",
+    "withdrawn": "退会",
+    "admin": "管理者",
+    "yes": "はい",
+    "no": "いいえ",
+    "saving": "保存中…",
+    "pagination": {
+      "prev": "前へ",
+      "next": "次へ",
+      "page": "{{totalPages}}ページ中{{page}}ページ目"
+    },
+    "theme": {
+      "label": "テーマ",
+      "light": "ライト",
+      "dark": "ダーク",
+      "system": "システム"
+    },
+    "language": {
+      "label": "言語",
+      "ko": "韓国語",
+      "en": "英語",
+      "ja": "日本語",
+      "zh": "簡体字中国語"
+    },
+    "role": {
+      "OWNER": "オーナー",
+      "EDITOR": "編集者",
+      "COMMENTER": "コメント投稿者",
+      "VIEWER": "閲覧者",
+      "MEMBER": "メンバー"
+    },
+    "roleShort": {
+      "OWNER": "OWNER",
+      "EDITOR": "EDITOR",
+      "COMMENTER": "COMMENTER",
+      "VIEWER": "VIEWER",
+      "MEMBER": "MEMBER"
+    },
+    "granteeType": {
+      "USER": "ユーザー",
+      "TEAM": "チーム"
+    },
+    "provider": {
+      "github": "GitHub",
+      "google": "Google"
+    },
+    "system": "システム",
+    "edit": "編集"
+  },
+  "errors": {
+    "message": {
+      "GENERIC": "一時的なエラーが発生しました。しばらくしてからもう一度お試しください。",
+      "NETWORK_ERROR": "ネットワーク接続を確認してください。",
+      "SERVICE_UNAVAILABLE": "一時的なエラーが発生しました。しばらくしてからもう一度お試しください。",
+      "INVALID_REQUEST": "リクエストが正しくありません。入力内容を確認してください。",
+      "RESOURCE_NOT_FOUND": "要求されたリソースが見つかりません。",
+      "PERMISSION_DENIED": "この操作はワークスペースのオーナーのみ実行できます。",
+      "RATE_LIMITED": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+      "AUTH_TOKEN_INVALID": "ログインが必要です。",
+      "AUTH_TOKEN_EXPIRED": "ログインの有効期限が切れました。",
+      "AUTH_SESSION_REVOKED": "別のデバイスでログアウトされたか、セッションが終了しました。再度ログインしてください。",
+      "AUTH_STATE_INVALID": "ログインセッションの有効期限が切れるか、無効になっています。再度ログインしてください。",
+      "AUTH_PROVIDER_ERROR": "ログインプロバイダー(GitHub/Google)との通信に失敗しました。しばらくしてからもう一度お試しください。",
+      "USER_WITHDRAWN": "退会済みのアカウントのため、再度ログインできません。",
+      "WORKSPACE_NOT_FOUND": "ワークスペースが見つかりません。",
+      "WORKSPACE_NAME_DUPLICATED": "同じ名前のワークスペースが既に存在します。",
+      "MEMBERSHIP_NOT_FOUND": "メンバーシップが見つかりません。一覧を更新します。",
+      "MEMBERSHIP_DUPLICATED": "既にメンバーとして追加されています。",
+      "LAST_OWNER_PROTECTED": "最後のオーナーは解除できません。",
+      "TEAM_NOT_FOUND": "チームが見つかりません。",
+      "TEAM_NAME_DUPLICATED": "同じ名前のチームが既に存在します。",
+      "TEAM_MEMBER_DUPLICATED": "既にこのチームのメンバーです。",
+      "TEAM_MEMBER_NOT_FOUND": "チームメンバーが見つかりません。一覧を更新します。",
+      "USER_NOT_FOUND": "ユーザーが見つかりません。",
+      "SESSION_NOT_FOUND": "このセッションは既に終了しています。一覧を更新します。",
+      "DUPLICATED_NAME": "同じ名前のドキュメントが既に存在します。",
+      "VERSION_CONFLICT": "別のクライアントが先に保存しました。",
+      "MODEL_NOT_FOUND": "ドキュメントが見つかりません。",
+      "SQL_IMPORT_NO_TABLES": "SQLスクリプト内にCREATE TABLE文が見つかりません。",
+      "CONNECTION_NOT_FOUND": "接続が見つかりません。",
+      "CONNECTION_UNREACHABLE": "データベースに接続できません。接続設定を確認してください。",
+      "INVALID_DBMS_TYPE": "サポートされていないDBMSです。",
+      "MANAGED_INSTANCE_NOT_FOUND": "インスタンスが見つかりません。",
+      "MANAGED_INSTANCE_UNREACHABLE": "インスタンスに接続できません。認証情報とアドレスを確認してください。",
+      "MANAGED_INSTANCE_IN_USE": "このインスタンスには発行済みのデータベースが残っています。先に取り消してください。",
+      "MANAGED_LIMIT_EXCEEDED": "発行上限に達しました。1つ取り消すか、管理者にお問い合わせください。",
+      "MANAGED_PROVISION_FAILED": "プロビジョニングに失敗しました。しばらくしてからもう一度お試しください。",
+      "MANAGED_DATABASE_NOT_FOUND": "発行済みデータベースが見つかりません。",
+      "SHARE_NOT_FOUND": "共有リンクが見つかりません。",
+      "SHARE_INACTIVE": "この共有リンクはまだ有効でないか、有効期限が切れています。",
+      "COMMUNITY_POST_NOT_FOUND": "投稿が見つかりません。",
+      "COMMUNITY_COMMENT_NOT_FOUND": "コメントが見つかりません。一覧を更新します。",
+      "COMMUNITY_COMMENT_NOT_ALLOWED": "この掲示板ではコメントを利用できません。"
+    },
+    "loadFailed": "読み込みに失敗しました",
+    "bootstrapFailed": "サーバーに接続できませんでした。"
+  },
+  "auth": {
+    "login": {
+      "title": "Crowfootにログイン",
+      "description": "GitHubアカウントでERDを描き、チームで編集して共有しましょう。",
+      "continueWith": "{{provider}}で続行",
+      "consent": {
+        "prefix": "「",
+        "link": "利用規約",
+        "suffix": "」を読み、同意しました"
+      },
+      "noProviders": {
+        "title": "利用できるログイン方法がありません",
+        "description": "管理者にお問い合わせください。"
+      },
+      "loadFailed": "ログイン方法を読み込めませんでした。"
+    },
+    "callback": {
+      "processing": "ログイン処理中…",
+      "failedTitle": "ログインに失敗しました",
+      "backToLogin": "ログインに戻る"
+    },
+    "logout": "ログアウト",
+    "sessionExpired": {
+      "title": "ログインが必要です",
+      "loginAgain": "再度ログイン"
+    }
+  },
+  "shell": {
+    "nav": {
+      "workspaces": "ワークスペース",
+      "teams": "チーム",
+      "admin": "管理",
+      "community": "コミュニティ",
+      "home": "ホーム"
+    },
+    "sidebar": {
+      "mine": "自分のワークスペース",
+      "shared": "共有されたワークスペース",
+      "newWorkspace": "新規ワークスペース",
+      "adminTitle": "管理",
+      "adminUsers": "ユーザー",
+      "adminCodes": "コードテーブル",
+      "adminManaged": "マネージドDB",
+      "backToWorkspaces": "ワークスペースに戻る",
+      "adminAuditLogs": "監査ログ",
+      "teamsTitle": "チーム",
+      "newTeam": "新規チーム",
+      "ownedTeams": "自分がオーナーのチーム",
+      "joinedTeams": "所属チーム",
+      "noTeams": "所属しているチームがありません。",
+      "communityTitle": "コミュニティ",
+      "communityReleaseNotes": "リリースノート",
+      "communityFeedback": "フィードバック",
+      "adminSystemTerms": "システム辞書"
+    },
+    "userMenu": {
+      "signedInAs": "{{name}}",
+      "profile": "マイプロフィール",
+      "joinedAt": "登録日",
+      "linkedAccounts": "連携アカウント",
+      "logout": "ログアウト",
+      "language": "言語"
+    },
+    "defaultBadge": "デフォルト"
+  },
+  "dashboard": {
+    "greeting": "こんにちは、{{name}}さん",
+    "newWorkspace": "新規ワークスペース",
+    "cards": {
+      "workspaces": "ワークスペース",
+      "teams": "チーム",
+      "joinedAsMember": "メンバーとして参加"
+    },
+    "joinedAsMemberHint": "オーナーでないワークスペース",
+    "shortcuts": "ワークスペースショートカット",
+    "viewAll": "すべて表示",
+    "myTeams": "自分のチーム",
+    "empty": {
+      "workspaces": {
+        "title": "ワークスペースがまだありません",
+        "description": "最初のワークスペースを作成してERD設計を始めましょう。"
+      },
+      "teams": {
+        "title": "チームがまだありません",
+        "description": "チームを作成するか、チームオーナーからの招待をお待ちください。"
+      }
+    }
+  },
+  "workspace": {
+    "list": {
+      "title": "ワークスペース",
+      "myRole": "自分のロール",
+      "members": "{{count}}人",
+      "empty": {
+        "title": "ワークスペースがまだありません",
+        "description": "最初のワークスペースを作成してERD設計を始めましょう。",
+        "cta": "新規ワークスペース"
+      }
+    },
+    "create": {
+      "title": "新規ワークスペース",
+      "nameLabel": "名前",
+      "namePlaceholder": "例: 注文サービスERD",
+      "descriptionLabel": "説明(任意)",
+      "descriptionPlaceholder": "このワークスペースの用途",
+      "notice": "個人ワークスペースとして作成され、作成した人がオーナー(OWNER)になります。",
+      "submit": "作成",
+      "successToast": "ワークスペースを作成しました。",
+      "nameRequired": "名前を入力してください。"
+    },
+    "detail": {
+      "tabs": {
+        "erd": "ERD",
+        "overview": "概要",
+        "members": "メンバー",
+        "settings": "設定",
+        "database": "データベース"
+      },
+      "fields": {
+        "name": "名前",
+        "description": "説明",
+        "memberCount": "メンバー数",
+        "createdBy": "作成者",
+        "createdAt": "作成日"
+      },
+      "settings": {
+        "save": "保存",
+        "saveSuccess": "保存しました。",
+        "dangerZone": "危険な操作",
+        "deleteButton": "ワークスペースを削除",
+        "deleteTitle": "ワークスペースを削除",
+        "deleteDescription": "ワークスペース「{{name}}」を削除します。この操作は元に戻せません。",
+        "deleteConfirm": "削除",
+        "deleteSuccess": "削除しました。"
+      },
+      "notFound": {
+        "title": "ワークスペースが見つかりません",
+        "description": "削除されたか、アクセス権がありません。",
+        "back": "ワークスペース一覧に戻る"
+      }
+    },
+    "members": {
+      "title": "メンバー",
+      "addButton": "メンバーを追加",
+      "searchPlaceholder": "名前・チームを検索",
+      "empty": "メンバーがいません。",
+      "table": {
+        "granteeType": "種別",
+        "grantee": "対象",
+        "role": "ロール",
+        "grantedBy": "付与者",
+        "grantedAt": "付与日",
+        "actions": "操作"
+      },
+      "teamLink": "チームを表示",
+      "changeRole": "ロール変更",
+      "roleChangedToast": "ロールを変更しました。",
+      "grantedOnCreation": "— (作成時)",
+      "revoke": "取り消す",
+      "revokeTitle": "メンバーシップの取り消し",
+      "revokeDescription": "「{{name}}」のワークスペースアクセスを取り消します。",
+      "revokeSuccess": "取り消しました。",
+      "ownerNotice": "オーナー(OWNER)は変更・取り消しできません。",
+      "addDialog": {
+        "title": "メンバーを追加",
+        "targetUser": "ユーザー",
+        "targetTeam": "チーム",
+        "searchUsers": "ユーザーを検索 (名前・メールアドレス)",
+        "searchTeams": "チームを検索",
+        "role": "ロール",
+        "roleHint": "オーナー(OWNER)は付与できません。",
+        "submit": "追加",
+        "noResults": "検索結果がありません。",
+        "successToast": "メンバーシップを追加しました。",
+        "teamGrantNotice": "チームに付与すると、そのチームの全メンバーに同じロールが適用されます。"
+      }
+    }
+  },
+  "team": {
+    "list": {
+      "title": "チーム",
+      "ownerBadge": "チームオーナー",
+      "memberCount": "{{count}}人",
+      "empty": {
+        "title": "チームがまだありません",
+        "description": "チームを作成してワークスペースを共同で管理しましょう。",
+        "cta": "チームを作成"
+      }
+    },
+    "create": {
+      "title": "新規チーム",
+      "nameLabel": "名前",
+      "namePlaceholder": "例: 決済プラットフォームチーム",
+      "descriptionLabel": "説明(任意)",
+      "descriptionPlaceholder": "このチームの用途",
+      "notice": "チームを作成してメンバーを管理できます。ワークスペースは同時に作成されません。",
+      "submit": "作成",
+      "successToast": "チームを作成しました。",
+      "nameRequired": "名前を入力してください。"
+    },
+    "detail": {
+      "fields": {
+        "name": "名前",
+        "description": "説明",
+        "owner": "オーナー",
+        "myRole": "自分のロール",
+        "memberCount": "メンバー数",
+        "createdAt": "作成日"
+      },
+      "settings": {
+        "save": "保存",
+        "saveSuccess": "保存しました。",
+        "dangerZone": "危険な操作",
+        "dissolveButton": "チームを解散",
+        "dissolveTitle": "チームを解散",
+        "dissolveDescription": "チーム「{{name}}」を解散します。全メンバーの所属と、このチームに付与されたワークスペースアクセスが取り消されます。この操作は元に戻せません。",
+        "dissolveConfirm": "解散",
+        "dissolveSuccess": "チームを解散しました。"
+      },
+      "notFound": {
+        "title": "チームが見つかりません",
+        "description": "解散されたか、アクセス権がありません。",
+        "back": "チーム一覧に戻る"
+      }
+    },
+    "members": {
+      "title": "メンバー",
+      "addButton": "メンバーを追加",
+      "table": {
+        "name": "名前",
+        "email": "メールアドレス",
+        "role": "ロール",
+        "addedBy": "追加者",
+        "addedAt": "追加日",
+        "actions": "操作"
+      },
+      "empty": "チームメンバーがいません。",
+      "remove": "除外",
+      "removeTitle": "チームメンバーの除外",
+      "removeDescription": "「{{name}}」をこのチームから除外します。",
+      "removeSuccess": "除外しました。",
+      "addDialog": {
+        "title": "メンバーを追加",
+        "searchPlaceholder": "ユーザーを検索 (名前・メールアドレス)",
+        "submit": "追加",
+        "noResults": "検索結果がありません。",
+        "alreadyMember": "このユーザーは既にチームのメンバーです。",
+        "successToast": "メンバーを追加しました。"
+      }
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "ユーザー",
+      "searchPlaceholder": "名前・メールアドレスを検索",
+      "empty": {
+        "all": "登録済みのユーザーがいません。",
+        "search": "検索結果がありません。"
+      },
+      "table": {
+        "email": "メールアドレス",
+        "name": "名前",
+        "providers": "ログインプロバイダー",
+        "admin": "管理者",
+        "status": "状態",
+        "createdAt": "登録日"
+      },
+      "status": {
+        "active": "アクティブ"
+      },
+      "detail": "表示",
+      "back": "一覧に戻る"
+    },
+    "userDetail": {
+      "title": "ユーザー",
+      "withdrawnNotice": "退会済みアカウント — ログインできません。",
+      "fields": {
+        "email": "メールアドレス",
+        "name": "名前",
+        "providers": "ログインプロバイダー",
+        "admin": "管理者",
+        "withdrawnAt": "退会日",
+        "createdAt": "登録日"
+      },
+      "sessions": {
+        "title": "アクティブセッション",
+        "empty": "アクティブなセッションがありません。",
+        "table": {
+          "sid": "セッションID",
+          "createdAt": "作成日",
+          "lastUsedAt": "最終使用",
+          "ip": "IP",
+          "userAgent": "User-Agent",
+          "actions": "操作"
+        },
+        "terminate": "強制終了",
+        "terminateTitle": "セッションの強制終了",
+        "terminateDescription": "このセッションを終了します。該当ユーザーは再度ログインする必要があります。",
+        "terminateConfirm": "終了",
+        "terminatedToast": "セッションを終了しました。"
+      }
+    },
+    "codes": {
+      "title": "コードテーブル",
+      "providers": {
+        "title": "ログインプロバイダー",
+        "notice": "プロバイダーを無効にすると、ログイン画面に該当ボタンが表示されなくなります。進行中のログインには影響しません。",
+        "allDisabledWarning": "すべてのログイン方法が無効化されています — 新規ログインはできません。",
+        "table": {
+          "code": "コード",
+          "displayName": "表示名",
+          "active": "有効"
+        },
+        "savedToast": "保存しました。"
+      },
+      "databaseTypes": {
+        "title": "データベース種別",
+        "notice": "ERDドキュメント作成時に選択できる種別です。表示名と有効切替のみ変更できます。",
+        "savedToast": "データベース種別を保存しました",
+        "table": {
+          "code": "コード",
+          "displayName": "表示名",
+          "active": "有効"
+        }
+      },
+      "roles": {
+        "title": "ロール",
+        "notice": "表示名は画面表示にのみ使用されます。権限レベルは変更できません。",
+        "table": {
+          "code": "コード",
+          "displayName": "表示名"
+        },
+        "savedToast": "保存しました。"
+      }
+    },
+    "managed": {
+      "title": "マネージドDB",
+      "cardTitle": "インスタンス",
+      "notice": "ユーザーにドキュメント単位のスキーマを発行するroot接続です。登録・認証情報変更・接続テストの際に到達性を検証します。1ユーザーあたりの発行上限(ワークスペース全体)は右側で設定します — 既定は5。",
+      "newInstance": "インスタンスを登録",
+      "savedToast": "保存しました。",
+      "table": {
+        "displayName": "表示名",
+        "endpoint": "エンドポイント",
+        "internal": "内部",
+        "issuedCount": "発行数",
+        "active": "有効"
+      },
+      "empty": {
+        "title": "登録されたインスタンスがありません",
+        "description": "インスタンスを登録すると、ユーザーがワークスペースでデータベースを発行できます。"
+      },
+      "dialog": {
+        "createTitle": "インスタンスを登録",
+        "editTitle": "インスタンスを編集",
+        "notice": "データベースインスタンスのroot認証情報を登録します。発行されるデータベース(PostgreSQLスキーマ/MySQLデータベース)は、この中でドキュメント単位に分離されます。",
+        "displayName": "表示名",
+        "displayNamePlaceholder": "例: Academy PG",
+        "host": "ホスト",
+        "publicHost": "公開アドレス",
+        "port": "ポート",
+        "database": "データベース",
+        "username": "ユーザー名",
+        "password": "パスワード",
+        "passwordKeep": "空欄の場合は現在のパスワードを維持します",
+        "fieldRequired": "この項目は必須です。",
+        "hostInvalid": "ホストの形式が正しくありません — スキーム(http://)やポートを含めず、ホスト名のみ入力してください",
+        "publicHostHint": "ユーザーの接続情報に表示されるアドレスです。空欄の場合は接続ホストをそのまま公開します。",
+        "createSuccess": "インスタンスを登録しました。",
+        "updateSuccess": "インスタンスを更新しました。",
+        "dbms": "DBMS",
+        "databasePlaceholder": "任意",
+        "databaseHint": "省略した場合、PostgreSQLはユーザー名と同じ名前のデータベースに接続し、MySQLは発行のたびにデータベースを作成します。"
+      },
+      "delete": {
+        "title": "インスタンス{{name}}を削除",
+        "description": "インスタンス「{{name}}」を削除しますか? 発行済みデータベースが残っている間は削除できません。",
+        "successToast": "インスタンスを削除しました。"
+      },
+      "databaseAuto": "自動",
+      "test": "接続テスト",
+      "testSuccess": "接続しました ({{ms}}ms)",
+      "testFail": "接続に失敗しました",
+      "issueLimitLabel": "1ユーザーあたりの発行上限",
+      "limitSavedToast": "発行上限を{{limit}}に設定しました。"
+    },
+    "auditLogs": {
+      "title": "監査ログ",
+      "searchPlaceholder": "実行者を検索…",
+      "actionFilter": "アクション",
+      "allActions": "すべてのアクション",
+      "table": {
+        "createdAt": "日時",
+        "actor": "実行者",
+        "action": "アクション",
+        "target": "対象",
+        "detail": "詳細"
+      },
+      "empty": {
+        "search": "検索結果がありません。",
+        "all": "記録された監査ログはまだありません。"
+      }
+    },
+    "systemTerms": {
+      "title": "システム辞書",
+      "cardTitle": "グローバル用語",
+      "notice": "すべてのワークスペースで共有されるグローバル用語辞書です。ここに登録した用語は、エディターの論理名推論・システム辞書タブに即時反映されます。",
+      "searchPlaceholder": "トークン・ラベルを検索",
+      "newTerm": "用語を登録",
+      "table": {
+        "term": "トークン",
+        "labels": "ラベル",
+        "type": "型",
+        "updatedAt": "更新日"
+      },
+      "empty": {
+        "title": "用語がまだありません",
+        "description": "登録した用語は、すべてのワークスペースの論理名推論に使用されます。"
+      },
+      "delete": {
+        "title": "用語「{{term}}」を削除",
+        "description": "システム辞書から「{{term}}」を削除します。変更はすべてのワークスペースに即時反映されます。",
+        "successToast": "用語を削除しました。"
+      },
+      "dialog": {
+        "createTitle": "用語を登録",
+        "editTitle": "用語を編集",
+        "notice": "トークンはグローバルに一意なキーです — 同じトークンを再登録すると上書きされます。ラベルは言語ごとに入力し、少なくとも1言語が必要です。",
+        "term": "トークン",
+        "termPlaceholder": "user_id",
+        "labelsHint": "ラベル — 少なくとも1言語",
+        "typePlaceholder": "例: VARCHAR(100) — 任意",
+        "fieldRequired": "必須項目です。",
+        "termPattern": "トークンにスペースは使用できません",
+        "labelRequired": "ラベルを1つ以上入力してください",
+        "tooLong": "100文字以内で入力してください",
+        "createSuccess": "用語を登録しました。",
+        "updateSuccess": "用語を更新しました。",
+        "locale": {
+          "ko": "한국어",
+          "en": "English",
+          "ja": "日本語",
+          "zh": "中文"
+        },
+        "typeForDbms": "型 ({{dbms}})"
+      },
+      "alphabetAll": "すべて",
+      "alphabetLabel": "頭文字",
+      "letterEtc": "#",
+      "noResults": "条件に一致する用語がありません"
+    }
+  },
+  "notFound": {
+    "title": "ページが見つかりません",
+    "description": "リクエストされたページは存在しないか、移動されました。",
+    "home": "ホームへ"
+  },
+  "model": {
+    "list": {
+      "searchPlaceholder": "名前・説明で検索",
+      "newDocument": "新規ERDドキュメント",
+      "columns": {
+        "document": "ドキュメント",
+        "databaseType": "データベース",
+        "version": "バージョン",
+        "createdBy": "作成者",
+        "updatedAt": "更新日"
+      },
+      "empty": {
+        "title": "ERDドキュメントがまだありません",
+        "description": "ドキュメントを作成してERD設計を始めましょう。",
+        "cta": "新規ERDドキュメント"
+      },
+      "open": "{{name}}を開く"
+    },
+    "create": {
+      "title": "新規ERDドキュメント",
+      "notice": "メインダイアグラムが自動的に作成されます。",
+      "name": "名前",
+      "nameRequired": "名前は必須です",
+      "namePlaceholder": "例: 注文サービスERD",
+      "description": "説明",
+      "descriptionPlaceholder": "ドキュメントの簡単な説明",
+      "databaseType": "データベース種別",
+      "databaseTypePlaceholder": "種別を選択",
+      "successToast": "ERDドキュメントを作成しました"
+    },
+    "edit": {
+      "title": "{{name}}を編集",
+      "notice": "変更できるのは名前と説明のみです。",
+      "successToast": "ドキュメントを更新しました"
+    },
+    "delete": {
+      "title": "{{name}}を削除",
+      "description": "{{name}}を削除します。元に戻せません。",
+      "confirm": "削除",
+      "successToast": "{{name}}を削除しました"
+    },
+    "viewer": {
+      "close": "ウィンドウを閉じる"
+    },
+    "editor": {
+      "toolbar": {
+        "save": "保存",
+        "undo": "元に戻す",
+        "redo": "やり直し",
+        "zoomIn": "ズームイン",
+        "zoomOut": "ズームアウト",
+        "fit": "画面に合わせる",
+        "readOnly": "読み取り専用",
+        "view": "表示",
+        "nameMode": {
+          "label": "カラム名の表示",
+          "physical": "物理名のみ",
+          "logical": "論理名のみ",
+          "both": "物理名+論理名"
+        },
+        "columnMode": {
+          "label": "カラム表示",
+          "all": "すべてのカラム",
+          "keys": "キーのみ (PK・FK)"
+        },
+        "dbmsLocked": "対象DBMS — ドキュメント作成時に固定されます",
+        "autoLayout": "自動レイアウト",
+        "logicalNames": "論理名推論",
+        "autoLayoutFailed": "自動レイアウトに失敗しました",
+        "ddl": "SQL生成",
+        "sync": "DB同期",
+        "image": "画像を書き出す",
+        "crown": "ドキュメントファイルを書き出す",
+        "share": "共有",
+        "history": "バージョン履歴",
+        "areaFilter": {
+          "label": "グループ",
+          "all": "すべて表示"
+        }
+      },
+      "explorer": {
+        "title": "モデルエクスプローラー",
+        "toggle": "エクスプローラー",
+        "searchPlaceholder": "オブジェクトを検索 (テーブル・カラム・リレーション・メモ)",
+        "searchLabel": "オブジェクト検索",
+        "groupTables": "テーブル",
+        "groupRelationships": "リレーション",
+        "groupNotes": "メモ",
+        "noResults": "一致するオブジェクトがありません",
+        "emptyDocument": "ドキュメントは空です",
+        "matchCount": "{{count}}件",
+        "untitledNote": "無題のメモ",
+        "groupUngrouped": "未分類"
+      },
+      "clipboard": {
+        "copyLabel": "コピー"
+      },
+      "shortcuts": {
+        "open": "キーボードショートカット",
+        "title": "キーボードショートカット",
+        "description": "入力欄に入力中は、このヘルプ(Ctrl/Cmd+/)以外のショートカットは無効になります",
+        "group": {
+          "editing": "編集",
+          "navigation": "選択・ナビゲーション",
+          "move": "移動",
+          "canvas": "キャンバス"
+        },
+        "row": {
+          "undo": "元に戻す",
+          "redo": "やり直し",
+          "save": "即時保存",
+          "copy": "コピー",
+          "paste": "貼り付け",
+          "duplicate": "複製",
+          "search": "検索 (エクスプローラー)",
+          "selectAll": "すべて選択",
+          "deselect": "選択解除",
+          "rangeSelect": "選択に追加",
+          "help": "このヘルプ",
+          "nudge": "選択オブジェクトを移動 (1px)",
+          "nudgeFast": "選択オブジェクトを移動 (10px)",
+          "pan": "キャンバスの移動",
+          "contextMenu": "コンテキストメニュー",
+          "delete": "削除"
+        },
+        "keys": {
+          "rightClick": "右クリック"
+        },
+        "readOnlyNote": "編集・移動・削除のショートカットには編集権限が必要です"
+      },
+      "logicalNames": {
+        "title": "論理名の自動推論",
+        "description": "空欄または物理名と重複している論理名を、システム辞書(グローバル・多言語)とワークスペース辞書で埋めます。システムのラベルは、選択した推論言語の表記でドキュメントに記録されます",
+        "empty": "推論対象の論理名がありません — 既に埋まっているか、辞書に一致するトークンがありません",
+        "dictionaryFailed": "ワークスペース辞書を読み込めませんでした — システム辞書のみで計算します",
+        "nothingToApply": "適用する項目がありません",
+        "applied": "{{count}}件の論理名を埋めました — 元に戻す(Ctrl/Cmd+Z)で復元できます",
+        "ruleNote": "既存の論理名(リバースエンジニアリングで持ち込まれたDBコメント)はそのまま残ります",
+        "ddlNote": "推論した論理名は、生成SQLおよびマイグレーションDDLのCOMMENT句に出力されます",
+        "customCount": "ワークスペース辞書: {{count}}件",
+        "languageLabel": "推論言語",
+        "apply": "{{count}}件を適用",
+        "systemDictionaryFailed": "システム辞書を読み込めませんでした — ワークスペース辞書のみで計算します"
+      },
+      "termDictionary": {
+        "title": "ワークスペース用語辞書",
+        "toggle": "用語辞書",
+        "tabStandard": "ワークスペース",
+        "tabSystem": "システム",
+        "term": "物理トークン",
+        "label": "論理ラベル",
+        "labelPlaceholder": "例: ユーザー",
+        "add": "追加",
+        "fieldRequired": "必須",
+        "termPattern": "トークンにスペースは使用できません",
+        "loadFailed": "辞書を読み込めませんでした",
+        "empty": "用語がまだありません",
+        "hint": "同じトークンを再登録すると上書きされます。フルネーム(user_id)の登録はトークン結合より優先されます",
+        "searchPlaceholder": "用語を検索 (トークン · ラベル)",
+        "count": "{{count}}件",
+        "viewerNote": "閲覧のみ — 編集には編集者ロールが必要です",
+        "systemHint": "管理者が管理するグローバル辞書(読み取り専用) — ワークスペース辞書の登録が優先されます",
+        "overridden": "上書き済み",
+        "type": "型",
+        "typePlaceholder": "例: VARCHAR(100) — 任意",
+        "typeTooLong": "型は100文字以内で入力してください",
+        "addTitle": "用語を追加",
+        "editTitle": "用語を編集",
+        "createSuccess": "用語を追加しました",
+        "updateSuccess": "用語を更新しました",
+        "systemLoadFailed": "システム辞書を読み込めませんでした",
+        "systemEmpty": "システム辞書は空です — 管理者が登録するとここに表示されます",
+        "alphabetAll": "すべて",
+        "alphabetLabel": "頭文字",
+        "letterEtc": "#"
+      },
+      "ddl": {
+        "title": "SQLスクリプト",
+        "tableCount": "テーブル {{tables}}件 · リレーション {{relationships}}件",
+        "warningTitle": "生成時の注意",
+        "loading": "SQLスクリプトを生成中…",
+        "error": "SQLスクリプトの生成に失敗しました",
+        "unsavedNote": "未保存の変更があります — スクリプトは最後に保存した版が基準になります",
+        "copy": "コピー",
+        "copied": "SQLスクリプトをコピーしました",
+        "copyFailed": "コピーに失敗しました",
+        "download": "ダウンロード"
+      },
+      "deploy": {
+        "button": "デプロイ",
+        "title": "データベースにデプロイ",
+        "description": "「{{model}}」のDDLを選択した接続のデータベースで実行します",
+        "warning": "対象データベースにテーブルと制約を作成します。既存オブジェクトと競合するステートメントは失敗として記録され、残りは続行されます。",
+        "connection": "対象接続",
+        "noMatchingConnection": "このドキュメントと同じDBMS({{dbms}})の接続がありません — 接続管理で登録してください",
+        "run": "デプロイ",
+        "running": "デプロイ中…",
+        "summary": "{{total}}件のステートメント — 成功{{executed}}件・失敗{{failed}}件"
+      },
+      "sync": {
+        "title": "データベースとの同期",
+        "description": "「{{model}}」を接続元({{connection}})の現在のスキーマと比較します",
+        "preserveNote": "テーブルの色・位置・メモなどドキュメント専用の属性は保持されます。適用後は元に戻す(Ctrl+Z)1回で全体を復元できます。",
+        "dirtyNote": "未保存の変更があります — 比較には画面の現在の状態を使用します",
+        "compare": "比較",
+        "comparing": "比較中…",
+        "compareFailed": "スキーマの取得に失敗しました",
+        "noChanges": "変更はありません — ドキュメントはデータベースと一致しています",
+        "apply": "適用",
+        "applied": "同期を適用しました — 元に戻す1回で復元できます",
+        "counts": "追加 {{add}} · 変更 {{update}} · 削除 {{remove}}",
+        "skippedWarning": "一部のオブジェクトをスキップしました: {{items}}",
+        "kind": {
+          "table": "テーブル",
+          "column": "カラム",
+          "primaryKey": "主キー",
+          "uniqueKey": "ユニークキー",
+          "relationship": "リレーション"
+        },
+        "action": {
+          "add": "追加",
+          "update": "変更",
+          "remove": "削除"
+        },
+        "detail": {
+          "reasonMissingInDb": "DBに存在しないリレーション",
+          "reasonRemapping": "マッピング再割り当て",
+          "tableNotInDb": "DBに存在しないテーブル",
+          "columnNotInDb": "DBに存在しないカラム",
+          "pkAbsentInDb": "DBに主キーなし",
+          "columnCount": "カラム {{count}}件",
+          "uniqueCount": "{{from}} → {{to}}件"
+        }
+      },
+      "history": {
+        "title": "バージョン履歴",
+        "description": "「{{model}}」の保存履歴 — 保存のたびにバージョンが作成されます",
+        "searchPlaceholder": "メモを検索 (部分一致)",
+        "empty": "保存されたバージョンがまだありません",
+        "loadFailed": "バージョン履歴を読み込めませんでした",
+        "current": "現在",
+        "view": "表示",
+        "compare": "比較",
+        "editMemo": "メモを編集",
+        "memoPlaceholder": "このバージョンのメモ (空欄で削除)",
+        "saveMemo": "メモを保存",
+        "memoSaved": "メモを保存しました",
+        "restore": "このバージョンに戻す",
+        "restoreConfirmTitle": "バージョンの復元",
+        "restoreConfirmDescription": "バージョン{{version}}のドキュメントを新しいバージョンとして保存します。現在のドキュメントはバージョン履歴にそのまま残ります。",
+        "restored": "バージョン{{version}}に戻しました",
+        "backToDoc": "ドキュメントに戻る",
+        "notFound": "バージョンが見つかりません",
+        "render": {
+          "created": "ドキュメントを作成",
+          "reverseCreated": "DB取り込みで作成 — テーブル {{tables}}件 · リレーション {{relationships}}件",
+          "sqlImported": "SQL取り込みで作成 — テーブル {{tables}}件 · リレーション {{relationships}}件",
+          "restoredFrom": "バージョン{{version}}から復元",
+          "layoutOnly": "レイアウト変更のみ",
+          "counts": "追加 {{add}} · 変更 {{update}} · 削除 {{remove}} · 移動 {{move}}",
+          "truncated": "一部の変更を省略"
+        },
+        "kind": {
+          "table": "テーブル",
+          "column": "カラム",
+          "primaryKey": "主キー",
+          "uniqueKey": "ユニークキー",
+          "index": "インデックス",
+          "relationship": "リレーション",
+          "note": "メモ",
+          "node": "ノード",
+          "area": "グループ"
+        },
+        "action": {
+          "add": "追加",
+          "update": "変更",
+          "remove": "削除",
+          "move": "移動"
+        }
+      },
+      "compare": {
+        "title": "バージョン比較",
+        "range": "v{{from}} → v{{to}}",
+        "baseLabel": "基準バージョン",
+        "targetLabel": "比較バージョン",
+        "canvasNote": "キャンバスはv{{to}}を表示 — 変更されたテーブルに+/~のバッジが付きます",
+        "canvasNoteLayoutOnly": "バッジは構造変更がある場合にのみ表示されます — この比較はレイアウトのみの変更です",
+        "removedTitle": "このバージョンで削除されたテーブル",
+        "exit": "比較を閉じる",
+        "loadFailed": "基準バージョンを読み込めませんでした",
+        "noChanges": "2つのバージョン間に変更はありません",
+        "noTableGroup": "キャンバス外の変更",
+        "mark": {
+          "add": "追加されたテーブル",
+          "update": "変更されたテーブル",
+          "remove": "削除されたテーブル"
+        },
+        "migrationDdl": "マイグレーションDDL"
+      },
+      "contextMenu": {
+        "createTable": "新規エンティティ",
+        "createNote": "新規メモ",
+        "tableInfo": "テーブル情報",
+        "removeTable": "テーブルを削除",
+        "removeNote": "メモを削除",
+        "editRelationship": "リレーションを編集",
+        "removeRelationship": "リレーションを削除",
+        "createGroup": "新規グループ",
+        "addToGroup": "グループに追加",
+        "removeFromGroup": "グループから除外",
+        "editGroup": "グループを編集",
+        "exitGroupView": "すべてのテーブルに戻る"
+      },
+      "table": {
+        "addColumn": "カラムを追加",
+        "columnName": "カラム名",
+        "termSuggestLabel": "ワークスペース辞書の候補",
+        "physicalName": "テーブル名",
+        "dataType": "データ型",
+        "length": "長さ",
+        "precision": "精度",
+        "scale": "スケール",
+        "primaryKey": "主キー",
+        "nullable": "NOT NULL",
+        "autoIncrement": "自動採番",
+        "foreignKey": "外部キー",
+        "removeColumn": "カラムを削除",
+        "info": "テーブル情報",
+        "dragHandle": "ドラッグして移動",
+        "logicalName": "論理名",
+        "logicalNamePlaceholder": "論理名 (任意)",
+        "columnLogicalName": "カラム論理名",
+        "reorder": "カラムの並べ替え — ドラッグして移動",
+        "nnPkLocked": "主キーカラムは常にNOT NULLです",
+        "nameDuplicate": "既に存在するテーブル名です: {{name}}"
+      },
+      "note": {
+        "placeholder": "メモを入力…",
+        "text": "メモ本文",
+        "title": "メモのタイトル",
+        "untitled": "メモ",
+        "color": "メモの色",
+        "bandHint": "ドラッグで移動 · ダブルクリックで編集",
+        "remove": "メモを削除",
+        "edit": "メモを編集",
+        "editDescription": "タイトル・アクセントカラー・関連テーブルを設定します。色は選択した瞬間に反映されます。",
+        "customColor": "カスタムカラー",
+        "linkedTable": "関連テーブル",
+        "noLink": "なし",
+        "linkedHint": "メモをテーブルの上にドロップして設定することもできます。自動レイアウトでそのテーブルの近くに配置されます。"
+      },
+      "relationship": {
+        "createTitle": "リレーションを作成",
+        "editTitle": "リレーションを編集",
+        "parent": "親テーブル (1)",
+        "child": "子テーブル (N)",
+        "swap": "親/子を入れ替え",
+        "fkPreview": "作成されるFKカラム",
+        "type": "リレーション種別",
+        "type_ONE_TO_ONE": "1:1",
+        "type_ONE_TO_MANY": "1:N",
+        "identifying": "識別関係",
+        "identifyingHint": "FKカラムが子テーブルの主キーに含まれ、NOT NULLになります。",
+        "parentMultiplicity": "親 (1) の多重度",
+        "childMultiplicity": "子 (N) の多重度",
+        "multiplicity_ZERO_OR_ONE": "0または1 (○|)",
+        "multiplicity_EXACTLY_ONE": "ちょうど1 (|)",
+        "multiplicity_ZERO_OR_MORE": "0以上 (○<)",
+        "multiplicity_ONE_OR_MORE": "1以上 (|<)",
+        "fkName": "制約名",
+        "onDelete": "ON DELETE",
+        "onUpdate": "ON UPDATE",
+        "action_NO_ACTION": "アクションなし",
+        "action_RESTRICT": "制限(RESTRICT)",
+        "action_CASCADE": "カスケード(CASCADE)",
+        "action_SET_NULL": "NULLに設定",
+        "action_SET_DEFAULT": "デフォルトに設定",
+        "noPk": "親テーブルに主キーがないため、FKを作成できません。",
+        "uniqueHint": "非識別の1:1リレーションは、全FKカラムにユニークキーを自動作成して1:1を保証します。",
+        "optionalityHint": "親がちょうど1 (|) ならFKはNOT NULL、0または1 (○|) ならNULLを許可します。子側の多重度は表記にのみ反映されます。",
+        "duplicate": "2つのテーブル間に設定できるリレーションは1つです: {{parent}} → {{child}}",
+        "remove": "リレーションを削除"
+      },
+      "tableInfo": {
+        "title": "テーブル情報",
+        "physicalName": "物理名",
+        "logicalName": "論理名",
+        "logicalNamePlaceholder": "例: 注文",
+        "comment": "説明",
+        "commentPlaceholder": "テーブルの説明",
+        "nameRequired": "物理名は必須です",
+        "color": "色",
+        "colorDefault": "デフォルト",
+        "groupLabel": "グループ",
+        "colorGroupLocked": "グループに属するテーブルはグループの色を使用します — 色はグループ編集で変更してください"
+      },
+      "savedToast": "ドキュメントを保存しました",
+      "draftRestored": "未保存の編集を復元しました",
+      "conflict": {
+        "title": "バージョン競合",
+        "description": "別のクライアントが先に保存しました。再読み込みすると、未保存のローカル変更は破棄されます。",
+        "reload": "再読み込み",
+        "keep": "編集を続ける"
+      },
+      "remoteChange": {
+        "banner": "別のユーザーがこのドキュメントを更新しました。今保存すると競合します。",
+        "reload": "サーバーの版を読み込む",
+        "synced": "別のユーザーの変更を読み込みました"
+      },
+      "presence": {
+        "label": "閲覧中"
+      },
+      "chat": {
+        "label": "ドキュメントチャット",
+        "inputPlaceholder": "メッセージを送信",
+        "send": "送信",
+        "empty": "まだ会話がありません",
+        "close": "閉じる"
+      },
+      "parentNoPk": "テーブル{{name}}に主キーがないため、親 (1) 側にはできません",
+      "parseError": "ドキュメントの内容を解析できません。",
+      "columnInfo": {
+        "title": "カラム情報",
+        "physicalName": "物理名",
+        "logicalName": "論理名",
+        "logicalNamePlaceholder": "論理名 (任意)",
+        "defaultValue": "デフォルト値",
+        "defaultValuePlaceholder": "例: 0, NOW()",
+        "comment": "コメント",
+        "commentPlaceholder": "カラムの説明",
+        "nameRequired": "物理名は必須です",
+        "pk": "PK (主キー)",
+        "nullable": "NULL許可",
+        "autoIncrement": "自動採番",
+        "dataType": "型",
+        "length": "長さ",
+        "precision": "精度",
+        "scale": "スケール",
+        "pkHint": "PKとして保存するとNOT NULLが強制され、カラムは先頭(PKブロック)に移動します。",
+        "aiHint": "自動採番は整数型のPK(INT/BIGINT/SMALLINT)でのみ使用できます。"
+      },
+      "key": {
+        "unique": "ユニーク",
+        "index": "インデックス",
+        "addUnique": "ユニークを追加",
+        "addIndex": "インデックスを追加",
+        "titleAdd": "{{kind}}を追加",
+        "titleEdit": "{{kind}}を編集",
+        "name": "名前",
+        "nameRequired": "名前は必須です",
+        "nameDuplicate": "このドキュメント内に同じ名前のキーが既に存在します",
+        "columns": "カラム",
+        "columnsRequired": "少なくとも1つのカラムを選択してください",
+        "columnsHint": "チェックした順序が複合キーのカラム順になります — 矢印で調整できます",
+        "moveUp": "上へ移動",
+        "moveDown": "下へ移動",
+        "noColumns": "このテーブルにはカラムがありません",
+        "remove": "キーを削除",
+        "order": "ソート順",
+        "orderHint": "インデックスはカラムごとにソート順(ASC/DESC)を指定できます"
+      },
+      "dbms": {
+        "common": "共通(論理)"
+      },
+      "relation": {
+        "startMenu": "リレーションを開始",
+        "pickType": "リレーション種別",
+        "oneToMany": "1:N",
+        "oneToOne": "1:1",
+        "back": "戻る",
+        "nonIdentifying": "非識別関係",
+        "identifying": "識別関係",
+        "pickTarget": "対象テーブルをクリック · 自己参照は同じテーブルをクリック · Escでキャンセル",
+        "pickKind": "リレーションの種類",
+        "pickKindHint": "開始テーブル=親 (1) → 対象テーブル (N) にFKカラムが作成されます · 識別関係ではFKが子の主キーに含まれます(実線)",
+        "cancel": "キャンセル",
+        "multiplicity": "多重度",
+        "childSide": "子 (N) — 対象テーブル",
+        "parentSide": "親 (1) — 開始テーブル"
+      },
+      "image": {
+        "exported": "画像をダウンロードしました",
+        "failed": "画像の書き出しに失敗しました",
+        "viewport": "表示範囲 (PNG)",
+        "document": "ドキュメント全体 (PNG)",
+        "progress": {
+          "prepare": "キャプチャ範囲を計算中…",
+          "render": "画像をレンダリング中… 大きなドキュメントには時間がかかることがあります",
+          "save": "ファイルを保存中…"
+        }
+      },
+      "crown": {
+        "exported": ".crownドキュメントファイルをダウンロードしました",
+        "failed": "ドキュメントファイルの書き出しに失敗しました"
+      },
+      "migration": {
+        "titleVersion": "マイグレーションDDL — v{{from}} → v{{to}}",
+        "titleConnection": "マイグレーションDDL — ドキュメント ↔ DB",
+        "subtitle": "2つのスナップショットの差分をALTER文として生成します。実行は対象外です。",
+        "statementCount": "{{count}}件のステートメント",
+        "warningTitle": "警告",
+        "loading": "マイグレーションDDLを生成中…",
+        "error": "マイグレーションDDLの生成に失敗しました",
+        "button": "マイグレーションDDL"
+      },
+      "area": {
+        "defaultName": "グループ",
+        "edit": "グループを編集",
+        "view": "グループを表示",
+        "memberCount": "メンバーテーブル"
+      },
+      "areaDialog": {
+        "title": "グループを編集",
+        "name": "名前",
+        "nameRequired": "名前は必須です",
+        "description": "説明",
+        "descriptionPlaceholder": "このグループの用途 (任意)",
+        "color": "色",
+        "tables": "メンバーテーブル",
+        "tablesHint": "チェックするとこのグループのメンバーになります",
+        "noTables": "このドキュメントにテーブルがありません"
+      }
+    },
+    "import": {
+      "button": ".crownを取り込む",
+      "successToast": "「{{name}}」を取り込みました",
+      "errors": {
+        "SYNTAX": "JSON構文エラーです — ファイルが破損している可能性があります",
+        "NOT_CROWN": ".crownドキュメントファイルではありません",
+        "NEWER_VERSION": "新しい形式のファイルです — アプリを更新してからもう一度お試しください",
+        "INVALID_MODEL": "ドキュメントのメタデータ(名前・データベース種別)が正しくありません",
+        "INVALID_CONTENT": "ドキュメントの内容が正しくありません — スキーマが一致しません"
+      }
+    },
+    "share": {
+      "title": "ドキュメントを共有",
+      "description": "「{{name}}」を共有します — リンクを知っている誰でも読み取り専用で閲覧できます。",
+      "issue": "リンクを作成",
+      "copy": "リンクをコピー",
+      "revoke": "取り消す",
+      "copiedToast": "共有リンクをコピーしました",
+      "copyFailed": "コピーに失敗しました",
+      "issuedToast": "共有リンクを作成しました",
+      "revokedToast": "共有リンクを取り消しました",
+      "empty": "リンクはまだありません",
+      "period": {
+        "unlimited": "無期限 (期間制限なし)",
+        "custom": "期間を指定",
+        "startsAt": "開始日時",
+        "endsAt": "終了日時",
+        "from": "{{at}}から",
+        "until": "{{at}}まで"
+      },
+      "error": {
+        "incompletePeriod": "開始と終了の日時を両方入力してください",
+        "reversedPeriod": "終了は開始より後である必要があります"
+      }
+    }
+  },
+  "shareViewer": {
+    "badge": "共有",
+    "home": "ホーム",
+    "notFound": "共有ドキュメントが見つかりません。"
+  },
+  "releaseNoteViewer": {
+    "badge": "リリースノート",
+    "home": "ホーム",
+    "notFound": "リリースノートが見つかりません。",
+    "contentLanguage": "本文の言語",
+    "fallbackNotice": "{{lang}}の本文がないため、別の言語で表示しています。"
+  },
+  "connection": {
+    "list": {
+      "description": "リバースエンジニアリングとデプロイで使用するデータベースの認証情報を管理します。パスワードは暗号化して保存されます。",
+      "newConnection": "接続を追加",
+      "columns": {
+        "name": "名前",
+        "dbmsType": "DBMS",
+        "endpoint": "ホスト",
+        "database": "データベース",
+        "username": "ユーザー",
+        "createdBy": "作成者"
+      },
+      "empty": {
+        "title": "接続がまだありません",
+        "description": "データベース接続を登録すると、スキーマをドキュメントとして取り込めます。",
+        "cta": "接続を追加"
+      }
+    },
+    "dialog": {
+      "createTitle": "接続を追加",
+      "editTitle": "接続を編集",
+      "notice": "パスワードは暗号化して保存されます。保存後に接続テストを行ってください。",
+      "name": "名前",
+      "namePlaceholder": "開発用PG",
+      "dbmsType": "DBMS",
+      "port": "ポート",
+      "host": "ホスト",
+      "database": "データベース",
+      "schema": "スキーマ",
+      "schemaPlaceholder": "public (空欄の場合は既定スキーマ)",
+      "schemaPattern": "スキーマ名は半角英数字とアンダースコアで100文字以内にしてください",
+      "username": "ユーザー",
+      "password": "パスワード",
+      "fieldRequired": "この項目は必須です",
+      "createSuccess": "接続を作成しました",
+      "updateSuccess": "接続を更新しました"
+    },
+    "test": {
+      "button": "{{name}}の接続テスト",
+      "pending": "テスト中…",
+      "successToast": "{{name}} 接続成功 ({{latency}}ms)",
+      "failToast": "{{name}} 接続失敗 — {{message}}",
+      "connectedBadge": "接続済み · {{latency}}ms",
+      "connectedBadgeNoLatency": "接続済み",
+      "failedBadge": "失敗"
+    },
+    "delete": {
+      "title": "接続{{name}}を削除",
+      "description": "接続「{{name}}」を削除しますか? この接続で作成したドキュメントは保持されます。",
+      "successToast": "接続を削除しました"
+    }
+  },
+  "managed": {
+    "sectionTitle": "サービス提供データベース",
+    "sectionDescription": "発行するとドキュメント専用のスキーマが作成され、接続として登録されます。デプロイと取り込みにすぐ利用できます。",
+    "issue": "発行",
+    "issuing": "発行中…",
+    "usage": "{{used}} / {{limit}}",
+    "exhausted": "上限に到達",
+    "inactive": "無効",
+    "issueSuccessToast": "発行しました — 接続「{{connection}}」として登録しました。",
+    "list": {
+      "schema": "スキーマ",
+      "instance": "インスタンス",
+      "connection": "接続",
+      "createdBy": "発行者"
+    },
+    "revokeTitle": "{{schema}}を取り消す",
+    "revokeDescription": "スキーマ「{{schema}}」とその中のすべてのデータが削除され、発行された接続も除去されます。元に戻せません。",
+    "revokeConfirm": "取り消す",
+    "revokeSuccessToast": "「{{schema}}」を取り消しました。",
+    "credential": {
+      "button": "{{schema}}の接続情報",
+      "title": "発行されたデータベースの認証情報",
+      "description": "この発行に接続するためのアドレス・アカウント・パスワードです — DBeaverなどの外部クライアントから利用できます。",
+      "host": "アドレス",
+      "database": "データベース",
+      "schema": "スキーマ",
+      "username": "ユーザー名",
+      "password": "パスワード",
+      "copy": "コピー",
+      "copied": "コピーしました。",
+      "reveal": "パスワードを表示",
+      "hide": "パスワードを隠す"
+    }
+  },
+  "reverse": {
+    "openButton": "DBから取り込む",
+    "rowAction": "{{name}}をドキュメントとして取り込む",
+    "title": "データベースをドキュメントとして取り込む",
+    "notice": "選択したデータベースからテーブルとリレーションを読み取り、新しいERDドキュメントを作成します。",
+    "connection": "接続",
+    "noConnection": "登録された接続がありません",
+    "modelName": "ドキュメント名",
+    "modelNamePlaceholder": "取り込んだスキーマのERD",
+    "descriptionPlaceholder": "このスキーマに関するメモ (任意)",
+    "submit": "取り込み",
+    "fieldRequired": "この項目は必須です",
+    "defaultModelName": "{{name}} ERD",
+    "successToast": "「{{name}}」を作成しました — テーブル {{tables}}件 · リレーション {{relationships}}件",
+    "skippedToast": "スキップした外部キー: {{skipped}}"
+  },
+  "sqlImport": {
+    "openButton": "SQLを取り込む",
+    "title": "SQLスクリプトからドキュメントを作成",
+    "notice": "DDLテキスト(CREATE TABLE文)を読み取り、新しいERDドキュメントを作成します — 接続は不要です。",
+    "databaseType": "データベース種別",
+    "noDatabaseType": "利用できる種別がありません",
+    "name": "ドキュメント名",
+    "namePlaceholder": "SQL ERD",
+    "descriptionPlaceholder": "このDDLの用途 (任意)",
+    "ddl": "DDLスクリプト",
+    "ddlPlaceholder": "CREATE TABLE members (\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\n  ...\n);",
+    "readFile": ".sqlファイルを読み込む",
+    "fileTooLarge": "ファイルが1MBを超えています — 内容を分割して貼り付けてください",
+    "preview": "プレビュー",
+    "previewResult": "テーブル {{tables}}件 · リレーション {{relationships}}件",
+    "columnCount": "カラム {{count}}件",
+    "fkCount": "FK {{count}}件",
+    "previewSkipped": "スキップしたステートメント",
+    "submit": "ドキュメントを作成",
+    "fieldRequired": "必須",
+    "successToast": "「{{name}}」を作成しました — テーブル {{tables}}件 · リレーション {{relationships}}件",
+    "skippedToast": "スキップしたステートメント: {{skipped}}"
+  },
+  "landing": {
+    "badge": "無料・オープンソースのERDエディター",
+    "hero": {
+      "title": "1枚のダイアグラムから",
+      "titleAccent": "動くデータベースへ",
+      "description": "設計し、一緒に磨き、そのまま実行 — データ作業のすべてをブラウザ1つで。"
+    },
+    "highlight": {
+      "engines": "PostgreSQL · MySQL",
+      "quota": "1アカウントあたり最大5個",
+      "free": "無料"
+    },
+    "steps": {
+      "label": "利用の流れ",
+      "draw": {
+        "title": "描く",
+        "description": "インストールも設定も不要。ブラウザーでそのままERDを描けます。"
+      },
+      "refine": {
+        "title": "一緒に磨く",
+        "description": "同じドキュメントをチームで編集し、変更はリアルタイムでマージされます。"
+      },
+      "run": {
+        "title": "実行する",
+        "description": "設計どおりの形のPostgreSQLまたはMySQLデータベースを無料で受け取れます。"
+      }
+    },
+    "cta": {
+      "start": "無料で始める",
+      "login": "ログイン",
+      "dashboard": "ダッシュボード",
+      "github": "GitHub",
+      "goApp": "アプリへ移動"
+    },
+    "features": {
+      "heading": "主な機能",
+      "managed": {
+        "title": "無料マネージドデータベース",
+        "description": "1アカウントあたり最大5個のPostgreSQLまたはMySQL開発用データベースを無料で利用できます。テスト済みですぐ接続できます。"
+      },
+      "editor": {
+        "title": "ブラウザーERDエディター",
+        "description": "インストール・設定不要。Crow's Foot表記法でテーブルとリレーションをブラウザー上でそのまま描けます。"
+      },
+      "collaboration": {
+        "title": "リアルタイム共同編集",
+        "description": "同じドキュメントを一緒に編集 — 在席状況と変更がリアルタイムで同期されます。"
+      },
+      "connections": {
+        "title": "自分のデータベースを持ち込む",
+        "description": "既に運用しているデータベースの接続プロファイルを保存し、ワンクリックでテストできます。"
+      },
+      "roles": {
+        "title": "ワークスペースとチームのロール",
+        "description": "オーナー・編集者・コメント投稿者・閲覧者 — ロールベースの権限でチーム作業を安全に管理します。"
+      },
+      "opensource": {
+        "title": "オープンソース",
+        "description": "CrowfootのすべてのコードはGitHubで公開されています。読んで、動かして、貢献できます。"
+      }
+    },
+    "footer": {
+      "opensource": "すべてのコードはGitHubで公開されています",
+      "terms": "利用規約"
+    },
+    "gallery": {
+      "heading": "いま共有されているドキュメント"
+    },
+    "releaseNotes": {
+      "heading": "最新リリース"
+    },
+    "seo": {
+      "title": "Crowfoot — 無料ERDエディター · 設計から実DBの構築まで",
+      "description": "ブラウザでERDを描き、リアルタイムで共同編集し、実際のデータベースまで作成できる無料のデータモデリングツール。"
+    }
+  },
+  "terms": {
+    "title": "利用規約",
+    "updated": "2026年9月時点",
+    "back": "← ホーム",
+    "sections": [
+      {
+        "heading": "サービスについて",
+        "paragraphs": [
+          "Crowfootは、ブラウザー上でERDを設計・共同編集するツールと、開発用の無料マネージドデータベースを提供するサービスです。"
+        ]
+      },
+      {
+        "heading": "無料マネージドデータベース",
+        "paragraphs": [
+          "1アカウントあたり最大5個のPostgreSQLまたはMySQLデータベースを、開発・学習・テスト目的で無料で利用できます。",
+          "データの永続性は保証されません。運営上の状況により、事前通知なくデータベースの削除・提供停止・仕様変更が行われることがあります。",
+          "重要なデータは必ずご自身でバックアップしてください。"
+        ]
+      },
+      {
+        "heading": "提供条件の変更",
+        "paragraphs": [
+          "無料提供の内容(対応エンジン、1アカウントあたりの上限、容量など)は、事前通知なしに変更または終了される場合があります。"
+        ]
+      },
+      {
+        "heading": "責任の制限",
+        "paragraphs": [
+          "本サービスは「現状有姿」で提供され、データ損失・サービス中断・本サービスの利用によって生じた損害について責任を負いません。",
+          "サービスの目的外の利用があった場合、アカウントおよびデータベースを制限する場合があります。"
+        ]
+      }
+    ]
+  },
+  "community": {
+    "board": {
+      "intro": "機能のアイデアや見つけたバグを気軽に投稿してください。管理者が確認して回答します。",
+      "newPost": "新規投稿",
+      "searchPlaceholder": "タイトルを検索",
+      "table": {
+        "title": "タイトル",
+        "author": "投稿者",
+        "comments": "コメント",
+        "createdAt": "作成日"
+      },
+      "empty": {
+        "all": "投稿はまだありません。",
+        "search": "検索結果がありません。"
+      }
+    },
+    "boardName": {
+      "RELEASE_NOTE": "リリースノート",
+      "FEEDBACK": "フィードバック"
+    },
+    "detail": {
+      "back": "一覧に戻る",
+      "comments": "コメント",
+      "confirmDeleteTitle": "投稿を削除",
+      "confirmDeleteDescription": "この投稿とすべてのコメントが削除されます。",
+      "deletedToast": "投稿を削除しました。"
+    },
+    "form": {
+      "createTitle": "新規投稿",
+      "editTitle": "投稿を編集",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "タイトルを入力",
+      "titleRequired": "タイトルを入力してください。",
+      "contentLabel": "本文",
+      "contentRequired": "本文を入力してください。",
+      "submitCreate": "投稿",
+      "submitEdit": "保存",
+      "createdToast": "投稿を作成しました。",
+      "updatedToast": "投稿を更新しました。",
+      "imageTooLarge": "画像が大きすぎます。512KB以下の画像のみ添付できます。",
+      "imageFailed": "画像を追加できませんでした。",
+      "titleRequiredOne": "タイトルは少なくとも1つの言語で入力してください。",
+      "contentRequiredOne": "本文は少なくとも1つの言語で入力してください。",
+      "untranslated": "未作成"
+    },
+    "comment": {
+      "placeholder": "コメントを入力",
+      "submit": "投稿",
+      "empty": "最初のコメントを投稿してみましょう。",
+      "edit": "コメントを編集",
+      "createdToast": "コメントを作成しました。",
+      "updatedToast": "コメントを更新しました。",
+      "deletedToast": "コメントを削除しました。",
+      "confirmDeleteTitle": "コメントを削除",
+      "confirmDeleteDescription": "このコメントを削除します。"
+    },
+    "recent": {
+      "title": "最近の投稿",
+      "commentCount": "コメント{{count}}件",
+      "empty": {
+        "title": "投稿はまだありません。",
+        "description": "リリースノートとフィードバックがここに表示されます。"
+      }
+    }
+  }
+}

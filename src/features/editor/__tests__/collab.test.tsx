@@ -65,7 +65,7 @@ describe('useModelCollab — 협업 2차 실시간 채널', () => {
     expect(client.activate).toHaveBeenCalledTimes(1)
     // 같은 오리진 프록시 주소 — 브라우저 스킴을 따라간다
     expect(String(client.config.brokerURL)).toContain('/ws/websocket')
-    expect(client.config.connectHeaders).toEqual({ 'X-USER-ID': 'u1', 'X-USER-NAME': '앨리스' })
+    expect(client.config.connectHeaders).toEqual({ 'X-USER-ID': 'u1', 'X-USER-NAME': '앨리스', 'accept-language': 'ko' })
 
     act(() => connect(client))
     expect(client.subscribe).toHaveBeenCalledWith('/topic/models/m1/presence', expect.any(Function))
@@ -305,6 +305,7 @@ describe('useModelCollab — 협업 2차 실시간 채널', () => {
       'X-USER-ID': 'u1',
       'X-USER-NAME': '앨리스',
       'X-USER-AVATAR': 'https://avatars.githubusercontent.com/u/1?v=4',
+      'accept-language': 'ko',
     })
 
     renderHook(() => useModelCollab({ modelId: 'm1', userId: 'u1', userName: '앨리스' }))
@@ -319,6 +320,7 @@ describe('useModelCollab — 협업 2차 실시간 채널', () => {
       'X-USER-ID': 'u1',
       'X-USER-NAME': '앨리스',
       'X-USER-LOGIN': 'octocat',
+      'accept-language': 'ko',
     })
 
     // 수신 측 — 이벤트의 userLogin(핸들)이 메시지에 그대로 실린다

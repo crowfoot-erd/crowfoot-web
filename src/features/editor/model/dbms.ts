@@ -75,7 +75,8 @@ export type AutoIncrementKind =
 
 export interface DbmsTemplate {
   id: string
-  label: string
+  /** 표시 라벨 — MySQL 등 고유명. 공용(common)은 번들 문구(model.editor.dbms.common)를 쓰므로 없다 */
+  label?: string
   /** 공용 논리 코드 → 이 DBMS의 물리 표기. 없는 코드는 공용 코드를 그대로 쓴다 */
   types: Record<string, string>
   autoIncrement: AutoIncrementKind
@@ -84,7 +85,6 @@ export interface DbmsTemplate {
 export const DBMS_TEMPLATES: DbmsTemplate[] = [
   {
     id: 'common',
-    label: '공용(논리)',
     types: {},
     autoIncrement: 'attribute',
   },

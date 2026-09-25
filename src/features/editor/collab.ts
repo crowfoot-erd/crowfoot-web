@@ -11,10 +11,14 @@
  *   실패해도 조용히: 채널이 없으면 v1 폴링(5초)이 세이프티넷이다.
  * - 신원(HEADER X-USER-*)은 로컬 계약 — 운영은 게이트웨이가 주입한다.
  *   X-USER-AVATAR·X-USER-LOGIN은 선택(있는 계정만 실어 보낸다 — 사진·GitHub 핸들).
+ * - CONNECT native header accept-language로 서버 문구 언어를 고른다(collab WebSocketConfig —
+ *   연결 거부 문구·폴백 표시명). 연결 시점 언어로 고정, 재접속 때 갱신된다.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Client } from '@stomp/stompjs'
+
+import { currentLanguage } from '@/lib/i18n'
 
 export interface CollabParticipant {
   userId: string
@@ -150,7 +154,11 @@ export function useModelCollab(options: UseModelCollabOptions): ModelCollabHandl
     // 신원 없으면(미인증) 채널 없음 — 폴링만으로 동작한다. 읽기 전용 화면(publicView)도 마찬가지
     if (enabled === false || !userId || !modelId) return
 
-    const connectHeaders: Record<string, string> = { 'X-USER-ID': userId, 'X-USER-NAME': userName ?? '' }
+    const connectHeaders: Record<string, string> = {
+      'X-USER-ID': userId,
+      'X-USER-NAME': userName ?? '',
+      'accept-language': currentLanguage(),
+    }
     if (avatarUrl) connectHeaders['X-USER-AVATAR'] = avatarUrl
     if (githubLogin) connectHeaders['X-USER-LOGIN'] = githubLogin
 

@@ -1,10 +1,10 @@
 /**
  * Intl 기반 포맷터 (storyboard 00-common §3.3 — 언어 설정을 따르는 Intl 날짜·숫자)
  */
-import i18n from '@/lib/i18n'
+import { INTL_LOCALES, currentLanguage } from '@/lib/i18n'
 
 function locale(): string {
-  return i18n.language.startsWith('en') ? 'en-US' : 'ko-KR'
+  return INTL_LOCALES[currentLanguage()]
 }
 
 const dateFormatters = new Map<string, Intl.DateTimeFormat>()

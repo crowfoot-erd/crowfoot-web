@@ -4,11 +4,11 @@
  * Intl.RelativeTimeFormat이 로케일 문구를 내장하므로 i18n 리소스 키가 필요 없다.
  * 1년을 넘으면 상대 표기가 부정확해져 formatDate(절대 날짜)로 폴백한다.
  */
-import i18n from '@/lib/i18n'
+import { INTL_LOCALES, currentLanguage } from '@/lib/i18n'
 import { formatDate } from '@/lib/format'
 
 function locale(): string {
-  return i18n.language.startsWith('en') ? 'en' : 'ko'
+  return INTL_LOCALES[currentLanguage()]
 }
 
 const relativeFormatters = new Map<string, Intl.RelativeTimeFormat>()

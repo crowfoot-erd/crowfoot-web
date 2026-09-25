@@ -22,13 +22,21 @@
  */
 import type { ErdChange } from '@/features/editor/model/changes'
 import type { SystemTerm, WorkspaceTerm } from '@/api/types'
+import { CONTENT_FALLBACK_LANGS } from '@/lib/i18n'
 
 /** 추론 사전 — 물리명(전체·토큰, 소문자) → 라벨 */
 export type TermMap = Record<string, string>
 
-/** 다국어 라벨 해석 — UI 언어 → en → ko → 첫 값 폴백. 어느 언어로 등록됐어도 항상 라벨이 나온다 */
+/** 다국어 라벨 해석 — UI 언어 → CONTENT_FALLBACK_LANGS(en→ko) → 첫 값 폴백.
+ *  어느 언어로 등록됐어도 항상 라벨이 나온다 */
 export function resolveLabel(labels: Record<string, string>, locale: string): string {
-  return labels[locale] ?? labels.en ?? labels.ko ?? Object.values(labels)[0] ?? ''
+  const direct = labels[locale]
+  if (direct != null && direct !== '') return direct
+  for (const lang of CONTENT_FALLBACK_LANGS) {
+    const value = labels[lang]
+    if (value != null && value !== '') return value
+  }
+  return Object.values(labels)[0] ?? ''
 }
 
 /** 병합 사전 — 시스템 사전(전역, 로케일로 해석)을 바닥에 깔고 워크스페이스 사전이 덮어쓴다.

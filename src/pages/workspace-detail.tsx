@@ -67,7 +67,7 @@ function OverviewTab({ workspace }: { workspace: NonNullable<ReturnType<typeof u
       <CardContent className="p-0">
         <dl className="divide-y">
           {rows.map(([label, value]) => (
-            <div key={String(label)} className="grid grid-cols-[8rem_1fr] gap-4 px-4 py-3 text-sm">
+            <div key={String(label)} className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-4 px-4 py-3 text-sm">
               <dt className="text-muted-foreground">{label}</dt>
               <dd className="min-w-0 break-words">{value}</dd>
             </div>

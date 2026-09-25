@@ -11,6 +11,7 @@ import { Home, Loader2 } from 'lucide-react'
 
 import type { Model, PublicShare } from '@/api/types'
 import { isApiError } from '@/api/client'
+import { LanguageSelect } from '@/components/language-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EditorShell } from '@/features/editor'
@@ -100,6 +101,11 @@ export function ShareViewerPage() {
           <EditorShell model={toViewerModel(token, share.data)} canEdit={false} publicView />
         </>
       )}
+
+      {/* 우하단 고정 — 언어(terms 관례) */}
+      <div className="fixed bottom-4 right-4 flex items-center gap-1">
+        <LanguageSelect />
+      </div>
     </div>
   )
 }

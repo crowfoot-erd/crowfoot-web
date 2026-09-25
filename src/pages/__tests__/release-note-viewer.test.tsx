@@ -6,10 +6,12 @@
  * 무인증 열람·존재 은닉(다른 게시판 post-id·없는 글 404)을 검증한다.
  * head 메타(제목·canonical·오류 noindex — 00-common §3.11)도 함께 검증한다.
  */
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Route } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import i18n from '@/lib/i18n'
 import { ReleaseNoteViewerPage } from '@/pages/release-note-viewer'
 import { renderWithProviders } from '@/test/test-app'
 
@@ -71,5 +73,39 @@ describe('릴리스 노트 공개 뷰어', () => {
     // then: FEEDBACK 본문이 공개 뷰어에 노출되지 않는다
     expect(await screen.findByText('게시글을 찾을 수 없습니다.')).toBeVisible()
     expect(screen.queryByText('ERD 내보내기 포맷 제안')).not.toBeInTheDocument()
+  })
+
+  // 이하 2케이스는 UI 언어를 바꾼다 — 파일 단위 격리지만 후속 파일 내 오염만 막는다
+  afterEach(() => {
+    void i18n.changeLanguage('ko')
+  })
+
+  it('게스트 — 여러 언어 글은 콘텐츠 언어 전환기로 ?lang=en을 재조회한다', async () => {
+    const user = userEvent.setup()
+    renderViewer('902') // fixtures — availableLangs ['ko','en']
+
+    // then: 기본은 UI 언어(ko) — 전환기는 available 2개 이상일 때만 노출
+    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판')).toBeVisible()
+    const group = screen.getByRole('group', { name: '본문 언어' })
+    expect(within(group).getByRole('button', { name: '한국어' })).toHaveAttribute('aria-pressed', 'true')
+
+    // when: English로 전환
+    await user.click(within(group).getByRole('button', { name: 'English' }))
+
+    // then: en 해석으로 재조회 — 영어 제목·본문
+    expect(await screen.findByText('v1.4.0 — Community board')).toBeVisible()
+    expect(screen.getByTestId('markdown-viewer')).toHaveTextContent('# Overview')
+    expect(screen.queryByTestId('release-note-fallback')).not.toBeInTheDocument()
+  })
+
+  it('게스트 — 요청 언어 본문이 없으면 다른 언어로 표시하고 폴백 배지를 띄운다', async () => {
+    await i18n.changeLanguage('ja') // UI 언어 ja — 902는 ko/en뿐(서버 폴백 en)
+    renderViewer('902')
+
+    // then: en 폴백 원문 + 폴백 배지(ja 문구, 언어명은 자칭 라벨)
+    expect(await screen.findByText('v1.4.0 — Community board')).toBeVisible()
+    expect(screen.getByTestId('release-note-fallback')).toHaveTextContent(
+      '日本語の本文がないため、別の言語で表示しています。',
+    )
   })
 })

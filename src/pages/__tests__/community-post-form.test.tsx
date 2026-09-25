@@ -162,3 +162,115 @@ describe('커뮤니티 게시글 폼 — 수정', () => {
     expect(patches[0]).toEqual({ title: '수정된 제목', content: '수정된 본문' })
   })
 })
+
+describe('커뮤니티 게시글 폼 — RELEASE_NOTE 4언어 탭', () => {
+  it('언어별 탭으로 입력해 값 있는 언어만 객체로 전송한다', async () => {
+    const user = userEvent.setup()
+    const bodies: object[] = []
+    server.use(
+      http.post('/api/v1/core/community/posts', async ({ request }) => {
+        bodies.push((await request.json()) as object)
+        return HttpResponse.json(
+          ok({
+            response: {
+              postId: '1004',
+              board: 'RELEASE_NOTE',
+              title: 'v1.5.0 — 다국어',
+              content: '# 새 기능',
+              availableLangs: ['ko', 'en'],
+              author: { userId: '2', name: '부트스트랩 관리자' },
+              createdAt: '2026-09-17T00:00:00Z',
+              updatedAt: '2026-09-17T00:00:00Z',
+            },
+          }),
+          { status: 201 },
+        )
+      }),
+    )
+    renderCreate('/community/posts/new?board=RELEASE_NOTE')
+
+    // when: ko 탭(기본) 제목·본문 → en 탭 전환 후 제목·본문 (ja·zh는 미입력)
+    await user.type(await screen.findByLabelText('제목'), 'v1.5.0 — 다국어')
+    await user.type(screen.getByTestId('markdown-editor'), '# 새 기능')
+    await user.click(screen.getByRole('tab', { name: 'English' }))
+    await user.type(await screen.findByLabelText('제목'), 'v1.5.0 — Global')
+    await user.type(screen.getByTestId('markdown-editor'), '# New feature')
+    await user.click(screen.getByRole('button', { name: '등록' }))
+
+    // then: 값 있는 언어만 담긴 객체 페이로드 + 상세로 이동
+    expect(await screen.findByText('POST DETAIL')).toBeVisible()
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({
+      board: 'RELEASE_NOTE',
+      title: { ko: 'v1.5.0 — 다국어', en: 'v1.5.0 — Global' },
+      content: { ko: '# 새 기능', en: '# New feature' },
+    })
+  })
+
+  it('전부 비어 있으면 최소 1개 언어 검증 문구를 띄운다', async () => {
+    const user = userEvent.setup()
+    renderCreate('/community/posts/new?board=RELEASE_NOTE')
+
+    // when: 아무것도 쓰지 않고 등록
+    await user.click(await screen.findByRole('button', { name: '등록' }))
+
+    // then: 제목·본문 각각 최소 1개 언어 문구
+    expect(await screen.findByText('제목은 최소 1개 언어로 입력하세요.')).toBeVisible()
+    expect(screen.getByText('본문은 최소 1개 언어로 입력하세요.')).toBeVisible()
+  })
+
+  it('수정 — availableLangs(제목 기준)로 시드하고 미작성 언어는 빈 칸 + 배지, 시드 언어만 PATCH', async () => {
+    const user = userEvent.setup()
+    const patches: object[] = []
+    server.use(
+      http.patch('/api/v1/core/community/posts/902', async ({ request }) => {
+        patches.push((await request.json()) as object)
+        return HttpResponse.json(
+          ok({
+            response: {
+              postId: '902',
+              board: 'RELEASE_NOTE',
+              title: 'v1.4.0 — 커뮤니티 게시판',
+              content: '# 개요',
+              availableLangs: ['ko', 'en'],
+              author: { userId: '2', name: '부트스트랩 관리자' },
+              createdAt: '2026-09-16T10:00:00Z',
+              updatedAt: '2026-09-17T00:00:00Z',
+            },
+          }),
+        )
+      }),
+    )
+    asAuthenticated() // me=admin(userId 2) — 902 작성자 본인
+    renderWithProviders(
+      <>
+        <Route path="/community/posts/:postId/edit" element={<CommunityPostFormPage mode="edit" />} />
+        <Route path="/community/posts/:postId" element={<div>POST DETAIL</div>} />
+      </>,
+      { route: '/community/posts/902/edit' },
+    )
+
+    // then: 4개 언어 병렬 조회 완료 후 시드 — ko는 원문, en은 영어 원문(fixtures 902 ko/en 2벌)
+    const title = await screen.findByLabelText('제목')
+    await waitFor(() => expect(title).toHaveValue('v1.4.0 — 커뮤니티 게시판'))
+    expect((screen.getByTestId('markdown-editor') as HTMLTextAreaElement).value).toContain('# 개요')
+
+    // when: ja 탭(작성 안 된 언어) — 미작성 배지 + 빈 초안(폴백 원문 오염 방지)
+    await user.click(screen.getByRole('tab', { name: /일본어/ }))
+    expect(screen.getAllByText('미작성')).toHaveLength(2) // ja·zh 탭 — en은 시드돼 없다
+    expect(screen.getByLabelText('제목')).toHaveValue('')
+    expect((screen.getByTestId('markdown-editor') as HTMLTextAreaElement).value).toBe('')
+
+    // when: 저장 — 시드된 ko·en만 전송(미입력 ja·zh는 제외)
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    // then: 값 있는 언어만 병합 페이로드 + 상세로 이동
+    expect(await screen.findByText('POST DETAIL')).toBeVisible()
+    await waitFor(() => expect(patches).toHaveLength(1))
+    const patch = patches[0] as { title: Record<string, string>; content: Record<string, string> }
+    expect(patch.title).toEqual({ ko: 'v1.4.0 — 커뮤니티 게시판', en: 'v1.4.0 — Community board' })
+    expect(Object.keys(patch.content)).toEqual(['ko', 'en'])
+    expect(patch.content.ko).toContain('# 개요')
+    expect(patch.content.en).toContain('# Overview')
+  })
+})
