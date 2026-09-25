@@ -11,6 +11,7 @@
  *   공개 경로 화이트리스트 누락 같은 서버 설정 오류가 랜딩 오버레이로 번지지 않게 한다
  */
 import type { ApiEnvelope, ListResult, PageResult } from './types'
+import { currentLanguage } from '@/lib/i18n'
 
 /** API 기점 — 개발 = 빈 값(Vite 프록시 /api → gateway:8000) / 운영 = VITE_API_BASE_URL.
  *  풀페이지 이동(로그인 시작)도 같은 기점을 써야 한다 — oauth.ts가 재사용한다. */
@@ -168,6 +169,9 @@ async function rawRequest(method: Method, path: string, options: RequestOptions)
   const token = getAccessToken()
   if (token) headers.Authorization = `Bearer ${token}`
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  // 서버 resultMessage 문구 언어 — 브라우저 기본값이 아니라 UI 언어를 따르게 한다(api-design §5.7).
+  // (브라우저가 en인데 UI를 ja로 켠 사용자의 오류 안내가 영어로 뜨는 것을 막는다)
+  headers['Accept-Language'] = currentLanguage()
 
   let res: Response
   try {
