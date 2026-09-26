@@ -611,6 +611,18 @@
       "notice": "Only name and description can be changed.",
       "successToast": "Document updated"
     },
+    "templates": {
+      "openButton": "Start from a template",
+      "title": "Start from a template",
+      "notice": "A template is cloned into your workspace so you can keep editing it.",
+      "error": "Could not load templates",
+      "empty": "No templates yet",
+      "counts": "{{tables}} tables · {{relationships}} relationships",
+      "preview": "Preview",
+      "nameLabel": "Document name",
+      "clone": "Start with this template",
+      "successToast": "Created '{{name}}' from a template"
+    },
     "delete": {
       "title": "Delete {{name}}",
       "description": "Delete {{name}}. This cannot be undone.",
@@ -810,6 +822,12 @@
           "uniqueCount": "{{from}} → {{to}}"
         }
       },
+      "emptyCanvas": {
+        "title": "This document is empty",
+        "description": "Add your first table to start the ERD.",
+        "createFirstTable": "Add first table",
+        "hint": "Right-click anywhere on the canvas to add a table right there"
+      },
       "history": {
         "title": "Version history",
         "description": "Save history of ‘{{model}}’ — every save creates a version",
@@ -833,6 +851,7 @@
           "created": "Document created",
           "reverseCreated": "Created by database import — {{tables}} tables · {{relationships}} relationships",
           "sqlImported": "Created by SQL import — {{tables}} tables · {{relationships}} relationships",
+          "templateCreated": "Created from a template — {{tables}} tables · {{relationships}} relationships",
           "restoredFrom": "Restored from version {{version}}",
           "layoutOnly": "Layout-only changes",
           "counts": "{{add}} added · {{update}} changed · {{remove}} removed · {{move}} moved",
@@ -1364,7 +1383,12 @@
       "currentVersion": "Current version v{{version}}"
     },
     "gallery": {
-      "heading": "Documents being shared right now"
+      "heading": "Documents being shared right now",
+      "headingCommunity": "More from the community"
+    },
+    "templates": {
+      "heading": "Start from a template",
+      "description": "Ready-made ERDs across shopping, blogs, communities and more — take a preview, then clone one into your workspace after signing in to keep designing."
     },
     "releaseNotes": {
       "heading": "Latest releases"

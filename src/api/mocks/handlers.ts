@@ -509,9 +509,11 @@ export const fixtures = {
     startsAt: null,
     endsAt: null,
   },
-  /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답 (토큰은 위 shares fixture의 활성 링크) */
+  /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답 (토큰은 위 shares fixture의 활성 링크).
+   *  쇼핑몰 항목은 아래 templates fixture와 같은 토큰 — 랜딩이 템플릿 섹션과의 중복을 클라이언트
+   *  제외하는 로직(04-front/storyboard/00-common.md §2.1)을 기본 시나리오로 시연한다 */
   sharedGallery: {
-    totalCount: 1,
+    totalCount: 2,
     responses: [
       {
         shareToken: 'Sh4reT0ken0fM0del501aaaa',
@@ -520,6 +522,41 @@ export const fixtures = {
         databaseType: 'postgresql',
         updatedAt: '2026-09-15T00:00:00Z',
         sharedAt: '2026-09-10T00:00:00Z',
+      },
+      {
+        shareToken: 'T3mplat3T0ken0fShopping1',
+        modelName: '쇼핑몰 커머스 ERD',
+        description: '상품·주문·결제·리뷰 도메인',
+        databaseType: 'postgresql',
+        updatedAt: '2026-09-25T00:00:00Z',
+        sharedAt: '2026-09-25T00:00:00Z',
+      },
+    ],
+  },
+  /** 공개 템플릿 목록(08-core/09-templates.md §1) — 인증 없는 응답. 미리보기 유무를 위해
+   *  활성 공유 토큰이 있는 항목과 없는 항목을 섞는다 */
+  templates: {
+    totalCount: 2,
+    responses: [
+      {
+        modelId: '771',
+        name: '쇼핑몰 커머스 ERD',
+        description: '상품·주문·결제·리뷰 도메인 — 정션 테이블과 복합 UK를 포함',
+        databaseType: 'postgresql',
+        tableCount: 20,
+        relationshipCount: 24,
+        shareToken: 'T3mplat3T0ken0fShopping1',
+        updatedAt: '2026-09-25T00:00:00Z',
+      },
+      {
+        modelId: '772',
+        name: '블로그 CMS ERD',
+        description: '포스트·태그·계층 댓글 — N:M과 셀프 조인을 포함',
+        databaseType: 'mysql',
+        tableCount: 12,
+        relationshipCount: 9,
+        shareToken: null,
+        updatedAt: '2026-09-25T00:00:00Z',
       },
     ],
   },
@@ -1137,6 +1174,39 @@ export const handlers = [
 
   // 공유 갤러리 목록(§1.10.5) — 인증 없음. 랜딩 페이지가 현재 공유 중인 문서를 나열
   http.get(`${BASE}/api/v1/core/shares`, () => HttpResponse.json(ok(fixtures.sharedGallery))),
+
+  // 공개 템플릿 목록(09-templates §1) — 인증 없음. 랜딩 템플릿 섹션·워크스페이스 갤러리가 사용
+  http.get(`${BASE}/api/v1/core/templates`, () => HttpResponse.json(ok(fixtures.templates))),
+
+  // 템플릿 복제(09-templates §2) — 알 수 없는 템플릿 404, 이름 중복 409(기본 이름은 원본명).
+  // 응답은 생성 문서(201) — 서버가 content를 통째로 복사하므로 목업도 content를 싣는다
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/from-template`, async ({ request }) => {
+    const body = (await request.json()) as { templateModelId?: string; name?: string }
+    const template = fixtures.templates.responses.find((item) => item.modelId === body.templateModelId)
+    if (!template) return fail('TEMPLATE_NOT_FOUND', 404)
+    const name = body.name?.trim() || template.name
+    if (fixtures.models.responses.some((model) => model.name === name)) {
+      return fail('DUPLICATED_NAME', 409)
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          modelId: String(700 + fixtures.templates.responses.length + 1),
+          workspaceId: '101',
+          name,
+          description: template.description,
+          databaseType: template.databaseType,
+          sourceConnectionId: null,
+          content: EMPTY_CONTENT,
+          version: 0,
+          createdBy: { userId: '2', name: '부트스트랩 관리자' },
+          createdAt: '2026-09-25T00:00:00Z',
+          updatedAt: '2026-09-25T00:00:00Z',
+        },
+      }),
+      { status: 201 },
+    )
+  }),
 
   // 모델 생성 — 이름 중복 409, 응답은 생성 리소스(content 포함)
   http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models`, async ({ request }) => {

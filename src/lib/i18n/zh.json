@@ -611,6 +611,18 @@
       "notice": "仅可修改名称和描述。",
       "successToast": "文档已更新"
     },
+    "templates": {
+      "openButton": "从模板开始",
+      "title": "从模板开始",
+      "notice": "模板会复制到你的工作区，可直接继续编辑。",
+      "error": "无法加载模板列表",
+      "empty": "暂无模板",
+      "counts": "{{tables}} 张表 · {{relationships}} 个关系",
+      "preview": "预览",
+      "nameLabel": "文档名称",
+      "clone": "使用此模板开始",
+      "successToast": "已从模板创建“{{name}}”"
+    },
     "delete": {
       "title": "删除 {{name}}",
       "description": "将删除 {{name}}。此操作无法撤销。",
@@ -810,6 +822,12 @@
           "uniqueCount": "{{from}} → {{to}} 个"
         }
       },
+      "emptyCanvas": {
+        "title": "文档为空",
+        "description": "添加第一张表，开始你的 ERD。",
+        "createFirstTable": "添加第一张表",
+        "hint": "在画布任意位置右键点击，即可在该处添加表"
+      },
       "history": {
         "title": "版本历史",
         "description": "“{{model}}”的保存历史——每次保存都会生成一个版本",
@@ -833,6 +851,7 @@
           "created": "文档已创建",
           "reverseCreated": "由数据库导入创建——{{tables}} 张表 · {{relationships}} 个关系",
           "sqlImported": "由 SQL 导入创建——{{tables}} 张表 · {{relationships}} 个关系",
+          "templateCreated": "由模板复制创建——{{tables}} 张表 · {{relationships}} 个关系",
           "restoredFrom": "已从版本 {{version}} 恢复",
           "layoutOnly": "仅布局变更",
           "counts": "新增 {{add}} · 变更 {{update}} · 移除 {{remove}} · 移动 {{move}}",
@@ -1364,7 +1383,12 @@
       "currentVersion": "当前版本 v{{version}}"
     },
     "gallery": {
-      "heading": "正在共享中的文档"
+      "heading": "正在共享中的文档",
+      "headingCommunity": "更多社区共享"
+    },
+    "templates": {
+      "heading": "从模板快速开始",
+      "description": "电商、博客、社区等多种领域的 ERD 模板——先预览，登录后复制到你的工作区继续设计。"
     },
     "releaseNotes": {
       "heading": "最新发布"

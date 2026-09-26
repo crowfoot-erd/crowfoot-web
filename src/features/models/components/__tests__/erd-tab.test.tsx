@@ -110,8 +110,20 @@ describe('ERD 탭', () => {
 
     await screen.findByText('주문 서비스 ERD')
 
-    // then: Viewer는 생성 버튼 없음
+    // then: Viewer는 생성 버튼 없음 — 템플릿으로 시작(복제도 생성 권한)도 함께 없다
     expect(screen.queryByRole('button', { name: /새 ERD 문서/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '템플릿으로 시작' })).not.toBeInTheDocument()
+  })
+
+  it('opens the template gallery dialog from the header button', async () => {
+    renderErdTab()
+    await screen.findByText('주문 서비스 ERD')
+
+    // when: 템플릿으로 시작 버튼 → 공개 템플릿 카드가 있는 다이얼로그
+    await userEvent.click(screen.getByRole('button', { name: '템플릿으로 시작' }))
+    expect(await screen.findByRole('dialog')).toBeVisible()
+    expect(await screen.findByText('쇼핑몰 커머스 ERD')).toBeVisible()
+    expect(screen.getByText('블로그 CMS ERD')).toBeVisible()
   })
 
   it('edits a document name and description via the row action', async () => {
@@ -180,9 +192,10 @@ describe('ERD 탭', () => {
 
     renderErdTab()
 
-    // then: 빈 문구 + CTA(헤더 생성 버튼과 빈 상태 CTA 2곳)
+    // then: 빈 문구 + CTA(헤더 생성 버튼과 빈 상태 CTA 2곳) — 템플릿으로 시작도 2곳
     expect(await screen.findByText('ERD 문서가 없습니다')).toBeVisible()
     expect(screen.getAllByRole('button', { name: /새 ERD 문서/ })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: '템플릿으로 시작' })).toHaveLength(2)
   })
 
   it('shows the error state with retry on failure', async () => {

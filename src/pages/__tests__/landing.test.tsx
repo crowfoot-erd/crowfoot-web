@@ -1,7 +1,7 @@
 /**
  * 랜딩/소개 페이지 컴포넌트 테스트 (frontend-testing.md B2)
  *
- * given: 게스트/인증 세션 상태, 공유 갤러리·최근 릴리스 공개 API 응답(MSW)
+ * given: 게스트/인증 세션 상태, 템플릿·공유 갤러리·최근 릴리스 공개 API 응답(MSW)
  * when: 렌더
  * then: 특징 카드·갤러리·릴리스·CTA 링크 노출, 빈 섹션 숨김과 인증 상태 CTA 전환 규칙 검증
  */
@@ -52,19 +52,53 @@ describe('랜딩 페이지', () => {
     )
     // 푸터 — 이용약관 링크 + 현재 버전(첫 방문에서도 지금 버전을 알 수 있게)
     expect(screen.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms')
-    expect(screen.getByTestId('landing-current-version')).toHaveTextContent('현재 버전 v1.17')
+    expect(screen.getByTestId('landing-current-version')).toHaveTextContent('현재 버전 v1.18')
   })
 
-  it('게스트 — 공유 갤러리는 현재 공유 중인 문서를 카드로 렌더하고 공개 뷰어로 연결한다', async () => {
+  it('게스트 — 템플릿 섹션은 미리보기 링크가 있는 카드만 공개 뷰어로 연결한다', async () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    // then: 갤러리 헤딩 + fixture 문서 카드(이름·DBMS 배지) — 인증 없는 공개 API
-    expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })).toBeVisible()
+    // then: 템플릿 헤딩 + fixture 카드(이름·counts) — 인증 없는 공개 API
+    expect(await screen.findByTestId('landing-templates')).toBeVisible()
+    expect(screen.getByRole('heading', { name: '템플릿으로 바로 시작' })).toBeVisible()
+    // shareToken 있는 템플릿 — 미리보기 링크(새 창)
+    const preview = screen.getByRole('link', { name: /쇼핑몰 커머스 ERD/ })
+    expect(preview).toHaveAttribute('href', '/share/T3mplat3T0ken0fShopping1')
+    expect(preview).toHaveAttribute('target', '_blank')
+    expect(screen.getByText('테이블 20개 · 관계 24개')).toBeInTheDocument()
+    // shareToken 없는 템플릿 — 정보 카드일 뿐 링크가 아니다
+    expect(screen.getByRole('heading', { name: '블로그 CMS ERD' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: /블로그 CMS ERD/ })).not.toBeInTheDocument()
+  })
+
+  it('게스트 — 갤러리는 템플릿과 겹치는 공유를 제외하고 제목이 커뮤니티 공유로 바뀐다', async () => {
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+
+    // then: 템플릿 섹션이 있으면 갤러리 제목은 "그 밖의" — 잔류 문서만 나열
+    expect(await screen.findByRole('heading', { name: '그 밖의 커뮤니티 공유' })).toBeVisible()
     const card = screen.getByRole('link', { name: /주문 서비스 ERD/ })
     expect(card).toHaveAttribute('href', '/share/Sh4reT0ken0fM0del501aaaa')
-    // 공개 뷰어는 새 창으로 — 랜딩 흐름 유지
     expect(card).toHaveAttribute('target', '_blank')
-    expect(screen.getByText('postgresql')).toBeInTheDocument()
+    // 쇼핑몰 공유는 템플릿 카드가 이미 뒀다 — 갤러리에는 같은 토큰이 두 번 나오지 않는다
+    expect(screen.getAllByRole('link', { name: /쇼핑몰 커머스 ERD/ })).toHaveLength(1)
+  })
+
+  it('게스트 — 템플릿이 없으면 갤러리 제목·중복 제외가 원래대로 돌아간다', async () => {
+    server.use(
+      // 템플릿 응답을 빈 목록으로 — 갤러리가 전체 공유를 원래 제목으로 나열
+      http.get('/api/v1/core/templates', () =>
+        HttpResponse.json(ok({ totalCount: 0, responses: [] })),
+      ),
+    )
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+
+    expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })).toBeVisible()
+    // 쇼핑몰 공유가 갤러리에 나타난다 — 제외할 템플릿이 없다
+    expect(screen.getByRole('link', { name: /쇼핑몰 커머스 ERD/ })).toHaveAttribute(
+      'href',
+      '/share/T3mplat3T0ken0fShopping1',
+    )
+    expect(screen.queryByTestId('landing-templates')).not.toBeInTheDocument()
   })
 
   it('게스트 — 공유 중인 문서가 없으면 갤러리 섹션을 숨긴다', async () => {

@@ -198,6 +198,35 @@ describe('EditorShell — 읽기 전용', () => {
   })
 })
 
+describe('EditorShell — 빈 캔버스 온보딩 (05-editor/02-ui.md §2.1)', () => {
+  it('편집 가능한 빈 문서 — 첫 테이블 추가 힌트 카드를 그린다', async () => {
+    await renderEditor()
+
+    // then: 오버레이 카드 — 첫 테이블 추가 버튼 + 우클릭 힌트 (컨테이너는 pointer-events:none)
+    expect(screen.getByTestId('empty-canvas-hint')).toBeVisible()
+    expect(screen.getByRole('button', { name: '첫 테이블 추가' })).toBeVisible()
+    expect(screen.getByText(/우클릭하면/)).toBeVisible()
+  })
+
+  it('첫 테이블 추가 — 컨텍스트 createTable 경로를 타면 테이블 1개가 생기고 오버레이가 사라진다', async () => {
+    await renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: '첫 테이블 추가' }))
+
+    // then: 문서에 테이블 1개(다이어그램 노드 배치 포함) — 오버레이는 자동 소멸
+    await waitFor(() => expect(useEditorStore.getState().present.model.tables).toHaveLength(1))
+    const table = useEditorStore.getState().present.model.tables[0]
+    expect(useEditorStore.getState().present.diagram.nodes[table.id]).toBeDefined()
+    await waitFor(() => expect(screen.queryByTestId('empty-canvas-hint')).not.toBeInTheDocument())
+  })
+
+  it('읽기 전용(공개 뷰어·버전 뷰어)에는 오버레이가 없다', async () => {
+    await renderEditor(false)
+
+    expect(screen.queryByTestId('empty-canvas-hint')).not.toBeInTheDocument()
+  })
+})
+
 describe('EditorShell — 협업 v1 원격 변경 감지(폴링)', () => {
   /** 폴링(refetchInterval 5s)을 대신해 version 쿼리를 강제 refetch — 서버 version이 올라간 상황 재현 */
   const pollVersion = (queryClient: ReturnType<typeof renderWithProviders>['queryClient']) =>

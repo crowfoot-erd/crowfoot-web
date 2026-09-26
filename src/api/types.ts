@@ -255,6 +255,21 @@ export interface SharedGalleryItem {
   sharedAt: string
 }
 
+/* ---------- 템플릿 (08-core/09-templates.md) ---------- */
+
+/** 템플릿 공개 목록 항목 (§2.1) — 템플릿 워크스페이스 문서의 메타. 본문(content) 없음.
+ *  shareToken은 그 문서의 활성 공유 링크 최근 1건 — 없으면(null) 카드에 미리보기가 없다 */
+export interface TemplateSummary {
+  modelId: string
+  name: string
+  description: string | null
+  databaseType: string
+  tableCount: number
+  relationshipCount: number
+  shareToken: string | null
+  updatedAt: string
+}
+
 /* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */
 
 /** 변경 요약 items형 — 웹 doc-diff 계약의 구조 diff (kind·action은 렌더 i18n 키로 쓰인다) */
@@ -265,11 +280,12 @@ export interface ChangeSummaryItems {
   truncated: boolean
 }
 
-/** 변경 요약 특수형 — 리버스 엔지니어링·SQL Import 생성 직후 (서버가 기록).
- *  source는 SQL Import만 심는다('sql') — 렌더 문구 분기용, 리버스는 미전송(기존 호환) */
+/** 변경 요약 특수형 — 리버스 엔지니어링·SQL Import·템플릿 복제 생성 직후 (서버가 기록).
+ *  source는 SQL Import('sql')와 템플릿 복제('template')가 심는다 — 렌더 문구 분기용,
+ *  리버스는 미전송(기존 호환) */
 export interface ChangeSummaryCreated {
   created: true
-  source?: 'sql'
+  source?: 'sql' | 'template'
   tables: number
   relationships: number
 }

@@ -1,7 +1,10 @@
 # 검색엔진 크롤링 안내 — 색인 대상은 public/sitemap.xml과 같은 공개 페이지뿐이다.
-# /share/{token}은 토큰이 곧 자격이라 크롤링 자체를 차단한다(토큰 유출 방지).
+# /share/{token}은 색인을 허용한다(v1.18) — 토큰은 128bit 추측 불가라 노출 통제는
+# 링크 철회(410 SHARE_INACTIVE)로 하고, 문서명·설명이 검색·미리보기 카드에 드러나게 둔다.
 # /login·/auth/callback은 크롤을 허용하되 페이지 메타(noindex)로 색인을 막는다.
+# 관리·보호 경로(/dashboard, /workspaces, …)는 응답 자체가 인증을 요구한다.
 User-agent: *
-Disallow: /share/
+Disallow: /login
+Disallow: /auth/callback
 
 Sitemap: https://crowfoot.java21.net/sitemap.xml

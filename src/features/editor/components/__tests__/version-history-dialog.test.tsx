@@ -128,6 +128,36 @@ describe('VersionHistoryDialog — 목록 렌더', () => {
     expect(within(rows[0]).getByText('SQL 가져오기로 생성 — 테이블 3개 · 관계 1개')).toBeVisible()
   })
 
+  it('템플릿 복제 태생 v0는 source:template 요약을 "템플릿 복제로 생성"으로 렌더한다 (09-templates §2)', async () => {
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models/501/versions', () =>
+        HttpResponse.json(
+          ok({
+            page: 1,
+            size: 20,
+            totalPages: 1,
+            totalCount: 1,
+            responses: [
+              {
+                version: 0,
+                changeSummary: '{"created":true,"source":"template","templateId":771,"tables":20,"relationships":24}',
+                memo: null,
+                createdBy: { userId: '2', name: '부트스트랩 관리자' },
+                createdAt: '2026-09-17T00:00:00Z',
+              },
+            ],
+          }),
+        ),
+      ),
+    )
+    renderDialog()
+
+    const list = await openList()
+    const rows = rowsOf(list)
+    expect(rows).toHaveLength(1)
+    expect(within(rows[0]).getByText('템플릿 복제로 생성 — 테이블 20개 · 관계 24개')).toBeVisible()
+  })
+
   it('행마다 작성자·일시과 버전 뷰어 조회 링크를 노출한다', async () => {
     seedSession()
     renderDialog()

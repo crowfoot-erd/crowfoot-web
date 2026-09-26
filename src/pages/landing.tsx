@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
-import { useSharedGallery } from '@/features/models/hooks'
+import { useSharedGallery, useTemplates } from '@/features/models/hooks'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
@@ -42,8 +42,13 @@ export function LandingPage() {
   const status = useSessionStore((state) => state.status)
   // 인증 상태에서도 랜딩 열람 가능 — CTA 행선지만 전환된다
   const authenticated = status === 'authenticated'
+  const { data: templates } = useTemplates()
+  const templateItems = templates?.items ?? []
   const { data: gallery } = useSharedGallery()
-  const galleryItems = gallery?.items ?? []
+  // 갤러리에서 템플릿 카드가 겹치지 않게 한다 — 템플릿이 이미 보유한 공유 링크는 제외하고
+  // 나머지는 "그 밖의 커뮤니티 공유"로 계속 나열한다(위 섹션이 없으면 원래 제목 그대로)
+  const templateTokens = new Set(templateItems.map((item) => item.shareToken).filter(Boolean))
+  const galleryItems = (gallery?.items ?? []).filter((item) => !templateTokens.has(item.shareToken))
   const { data: releaseNotes } = usePublicReleaseNotes()
   const releaseNoteItems = releaseNotes?.items ?? []
 
@@ -152,11 +157,81 @@ export function LandingPage() {
           </div>
         </section>
 
+        {/* 템플릿으로 시작 — 공개 템플릿이 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
+            카드는 미리보기(활성 공유 링크)로 연결되고, 복제는 로그인 후 워크스페이스에서 한다 */}
+        {templateItems.length > 0 && (
+          <section aria-labelledby="landing-templates" className="w-full" data-testid="landing-templates">
+            <h2 id="landing-templates" className="mb-2 text-center text-2xl font-semibold">
+              {t('landing.templates.heading')}
+            </h2>
+            <p className="mb-6 text-center text-sm text-muted-foreground">
+              {t('landing.templates.description')}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {templateItems.map(
+                ({ modelId, name, description, databaseType, tableCount, relationshipCount, shareToken }) =>
+                  shareToken ? (
+                    <Link
+                      key={modelId}
+                      to={`/share/${shareToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group"
+                    >
+                      <Card className="h-full transition-colors group-hover:border-primary/50">
+                        <CardContent className="flex h-full flex-col gap-2 p-5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                              {databaseType}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {t('model.templates.counts', {
+                                tables: tableCount,
+                                relationships: relationshipCount,
+                              })}
+                            </span>
+                          </div>
+                          <h3 className="font-medium">{name}</h3>
+                          {description && (
+                            <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ) : (
+                    // 미리보기 링크 없는 템플릿 — 카드로 정보만(연결되지 않는다)
+                    <Card key={modelId}>
+                      <CardContent className="flex h-full flex-col gap-2 p-5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                            {databaseType}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {t('model.templates.counts', {
+                              tables: tableCount,
+                              relationships: relationshipCount,
+                            })}
+                          </span>
+                        </div>
+                        <h3 className="font-medium">{name}</h3>
+                        {description && (
+                          <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ),
+              )}
+            </div>
+          </section>
+        )}
+
         {/* 공유된 문서 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김) */}
         {galleryItems.length > 0 && (
           <section aria-labelledby="landing-gallery" className="w-full">
             <h2 id="landing-gallery" className="mb-6 text-center text-2xl font-semibold">
-              {t('landing.gallery.heading')}
+              {templateItems.length > 0
+                ? t('landing.gallery.headingCommunity')
+                : t('landing.gallery.heading')}
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {/* 공개 뷰어는 새 창으로 — 랜딩 흐름은 그대로 둔다 */}

@@ -4,7 +4,8 @@
  * given: 공개 조회(/core/shares/{token}) 응답을 MSW로 정의 — 인증 없는 경로
  * when: 라우트로 직접 진입 (게스트 — 세션 없음)
  * then: 문서 메타 + 읽기 전용 툴바(저장·DDL·공유 없음) / 만료 410·없는 토큰 404 안내
- *       + head 메타(문서 제목·항상 noindex — 토큰=자격, 00-common §3.11)
+ *       + head 메타(문서 제목·설명 — 성공 시 색인 허용·canonical /share/{token}·og:article,
+ *       대기·오류는 noindex 유지, 00-common §3.11 v1.18 SEO 정책)
  */
 import { screen } from '@testing-library/react'
 import { http } from 'msw'
@@ -43,11 +44,23 @@ describe('공유 문서 공개 뷰어', () => {
     // then: 홈으로 링크
     expect(screen.getByRole('link', { name: /홈으로/ })).toHaveAttribute('href', '/')
 
-    // then: head — 문서 제목·색인 제외(토큰=자격) (00-common §3.11)
+    // then: head — 문서 제목·설명·색인 허용·canonical·og:article (00-common §3.11 v1.18)
     expect(document.title).toBe('주문 서비스 ERD — Crowfoot')
     expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
       'content',
-      'noindex, nofollow',
+      'index, follow',
+    )
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute(
+      'content',
+      '결제 도메인 1차',
+    )
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      'https://crowfoot.java21.net/share/Sh4reT0ken0fM0del501aaaa',
+    )
+    expect(document.head.querySelector('meta[property="og:type"]')).toHaveAttribute(
+      'content',
+      'article',
     )
   })
 

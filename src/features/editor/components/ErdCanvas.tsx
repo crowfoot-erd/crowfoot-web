@@ -58,6 +58,7 @@ import type { EditorDocument } from '@/features/editor/model/content-schema'
 import type { CursorPayload, RemoteCursorState } from '@/features/editor/collab'
 import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab-presence'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
+import { EmptyCanvasHint } from './canvas/empty-canvas-hint'
 import {
   EditorCanvasContext,
   type ColumnDisplayMode,
@@ -1181,6 +1182,16 @@ export function ErdCanvas({
     [extent],
   )
 
+  /** 빈 캔버스 가이드의 [첫 테이블 추가] — 뷰포트 중심(flow 좌표)에 만든다.
+   *  우클릭 컨텍스트 메뉴의 createTable 경로를 그대로 탄다(§8.1 — 별도 생성 로직 없음) */
+  const handleCreateFirstTable = useCallback(() => {
+    const rect = wrapperRef.current?.getBoundingClientRect()
+    const center = rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : { x: (window.innerWidth || 1200) / 2, y: (window.innerHeight || 800) / 2 }
+    handleContextMenuAction({ type: 'createTable', position: toFlow(center) })
+  }, [handleContextMenuAction, toFlow])
+
   const flow = (
     <div
       ref={wrapperRef}
@@ -1243,6 +1254,12 @@ export function ErdCanvas({
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
         <TableColorMiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2" />
       </ReactFlow>
+
+      {/* 빈 캔버스 시작 가이드 — 편집 가능하고 테이블이 0개일 때만(첫 테이블이 생기면 자동 소멸).
+          읽기 전용 뷰어·버전 뷰어에는 내리지 않는다(05-editor/02-ui.md §2.1) */}
+      {canEdit && present.model.tables.length === 0 ? (
+        <EmptyCanvasHint onCreateFirstTable={handleCreateFirstTable} />
+      ) : null}
 
       {/* 원격 커서 — flow 좌표를 transform으로 되돌려 그린다(보이기만 하는 레이어) */}
       {remoteCursors.length > 0 ? <RemoteCursorLayer cursors={remoteCursors} /> : null}

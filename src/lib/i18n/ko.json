@@ -611,6 +611,18 @@
       "notice": "이름·설명만 변경할 수 있습니다.",
       "successToast": "문서를 수정했습니다"
     },
+    "templates": {
+      "openButton": "템플릿으로 시작",
+      "title": "템플릿으로 시작",
+      "notice": "템플릿을 복제해 내 워크스페이스에서 이어서 편집합니다.",
+      "error": "템플릿 목록을 불러오지 못했습니다",
+      "empty": "템플릿이 없습니다",
+      "counts": "테이블 {{tables}}개 · 관계 {{relationships}}개",
+      "preview": "미리보기",
+      "nameLabel": "문서 이름",
+      "clone": "이 템플릿으로 시작",
+      "successToast": "'{{name}}' 문서를 템플릿에서 만들었습니다"
+    },
     "delete": {
       "title": "{{name}} 문서 삭제",
       "description": "{{name}} 문서를 삭제합니다. 되돌릴 수 없습니다.",
@@ -810,6 +822,12 @@
           "uniqueCount": "{{from}} → {{to}}개"
         }
       },
+      "emptyCanvas": {
+        "title": "빈 문서입니다",
+        "description": "첫 테이블을 추가해 ERD를 시작하세요.",
+        "createFirstTable": "첫 테이블 추가",
+        "hint": "캔버스를 우클릭하면 원하는 위치에 바로 추가할 수 있습니다"
+      },
       "history": {
         "title": "버전 기록",
         "description": "‘{{model}}’ 문서의 저장 기록 — 저장마다 버전이 남습니다",
@@ -833,6 +851,7 @@
           "created": "문서 생성",
           "reverseCreated": "DB 가져오기로 생성 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
           "sqlImported": "SQL 가져오기로 생성 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
+          "templateCreated": "템플릿 복제로 생성 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
           "restoredFrom": "버전 {{version}}에서 복원",
           "layoutOnly": "레이아웃 변경만 있음",
           "counts": "추가 {{add}} · 변경 {{update}} · 삭제 {{remove}} · 이동 {{move}}",
@@ -1364,7 +1383,12 @@
       "currentVersion": "현재 버전 v{{version}}"
     },
     "gallery": {
-      "heading": "지금 공유되고 있는 문서"
+      "heading": "지금 공유되고 있는 문서",
+      "headingCommunity": "그 밖의 커뮤니티 공유"
+    },
+    "templates": {
+      "heading": "템플릿으로 바로 시작",
+      "description": "쇼핑몰·블로그·커뮤니티 등 다양한 도메인의 ERD 템플릿 — 미리보기로 살펴보고, 로그인 후 내 워크스페이스로 복제해 이어서 설계할 수 있습니다."
     },
     "releaseNotes": {
       "heading": "최근 릴리스"

@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  cloneFromTemplate,
   createModel,
   createModelShare,
   deleteModel,
@@ -16,12 +17,14 @@ import {
   fetchModels,
   fetchSharedDocument,
   fetchSharedGallery,
+  fetchTemplates,
   patchModelVersionMemo,
   restoreModelVersion,
   revokeModelShare,
   sqlImport,
   sqlImportPreview,
   updateModel,
+  type CloneFromTemplateInput,
   type CreateModelInput,
   type CreateShareInput,
   type SqlImportInput,
@@ -49,6 +52,8 @@ export const modelKeys = {
   shared: (token: string) => ['shares', token] as const,
   /** 공유 갤러리 — 현재 공유 중인 문서 목록(랜딩), 마찬가지로 인증 무관 루트 키 */
   gallery: ['shares', 'gallery'] as const,
+  /** 템플릿 공개 목록 — 인증 무관 루트 키(갤러리와 같은 규칙) */
+  templates: ['templates'] as const,
   databaseTypes: ['database-types'] as const,
 }
 
@@ -245,5 +250,28 @@ export function useSharedGallery() {
     queryKey: modelKeys.gallery,
     queryFn: ({ signal }) => fetchSharedGallery(signal),
     retry: false,
+  })
+}
+
+/* ---------- 템플릿 (08-core/09-templates.md) ---------- */
+
+/** 템플릿 공개 목록 — 게스트(미인증) 랜딩·로그인 사용자 다이얼로그가 같이 쓴다 (빈 목록이면 조용히 숨긴다) */
+export function useTemplates() {
+  return useQuery({
+    queryKey: modelKeys.templates,
+    queryFn: ({ signal }) => fetchTemplates(signal),
+    retry: false,
+  })
+}
+
+/** 템플릿 복제 — 성공 시 문서 목록 invalidate(복제된 문서가 목록에 나타난다) */
+export function useCloneFromTemplate(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CloneFromTemplateInput) => cloneFromTemplate(workspaceId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
   })
 }

@@ -611,6 +611,18 @@
       "notice": "変更できるのは名前と説明のみです。",
       "successToast": "ドキュメントを更新しました"
     },
+    "templates": {
+      "openButton": "テンプレートから始める",
+      "title": "テンプレートから始める",
+      "notice": "テンプレートを複製してワークスペースで編集を続けられます。",
+      "error": "テンプレート一覧を読み込めませんでした",
+      "empty": "テンプレートがありません",
+      "counts": "テーブル {{tables}}件 · リレーション {{relationships}}件",
+      "preview": "プレビュー",
+      "nameLabel": "ドキュメント名",
+      "clone": "このテンプレートで始める",
+      "successToast": "テンプレートから「{{name}}」を作成しました"
+    },
     "delete": {
       "title": "{{name}}を削除",
       "description": "{{name}}を削除します。元に戻せません。",
@@ -810,6 +822,12 @@
           "uniqueCount": "{{from}} → {{to}}件"
         }
       },
+      "emptyCanvas": {
+        "title": "空のドキュメントです",
+        "description": "最初のテーブルを追加してERDを始めましょう。",
+        "createFirstTable": "最初のテーブルを追加",
+        "hint": "キャンバスを右クリックすれば好きな位置に追加できます"
+      },
       "history": {
         "title": "バージョン履歴",
         "description": "「{{model}}」の保存履歴 — 保存のたびにバージョンが作成されます",
@@ -833,6 +851,7 @@
           "created": "ドキュメントを作成",
           "reverseCreated": "DB取り込みで作成 — テーブル {{tables}}件 · リレーション {{relationships}}件",
           "sqlImported": "SQL取り込みで作成 — テーブル {{tables}}件 · リレーション {{relationships}}件",
+          "templateCreated": "テンプレート複製で作成 — テーブル {{tables}}件 · リレーション {{relationships}}件",
           "restoredFrom": "バージョン{{version}}から復元",
           "layoutOnly": "レイアウト変更のみ",
           "counts": "追加 {{add}} · 変更 {{update}} · 削除 {{remove}} · 移動 {{move}}",
@@ -1364,7 +1383,12 @@
       "currentVersion": "現在のバージョン v{{version}}"
     },
     "gallery": {
-      "heading": "いま共有されているドキュメント"
+      "heading": "いま共有されているドキュメント",
+      "headingCommunity": "コミュニティのその他の共有"
+    },
+    "templates": {
+      "heading": "テンプレートからすぐ始める",
+      "description": "ショッピング・ブログ・コミュニティなど様々なドメインのERDテンプレート — プレビューで確認し、ログイン後にワークスペースへ複製して設計を続けられます。"
     },
     "releaseNotes": {
       "heading": "最新リリース"

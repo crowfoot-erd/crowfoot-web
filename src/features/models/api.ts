@@ -17,6 +17,7 @@ import type {
   SharedGalleryItem,
   SqlImportPreviewResult,
   SqlImportResult,
+  TemplateSummary,
 } from '@/api/types'
 
 export type FetchModelsParams = {
@@ -128,6 +129,24 @@ export function fetchSharedDocument(token: string, signal?: AbortSignal) {
 /** 공유 갤러리 목록 — 인증 없이(게이트웨이 화이트리스트), 랜딩 페이지가 현재 공유 중인 문서를 나열 */
 export function fetchSharedGallery(signal?: AbortSignal) {
   return apiGetList<SharedGalleryItem>('/api/v1/core/shares', undefined, signal)
+}
+
+/* ---------- 템플릿 (08-core/09-templates.md) ---------- */
+
+/** 템플릿 복제 본문 — name 생략·빈 값이면 원본 이름(대상 워크스페이스 내 중복이면 409) */
+export interface CloneFromTemplateInput {
+  templateModelId: string
+  name?: string
+}
+
+/** 템플릿 공개 목록 — 인증 없이(게이트웨이 화이트리스트 GET만), 갤러리 카드·복제 다이얼로그가 쓴다 */
+export function fetchTemplates(signal?: AbortSignal) {
+  return apiGetList<TemplateSummary>('/api/v1/core/templates', undefined, signal)
+}
+
+/** 템플릿 복제 — 템플릿 문서를 이 워크스페이스의 새 문서로 통째로 복사한다 (Editor 이상, 201) */
+export function cloneFromTemplate(workspaceId: string, body: CloneFromTemplateInput) {
+  return apiPost<Model>(`/api/v1/core/workspaces/${workspaceId}/models/from-template`, body)
 }
 
 /* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */

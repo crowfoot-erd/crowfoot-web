@@ -4,6 +4,8 @@
  * - 인증 없이 토큰으로만 연다 — 게스트도 볼 수 있는 읽기 전용 화면
  * - 기간(시작·종료) 밖이면 410 SHARE_INACTIVE, 없는 토큰이면 404 SHARE_NOT_FOUND 안내
  * - 본체는 EditorShell 재사용(publicView) — 줌·보기 옵션·이미지 내보내기, 저장·협업 없음
+ * - SEO(00-common §3.11 v1.18): 성공 시 문서명·설명으로 색인을 허용한다 — 토큰은 128bit
+ *   추측 불가라 노출 통제는 철회(410)로 하고, 대기·오류 화면은 계속 noindex다
  */
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -41,13 +43,15 @@ export function ShareViewerPage() {
   const { t } = useTranslation()
   const { token = '' } = useParams()
   const share = useSharedDocument(token)
-  // 제목·설명은 조회 뒤 — 색인은 어떤 상태(pending·오류 포함)에서도 금지(토큰이 곧 자격)
+  // 제목·설명·canonical은 조회 뒤 — 성공 문서는 색인 허용(SEO 정책 v1.18),
+  // 대기·오류 화면은 문서 없는 껍데기이므로 계속 noindex로 막는다
   usePageMeta(
     share.data
       ? {
           title: `${share.data.modelName} — ${t('common.appName')}`,
           description: share.data.description ?? undefined,
-          noindex: true,
+          canonicalPath: `/share/${token}`,
+          ogType: 'article',
         }
       : { noindex: true },
   )

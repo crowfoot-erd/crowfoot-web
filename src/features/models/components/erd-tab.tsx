@@ -29,6 +29,7 @@ import {
   ImportCrownButton,
   modelEditorPath,
   SqlImportButton,
+  TemplateStartButton,
   useDeleteModel,
   useModels,
 } from '@/features/models'
@@ -85,6 +86,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
             <ImportCrownButton workspaceId={workspaceId} />
             <DatabaseImportButton workspaceId={workspaceId} />
             <SqlImportButton workspaceId={workspaceId} />
+            <TemplateStartButton workspaceId={workspaceId} />
             <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
               <Plus aria-hidden />
               {t('model.list.newDocument')}
@@ -183,10 +185,14 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
           description={t('model.list.empty.description')}
           action={
             canCreate ? (
-              <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus aria-hidden />
-                {t('model.list.empty.cta')}
-              </Button>
+              // 빈 상태 보조 CTA — 새 문서와 나란히 "템플릿으로 시작"을 제시한다
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                  <Plus aria-hidden />
+                  {t('model.list.empty.cta')}
+                </Button>
+                <TemplateStartButton workspaceId={workspaceId} />
+              </div>
             ) : undefined
           }
         />
