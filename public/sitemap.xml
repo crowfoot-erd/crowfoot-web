@@ -206,6 +206,16 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://crowfoot.java21.net/release-notes/20</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/20" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/20" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/20" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/20" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/20" />
+    <lastmod>2026-09-27</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://crowfoot.java21.net/release-notes/19</loc>
     <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/19" />
     <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/19" />
