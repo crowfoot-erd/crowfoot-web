@@ -80,12 +80,12 @@ describe('랜딩 페이지', () => {
       'href',
       '/share/P0pularT0ken0fSettle2c',
     )
-    // 현지화 템플릿(86 zh)도 갤러리 카드 표기는 한국어 표시맵(galleryDisplay)으로 내려온다
-    expect(within(popular).getByRole('link', { name: /도서관 대출 ERD/ })).toHaveAttribute(
+    // 현지화 템플릿(86 zh)도 갤러리 카드는 문서 메타 그대로 — 한국어 단일 표기는 템플릿 다이얼로그뿐
+    expect(within(popular).getByRole('link', { name: /图书馆借阅 ERD/ })).toHaveAttribute(
       'href',
       '/share/R3CdH4r2yASL7MoWB61H0Y',
     )
-    expect(screen.queryByText('图书馆借阅 ERD')).not.toBeInTheDocument()
+    expect(screen.queryByText('도서관 대출 ERD')).not.toBeInTheDocument()
     // 조회수 표기 — 인기 정렬 원료(단순 카운트)를 카드에도 그대로 노출
     expect(screen.getByText('조회 128회')).toBeInTheDocument()
     expect(screen.getByText('조회 3회')).toBeInTheDocument()

@@ -17,7 +17,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
-import { galleryDisplay } from '@/features/models/template-display'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
@@ -159,7 +158,8 @@ export function LandingPage() {
 
         {/* 통합 공유 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
             전 워크스페이스 공유(템플릿 문서 포함)가 한 목록에 온다 — 템플릿 전용 섹션은 폐지됐다.
-            카드 표기는 한국어 단일(galleryDisplay) — 문서 자체는 현지화 그대로다 */}
+            카드는 문서 메타(제목·설명)를 그대로 — 커뮤니티 갤러리는 현지화 문서도 원문으로 나온다.
+            한국어 단일 표기는 워크스페이스 템플릿 다이얼로그(template-display)뿐이다 */}
         {galleryItems.length > 0 && (
           <section aria-labelledby="landing-gallery" className="w-full" data-testid="landing-gallery">
             <h2 id="landing-gallery" className="mb-6 text-center text-2xl font-semibold">
@@ -170,9 +170,7 @@ export function LandingPage() {
               {t('landing.gallery.popular')}
             </h3>
             <div className="grid gap-4 sm:grid-cols-3" data-testid="landing-gallery-popular">
-              {popularItems.map((item) => {
-                const { name, description } = galleryDisplay(item)
-                const { shareToken, databaseType, updatedAt, viewCount } = item
+              {popularItems.map(({ modelName, description, shareToken, databaseType, updatedAt, viewCount }) => {
                 return (
                   <Link
                     key={shareToken}
@@ -193,7 +191,7 @@ export function LandingPage() {
                             {databaseType}
                           </span>
                         </div>
-                        <h3 className="text-base font-semibold">{name}</h3>
+                        <h3 className="text-base font-semibold">{modelName}</h3>
                         {description && (
                           <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
                         )}
@@ -218,9 +216,7 @@ export function LandingPage() {
                   {t('landing.gallery.recent')}
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {recentItems.map((item) => {
-                    const { name, description } = galleryDisplay(item)
-                    const { shareToken, databaseType, updatedAt, viewCount } = item
+                  {recentItems.map(({ modelName, description, shareToken, databaseType, updatedAt, viewCount }) => {
                     return (
                       <Link
                         key={shareToken}
@@ -244,7 +240,7 @@ export function LandingPage() {
                                 {formatDate(updatedAt)}
                               </span>
                             </div>
-                            <h3 className="font-medium">{name}</h3>
+                            <h3 className="font-medium">{modelName}</h3>
                             {description && (
                               <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
                             )}

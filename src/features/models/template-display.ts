@@ -1,6 +1,7 @@
 /**
  * 템플릿 카드 한국어 표기맵 (08-core/09-templates.md §3 — 카드 표기는 한국어 단일) —
- * 랜딩 통합 갤러리(공유 목록)의 템플릿 문서 카드도 같은 맥락으로 아래에서 확장한다
+ * 적용 범위는 워크스페이스 템플릿 다이얼로그뿐이다. 랜딩 통합 공유 갤러리는 커뮤니티 문서와
+ * 섞이므로 문서 메타(원문) 그대로 내려준다(2026-09-27 회귀 — 문서 자체는 애초에 현지화 유지)
  *
  * 쇼케이스 6종은 "문서당 언어 1개" 완전 현지화(en/ja/zh)라 목록 메타가 그 언어로 내려온다.
  * 템플릿 목록은 제품의 앞문이라 카드 이름·설명·복제 기본 이름은 사이트 언어와 무관하게
@@ -9,7 +10,7 @@
  * 문서 메타 그대로 나간다(폴백 — 한국어 문서·향후 신규 템플릿). 새 템플릿을 현지화로
  * 발행하면 한국어 메타를 여기에도 추가한다.
  */
-import type { SharedGalleryItem, TemplateSummary } from '@/api/types'
+import type { TemplateSummary } from '@/api/types'
 
 const KOREAN: Record<string, { name: string; description: string }> = {
   // v1.18 쇼케이스 — 현지화 6종(블로그·커뮤니티·SaaS·병원·IoT·도서관). 쇼핑몰(79)·인사(85)는 한국어 문서라 폴백
@@ -49,23 +50,4 @@ const KOREAN: Record<string, { name: string; description: string }> = {
 export function templateDisplay(template: Pick<TemplateSummary, 'modelId' | 'name' | 'description'>) {
   const korean = KOREAN[template.modelId]
   return korean ?? { name: template.name, description: template.description ?? '' }
-}
-
-/** 갤러리(공유 목록) 카드도 같은 정책 — 템플릿에서 공유된 문서는 활성 링크 토큰으로 짚어 한국어로,
- *  나머지 커뮤니티 문서는 서버 표기 그대로다. 응답에 modelId가 없어 토큰→표기 맵으로 확장한다
- *  (토큰은 발행 시점 것 — 재발급 금지 원칙이라 안정적). 새 템플릿을 현지화로 발행하면 여기도 함께 */
-const GALLERY_TOKEN_KOREAN: Record<string, { name: string; description: string }> = {
-  // v1.18 쇼케이스 현지화 6종(§3 큐레이션과 같은 원문). 한국어 문서(쇼핑몰 79·인사 85)는 폴백
-  PBzX4sZWxD8d0D65wWnCxM: KOREAN['80'],
-  '2LSYdsvx8kkX3V3VEgGABk': KOREAN['81'],
-  V7TyMAsiEvU1dxf41Wnif9: KOREAN['82'],
-  hpREAaGNwVHE0az6627JbI: KOREAN['83'],
-  V6FdhtEqrID020uEqdOZec: KOREAN['84'],
-  R3CdH4r2yASL7MoWB61H0Y: KOREAN['86'],
-}
-
-/** 갤러리 카드 표기 — 토큰 맵의 한국어가 우선, 없으면 서버 메타 그대로(폴백) */
-export function galleryDisplay(item: Pick<SharedGalleryItem, 'shareToken' | 'modelName' | 'description'>) {
-  const korean = GALLERY_TOKEN_KOREAN[item.shareToken]
-  return korean ?? { name: item.modelName, description: item.description ?? '' }
 }
