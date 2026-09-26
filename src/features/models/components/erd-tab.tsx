@@ -126,8 +126,9 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                   >
                     {model.name}
                   </button>
+                  {/* 긴 설명이 표 폭을 넘겨 가로 스크롤을 내지 않도록 한 줄로 자른다 — 전문은 문서 편집에서 */}
                   {model.description ? (
-                    <p className="text-xs text-muted-foreground">{model.description}</p>
+                    <p className="max-w-md truncate text-xs text-muted-foreground">{model.description}</p>
                   ) : null}
                 </TableCell>
                 <TableCell>
