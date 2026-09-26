@@ -186,20 +186,26 @@ test.describe('협업 2차 — 실시간 채널(실물 WebSocket)', () => {
     // ---------- 밥이 원격 문서를 따라가는 상태 확인(초기 본문) ----------
     await expect(bob.getByLabel('테이블 물리명')).toHaveValue('orders', { timeout: 10_000 })
 
-    // ---------- 앨리스 편집(엔터티 추가) 후 저장 → PUT 6 → 푸시 → 밥 즉시 동기화 ----------
+    // ---------- 앨리스 편집(엔터티 추가) → 커맨드 실시간 반영 → 저장 푸시 승계 ----------
     // 테이블 1개 문서는 열 때 전체 맞춤(콘텐츠 중심 = 화면 중심)으로 노드가 한가운데 온다 —
     // 요소 중앙이 아니라 노드가 없는 좌상단 좌표로 우클릭해야 빈 영역 메뉴가 뜬다
     await alice.locator('.react-flow').click({ button: 'right', position: { x: 100, y: 100 } })
     await alice.getByText('엔터티 생성').click()
+    // v1.17 — 앨리스의 생성이 커맨드 채널로 밥 캔버스에 실시간 반영된다(저장 이전). 이 수렴을
+    // 먼저 확정하면 저장 시점 커맨드를 밥이 전부 소비한 상태가 된다 — 이후 저장 푸시는 재조회
+    // 리셋 없이 base만 승계한다(조용한 승계). 토픽 간 서버 발송 순서는 보장되지 않으므로
+    // 수렴 선행이 이 테스트를 결정적으로 만든다
+    await expect(bob.locator('.react-flow__node')).toHaveCount(2, { timeout: 5_000 })
     await expect(alice.getByRole('button', { name: '저장' })).toBeEnabled()
     await alice.getByRole('button', { name: '저장' }).click()
     await expect(alice.getByText('v6', { exact: true })).toBeVisible({ timeout: 5_000 }) // 저장 확정
 
-    // 물리명은 인라인 input 값 — 저장 푸시 → 상세 재조회 → 문서 교체로 값이 바뀐다(폴링 5초 대기 없이)
-    const startedAt = Date.now()
-    await expect(bob.getByLabel('테이블 물리명')).toHaveValue('remote_saved_table', { timeout: 4_000 })
-    const elapsed = Date.now() - startedAt
-    expect(elapsed).toBeLessThan(4_000) // 폴링 주기(5s) 이전 — WebSocket 푸시 경로 검증
+    // 저장 푸시 도달 — 밥 헤더의 버전 칩이 v6으로 바뀐다(폴링 주기 5s 대기 없이, WebSocket 경로).
+    // 문서는 이미 커맨드로 수렴했으므로 서버 본문을 다시 가져오지 않는다 — 화면이 리셋되지 않고
+    // orders(첫째 물리명)·새 테이블(노드 2개)이 그대로 살아있는 것이 승계 증거다
+    await expect(bob.getByText('v6', { exact: true })).toBeVisible({ timeout: 4_000 })
+    await expect(bob.getByLabel('테이블 물리명').first()).toHaveValue('orders')
+    await expect(bob.locator('.react-flow__node')).toHaveCount(2)
 
     // ---------- 밥 탭 닫기 → 앨리스 칩 1명 복귀 ----------
     await bobContext.close()
@@ -304,19 +310,32 @@ test.describe('협업 3차 — 실시간 편집(v1.17)', () => {
     await expect(bob.getByTestId('remote-cursor')).toBeVisible({ timeout: 5_000 })
     await expect(bob.getByTestId('remote-cursor')).toContainText('앨리스')
 
-    // ---------- 선택 — 앨리스가 orders 노드를 클릭하면 밥 쪽 같은 노드에 선택 흔적이 붙는다 ----------
-    await bob.locator('.react-flow__node').first().locator('input').first().waitFor({ state: 'visible' })
-    await alice.locator('.react-flow__node').first().click({ position: { x: 60, y: 8 } })
-    await expect(bob.locator('.react-flow__node').first()).toHaveAttribute('data-remote-selection', '2', {
+    // ---------- 선택 — 앨리스가 커맨드로 만든 노드를 클릭하면 밥 쪽 같은 노드에 선택 흔적이 붙는다 ----------
+    // 두 함정: ① orders(base 문서)는 페이지마다 content 재생성으로 UUID가 달라 아무리 찍어도
+    // 상대 노드와 id가 안 맞는다 — 커맨드로 만든 노드(nth(1))는 양쪽이 같은 id를 공유한다.
+    // ② data-remote-selection은 TableNode 루트([data-nodekind])에 붙는다(react-flow 래퍼 아님).
+    // 선택은 클릭 다음 pointermove에 실려 간다 — 클릭 후 살짝 움직여 발행을 확정한다
+    await bob.locator('.react-flow__node').nth(1).locator('input').first().waitFor({ state: 'visible' })
+    await alice.locator('.react-flow__node').nth(1).click({ position: { x: 60, y: 8 } })
+    await alice.locator('.react-flow').hover({ position: { x: 300, y: 300 } })
+    await expect(bob.locator('[data-nodekind="table"]').nth(1)).toHaveAttribute('data-remote-selection', '2', {
       timeout: 5_000,
     })
 
     // ---------- 이동 — 앨리스 드래그 확정(node/move 커맨드)이 밥 노드 위치를 바꾼다 ----------
+    // dragTo의 원샷 점프는 RF d3-drag를 시작시키지 못한다 — 헤더 밴드(핸들)에서 mousedown 후
+    // 스텝 이동으로 끌고 mouseup에 확정시킨다. 좌표는 노드 박스 기준 화면 좌표
     const bobNewTable = bob.locator('.react-flow__node').nth(1)
     const styleBefore = await bobNewTable.getAttribute('style')
-    await alice.locator('.react-flow__node').nth(1).dragTo(alice.locator('.react-flow'), {
-      targetPosition: { x: 420, y: 320 },
-    })
+    const handle = await alice.locator('.react-flow__node').nth(1).boundingBox()
+    const handleX = handle!.x + 60
+    const handleY = handle!.y + 8
+    await alice.mouse.move(handleX, handleY)
+    await alice.mouse.down()
+    for (let step = 1; step <= 6; step += 1) {
+      await alice.mouse.move(handleX + step * 30, handleY + step * 20, { steps: 3 })
+    }
+    await alice.mouse.up()
     await expect
       .poll(async () => bobNewTable.getAttribute('style'), { timeout: 5_000 })
       .not.toBe(styleBefore)
@@ -339,13 +358,21 @@ test.describe('협업 3차 — 실시간 편집(v1.17)', () => {
     await expect(alice.getByTestId('presence-chip')).toBeVisible({ timeout: 10_000 })
     await expect(bob.locator('.react-flow__node')).toHaveCount(1, { timeout: 10_000 })
 
+    // 락 대상은 공유 id여야 한다 — base 문서(orders)는 페이지마다 content 재생성으로 UUID가
+    // 달라 앨리스의 락이 밥 노드와 연결되지 않는다. 커맨드로 만든 노드(nth(1))로 검증한다
+    await alice.locator('.react-flow').click({ button: 'right', position: { x: 100, y: 100 } })
+    await alice.getByText('엔터티 생성').click()
+    await expect(bob.locator('.react-flow__node')).toHaveCount(2, { timeout: 5_000 })
+
     // ---------- 앨리스가 테이블 정보 다이얼로그를 열면 락 획득 → 밥 노드 헤더에 보유자 뱃지 ----------
-    await alice.locator('.react-flow__node').first().dblclick()
+    const openTableInfo = (page: Page) =>
+      page.locator('.react-flow__node').nth(1).getByRole('button', { name: '테이블 정보' }).click()
+    await openTableInfo(alice)
     await expect(alice.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
     await expect(bob.getByTestId('edit-lock-badge').first()).toContainText('앨리스', { timeout: 5_000 })
 
     // ---------- 밥이 같은 다이얼로그를 열면 진입 차단 안내 + 저장 disabled ----------
-    await bob.locator('.react-flow__node').first().dblclick()
+    await openTableInfo(bob)
     const bobDialog = bob.getByRole('dialog')
     await expect(bobDialog).toBeVisible({ timeout: 5_000 })
     await expect(bobDialog.getByTestId('edit-lock-notice')).toContainText('앨리스')
