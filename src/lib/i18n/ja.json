@@ -164,6 +164,7 @@
       "adminManaged": "マネージドDB",
       "backToWorkspaces": "ワークスペースに戻る",
       "adminAuditLogs": "監査ログ",
+      "adminTraffic": "トラフィック統計",
       "teamsTitle": "チーム",
       "newTeam": "新規チーム",
       "ownedTeams": "自分がオーナーのチーム",
@@ -569,6 +570,81 @@
       "alphabetLabel": "頭文字",
       "letterEtc": "#",
       "noResults": "条件に一致する用語がありません"
+    },
+    "traffic": {
+      "title": "トラフィック統計",
+      "subtitle": "匿名ビジットビーコンと監査ログによるサイト利用状況 — 基準はKSTの1日",
+      "period": {
+        "days": "{{days}}日"
+      },
+      "metric": {
+        "pv": "ページビュー",
+        "pvHint": "ボット除外のページビュー(同経路30秒の重複除去)",
+        "uuv": "ユニーク訪問者",
+        "uuvHint": "Cookie・日次IPハッシュ基準のユニーク訪問者(KSTの1日)",
+        "sessions": "セッション",
+        "sessionsHint": "30分無操作で切れる訪問単位",
+        "newVisitors": "新規訪問者",
+        "newVisitorsHint": "このブラウザで初訪問(初回Cookie発行)",
+        "bot": "ボットビーコン",
+        "botHint": "クローラー等の自動アクセス — 指標からは除外"
+      },
+      "delta": {
+        "new": "新規"
+      },
+      "chart": {
+        "trendTitle": "日別推移",
+        "trendAria": "日別訪問推移 — PV・セッション(左軸)、ユニーク・新規訪問者(右軸)"
+      },
+      "dimension": {
+        "device": "デバイス",
+        "browser": "ブラウザ",
+        "os": "OS",
+        "lang": "言語",
+        "country": "国",
+        "referrer": "流入元",
+        "page": "ページ"
+      },
+      "breakdown": {
+        "title": "次元別分布",
+        "empty": "この期間に収集された訪問はありません"
+      },
+      "table": {
+        "count": "件数",
+        "share": "占有率"
+      },
+      "share": {
+        "title": "共有ドキュメント TOP",
+        "empty": "この期間に共有ドキュメントへの訪問はありません",
+        "document": "ドキュメント"
+      },
+      "page": {
+        "root": "ランディング",
+        "login": "ログイン",
+        "terms": "利用規約",
+        "workspaces": "ワークスペース一覧",
+        "workspaceDetail": "ワークスペース詳細",
+        "modelEditor": "ドキュメントエディタ",
+        "teams": "チーム",
+        "community": "コミュニティ",
+        "releaseNotes": "リリースノート",
+        "share": "共有ビューア",
+        "admin": "管理者",
+        "other": "その他"
+      },
+      "referrer": {
+        "direct": "直接アクセス",
+        "internal": "サイト内部"
+      },
+      "activity": {
+        "loginTitle": "日別ログイン",
+        "loginAria": "日別ログインの折れ線 — 成功は実線、失敗は破線",
+        "succeeded": "成功",
+        "failed": "失敗",
+        "actionsTitle": "機能使用量 TOP",
+        "actionsAria": "監査アクション別使用量 上位10件",
+        "empty": "この期間に記録された活動はありません"
+      }
     }
   },
   "notFound": {

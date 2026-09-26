@@ -164,6 +164,7 @@
       "adminManaged": "매니지드 DB",
       "backToWorkspaces": "워크스페이스로 돌아가기",
       "adminAuditLogs": "감사 로그",
+      "adminTraffic": "트래픽 통계",
       "teamsTitle": "팀",
       "newTeam": "새 팀",
       "ownedTeams": "내가 소유한 팀",
@@ -569,6 +570,81 @@
       "alphabetLabel": "이니셜",
       "letterEtc": "#",
       "noResults": "검색 조건에 맞는 용어가 없습니다"
+    },
+    "traffic": {
+      "title": "트래픽 통계",
+      "subtitle": "익명 방문 비콘과 감사 로그로 본 사이트 사용 현황 — 기준은 KST 하루",
+      "period": {
+        "days": "{{days}}일"
+      },
+      "metric": {
+        "pv": "페이지뷰",
+        "pvHint": "봇 제외 페이지 조회(같은 경로 30초 중복 제거)",
+        "uuv": "고유 방문자",
+        "uuvHint": "쿠키·일일 IP 해시 기준 고유 방문자(KST 하루)",
+        "sessions": "세션",
+        "sessionsHint": "30분 무활동 기준 방문 단위",
+        "newVisitors": "신규 방문자",
+        "newVisitorsHint": "이 브라우저에서 첫 방문(쿠키 첫 발급)",
+        "bot": "봇 비콘",
+        "botHint": "크롤러 등 자동 접속 — 지표에서는 제외"
+      },
+      "delta": {
+        "new": "신규"
+      },
+      "chart": {
+        "trendTitle": "일별 추이",
+        "trendAria": "일별 방문 추이 차트 — 페이지뷰·세션(왼쪽 축), 고유 방문자·신규 방문자(오른쪽 축)"
+      },
+      "dimension": {
+        "device": "디바이스",
+        "browser": "브라우저",
+        "os": "OS",
+        "lang": "언어",
+        "country": "국가",
+        "referrer": "유입",
+        "page": "페이지"
+      },
+      "breakdown": {
+        "title": "차원별 분포",
+        "empty": "이 기간에 수집된 방문이 없습니다"
+      },
+      "table": {
+        "count": "건수",
+        "share": "점유율"
+      },
+      "share": {
+        "title": "공유 문서 TOP",
+        "empty": "이 기간에 공유 문서 방문이 없습니다",
+        "document": "문서"
+      },
+      "page": {
+        "root": "랜딩",
+        "login": "로그인",
+        "terms": "이용약관",
+        "workspaces": "워크스페이스 목록",
+        "workspaceDetail": "워크스페이스 상세",
+        "modelEditor": "문서 에디터",
+        "teams": "팀",
+        "community": "커뮤니티",
+        "releaseNotes": "릴리스 노트",
+        "share": "공유 뷰어",
+        "admin": "관리자",
+        "other": "그 외"
+      },
+      "referrer": {
+        "direct": "직접 접속",
+        "internal": "사이트 내부"
+      },
+      "activity": {
+        "loginTitle": "일별 로그인",
+        "loginAria": "일별 로그인 선 차트 — 성공은 실선, 실패는 점선",
+        "succeeded": "성공",
+        "failed": "실패",
+        "actionsTitle": "기능 사용량 TOP",
+        "actionsAria": "감사 액션별 사용량 가로 막대 — 상위 10개",
+        "empty": "이 기간에 기록된 활동이 없습니다"
+      }
     }
   },
   "notFound": {

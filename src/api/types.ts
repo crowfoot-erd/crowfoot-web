@@ -274,6 +274,69 @@ export interface TemplateSummary {
   updatedAt: string
 }
 
+/* ---------- 접속 통계 (08-core/10-metrics.md §7) ---------- */
+
+/** 요약 스냅샷 — 하루치 지표 5종. 지표 정의는 10-metrics.md §2 */
+export interface TrafficSnapshot {
+  pv: number
+  uuv: number
+  sessions: number
+  newVisitors: number
+  bot: number
+}
+
+/** 일별 계열 — 데이터 없는 날은 0으로 채워 온다 */
+export interface TrafficDailyPoint {
+  date: string
+  pv: number
+  uuv: number
+  sessions: number
+  newVisitors: number
+}
+
+export interface TrafficSummary {
+  days: number
+  today: TrafficSnapshot
+  yesterday: TrafficSnapshot
+  lastWeekSameDay: TrafficSnapshot
+  series: TrafficDailyPoint[]
+}
+
+/** breakdown 차원 열거 — 서버 화이트리스트와 1:1 */
+export type TrafficDimension = 'country' | 'browser' | 'os' | 'device' | 'lang' | 'referrer' | 'page' | 'share'
+
+export interface TrafficBreakdownEntry {
+  key: string
+  count: number
+  share: number
+  /** 화면 표기명 — share 차원은 서버가 토큰→문서명으로 조인해 내려준다(§5.2). 그 외 차원은 null */
+  displayName: string | null
+}
+
+export interface TrafficBreakdown {
+  dimension: TrafficDimension
+  days: number
+  total: number
+  entries: TrafficBreakdownEntry[]
+}
+
+export interface TrafficLoginDay {
+  date: string
+  succeeded: number
+  failed: number
+}
+
+export interface TrafficActionCount {
+  action: string
+  count: number
+}
+
+export interface TrafficActivity {
+  days: number
+  logins: TrafficLoginDay[]
+  actions: TrafficActionCount[]
+}
+
 /* ---------- 문서 버전 기록 (08-core/02-model.md §1.11) ---------- */
 
 /** 변경 요약 items형 — 웹 doc-diff 계약의 구조 diff (kind·action은 렌더 i18n 키로 쓰인다) */

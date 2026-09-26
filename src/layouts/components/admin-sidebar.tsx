@@ -4,7 +4,7 @@
  * 새 워크스페이스 생성은 관리자 화면에서 노출하지 않는다.
  */
 import { Link, NavLink } from 'react-router-dom'
-import { ArrowLeft, BookA, DatabaseZap, ScrollText, Table2, Users } from 'lucide-react'
+import { ArrowLeft, BarChart3, BookA, DatabaseZap, ScrollText, Table2, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,10 @@ export function AdminSidebar() {
           <NavLink to="/admin/audit-logs" className={menuClass}>
             <ScrollText aria-hidden className="h-4 w-4 text-muted-foreground" />
             {t('shell.sidebar.adminAuditLogs')}
+          </NavLink>
+          <NavLink to="/admin/traffic" className={menuClass}>
+            <BarChart3 aria-hidden className="h-4 w-4 text-muted-foreground" />
+            {t('shell.sidebar.adminTraffic')}
           </NavLink>
         </nav>
 

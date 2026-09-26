@@ -164,6 +164,7 @@
       "adminManaged": "Managed DB",
       "backToWorkspaces": "Back to workspaces",
       "adminAuditLogs": "Audit logs",
+      "adminTraffic": "Traffic",
       "teamsTitle": "Teams",
       "newTeam": "New team",
       "ownedTeams": "Teams I own",
@@ -569,6 +570,81 @@
       "alphabetLabel": "Initial letter",
       "letterEtc": "#",
       "noResults": "No terms match the filter"
+    },
+    "traffic": {
+      "title": "Traffic analytics",
+      "subtitle": "Site usage from anonymous visit beacons and audit logs — KST daily basis",
+      "period": {
+        "days": "{{days}}d"
+      },
+      "metric": {
+        "pv": "Page views",
+        "pvHint": "Page views excluding bots (same-path 30s dedup)",
+        "uuv": "Unique visitors",
+        "uuvHint": "Unique visitors by cookie / daily IP hash (KST day)",
+        "sessions": "Sessions",
+        "sessionsHint": "Visits with 30-minute inactivity timeout",
+        "newVisitors": "New visitors",
+        "newVisitorsHint": "First visit from this browser (new cookie)",
+        "bot": "Bot beacons",
+        "botHint": "Crawler traffic — excluded from all metrics"
+      },
+      "delta": {
+        "new": "New"
+      },
+      "chart": {
+        "trendTitle": "Daily trend",
+        "trendAria": "Daily visit trend — PV & sessions (left axis), unique & new visitors (right axis)"
+      },
+      "dimension": {
+        "device": "Device",
+        "browser": "Browser",
+        "os": "OS",
+        "lang": "Language",
+        "country": "Country",
+        "referrer": "Referrer",
+        "page": "Page"
+      },
+      "breakdown": {
+        "title": "Breakdown",
+        "empty": "No visits collected in this period"
+      },
+      "table": {
+        "count": "Count",
+        "share": "Share"
+      },
+      "share": {
+        "title": "Top shared documents",
+        "empty": "No shared document visits in this period",
+        "document": "Document"
+      },
+      "page": {
+        "root": "Landing",
+        "login": "Login",
+        "terms": "Terms",
+        "workspaces": "Workspaces",
+        "workspaceDetail": "Workspace detail",
+        "modelEditor": "Document editor",
+        "teams": "Teams",
+        "community": "Community",
+        "releaseNotes": "Release notes",
+        "share": "Share viewer",
+        "admin": "Admin",
+        "other": "Other"
+      },
+      "referrer": {
+        "direct": "Direct",
+        "internal": "Internal"
+      },
+      "activity": {
+        "loginTitle": "Daily logins",
+        "loginAria": "Daily login lines — succeeded solid, failed dashed",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "actionsTitle": "Top feature usage",
+        "actionsAria": "Audit action counts, top 10",
+        "empty": "No activity recorded in this period"
+      }
     }
   },
   "notFound": {

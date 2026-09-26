@@ -934,6 +934,77 @@ export const fixtures = {
     ],
   },
   /**
+   * 접속 통계 원시값 (08-core/10-metrics.md §7) — 핸들러가 KST 오늘 기준 계열로 펼친다.
+   * 스냅샷 3종(오늘·어제·전주 동일 요일)·평일 기본값·차원별 분포·감사 활동
+   */
+  traffic: {
+    today: { pv: 120, uuv: 34, sessions: 51, newVisitors: 12, bot: 7 },
+    yesterday: { pv: 96, uuv: 30, sessions: 44, newVisitors: 9, bot: 5 },
+    lastWeekSameDay: { pv: 60, uuv: 22, sessions: 30, newVisitors: 6, bot: 2 },
+    weekday: { pv: 80, uuv: 26, sessions: 38, newVisitors: 8, bot: 4 },
+    loginToday: { succeeded: 10, failed: 2 },
+    loginWeekday: { succeeded: 5, failed: 1 },
+    breakdown: {
+      device: [
+        { key: 'desktop', count: 210, share: 0.7, displayName: null },
+        { key: 'mobile', count: 78, share: 0.26, displayName: null },
+        { key: 'tablet', count: 12, share: 0.04, displayName: null },
+      ],
+      browser: [
+        { key: 'chrome', count: 180, share: 0.6, displayName: null },
+        { key: 'safari', count: 84, share: 0.28, displayName: null },
+        { key: 'edge', count: 24, share: 0.08, displayName: null },
+        { key: 'firefox', count: 12, share: 0.04, displayName: null },
+      ],
+      os: [
+        { key: 'macos', count: 120, share: 0.4, displayName: null },
+        { key: 'windows', count: 108, share: 0.36, displayName: null },
+        { key: 'ios', count: 42, share: 0.14, displayName: null },
+        { key: 'android', count: 24, share: 0.08, displayName: null },
+        { key: 'linux', count: 6, share: 0.02, displayName: null },
+      ],
+      lang: [
+        { key: 'ko', count: 210, share: 0.7, displayName: null },
+        { key: 'en', count: 66, share: 0.22, displayName: null },
+        { key: 'ja', count: 15, share: 0.05, displayName: null },
+        { key: 'zh', count: 9, share: 0.03, displayName: null },
+      ],
+      country: [
+        { key: 'KR', count: 195, share: 0.65, displayName: null },
+        { key: 'US', count: 51, share: 0.17, displayName: null },
+        { key: 'JP', count: 24, share: 0.08, displayName: null },
+        { key: 'CN', count: 15, share: 0.05, displayName: null },
+        { key: 'DE', count: 9, share: 0.03, displayName: null },
+        { key: 'unknown', count: 6, share: 0.02, displayName: null },
+      ],
+      referrer: [
+        { key: 'direct', count: 165, share: 0.55, displayName: null },
+        { key: 'google', count: 72, share: 0.24, displayName: null },
+        { key: 'internal', count: 36, share: 0.12, displayName: null },
+        { key: 'github', count: 15, share: 0.05, displayName: null },
+        { key: 'okky', count: 12, share: 0.04, displayName: null },
+      ],
+      page: [
+        { key: 'root', count: 96, share: 0.36, displayName: null },
+        { key: 'workspaces', count: 66, share: 0.24, displayName: null },
+        { key: 'login', count: 45, share: 0.17, displayName: null },
+        { key: 'share', count: 42, share: 0.15, displayName: null },
+        { key: 'modelEditor', count: 21, share: 0.08, displayName: null },
+      ],
+      // share는 key=토큰 그대로, displayName=문서명 조인(§5.2). 문서가 사라진 공유는 null → 웹 폴백
+      share: [
+        { key: 'tok-commerce', count: 45, share: 0.62, displayName: '쇼핑몰 ERD' },
+        { key: 'tok-board', count: 18, share: 0.25, displayName: '블로그 CMS' },
+        { key: 'tok-ghost', count: 9, share: 0.13, displayName: null },
+      ],
+    } as Record<string, { key: string; count: number; share: number; displayName: string | null }[]>,
+    actions: [
+      { action: 'MODEL_CREATED', count: 10 },
+      { action: 'LOGIN_SUCCEEDED', count: 7 },
+      { action: 'WORKSPACE_CREATED', count: 4 },
+      { action: 'MODEL_UPDATED', count: 3 },
+    ],
+  },
 }
 
 /** 릴리스 노트 902 — 4탭 폼 시드·뷰어 언어 전환 검증용 ko/en 2벌 */
@@ -971,6 +1042,11 @@ function asLocalized(value: unknown): Record<string, string> {
 /** 다국어 맵의 응답용 단일 문자열 — lang 우선, en → 첫값 폴백 */
 function displayLocalized(map: Record<string, string>, lang: string): string {
   return map[lang] ?? map.en ?? Object.values(map)[0] ?? ''
+}
+
+/** KST 날짜 문자열(YYYY-MM-DD) — offsetDays=0이 오늘. 통계 계열은 date_kst 기준(§2) */
+function kstDateString(offsetDays = 0): string {
+  return new Date(Date.now() + 9 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10)
 }
 
 /* ---------- auth ---------- */
@@ -2114,4 +2190,60 @@ export const handlers = [
     new HttpResponse(null, { status: 204 }),
   ),
 
+  /* ---------- 접속 통계 (08-core/10-metrics.md §7 — 관리자, 게이트웨이 인증) ---------- */
+
+  // 요약 — days(7·28·90) 일별 계열을 KST 오늘 기준으로 펼친다.
+  // 마지막 날=오늘, 그 전날=어제, 7일 전=전주 동일 요일 스냅샷, 나머지 날=평일 기본값
+  http.get(`${BASE}/api/v1/core/admin/metrics/summary`, ({ request }) => {
+    const days = Number(new URL(request.url).searchParams.get('days') ?? 28)
+    if (![7, 28, 90].includes(days)) return fail('INVALID_REQUEST', 400)
+    const { today, yesterday, lastWeekSameDay, weekday } = fixtures.traffic
+    const series = Array.from({ length: days }, (_, i) => {
+      const offset = i - (days - 1) // 오늘=0, 어제=-1
+      const point = offset === 0 ? today : offset === -1 ? yesterday : offset === -7 ? lastWeekSameDay : weekday
+      const { pv, uuv, sessions, newVisitors } = point
+      return { date: kstDateString(offset), pv, uuv, sessions, newVisitors }
+    })
+    return HttpResponse.json(
+      ok({ response: { days, today, yesterday, lastWeekSameDay, series } }),
+    )
+  }),
+
+  // 차원별 분포 — dimension 화이트리스트(§7) 밖이면 400. fixtures의 해당 차원 TOP을 그대로
+  http.get(`${BASE}/api/v1/core/admin/metrics/breakdown`, ({ request }) => {
+    const url = new URL(request.url)
+    const dimension = url.searchParams.get('dimension') ?? ''
+    const days = Number(url.searchParams.get('days') ?? 28)
+    if (
+      !['country', 'browser', 'os', 'device', 'lang', 'referrer', 'page', 'share'].includes(dimension) ||
+      ![7, 28, 90].includes(days)
+    ) {
+      return fail('INVALID_REQUEST', 400)
+    }
+    const entries = fixtures.traffic.breakdown[dimension] ?? []
+    return HttpResponse.json(
+      ok({
+        response: {
+          dimension,
+          days,
+          total: entries.reduce((sum, e) => sum + e.count, 0),
+          entries,
+        },
+      }),
+    )
+  }),
+
+  // 감사 활동 — 일별 로그인(성공/실패, 오늘만 today 값)·액션별 총수
+  http.get(`${BASE}/api/v1/core/admin/metrics/activity`, ({ request }) => {
+    const days = Number(new URL(request.url).searchParams.get('days') ?? 28)
+    if (![7, 28, 90].includes(days)) return fail('INVALID_REQUEST', 400)
+    const logins = Array.from({ length: days }, (_, i) => {
+      const offset = i - (days - 1)
+      const { succeeded, failed } = offset === 0 ? fixtures.traffic.loginToday : fixtures.traffic.loginWeekday
+      return { date: kstDateString(offset), succeeded, failed }
+    })
+    return HttpResponse.json(
+      ok({ response: { days, logins, actions: fixtures.traffic.actions } }),
+    )
+  }),
 ]

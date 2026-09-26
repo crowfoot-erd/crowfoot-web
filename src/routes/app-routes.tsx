@@ -10,6 +10,7 @@
  * 나머지 ProtectedRoute → AppLayout 셸 / /admin/* AdminRoute /
  * catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
  */
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { LANGUAGE_PREFIXES } from '@/lib/i18n'
@@ -37,6 +38,10 @@ import { AdminManagedPage } from '@/pages/admin/managed'
 import { AdminSystemTermsPage } from '@/pages/admin/system-terms'
 import { AdminUserDetailPage } from '@/pages/admin/user-detail'
 import { AdminUsersPage } from '@/pages/admin/users'
+import { SplashScreen } from '@/components/splash-screen'
+
+// 트래픽 통계는 recharts를 물려와 번들이 크다 — 관리자 통계 화면 전용 청크로 분리한다(03-admin §9)
+const AdminTrafficPage = lazy(() => import('@/pages/admin/traffic'))
 import { CommunityBoardPage } from '@/pages/community/board'
 import { CommunityPostDetailPage } from '@/pages/community/post-detail'
 import { CommunityPostFormPage } from '@/pages/community/post-form'
@@ -97,6 +102,14 @@ function buildRoutes(prefix: string) {
             <Route path="managed" element={<AdminManagedPage />} />
             <Route path="system-terms" element={<AdminSystemTermsPage />} />
             <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+          <Route
+            path="traffic"
+            element={
+              <Suspense fallback={<SplashScreen />}>
+                <AdminTrafficPage />
+              </Suspense>
+            }
+          />
           </Route>
         </Route>
       </Route>

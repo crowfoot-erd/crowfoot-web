@@ -164,6 +164,7 @@
       "adminManaged": "托管数据库",
       "backToWorkspaces": "返回工作区",
       "adminAuditLogs": "审计日志",
+      "adminTraffic": "流量统计",
       "teamsTitle": "团队",
       "newTeam": "新建团队",
       "ownedTeams": "我拥有的团队",
@@ -569,6 +570,81 @@
       "alphabetLabel": "首字母",
       "letterEtc": "#",
       "noResults": "没有符合筛选条件的术语"
+    },
+    "traffic": {
+      "title": "流量统计",
+      "subtitle": "基于匿名访问信标与审计日志的站点使用情况 — 以KST一日为基准",
+      "period": {
+        "days": "{{days}}天"
+      },
+      "metric": {
+        "pv": "页面浏览量",
+        "pvHint": "排除爬虫的页面浏览（同路径30秒去重）",
+        "uuv": "独立访客",
+        "uuvHint": "以Cookie·每日IP哈希识别的独立访客（KST一日）",
+        "sessions": "会话",
+        "sessionsHint": "30分钟无操作即断开的访问单位",
+        "newVisitors": "新访客",
+        "newVisitorsHint": "此浏览器的首次访问（首次下发Cookie）",
+        "bot": "爬虫信标",
+        "botHint": "爬虫等自动访问 — 不计入任何指标"
+      },
+      "delta": {
+        "new": "新增"
+      },
+      "chart": {
+        "trendTitle": "每日趋势",
+        "trendAria": "每日访问趋势 — 页面浏览·会话（左轴），独立访客·新访客（右轴）"
+      },
+      "dimension": {
+        "device": "设备",
+        "browser": "浏览器",
+        "os": "操作系统",
+        "lang": "语言",
+        "country": "国家",
+        "referrer": "来源",
+        "page": "页面"
+      },
+      "breakdown": {
+        "title": "维度分布",
+        "empty": "此期间没有收集到访问"
+      },
+      "table": {
+        "count": "数量",
+        "share": "占比"
+      },
+      "share": {
+        "title": "共享文档 TOP",
+        "empty": "此期间没有共享文档访问",
+        "document": "文档"
+      },
+      "page": {
+        "root": "首页",
+        "login": "登录",
+        "terms": "服务条款",
+        "workspaces": "工作区列表",
+        "workspaceDetail": "工作区详情",
+        "modelEditor": "文档编辑器",
+        "teams": "团队",
+        "community": "社区",
+        "releaseNotes": "发布说明",
+        "share": "共享查看器",
+        "admin": "管理后台",
+        "other": "其他"
+      },
+      "referrer": {
+        "direct": "直接访问",
+        "internal": "站内来源"
+      },
+      "activity": {
+        "loginTitle": "每日登录",
+        "loginAria": "每日登录折线 — 成功为实线，失败为虚线",
+        "succeeded": "成功",
+        "failed": "失败",
+        "actionsTitle": "功能使用量 TOP",
+        "actionsAria": "按审计动作统计的使用量前10项",
+        "empty": "此期间没有记录到活动"
+      }
     }
   },
   "notFound": {
