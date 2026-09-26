@@ -275,3 +275,88 @@ test.describe('협업 2차 — 실시간 채널(실물 WebSocket)', () => {
     await bobContext.close()
   })
 })
+
+/* ---------- v1.17: 실시간 편집(커맨드·커서·선택·이동)·Edit Session Lock ---------- */
+
+test.describe('협업 3차 — 실시간 편집(v1.17)', () => {
+  test('커맨드 실시간 반영 · 원격 커서·선택 표시 · 객체 이동 확정', async ({ browser }) => {
+    test.setTimeout(90_000)
+    const aliceContext = await browser.newContext()
+    const bobContext = await browser.newContext()
+    const alice = await aliceContext.newPage()
+    const bob = await bobContext.newPage()
+    const server = serverState()
+
+    // 룸 503 — 앞선 두 테스트(501·502)와 병렬 실행 중 섞이지 않게 한다
+    await openEditor(alice, '2', '앨리스', { server, modelId: '503' })
+    await openEditor(bob, '3', '밥', { server, modelId: '503' })
+    await expect(alice.getByTestId('presence-chip')).toBeVisible({ timeout: 10_000 })
+    await expect(bob.locator('.react-flow__node')).toHaveCount(1, { timeout: 10_000 })
+
+    // ---------- 커맨드 채널 — 앨리스 엔터티 생성이 저장 없이 밥 캔버스에 바로 그려진다 ----------
+    await alice.locator('.react-flow').click({ button: 'right', position: { x: 100, y: 100 } })
+    await alice.getByText('엔터티 생성').click()
+    await expect(bob.locator('.react-flow__node')).toHaveCount(2, { timeout: 5_000 })
+
+    // ---------- 커서 — 앨리스 마우스 이동이 밥 화면에 화살표+이름표로 보인다 ----------
+    await alice.locator('.react-flow').hover({ position: { x: 220, y: 200 } })
+    await alice.locator('.react-flow').hover({ position: { x: 260, y: 240 } })
+    await expect(bob.getByTestId('remote-cursor')).toBeVisible({ timeout: 5_000 })
+    await expect(bob.getByTestId('remote-cursor')).toContainText('앨리스')
+
+    // ---------- 선택 — 앨리스가 orders 노드를 클릭하면 밥 쪽 같은 노드에 선택 흔적이 붙는다 ----------
+    await bob.locator('.react-flow__node').first().locator('input').first().waitFor({ state: 'visible' })
+    await alice.locator('.react-flow__node').first().click({ position: { x: 60, y: 8 } })
+    await expect(bob.locator('.react-flow__node').first()).toHaveAttribute('data-remote-selection', '2', {
+      timeout: 5_000,
+    })
+
+    // ---------- 이동 — 앨리스 드래그 확정(node/move 커맨드)이 밥 노드 위치를 바꾼다 ----------
+    const bobNewTable = bob.locator('.react-flow__node').nth(1)
+    const styleBefore = await bobNewTable.getAttribute('style')
+    await alice.locator('.react-flow__node').nth(1).dragTo(alice.locator('.react-flow'), {
+      targetPosition: { x: 420, y: 320 },
+    })
+    await expect
+      .poll(async () => bobNewTable.getAttribute('style'), { timeout: 5_000 })
+      .not.toBe(styleBefore)
+
+    await aliceContext.close()
+    await bobContext.close()
+  })
+
+  test('Edit Session Lock — 테이블 편집 다이얼로그가 상대 뱃지·진입 차단으로 나타난다', async ({ browser }) => {
+    test.setTimeout(90_000)
+    const aliceContext = await browser.newContext()
+    const bobContext = await browser.newContext()
+    const alice = await aliceContext.newPage()
+    const bob = await bobContext.newPage()
+    const server = serverState()
+
+    // 룸 504 — 실시간 편집 테스트(503)와 분리
+    await openEditor(alice, '2', '앨리스', { server, modelId: '504' })
+    await openEditor(bob, '3', '밥', { server, modelId: '504' })
+    await expect(alice.getByTestId('presence-chip')).toBeVisible({ timeout: 10_000 })
+    await expect(bob.locator('.react-flow__node')).toHaveCount(1, { timeout: 10_000 })
+
+    // ---------- 앨리스가 테이블 정보 다이얼로그를 열면 락 획득 → 밥 노드 헤더에 보유자 뱃지 ----------
+    await alice.locator('.react-flow__node').first().dblclick()
+    await expect(alice.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
+    await expect(bob.getByTestId('edit-lock-badge').first()).toContainText('앨리스', { timeout: 5_000 })
+
+    // ---------- 밥이 같은 다이얼로그를 열면 진입 차단 안내 + 저장 disabled ----------
+    await bob.locator('.react-flow__node').first().dblclick()
+    const bobDialog = bob.getByRole('dialog')
+    await expect(bobDialog).toBeVisible({ timeout: 5_000 })
+    await expect(bobDialog.getByTestId('edit-lock-notice')).toContainText('앨리스')
+    await expect(bobDialog.getByRole('button', { name: '저장' })).toBeDisabled()
+    await bob.keyboard.press('Escape')
+
+    // ---------- 앨리스 종료 → 락 해제 → 밥 뱃지 소멸, 밥의 저장도 다시 가능 ----------
+    await alice.keyboard.press('Escape')
+    await expect(bob.getByTestId('edit-lock-badge')).toHaveCount(0, { timeout: 5_000 })
+
+    await aliceContext.close()
+    await bobContext.close()
+  })
+})

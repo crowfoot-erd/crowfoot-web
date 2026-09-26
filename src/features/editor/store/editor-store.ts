@@ -8,13 +8,35 @@
  * savedDocument는 마지막으로 저장된 문서(버전 기록 요약의 diff 기준점 — §13). 저장 성공 시점의
  * present가 아니라 PUT한 본문을 포착한다: 요청 비행 중 편집이 들어와도 다음 요약이 그 편집을
  * 놓치지 않게(그 편집은 다음 저장의 요약에 남는다).
+ *
+ * v1.17 협업: 원격 커맨드는 applyRemote로 들어온다 — present·undo 스택·savedDocument 전부에
+ * 리플레이(rebase)해 원격 변경이 내 undo를 침범하지 않게 한다. 로컬 커밋은 리스너로
+ * 밖으로 알려져(collab 발행) 커밋 호출부는 협업을 모른다.
  */
 import { create } from 'zustand'
 
 import { applyChange, applyChanges, type ErdChange } from '@/features/editor/model/changes'
+import { deriveChanges } from '@/features/editor/model/collab-merge'
 import type { EditorDocument, ErdViewport } from '@/features/editor/model/content-schema'
 
 const STACK_LIMIT = 50
+
+/* ---------- 로컬 변경 리스너 — 협업 커맨드 발행용 ---------- */
+
+/** commit·commitAll이 지나간 변경을 받는다. 발행(catalog)·LWW 감지가 구독한다.
+ *  스토어 밖 모듈 레벨 세트라 컴포넌트 라이프사이클과 무관하게 붙고 분리된다. */
+type LocalChangeListener = (changes: ErdChange[]) => void
+const localChangeListeners = new Set<LocalChangeListener>()
+
+export function subscribeLocalChanges(listener: LocalChangeListener): () => void {
+  localChangeListeners.add(listener)
+  return () => localChangeListeners.delete(listener)
+}
+
+function notifyLocalChanges(changes: ErdChange[]): void {
+  if (changes.length === 0) return
+  localChangeListeners.forEach((listener) => listener(changes))
+}
 
 const emptyDocument: EditorDocument = {
   model: { tables: [], relationships: [] },
@@ -64,10 +86,16 @@ interface EditorState {
   commit: (change: ErdChange) => void
   /** 연속 변경을 한 스택에 커밋 — 관계+FK·대상 일괄 삭제 등 */
   commitAll: (changes: ErdChange[]) => void
+  /** 원격 커맨드 적용(협업) — present·past·future·savedDocument 전부 rebase.
+   *  dirty(past.length !== savedDepth)는 그대로: 원격 변경은 내 undo 대상이 아니다. */
+  applyRemote: (change: ErdChange) => void
   undo: () => void
   redo: () => void
   /** 저장 완료 — 버전 갱신·dirty 해제. saved는 실제 PUT한 문서(생략하면 현재 present) */
   markSaved: (version: number, saved?: EditorDocument) => void
+  /** 원격 저장 승계 — 받은 커맨드(seq)가 저장 내용을 전부 포함할 때 baseVersion만 옮긴다.
+   *  dirty·savedDocument는 유지: 내 미저장 편집은 다음 저장에 이어진다. */
+  markRemoteSaved: (version: number) => void
   /** 뷰포인트 저장(저장 시점 화면 복원용) — undo 대상 아님 */
   setViewport: (viewport: ErdViewport) => void
   /** 선택 교체(익스플로러 클릭·전체 선택·해제). 캔버스 클릭은 select 변경 write-through로 같은 액션을 탄다 */
@@ -111,6 +139,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       future: [],
       selectedIds: pruneSelection(next, get().selectedIds),
     })
+    notifyLocalChanges([change])
   },
 
   commitAll: (changes) => {
@@ -121,6 +150,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       past: [...past.slice(-(STACK_LIMIT - 1)), present],
       present: next,
       future: [],
+      selectedIds: pruneSelection(next, get().selectedIds),
+    })
+    notifyLocalChanges(changes)
+  },
+
+  applyRemote: (change) => {
+    const { present, past, future, savedDocument } = get()
+    const next = applyChange(present, change)
+    set({
+      present: next,
+      // undo 스택 rebase — undo해도 원격 변경은 유지되고 내 변경만 되돌아간다.
+      // applyChange 불변·구조 공유라 50스냅샷 리플레이 비용은 O(변경분)이다
+      past: past.map((doc) => applyChange(doc, change)),
+      future: future.map((doc) => applyChange(doc, change)),
+      savedDocument: savedDocument ? applyChange(savedDocument, change) : savedDocument,
       selectedIds: pruneSelection(next, get().selectedIds),
     })
   },
@@ -135,21 +179,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       future: [present, ...future].slice(0, STACK_LIMIT),
       selectedIds: pruneSelection(next, get().selectedIds),
     })
+    // 협업: undo는 스냅샷 복원이라 커맨드 이력이 없다 — 되돌린 결과를 diff로 커맨드열로
+    // 바꿔 발행한다(절대값 커맨드). present·next 둘 다 원격 변경을 이미 포함해 역방향만 남는다.
+    notifyLocalChanges(deriveChanges(present, next))
   },
 
   redo: () => {
-    const { past, future } = get()
+    const { past, future, present } = get()
     if (future.length === 0) return
     set({
-      past: [...past.slice(-(STACK_LIMIT - 1)), get().present],
+      past: [...past.slice(-(STACK_LIMIT - 1)), present],
       present: future[0],
       future: future.slice(1),
       selectedIds: pruneSelection(future[0], get().selectedIds),
     })
+    notifyLocalChanges(deriveChanges(present, future[0]))
   },
 
   markSaved: (version, saved) => {
     set({ baseVersion: version, savedDepth: get().past.length, savedDocument: saved ?? get().present })
+  },
+
+  markRemoteSaved: (version) => {
+    set({ baseVersion: version })
   },
 
   setViewport: (viewport) => {

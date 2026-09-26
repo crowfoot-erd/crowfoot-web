@@ -5,6 +5,7 @@
  * 생성 모드에서는 선택 컬럼을 따르는 기본 이름(uk_/idx_ 접두)을 자동으로 채우고,
  * 사용자가 직접 고치면 더 이상 따라가지 않는다. 컬럼 선택은 체크(선택 순서 = 키 컬럼
  * 순서) + 화살표 재정렬로 편집한다. 확정은 목록 전체를 1커밋(uniqueKey/set·index/set).
+ * 협업(v1.17): 열려 있는 동안 소속 테이블의 Edit Session Lock을 잡는다(useEditLock).
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronDown, ChevronUp } from 'lucide-react'
@@ -26,6 +27,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn, ErdTable, IndexOrder } from '@/features/editor/model/content-schema'
+import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface KeyInfoSubmit {
   name: string
@@ -64,6 +66,9 @@ export function KeyInfoDialog({
   onConfirm,
 }: KeyInfoDialogProps) {
   const { t } = useTranslation()
+  // 다이얼로그 수명 락 — 키 변경은 테이블 귀속이라 락 단위도 테이블이다
+  const foreignLock = useEditLock('table', table?.id ?? null, open)
+  const locked = foreignLock !== null
 
   const schema = z.object({
     name: z
@@ -137,6 +142,11 @@ export function KeyInfoDialog({
           <DialogTitle>{t(target ? 'model.editor.key.titleEdit' : 'model.editor.key.titleAdd', { kind: kindLabel })}</DialogTitle>
           <DialogDescription>{table?.physicalName}</DialogDescription>
         </DialogHeader>
+        {locked ? (
+          <p data-testid="edit-lock-notice" className="text-xs text-amber-600 dark:text-amber-400">
+            {t('model.editor.collab.lockBlocked', { name: foreignLock.userName })}
+          </p>
+        ) : null}
         <Form {...form}>
           <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
             <FormField
@@ -240,7 +250,7 @@ export function KeyInfoDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit">{t('common.save')}</Button>
+              <Button type="submit" disabled={locked}>{t('common.save')}</Button>
             </DialogFooter>
           </form>
         </Form>

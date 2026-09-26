@@ -4,6 +4,8 @@
  * 오픈 지점: 메모 밴드 더블클릭. 색은 고르는 즉시 커밋해 메모가 실시간으로 변한다
  * (자유 색 픽커는 드래그 이벤트가 많아 400ms 디바운스로 1커밋). 제목·연관 테이블은 저장 버튼으로 확정.
  * 연관 테이블은 메모를 테이블 위에 드래그해 놓는 방법으로도 지정한다(ErdCanvas).
+ * 협업(v1.17): 열려 있는 동안 메모 Edit Session Lock을 잡는다(useEditLock) — 남이
+ * 편집 중이면 저장·색 변경이 막히고 보유자 안내가 뜬다.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { NOTE_HEX_COLOR, type ErdNote } from '@/features/editor/model/content-schema'
+import { useEditLock } from '@/features/editor/collab-locks'
 import { PRESET_HEX, noteSkin } from './canvas/note-skin'
 
 export interface NoteDialogProps {
@@ -61,6 +64,9 @@ export function NoteDialog({
   onLinkConfirm,
 }: NoteDialogProps) {
   const { t } = useTranslation()
+  // 다이얼로그 수명 락 — 남이 잡았으면(반환값) 저장·색 변경을 막는다
+  const foreignLock = useEditLock('note', note?.id ?? null, open)
+  const locked = foreignLock !== null
   const [title, setTitle] = useState('')
   /** 선택된 연관 테이블 — ''는 없음(해제) */
   const [linked, setLinked] = useState('')
@@ -115,6 +121,11 @@ export function NoteDialog({
           <DialogTitle>{t('model.editor.note.edit')}</DialogTitle>
           <DialogDescription>{t('model.editor.note.editDescription')}</DialogDescription>
         </DialogHeader>
+        {locked ? (
+          <p data-testid="edit-lock-notice" className="text-xs text-amber-600 dark:text-amber-400">
+            {t('model.editor.collab.lockBlocked', { name: foreignLock.userName })}
+          </p>
+        ) : null}
 
         <div className="grid gap-4 py-2">
           <div className="grid gap-2">
@@ -135,14 +146,15 @@ export function NoteDialog({
           <div className="grid gap-2">
             <Label>{t('model.editor.note.color')}</Label>
             <div className="flex items-center gap-2">
-              {/* 프리셋 5색 — 클릭 즉시 확정 */}
+              {/* 프리셋 5색 — 클릭 즉시 확정(남의 락이면 잠긴다) */}
               {(['yellow', 'green', 'blue', 'pink', 'purple'] as const).map((preset) => (
                 <button
                   key={preset}
                   type="button"
+                  disabled={locked}
                   aria-label={t('model.editor.note.color')}
                   aria-pressed={note?.color === preset}
-                  className={`size-6 rounded-full border border-black/10 dark:border-white/10 ${
+                  className={`size-6 rounded-full border border-black/10 dark:border-white/10 disabled:cursor-not-allowed disabled:opacity-60 ${
                     note?.color === preset ? 'ring-2 ring-amber-600/70 ring-offset-1' : ''
                   }`}
                   style={{ backgroundColor: PRESET_HEX[preset] }}
@@ -158,7 +170,8 @@ export function NoteDialog({
               {/* 자유 색 픽커 — 드래그마다 이벤트가 오므로 슬립 후 1커밋 */}
               <input
                 type="color"
-                className="size-7 cursor-pointer rounded-md border border-input bg-transparent p-0.5"
+                disabled={locked}
+                className="size-7 cursor-pointer rounded-md border border-input bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                 value={custom}
                 aria-label={t('model.editor.note.customColor')}
                 title={t('model.editor.note.customColor')}
@@ -206,7 +219,7 @@ export function NoteDialog({
           <Button type="button" variant="ghost" onClick={close}>
             {t('common.cancel')}
           </Button>
-          <Button type="button" onClick={save}>
+          <Button type="button" onClick={save} disabled={locked}>
             {t('common.save')}
           </Button>
         </DialogFooter>

@@ -977,6 +977,17 @@
       "conflict": {
         "title": "Version conflict",
         "description": "Another client saved first. Reloading discards your unsaved local changes.",
+        "resolverDescription": "The saved server copy differs from your edits. Pick which side to keep per item — overlapping items default to keeping yours.",
+        "emptyDiff": "No differences from the server copy",
+        "counts": "{{conflicts}} conflicting · {{auto}} auto-merged",
+        "autoNote": "Non-overlapping items automatically take the server value",
+        "allMine": "Keep all mine",
+        "allServer": "Use server for all",
+        "keepMine": "Keep mine",
+        "useServer": "Use server",
+        "conflictBadge": "Conflict",
+        "conflictNote": "Overlaps a property you edited before saving",
+        "resolve": "Apply choices and save",
         "reload": "Reload",
         "keep": "Keep editing"
       },
@@ -984,6 +995,19 @@
         "banner": "Another user has updated this document. Saving now will conflict.",
         "reload": "Load server version",
         "synced": "Loaded another user's changes"
+      },
+      "collab": {
+        "lwwApplied": "{{name}} edited the same property, so their value was applied: {{target}}",
+        "lwwRestore": "Restore my value",
+        "readOnly": "Your current role is read-only — editing is disabled",
+        "lockBlocked": "{{name}} is editing this item",
+        "lockedBy": "{{name}} is editing",
+        "rejected": {
+          "read-only": "Your current role is read-only, so the change was not sent",
+          "lock-held": "Another user is editing this item, so the change was rejected",
+          "payload-too-large": "The change was too large to send",
+          "default": "The change was rejected by the server"
+        }
       },
       "presence": {
         "label": "Watching now"

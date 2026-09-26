@@ -977,6 +977,17 @@
       "conflict": {
         "title": "版本冲突",
         "description": "其他客户端已先保存。重新加载将丢弃你未保存的本地更改。",
+        "resolverDescription": "服务器保存的版本与你的编辑不同。请逐项选择保留哪一侧 — 重叠项默认保留你的值。",
+        "emptyDiff": "与服务器版本没有差异",
+        "counts": "冲突 {{conflicts}} · 自动合并 {{auto}}",
+        "autoNote": "不重叠的项会自动采用服务器值",
+        "allMine": "全部保留我的值",
+        "allServer": "全部使用服务器值",
+        "keepMine": "保留我的值",
+        "useServer": "使用服务器值",
+        "conflictBadge": "冲突",
+        "conflictNote": "与你保存前编辑的属性重叠的项",
+        "resolve": "应用所选并保存",
         "reload": "重新加载",
         "keep": "继续编辑"
       },
@@ -984,6 +995,19 @@
         "banner": "其他用户已更新此文档。现在保存将产生冲突。",
         "reload": "加载服务器版本",
         "synced": "已加载其他用户的更改"
+      },
+      "collab": {
+        "lwwApplied": "{{name}} 修改了同一属性，因此已应用对方的值：{{target}}",
+        "lwwRestore": "恢复我的值",
+        "readOnly": "当前角色为只读 — 无法编辑",
+        "lockBlocked": "{{name}} 正在编辑此项",
+        "lockedBy": "{{name}} 正在编辑",
+        "rejected": {
+          "read-only": "当前角色为只读，未能发送更改",
+          "lock-held": "其他用户正在编辑此项，更改被拒绝",
+          "payload-too-large": "更改内容过大，未能发送",
+          "default": "更改被服务器拒绝"
+        }
       },
       "presence": {
         "label": "正在查看"

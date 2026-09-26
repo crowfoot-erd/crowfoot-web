@@ -26,7 +26,8 @@ import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/
 // 캡처 라이브러리 — 브라우저 렌더링이 필요해 실동작은 검증 대상 아님, dataURL만 흘려준다
 vi.mock('html-to-image', () => ({ toPng: vi.fn() }))
 
-// 협업 2차 채널 — 훅 전체를 갈아끼운다(실제 WebSocket은 별도 훅 테스트에서 검증)
+// 협업 3차 채널 — 훅 전체를 갈아끼운다(실제 WebSocket은 별도 훅 테스트에서 검증).
+// v1.17 핸들(커맨드·락·커서·역할)까지 전부 스텁: 셸이 destructure 하는 전체 계약이다
 const collabMock = vi.hoisted(() => ({
   participants: [] as Array<{ userId: string; name: string; avatarUrl?: string | null }>,
   publishSaved: vi.fn(),
@@ -41,13 +42,25 @@ const collabMock = vi.hoisted(() => ({
   }>,
   sendMessage: vi.fn(),
   connected: true,
+  sendCommands: vi.fn(),
+  sendCursor: vi.fn(),
+  acquireLock: vi.fn(),
+  renewLock: vi.fn(),
+  releaseLock: vi.fn(),
+  locks: [] as Array<{ targetType: string; targetId: string; userId: string; userName: string; acquiredAt: string }>,
+  remoteCursors: [] as Array<{ userId: string; name: string; cursor: { x: number; y: number }; at: string }>,
+  myRole: null as string | null,
+  readOnly: false,
   options: undefined as
     | undefined
     | {
         avatarUrl?: string
         githubLogin?: string | null
-        onRemoteSaved?: (event: { version: number; savedBy: string; savedByName: string; at: string }) => void
+        onRemoteSaved?: (event: { version: number; savedBy: string; savedByName: string; at: string; seq: number; receivedSeq: number }) => void
         onIncomingChat?: (message: { seq: number; userId: string; name: string; message: string; at: string; avatarUrl?: string | null; userLogin?: string | null }) => void
+        onRemoteCommand?: (change: ErdChange, actor: { userId: string; name: string }) => void
+        onRejected?: (reason: string) => void
+        onResync?: (reason: string) => void
       },
 }))
 vi.mock('@/features/editor/collab', () => ({
@@ -59,18 +72,38 @@ vi.mock('@/features/editor/collab', () => ({
       messages: collabMock.messages,
       sendMessage: collabMock.sendMessage,
       connected: collabMock.connected,
+      sendCommands: collabMock.sendCommands,
+      sendCursor: collabMock.sendCursor,
+      acquireLock: collabMock.acquireLock,
+      renewLock: collabMock.renewLock,
+      releaseLock: collabMock.releaseLock,
+      locks: collabMock.locks,
+      remoteCursors: collabMock.remoteCursors,
+      myRole: collabMock.myRole,
+      readOnly: collabMock.readOnly,
     }
   },
 }))
 
-// sonner 토스트 — 토스트 발화 자체가 검증 대상(채팅 알림). 렌더러는 클릭 동작 검증에 직접 쓴다
-const toastMock = vi.hoisted(() => ({
-  custom: vi.fn(),
-  dismiss: vi.fn(),
-  success: vi.fn(),
-  error: vi.fn(),
-  info: vi.fn(),
-}))
+// sonner 토스트 — 토스트 발화 자체가 검증 대상(채팅 알림·LWW 충돌). 평호출 toast() 와
+// toast.custom/warning/… 메서드를 모두 쓴다 — 호출 가능한 fn에 메서드를 붙인다
+const toastMock = vi.hoisted(() => {
+  const fn = vi.fn() as unknown as ReturnType<typeof vi.fn> & {
+    custom: ReturnType<typeof vi.fn>
+    dismiss: ReturnType<typeof vi.fn>
+    success: ReturnType<typeof vi.fn>
+    error: ReturnType<typeof vi.fn>
+    info: ReturnType<typeof vi.fn>
+    warning: ReturnType<typeof vi.fn>
+  }
+  fn.custom = vi.fn()
+  fn.dismiss = vi.fn()
+  fn.success = vi.fn()
+  fn.error = vi.fn()
+  fn.info = vi.fn()
+  fn.warning = vi.fn()
+  return fn
+})
 vi.mock('sonner', () => ({ toast: toastMock }))
 
 afterEach(() => {
@@ -84,8 +117,19 @@ afterEach(() => {
   collabMock.options = undefined
   collabMock.publishSaved.mockClear()
   collabMock.sendMessage.mockClear()
+  collabMock.sendCommands.mockClear()
+  collabMock.sendCursor.mockClear()
+  collabMock.acquireLock.mockClear()
+  collabMock.renewLock.mockClear()
+  collabMock.releaseLock.mockClear()
+  collabMock.locks.length = 0
+  collabMock.remoteCursors.length = 0
+  collabMock.myRole = null
+  collabMock.readOnly = false
   toastMock.custom.mockClear()
   toastMock.dismiss.mockClear()
+  toastMock.success.mockClear()
+  toastMock.warning.mockClear()
 })
 
 function modelFixture(overrides: Partial<Model> = {}): Model {
@@ -269,6 +313,9 @@ describe('EditorShell — 협업 2차 실시간 채널(WebSocket)', () => {
         savedBy: 'u2',
         savedByName: '밥',
         at: '2026-09-14T06:00:00Z',
+        // 끊김 중 저장(seq 6 > 받은 5) — 승계 불가 판정으로 기존 감지 경로(강제 수화)를 탄다
+        seq: 6,
+        receivedSeq: 5,
       })
     })
 
@@ -2087,5 +2134,194 @@ describe('EditorShell — 그룹 소속 테이블: 색 잠금·소속 표시·�
 
     // 전체 복귀 — 미소속 payments 노드가 다시 그려진다
     await waitFor(() => expect(document.querySelectorAll('.react-flow__node')).toHaveLength(2))
+  })
+})
+
+/* ---------- 협업 3차: 실시간 편집·LWW·승계·리졸버·락 (v1.17) ---------- */
+
+/** 커맨드 1건을 원격에서 흘려보낸다 — 채널 목은 options로 구독 콜백을 노출한다 */
+function remoteCommand(change: ErdChange, actor = { userId: 'u9', name: '밥' }) {
+  expect(collabMock.options?.onRemoteCommand).toBeTypeOf('function')
+  act(() => collabMock.options?.onRemoteCommand?.(change, actor))
+}
+
+describe('EditorShell — 협업 3차 실시간 편집(v1.17)', () => {
+  it('로컬 커밋 → sendCommands 발행 — 편집 경로는 협업을 모른다', async () => {
+    await renderEditor()
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+
+    await waitFor(() => expect(collabMock.sendCommands).toHaveBeenCalled())
+    const published = collabMock.sendCommands.mock.calls[0][0] as ErdChange[]
+    expect(published).toEqual([
+      expect.objectContaining({ type: 'table/create', table: expect.objectContaining({ physicalName: 'orders' }) }),
+    ])
+  })
+
+  it('남의 커맨드는 present에 반영 — 다른 객체의 변경은 조용히(자동 병합)', async () => {
+    await renderEditor()
+    const table = createTable('orders')
+    useEditorStore.getState().commit({ type: 'table/create', table, position: { x: 0, y: 0 } })
+    useEditorStore.getState().commit({ type: 'table/patch', tableId: table.id, patch: { logicalName: '내 편집' } })
+    toastMock.mockClear()
+
+    // 밥이 자기 테이블을 만든다 — 내 dirty(orders)와 객체가 다르니 겹침 없다
+    remoteCommand({ type: 'table/create', table: createTable('members'), position: { x: 20, y: 20 } })
+
+    const state = useEditorStore.getState()
+    expect(state.present.model.tables.map((t) => t.physicalName)).toEqual(['orders', 'members'])
+    expect(state.present.model.tables[0].logicalName).toBe('내 편집') // 내 편집 보존
+    expect(toastMock).not.toHaveBeenCalled() // 겹침 없음 — 알림 없는 자동 병합
+  })
+
+  it('LWW 충돌 → 알림 토스트 + "내 값 복원" — 복원은 새 커맨드로 재발행된다', async () => {
+    await renderEditor()
+    const table = createTable('orders')
+    useEditorStore.getState().commit({ type: 'table/create', table, position: { x: 0, y: 0 } })
+    useEditorStore.getState().commit({ type: 'table/patch', tableId: table.id, patch: { comment: '내 설명' } })
+    toastMock.mockClear()
+
+    // 같은 속성(comment)을 다른 값으로 — 늦은 쪽(원격)이 이긴다
+    remoteCommand({ type: 'table/patch', tableId: table.id, patch: { comment: '밥의 설명' } })
+    expect(useEditorStore.getState().present.model.tables[0].comment).toBe('밥의 설명')
+
+    expect(toastMock).toHaveBeenCalledTimes(1)
+    const [message, options] = toastMock.mock.calls[0] as [string, { action: { label: string; onClick: () => void } }]
+    expect(message).toContain('밥')
+    expect(options.action.label).toBe('내 값 복원')
+
+    // 복원 — 충돌 시점 내 값으로 commitAll(재발행 → 새 seq로 재승부)
+    act(() => options.action.onClick())
+    expect(useEditorStore.getState().present.model.tables[0].comment).toBe('내 설명')
+    const republished = collabMock.sendCommands.mock.calls.at(-1)?.[0] as ErdChange[]
+    expect(republished).toEqual([
+      expect.objectContaining({ type: 'table/patch', patch: expect.objectContaining({ comment: '내 설명' }) }),
+    ])
+  })
+
+  it('원격 saved 승계 — 받은 커맨드가 저장 내용을 덮으면 base만 조용히 옮긴다(dirty 유지)', async () => {
+    await renderEditor()
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+    const dirtyDepth = useEditorStore.getState().past.length
+
+    act(() => {
+      collabMock.options?.onRemoteSaved?.({
+        version: 7, savedBy: 'u9', savedByName: '밥', at: 'T', seq: 3, receivedSeq: 3,
+      })
+    })
+
+    const state = useEditorStore.getState()
+    expect(state.baseVersion).toBe(7) // 승계
+    expect(state.past.length).toBe(dirtyDepth) // 되돌리지 않는다 — dirty 그대로
+    expect(state.present.model.tables).toHaveLength(1)
+    expect(screen.queryByText('버전 충돌')).toBeNull() // 리졸버·배너 없음
+  })
+
+  it('Viewer(readOnly) → 편집 잠금 + 1회 경고 토스트, 커맨드 발행도 끊긴다', async () => {
+    collabMock.readOnly = true
+    try {
+      await renderEditor()
+
+      await waitFor(() => expect(toastMock.warning).toHaveBeenCalledWith('현재 역할은 읽기 전용입니다 — 편집할 수 없습니다'))
+      expect(toastMock.warning).toHaveBeenCalledTimes(1) // 역할 확정 시 1회만
+      expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+
+      useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+      await act(async () => {}) // 발행 effect flush
+      expect(collabMock.sendCommands).not.toHaveBeenCalled()
+    } finally {
+      collabMock.readOnly = false
+    }
+  })
+
+  it('409 → 충돌 리졸버 → 기본 선택(내 것 유지) 적용 후 저장 성공 → baseVersion 승계', async () => {
+    const putBodies: Array<{ baseVersion: number; content: string }> = []
+    let putCount = 0
+    server.use(
+      http.put('/api/v1/core/workspaces/101/models/501/content', async ({ request }) => {
+        putCount += 1
+        if (putCount === 1) return fail('VERSION_CONFLICT', 409)
+        const body = (await request.json()) as { baseVersion: number; content: string }
+        putBodies.push(body)
+        return HttpResponse.json(ok({ response: { version: 4, updatedAt: 'T' } }))
+      }),
+    )
+    await renderEditor()
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+
+    const save = screen.getByRole('button', { name: '저장' })
+    await waitFor(() => expect(save).toBeEnabled())
+    fireEvent.click(save)
+
+    // 리졸버 — 서버(빈 문서)가 내 테이블을 지우는 변경 1건, 내 dirty와 겹쳐 기본 '내 것 유지'
+    const resolver = await screen.findByRole('dialog')
+    expect(within(resolver).getByText('버전 충돌')).toBeVisible()
+    expect(resolver.textContent).toContain('충돌 1 · 자동 병합 0') // counts는 autoNote와 한 문단
+    fireEvent.click(within(resolver).getByRole('button', { name: '선택 적용 후 저장' }))
+
+    await waitFor(() => expect(useEditorStore.getState().baseVersion).toBe(4))
+    expect(useEditorStore.getState().present.model.tables).toHaveLength(1) // 병합본 = 내 테이블 유지
+    expect(putBodies).toHaveLength(1)
+    expect(putBodies[0].baseVersion).toBe(3) // 서버 버전을 base로 다시 저장
+    expect(JSON.parse(putBodies[0].content).model.tables).toHaveLength(1)
+    expect(screen.queryByText('버전 충돌')).toBeNull() // 해소 완료 — 다이얼로그 닫힘
+  })
+
+  it('409 + 서버 본문이 내 문서와 같으면(동시 동일 저장) 리졸버 없이 base만 승계', async () => {
+    server.use(
+      http.put('/api/v1/core/workspaces/101/models/501/content', () => fail('VERSION_CONFLICT', 409)),
+    )
+    await renderEditor()
+    useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } })
+    const { present } = useEditorStore.getState()
+    const identical = serializeContent({ schemaVersion: 1, model: present.model, diagram: present.diagram })
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models/501', () =>
+        HttpResponse.json(ok({ response: modelFixture({ content: identical, version: 4 }) })),
+      ),
+    )
+
+    const save = screen.getByRole('button', { name: '저장' })
+    await waitFor(() => expect(save).toBeEnabled())
+    fireEvent.click(save)
+
+    await waitFor(() => expect(useEditorStore.getState().baseVersion).toBe(4))
+    const state = useEditorStore.getState()
+    expect(state.past.length).toBe(state.savedDepth) // 깨끗 — dirty 없음
+    expect(screen.queryByText('버전 충돌')).toBeNull()
+  })
+
+  it('락 배선 — 메모 편집 다이얼로그 오픈 → acquireLock, 닫으면 releaseLock', async () => {
+    await renderEditor()
+    fireEvent.contextMenu(document.querySelector('.react-flow') ?? document.body)
+    fireEvent.click(await screen.findByText('메모 생성'))
+    await waitFor(() => expect(useEditorStore.getState().present.diagram.notes).toHaveLength(1))
+    const noteId = useEditorStore.getState().present.diagram.notes[0].id
+
+    fireEvent.doubleClick(screen.getByTitle('드래그로 이동 · 두 번 클릭해 편집'))
+    const dialog = await screen.findByRole('dialog')
+    await waitFor(() => expect(collabMock.acquireLock).toHaveBeenCalledWith('note', noteId))
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+    await waitFor(() => expect(collabMock.releaseLock).toHaveBeenCalledWith('note', noteId))
+  })
+
+  it('남의 락 → 다이얼로그 진입 차단 안내 + 저장 disabled', async () => {
+    asAuthenticated() // me 픽스처 userId '2' — 락 보유자 u9와 다르다
+    await renderEditor()
+    fireEvent.contextMenu(document.querySelector('.react-flow') ?? document.body)
+    fireEvent.click(await screen.findByText('메모 생성'))
+    await waitFor(() => expect(useEditorStore.getState().present.diagram.notes).toHaveLength(1))
+    const noteId = useEditorStore.getState().present.diagram.notes[0].id
+
+    // 새 배열 참조로 갈아끼운 뒤 EditorShell을 다시 그린다(탐색기 토글) — locks 브리지 effect가
+    // 새 스냅샷을 스토어에 반영한다. 다이얼로그 오픈만으로는 ErdCanvas 지역 상태라 셸이 안 그려진다
+    collabMock.locks = [{ targetType: 'note', targetId: noteId, userId: 'u9', userName: '밥', acquiredAt: 'T' }]
+    fireEvent.click(screen.getByRole('button', { name: '탐색기' }))
+    fireEvent.doubleClick(screen.getByTitle('드래그로 이동 · 두 번 클릭해 편집'))
+    const dialog = await screen.findByRole('dialog')
+
+    const notice = await within(dialog).findByTestId('edit-lock-notice')
+    expect(notice.textContent).toContain('밥')
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled()
   })
 })

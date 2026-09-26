@@ -4,6 +4,8 @@
  * 생성: 부모 PK 기반 FK 컬럼 미리보기를 보여주고 확인 시 relationship/create 1커밋
  * (관계 + FK 컬럼 + 식별 관계 PK 포함 — undo 1스택). 부모/자식 스왑 가능.
  * 편집: 속성만 patch(컬럼 매핑 재구성은 후속 Phase).
+ * 협업(v1.17): 열려 있는 동안 Edit Session Lock을 잡는다(useEditLock) — 편집은 관계,
+ * 생성은 FK가 붙는 자식 테이블이 락 대상이다(서버 ChangeTargets 매핑과 같은 규칙).
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight } from 'lucide-react'
@@ -45,6 +47,7 @@ import {
   type ReferentialAction,
   type RelationshipType,
 } from '@/features/editor/model/content-schema'
+import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface RelationshipDialogProps {
   open: boolean
@@ -109,6 +112,10 @@ export function RelationshipDialog({
 }: RelationshipDialogProps) {
   const { t } = useTranslation()
   const isCreate = Boolean(parent && child) && !relationship
+  // 다이얼로그 수명 락 — 편집은 관계, 생성은 자식 테이블(FK가 붙는 쪽)
+  const lockTargetId = relationship?.id ?? child?.id ?? null
+  const foreignLock = useEditLock(relationship ? 'relationship' : 'table', lockTargetId, open)
+  const locked = foreignLock !== null
 
   const [swapped, setSwapped] = useState<ErdTable | null>(null)
   const [state, setState] = useState<RelationFormState>({
@@ -270,6 +277,11 @@ export function RelationshipDialog({
             {descriptionText}
           </DialogDescription>
         </DialogHeader>
+        {locked ? (
+          <p data-testid="edit-lock-notice" className="text-xs text-amber-600 dark:text-amber-400">
+            {t('model.editor.collab.lockBlocked', { name: foreignLock.userName })}
+          </p>
+        ) : null}
 
         <div className="grid gap-4">
           {isCreate ? (
@@ -488,6 +500,7 @@ export function RelationshipDialog({
               type="button"
               variant="destructive"
               className="mr-auto"
+              disabled={locked}
               onClick={() => {
                 onRemove(relationship.id)
                 onOpenChange(false)
@@ -499,7 +512,7 @@ export function RelationshipDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button type="button" onClick={handleConfirm} disabled={!canConfirm}>
+          <Button type="button" onClick={handleConfirm} disabled={!canConfirm || locked}>
             {t(isCreate ? 'common.create' : 'common.save')}
           </Button>
         </DialogFooter>

@@ -5,6 +5,8 @@
  * 강조색 스와치와 멤버 체크는 클릭 즉시 커밋(테이블 정보 다이얼로그 관례) — 다이얼로그가
  * 열린 채 캔버스·익스플로러가 바로 반응한다. 멤버 목록의 표시 이름은 익스플로러와 같은
  * 규칙(물리 우선, 논리명이 다를 때 옆에)이라 보는 모드와 어긋나지 않는다.
+ * 협업(v1.17): 열려 있는 동안 영역 Edit Session Lock을 잡는다(useEditLock) — 남이
+ * 편집 중이면 확정·색·멤버 변경이 막히고 보유자 안내가 뜬다.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -40,6 +42,7 @@ import {
   type ErdArea,
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
+import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface AreaDialogProps {
   open: boolean
@@ -60,6 +63,9 @@ type AreaInfoForm = {
 
 export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, onCommit }: AreaDialogProps) {
   const { t } = useTranslation()
+  // 다이얼로그 수명 락 — 남이 잡았으면(반환값) 확정·색·멤버 변경을 막는다
+  const foreignLock = useEditLock('area', area?.id ?? null, open)
+  const locked = foreignLock !== null
 
   const schema = z.object({
     name: z.string().trim().min(1, t('model.editor.areaDialog.nameRequired')),
@@ -103,6 +109,11 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
           <DialogTitle>{t('model.editor.areaDialog.title')}</DialogTitle>
           <DialogDescription>{area?.name}</DialogDescription>
         </DialogHeader>
+        {locked ? (
+          <p data-testid="edit-lock-notice" className="text-xs text-amber-600 dark:text-amber-400">
+            {t('model.editor.collab.lockBlocked', { name: foreignLock.userName })}
+          </p>
+        ) : null}
         <Form {...form}>
           <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
             <FormField
@@ -131,7 +142,8 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
                 </FormItem>
               )}
             />
-            {/* 강조색 — 프리셋 10색 + 기본(무색). 클릭 즉시 커밋이라 닫지 않고 박스가 바로 변한다 */}
+            {/* 강조색 — 프리셋 10색 + 기본(무색). 클릭 즉시 커밋이라 닫지 않고 박스가 바로 변한다.
+                남의 락이면 즉시 커밋 경로도 잠긴다 */}
             <FormItem>
               <FormLabel>{t('model.editor.areaDialog.color')}</FormLabel>
               <div
@@ -141,8 +153,9 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
               >
                 <button
                   type="button"
+                  disabled={locked}
                   className={cn(
-                    'size-6 rounded-md border border-input bg-background hover:ring-1 hover:ring-primary/40',
+                    'size-6 rounded-md border border-input bg-background hover:ring-1 hover:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60',
                     area?.color === 'default' && 'ring-2 ring-primary ring-offset-1',
                   )}
                   aria-label={t('model.editor.tableInfo.colorDefault')}
@@ -154,8 +167,9 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
                   <button
                     key={preset}
                     type="button"
+                    disabled={locked}
                     className={cn(
-                      'size-6 rounded-md border border-black/10 hover:ring-1 hover:ring-primary/40 dark:border-white/10',
+                      'size-6 rounded-md border border-black/10 hover:ring-1 hover:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10',
                       area?.color === preset && 'ring-2 ring-primary ring-offset-1',
                     )}
                     style={{ backgroundColor: TABLE_COLOR_HEX[preset] }}
@@ -184,7 +198,7 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
                         key={table.id}
                         className="flex cursor-pointer items-center gap-2 rounded-sm px-1.5 py-1 text-sm hover:bg-accent"
                       >
-                        <Checkbox checked={checked} onCheckedChange={(value) => toggleMember(table.id, value === true)} />
+                        <Checkbox checked={checked} disabled={locked} onCheckedChange={(value) => toggleMember(table.id, value === true)} />
                         <span className="min-w-0 truncate">{table.physical}</span>
                         {table.logical && table.logical !== table.physical ? (
                           <span className="min-w-0 truncate text-[10px] text-muted-foreground">{table.logical}</span>
@@ -199,7 +213,7 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit">{t('common.save')}</Button>
+              <Button type="submit" disabled={locked}>{t('common.save')}</Button>
             </DialogFooter>
           </form>
         </Form>

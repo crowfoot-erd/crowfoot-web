@@ -977,6 +977,17 @@
       "conflict": {
         "title": "버전 충돌",
         "description": "다른 클라이언트가 먼저 저장했습니다. 다시 불러오면 저장하지 않은 로컬 변경은 사라집니다.",
+        "resolverDescription": "서버 저장본과 내 편집이 다릅니다. 항목별로 남길 쪽을 고르세요 — 겹치는 항목은 기본으로 내 값을 유지합니다.",
+        "emptyDiff": "서버 본문과 차이가 없습니다",
+        "counts": "충돌 {{conflicts}} · 자동 병합 {{auto}}",
+        "autoNote": "겹치지 않는 항목은 서버 값이 자동으로 반영됩니다",
+        "allMine": "전체 내 값 유지",
+        "allServer": "전체 서버 값 사용",
+        "keepMine": "내 값 유지",
+        "useServer": "서버 값 사용",
+        "conflictBadge": "충돌",
+        "conflictNote": "내 저장 전 편집과 같은 속성이 겹치는 항목",
+        "resolve": "선택 적용 후 저장",
         "reload": "다시 불러오기",
         "keep": "계속 편집"
       },
@@ -984,6 +995,19 @@
         "banner": "다른 사용자가 문서를 수정했습니다. 지금 저장하면 충돌합니다.",
         "reload": "서버 본문 불러오기",
         "synced": "다른 사용자의 변경을 불러왔습니다"
+      },
+      "collab": {
+        "lwwApplied": "{{name}}님이 같은 속성을 수정해 값이 적용됐습니다: {{target}}",
+        "lwwRestore": "내 값 복원",
+        "readOnly": "현재 역할은 읽기 전용입니다 — 편집할 수 없습니다",
+        "lockBlocked": "{{name}}님이 이 항목을 편집 중입니다",
+        "lockedBy": "{{name}}님이 편집 중",
+        "rejected": {
+          "read-only": "현재 역할은 읽기 전용이라 변경을 보낼 수 없습니다",
+          "lock-held": "다른 사용자가 편집 중인 항목이라 변경이 거부됐습니다",
+          "payload-too-large": "변경 내용이 너무 커서 전송되지 않았습니다",
+          "default": "변경이 서버에서 거부됐습니다"
+        }
       },
       "presence": {
         "label": "함께 보는 사람"

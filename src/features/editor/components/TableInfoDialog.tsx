@@ -5,6 +5,8 @@
  * 강조색은 메모 색 관례처럼 스와치 클릭 즉시 node/color 1커밋 — 다이얼로그가 열린 채 노드가 바로 변한다.
  * 그룹에 속한 테이블은 렌더 색이 그룹 색으로 고정되므로(groupColorOf) 스와치는 그룹 색을
  * 선택된 채 비활성화하고, 소속 그룹 목록을 함께 보여준다.
+ * 협업(v1.17): 열려 있는 동안 테이블 Edit Session Lock을 잡는다(useEditLock) — 남이
+ * 편집 중이면 확정·색 변경이 막히고 보유자 안내가 뜬다.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -39,6 +41,7 @@ import {
   type ErdTable,
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
+import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface TableInfoDialogProps {
   open: boolean
@@ -66,6 +69,9 @@ type TableInfoForm = {
 
 export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, groupNames, onColorChange, onCommit, isDuplicateName }: TableInfoDialogProps) {
   const { t } = useTranslation()
+  // 다이얼로그 수명 락 — 남이 잡았으면(반환값) 확정·색 변경을 막는다
+  const foreignLock = useEditLock('table', table?.id ?? null, open)
+  const locked = foreignLock !== null
 
   const schema = z.object({
     physicalName: z.string().trim().min(1, t('model.editor.tableInfo.nameRequired')),
@@ -111,6 +117,11 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
           <DialogTitle>{t('model.editor.tableInfo.title')}</DialogTitle>
           <DialogDescription>{table?.physicalName}</DialogDescription>
         </DialogHeader>
+        {locked ? (
+          <p data-testid="edit-lock-notice" className="text-xs text-amber-600 dark:text-amber-400">
+            {t('model.editor.collab.lockBlocked', { name: foreignLock.userName })}
+          </p>
+        ) : null}
         <Form {...form}>
           <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
             <FormField
@@ -175,7 +186,8 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
               )}
             </FormItem>
             {/* 강조색 — 프리셋 10색 + 기본(무색). 클릭 즉시 커밋이라 닫지 않고 노드가 바로 변한다.
-                그룹 소속이면 그룹 색이 렌더를 고정해 개별 선택은 무의미 — 그룹 색을 선택된 채 잠근다 */}
+                그룹 소속이면 그룹 색이 렌더를 고정해 개별 선택은 무의미 — 그룹 색을 선택된 채 잠근다.
+                남의 락도 같은 이유로 잠근다(즉시 커밋이라 확정 버튼 보호만으로는 부족하다) */}
             <FormItem>
               <FormLabel>{t('model.editor.tableInfo.color')}</FormLabel>
               <div
@@ -185,11 +197,11 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
               >
                 <button
                   type="button"
-                  disabled={groupColor !== null}
+                  disabled={groupColor !== null || locked}
                   className={cn(
                     'size-6 rounded-md border border-input bg-background hover:ring-1 hover:ring-primary/40',
                     (groupColor ?? color) === 'default' && 'ring-2 ring-primary ring-offset-1',
-                    groupColor !== null && 'cursor-not-allowed opacity-60 hover:ring-0',
+                    (groupColor !== null || locked) && 'cursor-not-allowed opacity-60 hover:ring-0',
                   )}
                   aria-label={t('model.editor.tableInfo.colorDefault')}
                   aria-pressed={(groupColor ?? color) === 'default'}
@@ -200,11 +212,11 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
                   <button
                     key={preset}
                     type="button"
-                    disabled={groupColor !== null}
+                    disabled={groupColor !== null || locked}
                     className={cn(
                       'size-6 rounded-md border border-black/10 hover:ring-1 hover:ring-primary/40 dark:border-white/10',
                       (groupColor ?? color) === preset && 'ring-2 ring-primary ring-offset-1',
-                      groupColor !== null && 'cursor-not-allowed opacity-60 hover:ring-0',
+                      (groupColor !== null || locked) && 'cursor-not-allowed opacity-60 hover:ring-0',
                     )}
                     style={{ backgroundColor: TABLE_COLOR_HEX[preset] }}
                     aria-label={t('model.editor.tableInfo.color')}
@@ -221,7 +233,7 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit">{t('common.save')}</Button>
+              <Button type="submit" disabled={locked}>{t('common.save')}</Button>
             </DialogFooter>
           </form>
         </Form>

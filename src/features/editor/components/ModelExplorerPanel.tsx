@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { ArrowLeftRight, ChevronDown, ChevronRight, Eye, Pencil, Search, StickyNote, Table2, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, ChevronRight, Eye, Pencil, PencilLine, Search, StickyNote, Table2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
@@ -32,6 +32,7 @@ import {
 } from '@/features/editor/model/canvas-bounds'
 import { tablesOfArea } from '@/features/editor/model/areas'
 import { searchObjects, type ObjectHit } from '@/features/editor/model/object-search'
+import { useForeignLock } from '@/features/editor/collab-locks'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { estimateTableHeight, tableRenderWidth } from './canvas/TableNode'
 import type { NameDisplayMode } from './canvas/editor-context'
@@ -661,6 +662,9 @@ function TableRow({
       .flatMap((rel) => rel.columnMappings.map((mapping) => mapping.childColumnId)),
   )
   const columns = searching ? table.columns.filter((column) => hitColumnIds.has(column.id)) : table.columns
+  // 편집 락 — 남이 잡았을 때만 행에 배지가 붙는다(훅은 행 컴포넌트 최상위에서)
+  const { t } = useTranslation()
+  const lock = useForeignLock('table', table.id)
 
   return (
     <>
@@ -690,6 +694,16 @@ function TableRow({
         <span className="min-w-0 flex-1 truncate">
           <Names physical={table.physicalName} logical={table.logicalName} nameDisplay={nameDisplay} query={query} />
         </span>
+        {lock ? (
+          <span
+            data-testid="edit-lock-badge"
+            className="flex max-w-24 shrink-0 items-center gap-0.5 truncate rounded-full bg-amber-100 px-1.5 text-[9px] font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+            title={t('model.editor.collab.lockedBy', { name: lock.userName })}
+          >
+            <PencilLine aria-hidden className="size-2.5 shrink-0" />
+            <span className="truncate">{lock.userName}</span>
+          </span>
+        ) : null}
       </div>
       {expanded &&
         columns.map((column) => (

@@ -55,6 +55,8 @@ import { objectRects, placeNoteFree, rectsOverlap, type ObjectRect } from '@/fea
 import { readStoredViewport, storeViewport } from '@/features/editor/model/viewport-memory'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
+import type { CursorPayload, RemoteCursorState } from '@/features/editor/collab'
+import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab-presence'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
 import {
   EditorCanvasContext,
@@ -68,6 +70,7 @@ import { ColumnInfoDialog } from './ColumnInfoDialog'
 import { KeyInfoDialog, type KeyInfoSubmit } from './KeyInfoDialog'
 import { NoteNode, type NoteNodeType } from './canvas/NoteNode'
 import { RelationPickerOverlay, type RelationPick } from './canvas/RelationPickerOverlay'
+import { RemoteCursorLayer } from './canvas/RemoteCursorLayer'
 import { handleAnchors, shortestHandlePair } from './canvas/edge-router'
 import { RelationshipEdge, type RelationshipEdgeType } from './canvas/RelationshipEdge'
 import { TableNode, estimateTableHeight, tableRenderWidth, type TableNodeType } from './canvas/TableNode'
@@ -301,6 +304,11 @@ export interface ErdCanvasProps {
   onActiveAreaChange: (areaId: string | null) => void
   /** 그룹 편집 다이얼로그 열기 — 다이얼로그는 EditorShell이 소유한다(익스플로러와 공유) */
   onOpenAreaEdit: (areaId: string) => void
+  /** 남의 커서 상태(자기 제외) — RemoteCursorLayer가 그리고 선택·드래그는 노드가 소비한다.
+   *  협업 채널 없음(공개 뷰어)이면 생략 — 레이어가 아예 렌더되지 않는다 */
+  remoteCursors?: RemoteCursorState[]
+  /** 커서 발행(30ms 쓰로틀은 핸들 안) — 생략하면 마우스 이동을 발행하지 않는다 */
+  sendCursor?: ((cursor: CursorPayload) => void) | null
 }
 
 export function ErdCanvas({
@@ -314,6 +322,8 @@ export function ErdCanvas({
   activeAreaId,
   onActiveAreaChange,
   onOpenAreaEdit,
+  remoteCursors = [],
+  sendCursor = null,
 }: ErdCanvasProps) {
   const { t } = useTranslation()
   const present = useEditorStore((s) => s.present)
@@ -343,6 +353,51 @@ export function ErdCanvas({
       useEditorStore.getState().present.diagram.viewport ??
       estimatedFitViewport(useEditorStore.getState().present)
   }
+
+  /* ---------- 협업 3차(v1.17) — 커서 발행·원격 선택/드래그 표시 ---------- */
+
+  // 발행 핸들은 채널이 재연결될 때마다 바뀐다 — 핸들러가 최신을 보게 ref로 감싼다
+  const sendCursorRef = useRef(sendCursor)
+  sendCursorRef.current = sendCursor
+
+  /** 커서 스냅샷 → 노드 표시 상태(선택·드래그). 값이 프리미티브라 커서가 30ms마다 와도
+   *  선택이 바뀐 노드만 리렌더된다(TableNode 참조) */
+  useEffect(() => {
+    const selections: Record<string, string> = {}
+    const dragging: Record<string, { x: number; y: number }> = {}
+    for (const remote of remoteCursors) {
+      for (const id of remote.cursor.selection ?? []) selections[id] ??= remote.userId
+      for (const [id, pos] of Object.entries(remote.cursor.dragging ?? {})) dragging[id] = pos
+    }
+    setRemotePresence({ selections, dragging })
+  }, [remoteCursors])
+
+  // 문서를 떠나면 잔상을 지운다 — 다음 문서의 노드가 이전 선택을 물려받지 않게
+  useEffect(() => () => clearRemotePresence(), [])
+
+  /** 마우스 이동 → flow 좌표 커서 발행(쓰로틀은 핸들 안 — 여기선 매 이벤트 건넨다) */
+  const handlePointerMove = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const send = sendCursorRef.current
+    const instance = rfRef.current
+    if (!send || !instance) return
+    const flowPos = instance.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+    send({ x: flowPos.x, y: flowPos.y, selection: useEditorStore.getState().selectedIds })
+  }, [])
+
+  /** 드래그 중 실시간 이동 중계 — 남이 보는 화면에서 노드가 따라간다(표시 오프셋).
+   *  mouseup의 node/move 커맨드가 확정을 반영하므로 여기선 스토어 쓰기가 없다 */
+  const handleNodeDragLive = useCallback<OnNodeDrag<AppNode>>((_event, node, nodes) => {
+    const send = sendCursorRef.current
+    if (!send) return
+    const dragging: Record<string, { x: number; y: number }> = {}
+    for (const dragged of nodes) dragging[dragged.id] = { x: dragged.position.x, y: dragged.position.y }
+    send({
+      x: node.position.x,
+      y: node.position.y,
+      selection: useEditorStore.getState().selectedIds,
+      dragging,
+    })
+  }, [])
 
   const [infoTableId, setInfoTableId] = useState<string | null>(null)
   const [infoColumnRef, setInfoColumnRef] = useState<{ tableId: string; columnId: string } | null>(null)
@@ -1130,6 +1185,7 @@ export function ErdCanvas({
     <div
       ref={wrapperRef}
       className={cn('relative h-full w-full', pendingRelation && 'cursor-crosshair')}
+      onMouseMove={handlePointerMove}
     >
       <ReactFlow<AppNode, AppEdge>
         nodes={nodes}
@@ -1149,6 +1205,7 @@ export function ErdCanvas({
               }
             : undefined
         }
+        onNodeDrag={canEdit ? handleNodeDragLive : undefined}
         onNodeDragStop={canEdit ? handleNodeDragStop : undefined}
         onNodeDoubleClick={
           canEdit
@@ -1186,6 +1243,9 @@ export function ErdCanvas({
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
         <TableColorMiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2" />
       </ReactFlow>
+
+      {/* 원격 커서 — flow 좌표를 transform으로 되돌려 그린다(보이기만 하는 레이어) */}
+      {remoteCursors.length > 0 ? <RemoteCursorLayer cursors={remoteCursors} /> : null}
 
       {/* 진행 중 관계 — 소스 핸들에서 포인터를 따라다니는 임시 선 (시작점=화면좌표 → 래퍼 기준 보정) */}
       {pendingRelation && pendingAnchorScreen && pointerScreen && wrapperRef.current ? (
@@ -1271,6 +1331,7 @@ export function ErdCanvas({
           if (!open) setInfoColumnRef(null)
         }}
         column={infoColumn}
+        tableId={infoColumnRef?.tableId ?? null}
         isPk={infoColumnIsPk}
         pkCount={infoColumnPkCount}
         dbmsId={dbmsId}

@@ -5,6 +5,8 @@
  * PK·타입·길이·정밀도·NN·AI·기본값·코멘트 전부 — 노드 인라인 편집과 같은 규칙
  * (PK는 NN 강제·최상단 이동, AI는 PK + 정수 타입만)을 폼으로 노출한다.
  * 확정 시 PK 토글 묶음 + column/patch를 1커밋 스택으로 붙는다.
+ * 협업(v1.17): 열려 있는 동안 소속 테이블의 Edit Session Lock을 잡는다(useEditLock) —
+ * 컬럼·키 변경은 전부 테이블 귀속이라 락 단위도 테이블이다.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -42,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ColumnPatch } from '@/features/editor/model/changes'
 import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
+import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface ColumnInfoSubmit {
   pk: boolean
@@ -53,6 +56,8 @@ export interface ColumnInfoDialogProps {
   onOpenChange: (open: boolean) => void
   /** 대상 컬럼 — null이면 열리지 않는다 */
   column: ErdColumn | null
+  /** 소속 테이블 id — Edit Session Lock 대상(컬럼 변경의 락 단위는 테이블) */
+  tableId: string | null
   /** 현재 PK 소속 여부 — PK 토글 커밋 판단에 쓴다 */
   isPk: boolean
   /** 소속 테이블의 PK 컬럼 수 — 복합 PK에서는 AI를 제공하지 않는다 */
@@ -87,8 +92,11 @@ function toDisplay(value: number | null): string {
   return value === null ? '' : String(value)
 }
 
-export function ColumnInfoDialog({ open, onOpenChange, column, isPk, pkCount, dbmsId, onConfirm }: ColumnInfoDialogProps) {
+export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pkCount, dbmsId, onConfirm }: ColumnInfoDialogProps) {
   const { t } = useTranslation()
+  // 다이얼로그 수명 락 — 남이 잡았으면(반환값) 확정을 막는다
+  const foreignLock = useEditLock('table', tableId, open)
+  const locked = foreignLock !== null
 
   const schema = z.object({
     physicalName: z.string().trim().min(1, t('model.editor.columnInfo.nameRequired')),
@@ -176,6 +184,11 @@ export function ColumnInfoDialog({ open, onOpenChange, column, isPk, pkCount, db
           <DialogTitle>{t('model.editor.columnInfo.title')}</DialogTitle>
           <DialogDescription>{column?.physicalName}</DialogDescription>
         </DialogHeader>
+        {locked ? (
+          <p data-testid="edit-lock-notice" className="text-xs text-amber-600 dark:text-amber-400">
+            {t('model.editor.collab.lockBlocked', { name: foreignLock.userName })}
+          </p>
+        ) : null}
         <Form {...form}>
           <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
             <FormField
@@ -353,7 +366,7 @@ export function ColumnInfoDialog({ open, onOpenChange, column, isPk, pkCount, db
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit">{t('common.save')}</Button>
+              <Button type="submit" disabled={locked}>{t('common.save')}</Button>
             </DialogFooter>
           </form>
         </Form>

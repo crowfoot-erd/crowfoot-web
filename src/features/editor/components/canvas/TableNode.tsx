@@ -27,7 +27,7 @@
  */
 import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
-import { GripHorizontal, GripVertical, Info, KeyRound, Plus, X } from 'lucide-react'
+import { GripHorizontal, GripVertical, Info, KeyRound, PencilLine, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -46,6 +46,8 @@ import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
 import { groupColorOf } from '@/features/editor/model/areas'
 import { useEditorStore } from '@/features/editor/store/editor-store'
+import { useForeignLock } from '@/features/editor/collab-locks'
+import { participantColor, useRemoteDrag, useRemoteSelection } from '@/features/editor/collab-presence'
 import { DiffActionBadge } from '@/components/diff-action-badge'
 import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
 import { useCompareHighlight } from './compare-context'
@@ -563,6 +565,18 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   )
   const commit = useEditorStore((s) => s.commit)
 
+  /* 협업(v1.17) 원격 표시 — 남이 선택한 테이블은 참가자 색 링, 남이 드래그 중이면 표시
+     오프셋(스토어 쓰기 없음 — mouseup 커맨드가 확정), 남이 편집 락을 잡았으면 헤더 배지.
+     셋 다 자기 테이블 키만 구독해 다른 노드의 memo를 깨지 않는다 */
+  const remoteSelector = useRemoteSelection(id)
+  const remoteDrag = useRemoteDrag(id)
+  const layoutPos = useEditorStore((s) => s.present.diagram.nodes[id])
+  const foreignLock = useForeignLock('table', id)
+  const remoteOffset =
+    remoteDrag && layoutPos && (remoteDrag.x !== layoutPos.x || remoteDrag.y !== layoutPos.y)
+      ? { x: remoteDrag.x - layoutPos.x, y: remoteDrag.y - layoutPos.y }
+      : null
+
   /* 축소 렌더 여부 — boolean 셀렉터라 배율이 임계를 넘는 순간에만 리렌더된다.
      상세 내용은 그대로 두고(footprint·reportSize 불변) 위쪽에 불투명 라벨 판을 얹는다 */
   const compact = useStore((s) => s.transform[2] < TABLE_COMPACT_ZOOM)
@@ -771,7 +785,17 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         // 진행 중 관계의 소스 — 하늘색 강조
         isPendingSource && 'border-sky-500 ring-2 ring-sky-500/60',
       )}
-      style={{ width: displayWidth, ...skin.borderStyle }}
+      style={{
+        width: displayWidth,
+        ...skin.borderStyle,
+        // 원격 드래그 표시 오프셋 — 확정(node/move)이 오면 오프셋이 0으로 수렴해 저절로 사라진다
+        ...(remoteOffset
+          ? { transform: `translate(${remoteOffset.x}px, ${remoteOffset.y}px)`, transition: 'transform 80ms linear' }
+          : null),
+        // 원격 선택 하이라이트 — 선택한 사람의 참가자 색 링
+        ...(remoteSelector ? { boxShadow: `0 0 0 2px ${participantColor(remoteSelector)}` } : null),
+      }}
+      data-remote-selection={remoteSelector ?? undefined}
       // 버튼·셀렉트의 연속 클릭(NN 토글 등)이 노드 더블클릭(테이블 정보)로 새지 않게 차단.
       // 이름 더블클릭(컬럼 정보)은 input이라 그대로 통과시킨다.
       onDoubleClickCapture={(event) => {
@@ -846,6 +870,17 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         title={t('model.editor.table.dragHandle')}
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-primary/80">{table.logicalName}</span>
+        {/* 편집 락 배지 — 남이 구조 편집 다이얼로그를 열고 있으면 보유자 이름 (§2) */}
+        {foreignLock ? (
+          <span
+            data-testid="edit-lock-badge"
+            className="flex max-w-28 shrink-0 items-center gap-0.5 truncate rounded-full bg-amber-100 px-1.5 text-[9px] font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+            title={t('model.editor.collab.lockedBy', { name: foreignLock.userName })}
+          >
+            <PencilLine aria-hidden className="size-2.5 shrink-0" />
+            <span className="truncate">{foreignLock.userName}</span>
+          </span>
+        ) : null}
         <GripHorizontal aria-hidden className="size-3.5 shrink-0 text-primary/60" />
       </div>
 

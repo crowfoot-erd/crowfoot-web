@@ -14,6 +14,12 @@
  *   상세를 다시 떠와 자동 동기화하고, 편집 중이면 배너로만 알린다(충돌은 저장 시 409).
  * - 협업 2차: WebSocket(crowfoot-collab)로 presence(접속자)와 저장 푸시를 실시간으로
  *   받는다. 푸시는 폴링 캐시에 주입해 v1 감지 경로를 그대로 재사용한다.
+ * - 협업 3차(v1.17): 커맨드 채널 — 로컬 커밋을 발행하고(subscribeLocalChanges) 타인 커맨드를
+ *   applyRemote로 적용한다. 같은 속성 충돌은 LWW 토스트 + "내 값 복원"(내 패치 재발행).
+ *   원격 저장은 커맨드를 전부 받았으면 baseVersion만 승계(markRemoteSaved), 못 받았으면
+ *   기존 배너·409 경로. 409는 충돌 리졸버(ConflictResolverDialog)로 — 자동 병합은 하지
+ *   않고 항목별 선택 후 병합 저장. 구조 편집 다이얼로그는 Edit Session Lock(collab-locks)을
+ *   잡고, Viewer/Commenter 역할이면 읽기 전용으로 잠긴다.
  * - 채팅: 같은 채널의 문서별 실시간 채팅(ChatDock). 패널 닫힘 중 남의 메시지는
  *   토스트(클릭하면 패널 열림)·미읽음 배지로 알린다.
  * - 단축키는 input/textarea/select 포커스 시 스킵. dirty면 beforeunload 가드.
@@ -29,31 +35,27 @@ import type { Model } from '@/api/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Loader2, Users } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { parseContent, serializeContent } from '@/features/editor/model/content-io'
 import { templateIdForDatabase } from '@/features/editor/model/dbms'
 import { copyToClipboard, pasteFromClipboard } from '@/features/editor/model/clipboard'
 import type { ErdChange } from '@/features/editor/model/changes'
+import { conflictRestores, describeTarget, detectLwwConflicts } from '@/features/editor/model/collab-merge'
 import { diffDocuments } from '@/features/editor/model/doc-diff'
 import { clearDraft, loadDraft, saveDraft } from '@/features/editor/model/draft-storage'
 import { saveModelContentOnUnload } from '@/features/editor/api'
-import { useModelCollab } from '@/features/editor/collab'
+import { useModelCollab, type ModelCollabHandle } from '@/features/editor/collab'
+import { setCollabIdentity, setCollabLocks, setLockPublisher } from '@/features/editor/collab-locks'
 import { useMe } from '@/features/auth/hooks'
-import { selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
+import { selectDirty, subscribeLocalChanges, useEditorStore } from '@/features/editor/store/editor-store'
 import { useModelVersion, useSaveModelContent } from '@/features/editor/hooks'
 import { fetchModel } from '@/features/models/api'
 import { modelKeys } from '@/features/models/hooks'
 import { errorMessage } from '@/lib/result-code'
+import type { EditorDocument } from '@/features/editor/model/content-schema'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { AreaDialog } from './AreaDialog'
 import { ChatDock, chatPreview } from './ChatDock'
+import { ConflictResolverDialog, type ConflictRecord } from './ConflictResolverDialog'
 import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
@@ -110,6 +112,9 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const saveMutation = useSaveModelContent(model.workspaceId)
 
   const [conflictOpen, setConflictOpen] = useState(false)
+  // 409 충돌 리졸버 재료(서버 본문·버전) — prepareConflict가 조립한다. 조립 전에는
+  // null로 열 수 있고 리졸버가 로딩·재시도 안내를 보여준다
+  const [conflictRecord, setConflictRecord] = useState<ConflictRecord | null>(null)
   // 단축키 치트시트 — Ctrl/Cmd+/ · 툴바 버튼으로도 연다(보기 기능이라 읽기 전용·공개 뷰어도 사용)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [parseError, setParseError] = useState(false)
@@ -188,6 +193,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     // 임시 저장 복원 — 문서를 닫을 때 저장이 못 끝난 편집(배포 중단·페이지 강제 재로드 등).
     // baseVersion이 서버 버전과 같을 때만 복구한다: 다르면 남이 저장했거나 임시본이 다른
     // 곳에서 이미 저장돼 서버가 앞선 것이다 — 임시본을 폐기하고 서버 본문으로 연다.
+    // 임시본 복원은 권한(canEdit) 기준 — 역할(readOnly)은 채널 연결 뒤에 늦게 오는데,
+    // 편집이 가능해야 임시본이 생기므로 Viewer가 궁여지책으로 만난 일은 없다
     const draft = canEdit ? loadDraft(model.workspaceId, model.modelId) : null
     const restore = draft && draft.baseVersion === model.version ? draft : null
     if (draft && !restore) clearDraft(model.workspaceId, model.modelId)
@@ -236,7 +243,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     setChatOpen(next)
     if (next) setChatUnread(0)
   }, [])
-  const { participants, publishSaved, messages, sendMessage, connected } = useModelCollab({
+  const collabRef = useRef<ModelCollabHandle | null>(null)
+  const collab = useModelCollab({
     modelId: model.modelId,
     userId: me.data?.userId,
     userName: me.data?.name,
@@ -250,6 +258,51 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         version: event.version,
         updatedAt: event.at,
       })
+      // 저장이 일어난 시점의 커맨드(seq)까지 전부 받은 상태면 present가 이미 수렴본이다 —
+      // dirty를 지키되 base만 승계해 배너 없이 이어 편집한다. 못 받았으면(끊김 중 저장)
+      // 캐시 주입만으로 기존 폴링 경로가 감지한다(자동 수화·배너 → 409)
+      if (event.receivedSeq >= event.seq) {
+        useEditorStore.getState().markRemoteSaved(event.version)
+        onSaved?.(event.version)
+      }
+    },
+    onRemoteCommand: (change, actor) => {
+      // LWW 충돌 감지는 적용 전 present·savedDocument로 — 적용 후에는 겹침이 사라진다
+      const before = useEditorStore.getState()
+      const conflicts = detectLwwConflicts(
+        change,
+        before.savedDocument ?? before.present,
+        before.present,
+      )
+      before.applyRemote(change)
+      if (conflicts.length === 0) return
+      const label = describeTarget(before.present, conflicts[0].target)
+      const target = conflicts.length > 1 ? `${label} +${conflicts.length - 1}` : label
+      // "내 값 복원" — 충돌 시점 내 값을 절대값 커맨드로 다시 발행해 새 seq로 재승부(대칭 규칙)
+      const restores = conflictRestores(conflicts, before.present)
+      toast(t('model.editor.collab.lwwApplied', { name: actor.name, target }), {
+        action:
+          restores.length > 0
+            ? {
+                label: t('model.editor.collab.lwwRestore'),
+                onClick: () => useEditorStore.getState().commitAll(restores),
+              }
+            : undefined,
+      })
+    },
+    onRejected: (reason) => {
+      // 서버가 발행을 거부(read-only·lock-held·payload-too-large) — 이유별 문구
+      toast.warning(
+        t(`model.editor.collab.rejected.${reason}`, {
+          defaultValue: t('model.editor.collab.rejected.default'),
+        }),
+      )
+    },
+    onResync: (reason) => {
+      if (reason === 'read-only') return // readOnly 전환 효과가 따로 알린다
+      // reconnect 등 seq 공간이 새로 시작했다 — 서버 상태를 다시 떠온다. clean이면 수화
+      // effect가 자동 동기화하고, dirty면 버전 폴링이 base 초과를 보고 배너를 띄운다(409 합류)
+      void queryClient.invalidateQueries({ queryKey: modelKeys.detail(model.workspaceId, model.modelId) })
     },
     onIncomingChat: (message) => {
       // 패널이 열려 있으면 목록 append로 충분하다 — 닫힘에서만 배지·토스트
@@ -280,9 +333,90 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       ))
     },
   })
+  collabRef.current = collab
+  const { participants, publishSaved, messages, sendMessage, connected, locks, readOnly, remoteCursors, sendCursor } =
+    collab
   const presenceNames = participants.map((participant) => participant.name).join(', ')
 
+  /* ---------- 협업 3차 — 발행·락 브리지·읽기 전용 강제 ---------- */
+
+  // Viewer/Commenter — 채널이 역할을 알려주는 순간 편집 UI를 잠근다. 채널 없음(공개 뷰어·
+  // 로컬 서버 header 모드)이면 readOnly가 항상 false라 기존 동작이 그대로다
+  const editable = canEdit && !readOnly
+  // 발행 게이트는 구독 콜백이 닫힌 뒤에도 최신이어야 한다 — ref로 읽는다
+  const publishableRef = useRef(false)
+  publishableRef.current = editable && !publicView
+  const readOnlyWarnedRef = useRef(false)
+  useEffect(() => {
+    if (!readOnly) {
+      readOnlyWarnedRef.current = false
+      return
+    }
+    if (readOnlyWarnedRef.current) return
+    readOnlyWarnedRef.current = true
+    toast.warning(t('model.editor.collab.readOnly'))
+  }, [readOnly, t])
+
+  // 로컬 커밋(commit·commitAll·undo/redo 보상)을 룸에 발행 — 편집 경로는 협업을 모른다
+  useEffect(() => {
+    if (publicView) return
+    return subscribeLocalChanges((changes) => {
+      if (!publishableRef.current) return
+      collabRef.current?.sendCommands(changes)
+    })
+  }, [publicView])
+
+  // 락 브리지(collab-locks.ts) — 다이얼로그·캔버스 뱃지가 채널 없이 락을 소비·발행하게 한다
+  useEffect(() => {
+    setCollabIdentity(me.data?.userId ?? null)
+  }, [me.data?.userId])
+  useEffect(() => {
+    setCollabLocks(locks)
+  }, [locks])
+  useEffect(() => {
+    const detach = setLockPublisher((action, targetType, targetId) => {
+      const handle = collabRef.current
+      if (!handle) return
+      if (action === 'acquire') handle.acquireLock(targetType, targetId)
+      else if (action === 'renew') handle.renewLock(targetType, targetId)
+      else handle.releaseLock(targetType, targetId)
+    })
+    return () => {
+      detach()
+      setCollabLocks([]) // 문서를 떠났다 — 스냅샷·신원이 새어나가지 않게 비운다
+      setCollabIdentity(null)
+    }
+  }, [])
+
   /* ---------- 저장 ---------- */
+
+  /** 409 — 서버 본문을 다시 떠와 충돌 리졸버 재료를 조립한다. 내용이 같은 동시 저장이면
+   *  base만 승계해 조용히 이어 편집한다(리졸버를 띄우지 않는다). 조회 실패 시에도 다이얼로그를
+   *  열어 재시도·다시 불러오기 경로를 제공한다 — 자동 저장은 autosaveBlocked로 멈춰 있다 */
+  const prepareConflict = useCallback(async () => {
+    try {
+      const fresh = await fetchModel(model.workspaceId, model.modelId)
+      if (!fresh) {
+        setConflictOpen(true)
+        return
+      }
+      const parsed = parseContent(fresh.content)
+      const serverDocument: EditorDocument = { model: parsed.model, diagram: parsed.diagram }
+      const state = useEditorStore.getState()
+      if (diffDocuments(serverDocument, state.present).items.length === 0) {
+        // 같은 내용을 두 번 저장한 것 — 서버 버전만 앞선다. base만 옮기고 끝
+        state.markSaved(fresh.version, state.present)
+        setAutosaveBlocked(false)
+        onSaved?.(fresh.version)
+        return
+      }
+      setConflictRecord({ serverVersion: fresh.version, serverDocument })
+      setConflictOpen(true)
+    } catch (error) {
+      toast.error(errorMessage(error))
+      setConflictOpen(true)
+    }
+  }, [model.workspaceId, model.modelId, onSaved])
 
   /** 저장 실행부 — dirty 검사 없이 주어진 본문을 PUT한다. 수동·자동 저장과 임시 저장 복원
    *  플러시가 같은 파이프라인(낙관적 잠금·409 처리·성공 후 임시본 폐기)을 공유한다.
@@ -314,7 +448,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           onError: (error) => {
             if (isApiError(error) && error.resultCode === 'VERSION_CONFLICT') {
               setAutosaveBlocked(true) // 자동 저장 재시도 금지 — 사용자가 선택할 때까지
-              setConflictOpen(true)
+              void prepareConflict() // 서버 본문을 떠와 리졸버를 조립·오픈한다
               return
             }
             toast.error(errorMessage(error))
@@ -322,12 +456,38 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         },
       )
     },
-    [model.workspaceId, model.modelId, onSaved, publishSaved, saveMutation, t],
+    [model.workspaceId, model.modelId, onSaved, prepareConflict, publishSaved, saveMutation, t],
+  )
+
+  /** 리졸버 선택 완료 — 병합 문서로 강제 수화(base=서버 버전)하고 곧바로 저장한다.
+   *  savedDocument를 서버 본문으로 두면 이 저장의 요약이 곧 해소 내역이 된다 */
+  const handleConflictResolve = useCallback(
+    (merged: EditorDocument) => {
+      const record = conflictRecord
+      if (!record) return
+      useEditorStore.getState().hydrate(
+        {
+          modelId: model.modelId,
+          baseVersion: record.serverVersion,
+          document: merged,
+          savedDocument: record.serverDocument,
+        },
+        { force: true },
+      )
+      setConflictRecord(null)
+      setConflictOpen(false)
+      setAutosaveBlocked(false)
+      putContent(
+        serializeContent({ schemaVersion: 1, model: merged.model, diagram: merged.diagram }),
+        record.serverVersion,
+      )
+    },
+    [conflictRecord, model.modelId, putContent],
   )
 
   const handleSave = useCallback(
     (options?: { silent?: boolean }) => {
-      if (!canEdit || saveMutation.isPending) return
+      if (!editable || saveMutation.isPending) return
       const state = useEditorStore.getState()
       if (state.past.length === state.savedDepth) return
 
@@ -344,7 +504,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         options,
       )
     },
-    [canEdit, putContent, rf, saveMutation],
+    [editable, putContent, rf, saveMutation],
   )
 
   /* ---------- 단축키 — 입력 요소 포커스 시 스킵(단축키 도움말 제외) ---------- */
@@ -378,7 +538,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
 
       // 방향키 — 선택 객체 미세 이동(1px, Shift 10px). 테이블은 node/move, 메모는 note/patch로
       if (!mod && key.startsWith('arrow')) {
-        if (!canEdit) return
+        if (!editable) return
         const { selectedIds, present, commitAll } = useEditorStore.getState()
         if (selectedIds.length === 0) return
         const step = event.shiftKey ? 10 : 1
@@ -402,12 +562,12 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       if (!mod) return
       if (key === 'z') {
         event.preventDefault()
-        if (!canEdit) return
+        if (!editable) return
         if (event.shiftKey) useEditorStore.getState().redo()
         else useEditorStore.getState().undo()
       } else if (key === 'y') {
         event.preventDefault()
-        if (canEdit) useEditorStore.getState().redo()
+        if (editable) useEditorStore.getState().redo()
       } else if (key === 's') {
         event.preventDefault()
         handleSave()
@@ -425,11 +585,11 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           ...present.diagram.notes.map((note) => note.id),
         ])
       } else if (key === 'c') {
-        if (!canEdit) return
+        if (!editable) return
         const { present, selectedIds } = useEditorStore.getState()
         if (copyToClipboard(present, selectedIds)) event.preventDefault()
       } else if (key === 'v') {
-        if (!canEdit) return
+        if (!editable) return
         const { present, commitAll, setSelection } = useEditorStore.getState()
         const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'))
         if (pasted) {
@@ -439,7 +599,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         }
       } else if (key === 'd') {
         // Duplicate — 선택을 그 자리에서 복사+붙여넣기(같은 규칙, 오프셋 32px)
-        if (!canEdit) return
+        if (!editable) return
         event.preventDefault()
         const { present, selectedIds, commitAll, setSelection } = useEditorStore.getState()
         if (!copyToClipboard(present, selectedIds)) return
@@ -452,7 +612,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canEdit, handleSave, openExplorerSearch, t])
+  }, [editable, handleSave, openExplorerSearch, t])
 
   /* ---------- 자동 저장 — 마지막 편집 후 정적 구간이 지나면 조용히 저장 ---------- */
 
@@ -461,10 +621,10 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const dirty = useEditorStore(selectDirty)
   const [autosaveBlocked, setAutosaveBlocked] = useState(false)
   useEffect(() => {
-    if (!canEdit || !dirty || autosaveBlocked || saveMutation.isPending || conflictOpen) return
+    if (!editable || !dirty || autosaveBlocked || saveMutation.isPending || conflictOpen) return
     const timer = setTimeout(() => handleSave({ silent: true }), AUTOSAVE_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [canEdit, dirty, autosaveBlocked, saveMutation.isPending, conflictOpen, handleSave])
+  }, [editable, dirty, autosaveBlocked, saveMutation.isPending, conflictOpen, handleSave])
 
   /* ---------- 임시 저장 복원 플러시 ---------- */
 
@@ -474,11 +634,11 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const hydrated = useEditorStore((s) => s.modelId === model.modelId)
   useEffect(() => {
     const content = restoredDraftRef.current
-    if (!content || !hydrated || !canEdit) return
+    if (!content || !hydrated || !editable) return
     restoredDraftRef.current = null
     toast.info(t('model.editor.draftRestored'))
     putContent(content, model.version, { silent: true })
-  }, [hydrated, canEdit, model.version, putContent, t])
+  }, [hydrated, editable, model.version, putContent, t])
 
   /* ---------- dirty 이탈 가드 + 페이지 숨김 최선 저장 ---------- */
 
@@ -496,7 +656,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
     }
     const onPageHide = () => {
       const state = useEditorStore.getState()
-      if (!canEdit || state.past.length === state.savedDepth) return
+      if (!editable || state.past.length === state.savedDepth) return
       state.setViewport(rf.getViewport())
       const { present, baseVersion, savedDocument } = useEditorStore.getState()
       const content = serializeContent({
@@ -517,7 +677,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       window.removeEventListener('beforeunload', onBeforeUnload)
       window.removeEventListener('pagehide', onPageHide)
     }
-  }, [canEdit, model.workspaceId, model.modelId, rf])
+  }, [editable, model.workspaceId, model.modelId, rf])
 
   /* ---------- 충돌 → 다시 불러오기(강제 수화) ---------- */
 
@@ -590,7 +750,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <EditorToolbar
-        canEdit={canEdit}
+        canEdit={editable}
         saving={saveMutation.isPending}
         onSave={() => handleSave()}
         explorerOpen={explorerOpen}
@@ -621,7 +781,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           nameDisplay={nameDisplay}
           activeAreaId={activeArea}
           onActiveAreaChange={setActiveAreaId}
-          canEdit={canEdit}
+          canEdit={editable}
           onOpenAreaEdit={setAreaEditId}
         />
         {/* 용어 사전 패널 — 워크스페이스 표준 자산이라 멤버 전체가 열람한다. 공개 뷰어는
@@ -679,7 +839,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           )}
           {hydrated ? (
             <ErdCanvas
-              canEdit={canEdit}
+              canEdit={editable}
               nameDisplay={nameDisplay}
               columnDisplay={columnDisplay}
               dbmsId={dbmsId}
@@ -689,6 +849,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
               activeAreaId={activeArea}
               onActiveAreaChange={setActiveAreaId}
               onOpenAreaEdit={setAreaEditId}
+              remoteCursors={publicView ? [] : remoteCursors}
+              sendCursor={publicView ? null : sendCursor}
             />
           ) : (
             // 수화 게이트 — 문서 파싱·hydrate가 끝나기 전 캔버스 자리에 로딩을 보여준다
@@ -735,24 +897,22 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         }
       />
 
-      <Dialog open={conflictOpen} onOpenChange={setConflictOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('model.editor.conflict.title')}</DialogTitle>
-            <DialogDescription>{t('model.editor.conflict.description')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setConflictOpen(false)}>
-              {t('model.editor.conflict.keep')}
-            </Button>
-            <Button type="button" onClick={() => void handleConflictReload()}>
-              {t('model.editor.conflict.reload')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* 버전 충돌 리졸버 — 서버 저장본과 내 편집의 항목별 선택 → 병합 저장(§수동 해결).
+          record가 null이면(서버 본문 조회 중·실패) 안내와 다시 불러오기만 제공한다 */}
+      <ConflictResolverDialog
+        open={conflictOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConflictOpen(false)
+            setConflictRecord(null)
+          }
+        }}
+        record={conflictRecord}
+        onResolve={handleConflictResolve}
+        onReload={() => void handleConflictReload()}
+      />
 
-      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} canEdit={canEdit} />
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} canEdit={editable} />
     </div>
   )
 }
