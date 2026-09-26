@@ -2,11 +2,14 @@
 <!--
   구글 사이트맵 — 색인 대상은 공개 페이지뿐이다.
   - 보호 경로(/dashboard, /workspaces, /teams, /community, /admin …)는 로그인이 필요해 제외
-  - /share/{token}은 토큰이 곧 자격이라 제외(공개 갤러리 링크로 크롤러가 발견하게 둔다)
+  - /share/{token} 색인 허용(v1.18): 토큰은 128bit 추측 불가라 노출 통제는 링크 철회(410)로 한다.
+    쇼케이스 공유(share-showcase.json 원천)만 이곳에 등록한다 — 일반 사용자 공유는 프리렌더·og 산출이
+    없어 등록하지 않는다(공개 갤러리 링크로 크롤러가 발견하게 둔다). 삭제 금지.
   - /login, /auth/callback은 색인 가치가 없어 제외
   hreflang(v1.16): 모든 url은 4개 언어 + x-default alternate 세트를 갖는다 —
   ko는 무prefix(/), en/ja/zh는 /en·/ja·/zh prefix다. 프리렌더 산출(랜딩·/terms)과
-  usePageMeta canonical이 같은 규칙을 쓴다.
+  usePageMeta canonical이 같은 규칙을 쓴다. 단 /share/{token}은 단일 URL — 언어별
+  prefix 없이 5개 alternate 모두 같은 주소를 가리킨다(prerender-shares.mjs와 동일 규칙).
   운영 원칙(docs README 릴리스 표와 동일): 릴리스 노트 게시마다 아래에 <url> 행 1개씩 추가(Alternate 5개 세트 포함), 삭제 금지.
   게시물 id는 community_posts(board=RELEASE_NOTE)의 id다.
 -->
@@ -211,5 +214,85 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/19" />
     <lastmod>2026-09-26</lastmod>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/KlU5vvz9FiXeg0dWI3mP1S</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/KlU5vvz9FiXeg0dWI3mP1S" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/KlU5vvz9FiXeg0dWI3mP1S" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/KlU5vvz9FiXeg0dWI3mP1S" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/KlU5vvz9FiXeg0dWI3mP1S" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/KlU5vvz9FiXeg0dWI3mP1S" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/PBzX4sZWxD8d0D65wWnCxM</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/PBzX4sZWxD8d0D65wWnCxM" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/PBzX4sZWxD8d0D65wWnCxM" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/PBzX4sZWxD8d0D65wWnCxM" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/PBzX4sZWxD8d0D65wWnCxM" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/PBzX4sZWxD8d0D65wWnCxM" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/2LSYdsvx8kkX3V3VEgGABk</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/2LSYdsvx8kkX3V3VEgGABk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/2LSYdsvx8kkX3V3VEgGABk" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/2LSYdsvx8kkX3V3VEgGABk" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/2LSYdsvx8kkX3V3VEgGABk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/2LSYdsvx8kkX3V3VEgGABk" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/V7TyMAsiEvU1dxf41Wnif9</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/V7TyMAsiEvU1dxf41Wnif9" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/V7TyMAsiEvU1dxf41Wnif9" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/V7TyMAsiEvU1dxf41Wnif9" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/V7TyMAsiEvU1dxf41Wnif9" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/V7TyMAsiEvU1dxf41Wnif9" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/hpREAaGNwVHE0az6627JbI</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/hpREAaGNwVHE0az6627JbI" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/hpREAaGNwVHE0az6627JbI" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/hpREAaGNwVHE0az6627JbI" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/hpREAaGNwVHE0az6627JbI" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/hpREAaGNwVHE0az6627JbI" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/V6FdhtEqrID020uEqdOZec</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/V6FdhtEqrID020uEqdOZec" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/V6FdhtEqrID020uEqdOZec" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/V6FdhtEqrID020uEqdOZec" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/V6FdhtEqrID020uEqdOZec" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/V6FdhtEqrID020uEqdOZec" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/zEvjv74sc9i70q0XIEI1DF</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/zEvjv74sc9i70q0XIEI1DF" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/zEvjv74sc9i70q0XIEI1DF" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/zEvjv74sc9i70q0XIEI1DF" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/zEvjv74sc9i70q0XIEI1DF" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/zEvjv74sc9i70q0XIEI1DF" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://crowfoot.java21.net/share/R3CdH4r2yASL7MoWB61H0Y</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/share/R3CdH4r2yASL7MoWB61H0Y" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/share/R3CdH4r2yASL7MoWB61H0Y" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/share/R3CdH4r2yASL7MoWB61H0Y" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/share/R3CdH4r2yASL7MoWB61H0Y" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/share/R3CdH4r2yASL7MoWB61H0Y" />
+    <lastmod>2026-09-26</lastmod>
+    <priority>0.8</priority>
   </url>
 </urlset>

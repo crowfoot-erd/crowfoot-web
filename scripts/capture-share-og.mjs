@@ -12,6 +12,34 @@ const here = dirname(fileURLToPath(import.meta.url))
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:8080'
 const OUT_DIR = resolve(here, '../public/og/shares')
 
+/**
+ * 캡처 준비 판정 — 캔버스 노드가 그려졌고 에러 안내가 사라진 상태.
+ * 게스트 부팅의 silent refresh 403이 쿼리를 잠시 리셋시키는 과도기(에러 화면 → 자동 복구)가
+ * 있어, 노드 검출만으로는 그 순간을 프리즈할 수 있다. 안정 문구 부재까지 본다.
+ */
+async function settle(page, token) {
+  await page
+    .waitForFunction(
+      () =>
+        document.querySelector('.react-flow__node') !== null &&
+        !document.body.innerText.includes('불러올 수 없습니다'),
+      { timeout: 20_000 },
+    )
+    .catch(async () => {
+      console.warn(`capture-share-og: 첫 진입 안정 실패 — 1회 재시도 (${token})`)
+      await page.reload({ waitUntil: 'networkidle' })
+      await page
+        .waitForFunction(
+          () =>
+            document.querySelector('.react-flow__node') !== null &&
+            !document.body.innerText.includes('불러올 수 없습니다'),
+          { timeout: 20_000 },
+        )
+        .catch(() => console.warn(`capture-share-og: 노드 대기 시간 초과 — 현재 화면으로 캡처 (${token})`))
+    })
+  await page.waitForTimeout(800) // 레이아웃 안정화 여유
+}
+
 const manifest = JSON.parse(readFileSync(`${here}/share-showcase.json`, 'utf8'))
 if (!Array.isArray(manifest) || manifest.length === 0) {
   console.log('capture-share-og: 매니페스트 비어 있음 — 캡처 없음')
@@ -30,11 +58,7 @@ try {
     })
     try {
       await page.goto(`${BASE_URL}/share/${token}`, { waitUntil: 'networkidle' })
-      // 캔버스 렌더 대기 — 테이블 노드가 그려지면(빈 문서는 예외적으로 스킵) 스크린샷
-      await page
-        .waitForSelector('.react-flow__node', { timeout: 15_000 })
-        .catch(() => console.warn(`capture-share-og: 노드 대기 시간 초과 — 현재 화면으로 캡처 (${token})`))
-      await page.waitForTimeout(500) // 레이아웃 안정화 여유
+      await settle(page, token)
       await page.screenshot({ path: resolve(OUT_DIR, `${token}.png`) })
       console.log(`capture-share-og: ${token}.png 생성 완료`)
     } finally {
