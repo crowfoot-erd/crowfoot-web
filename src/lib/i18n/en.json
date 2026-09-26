@@ -1384,7 +1384,8 @@
     },
     "gallery": {
       "heading": "Documents being shared right now",
-      "headingCommunity": "More from the community"
+      "headingCommunity": "More from the community",
+      "views": "{{count}} views"
     },
     "templates": {
       "heading": "Start from a template",

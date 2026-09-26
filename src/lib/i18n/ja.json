@@ -1384,7 +1384,8 @@
     },
     "gallery": {
       "heading": "いま共有されているドキュメント",
-      "headingCommunity": "コミュニティのその他の共有"
+      "headingCommunity": "コミュニティのその他の共有",
+      "views": "閲覧 {{count}}回"
     },
     "templates": {
       "heading": "テンプレートからすぐ始める",

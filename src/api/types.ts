@@ -245,7 +245,8 @@ export interface PublicShare {
   endsAt: string | null
 }
 
-/** 공유 갤러리 항목 (08-core/02-model.md §1.10.5) — 랜딩 페이지가 현재 공유 중인 문서를 나열. 본문(content) 없음 */
+/** 공유 갤러리 항목 (08-core/02-model.md §1.10.5) — 랜딩 페이지가 현재 공유 중인 문서를 나열.
+ *  순서 = 조회수 상위 6(인기) 우선 + 나머지 최근 공유순, 최대 21건. 본문(content) 없음 */
 export interface SharedGalleryItem {
   shareToken: string
   modelName: string
@@ -253,6 +254,8 @@ export interface SharedGalleryItem {
   databaseType: string
   updatedAt: string
   sharedAt: string
+  /** 공개 조회 수 — 카드에 인기 표기(정렬은 서버가 이미 마쳤다) */
+  viewCount: number
 }
 
 /* ---------- 템플릿 (08-core/09-templates.md) ---------- */

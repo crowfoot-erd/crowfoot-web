@@ -509,9 +509,9 @@ export const fixtures = {
     startsAt: null,
     endsAt: null,
   },
-  /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답 (토큰은 위 shares fixture의 활성 링크).
-   *  쇼핑몰 항목은 아래 templates fixture와 같은 토큰 — 랜딩이 템플릿 섹션과의 중복을 클라이언트
-   *  제외하는 로직(04-front/storyboard/00-common.md §2.1)을 기본 시나리오로 시연한다 */
+  /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답. 서버가 이미 정렬·선별을 마친 상태다 —
+   *  템플릿 워크스페이스 제외, 조회수 상위 6(인기) 우선 + 나머지 최근 공유순, 최대 21건.
+   *  첫 항목이 인기 문서(조회수 높음) — 카드 순서·조회수 표기의 원료 (토큰은 위 shares fixture의 활성 링크) */
   sharedGallery: {
     totalCount: 2,
     responses: [
@@ -522,14 +522,16 @@ export const fixtures = {
         databaseType: 'postgresql',
         updatedAt: '2026-09-15T00:00:00Z',
         sharedAt: '2026-09-10T00:00:00Z',
+        viewCount: 128,
       },
       {
-        shareToken: 'T3mplat3T0ken0fShopping1',
-        modelName: '쇼핑몰 커머스 ERD',
-        description: '상품·주문·결제·리뷰 도메인',
-        databaseType: 'postgresql',
-        updatedAt: '2026-09-25T00:00:00Z',
-        sharedAt: '2026-09-25T00:00:00Z',
+        shareToken: 'P0pularT0ken0fSettle2c',
+        modelName: '정산 배치 ERD',
+        description: '일일 정산 집계 파이프라인',
+        databaseType: 'mysql',
+        updatedAt: '2026-09-24T00:00:00Z',
+        sharedAt: '2026-09-24T00:00:00Z',
+        viewCount: 3,
       },
     ],
   },

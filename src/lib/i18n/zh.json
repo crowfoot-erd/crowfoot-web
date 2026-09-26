@@ -1384,7 +1384,8 @@
     },
     "gallery": {
       "heading": "正在共享中的文档",
-      "headingCommunity": "更多社区共享"
+      "headingCommunity": "更多社区共享",
+      "views": "浏览 {{count}} 次"
     },
     "templates": {
       "heading": "从模板快速开始",

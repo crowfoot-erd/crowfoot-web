@@ -6,7 +6,7 @@
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Code2, Database, Layers, ShieldCheck, Users } from 'lucide-react'
+import { ArrowUpRight, Cable, Code2, Database, Eye, Layers, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { LanguageSelect } from '@/components/language-select'
@@ -45,10 +45,8 @@ export function LandingPage() {
   const { data: templates } = useTemplates()
   const templateItems = templates?.items ?? []
   const { data: gallery } = useSharedGallery()
-  // 갤러리에서 템플릿 카드가 겹치지 않게 한다 — 템플릿이 이미 보유한 공유 링크는 제외하고
-  // 나머지는 "그 밖의 커뮤니티 공유"로 계속 나열한다(위 섹션이 없으면 원래 제목 그대로)
-  const templateTokens = new Set(templateItems.map((item) => item.shareToken).filter(Boolean))
-  const galleryItems = (gallery?.items ?? []).filter((item) => !templateTokens.has(item.shareToken))
+  // 갤러리는 서버가 이미 정렬·선별해 준다 — 템플릿 워크스페이스 제외, 조회수 상위 6(인기) 우선 + 나머지 최근 공유순, 최대 21건
+  const galleryItems = gallery?.items ?? []
   const { data: releaseNotes } = usePublicReleaseNotes()
   const releaseNoteItems = releaseNotes?.items ?? []
 
@@ -236,7 +234,7 @@ export function LandingPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {/* 공개 뷰어는 새 창으로 — 랜딩 흐름은 그대로 둔다 */}
               {galleryItems.map(
-                ({ shareToken, modelName, description, databaseType, updatedAt }) => (
+                ({ shareToken, modelName, description, databaseType, updatedAt, viewCount }) => (
                   <Link
                     key={shareToken}
                     to={`/share/${shareToken}`}
@@ -250,7 +248,12 @@ export function LandingPage() {
                           <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
                             {databaseType}
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {/* 공개 조회 수 — 인기 정렬 원료 그대로 노출(단순 카운트) */}
+                            <span className="flex items-center gap-1 tabular-nums">
+                              <Eye aria-hidden className="size-3" />
+                              {t('landing.gallery.views', { count: viewCount })}
+                            </span>
                             {formatDate(updatedAt)}
                           </span>
                         </div>

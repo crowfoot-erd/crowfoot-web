@@ -71,21 +71,22 @@ describe('랜딩 페이지', () => {
     expect(screen.queryByRole('link', { name: /블로그 CMS ERD/ })).not.toBeInTheDocument()
   })
 
-  it('게스트 — 갤러리는 템플릿과 겹치는 공유를 제외하고 제목이 커뮤니티 공유로 바뀐다', async () => {
+  it('게스트 — 갤러리는 서버가 정렬한 순서 그대로 카드를 내고 조회수를 표시한다', async () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    // then: 템플릿 섹션이 있으면 갤러리 제목은 "그 밖의" — 잔류 문서만 나열
+    // then: 템플릿 섹션이 있으면 갤러리 제목은 "그 밖의" — 순서·선별(템플릿 제외·인기 6+최근·21 상한)은 서버 소관
     expect(await screen.findByRole('heading', { name: '그 밖의 커뮤니티 공유' })).toBeVisible()
     const card = screen.getByRole('link', { name: /주문 서비스 ERD/ })
     expect(card).toHaveAttribute('href', '/share/Sh4reT0ken0fM0del501aaaa')
     expect(card).toHaveAttribute('target', '_blank')
-    // 쇼핑몰 공유는 템플릿 카드가 이미 뒀다 — 갤러리에는 같은 토큰이 두 번 나오지 않는다
-    expect(screen.getAllByRole('link', { name: /쇼핑몰 커머스 ERD/ })).toHaveLength(1)
+    // 조회수 표기 — 인기 정렬 원료(단순 카운트)를 카드에도 그대로 노출
+    expect(screen.getByText('조회 128회')).toBeInTheDocument()
+    expect(screen.getByText('조회 3회')).toBeInTheDocument()
   })
 
-  it('게스트 — 템플릿이 없으면 갤러리 제목·중복 제외가 원래대로 돌아간다', async () => {
+  it('게스트 — 템플릿이 없으면 갤러리 제목이 원래대로 돌아간다', async () => {
     server.use(
-      // 템플릿 응답을 빈 목록으로 — 갤러리가 전체 공유를 원래 제목으로 나열
+      // 템플릿 응답을 빈 목록으로 — 갤러리 제목이 기본으로 돌아간다(선별 자체는 서버 소관이라 그대로)
       http.get('/api/v1/core/templates', () =>
         HttpResponse.json(ok({ totalCount: 0, responses: [] })),
       ),
@@ -93,10 +94,9 @@ describe('랜딩 페이지', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
     expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })).toBeVisible()
-    // 쇼핑몰 공유가 갤러리에 나타난다 — 제외할 템플릿이 없다
-    expect(screen.getByRole('link', { name: /쇼핑몰 커머스 ERD/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /정산 배치 ERD/ })).toHaveAttribute(
       'href',
-      '/share/T3mplat3T0ken0fShopping1',
+      '/share/P0pularT0ken0fSettle2c',
     )
     expect(screen.queryByTestId('landing-templates')).not.toBeInTheDocument()
   })

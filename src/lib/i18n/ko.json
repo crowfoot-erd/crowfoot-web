@@ -1384,7 +1384,8 @@
     },
     "gallery": {
       "heading": "지금 공유되고 있는 문서",
-      "headingCommunity": "그 밖의 커뮤니티 공유"
+      "headingCommunity": "그 밖의 커뮤니티 공유",
+      "views": "조회 {{count}}회"
     },
     "templates": {
       "heading": "템플릿으로 바로 시작",
