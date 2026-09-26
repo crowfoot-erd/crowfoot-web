@@ -8,6 +8,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { SessionExpiredOverlay } from '@/components/session-expired-overlay'
 import { Toaster } from '@/components/ui/sonner'
 import { useAccountLanguage } from '@/features/auth'
+import { VisitBeacon } from '@/features/metrics/visit-beacon'
 import { useTheme } from '@/lib/theme'
 import { AppRoutes } from '@/routes/app-routes'
 import { useSessionStore } from '@/stores/session'
@@ -48,6 +49,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AccountLanguageSync />
+        <VisitBeacon />
         <AppRoutes />
         <SessionExpiredOverlay />
         <GlobalToaster />

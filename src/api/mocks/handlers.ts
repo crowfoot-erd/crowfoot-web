@@ -933,6 +933,7 @@ export const fixtures = {
       },
     ],
   },
+  /**
 }
 
 /** 릴리스 노트 902 — 4탭 폼 시드·뷰어 언어 전환 검증용 ko/en 2벌 */
@@ -1196,6 +1197,9 @@ export const handlers = [
 
   // 공유 갤러리 목록(§1.10.5) — 인증 없음. 랜딩 페이지가 현재 공유 중인 문서를 나열
   http.get(`${BASE}/api/v1/core/shares`, () => HttpResponse.json(ok(fixtures.sharedGallery))),
+
+  // 접속 비콘 수집(10-metrics §3) — 무인증 204. 본문은 기록만 하고 항상 성공한다
+  http.post(`${BASE}/api/v1/core/metrics/visit`, () => new HttpResponse(null, { status: 204 })),
 
   // 공개 템플릿 목록(09-templates §1) — 인증 없음. 랜딩 템플릿 섹션·워크스페이스 갤러리가 사용
   http.get(`${BASE}/api/v1/core/templates`, () => HttpResponse.json(ok(fixtures.templates))),
@@ -2109,4 +2113,5 @@ export const handlers = [
   http.delete(`${BASE}/api/v1/core/community/comments/:commentId`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
+
 ]
