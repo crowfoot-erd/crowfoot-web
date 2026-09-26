@@ -246,7 +246,8 @@ export interface PublicShare {
 }
 
 /** 공유 갤러리 항목 (08-core/02-model.md §1.10.5) — 랜딩 페이지가 현재 공유 중인 문서를 나열.
- *  순서 = 조회수 상위 6(인기) 우선 + 나머지 최근 공유순, 최대 21건. 본문(content) 없음 */
+ *  전 워크스페이스 공유(템플릿 문서 포함). 순서 = 조회수 상위 3(인기) 우선 + 나머지 최근 공유순,
+ *  최대 21건 — 선두 3건이 랜딩 인기 박스 구간. 본문(content) 없음 */
 export interface SharedGalleryItem {
   shareToken: string
   modelName: string

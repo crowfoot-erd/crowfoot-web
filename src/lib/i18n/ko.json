@@ -1384,12 +1384,10 @@
     },
     "gallery": {
       "heading": "지금 공유되고 있는 문서",
-      "headingCommunity": "그 밖의 커뮤니티 공유",
+      "popular": "가장 인기 있는 문서",
+      "recent": "최근 공유되고 있는 문서",
+      "popularBadge": "인기",
       "views": "조회 {{count}}회"
-    },
-    "templates": {
-      "heading": "템플릿으로 바로 시작",
-      "description": "쇼핑몰·블로그·커뮤니티 등 다양한 도메인의 ERD 템플릿 — 미리보기로 살펴보고, 로그인 후 내 워크스페이스로 복제해 이어서 설계할 수 있습니다."
     },
     "releaseNotes": {
       "heading": "최근 릴리스"

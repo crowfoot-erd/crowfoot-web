@@ -1,12 +1,12 @@
 /**
  * 랜딩/소개 페이지 — 게스트의 / 첫 화면 (오픈소스 공개 대응, 2026-09-15)
  *
- * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 공유 문서 갤러리(새 창) + 최근 릴리스(공개 — 문서 하단, 새 창)
+ * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 통합 공유 갤러리(인기 3 박스+최근, 새 창) + 최근 릴리스(공개 — 문서 하단, 새 창)
  * - 인증 상태에서도 열람 가능(리다이렉트 없음) — CTA는 로그인/앱 진입으로 전환, 헤더에 앱 셸과 같은 사용자 메뉴(정보·로그아웃)
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Code2, Database, Eye, Layers, ShieldCheck, Users } from 'lucide-react'
+import { ArrowUpRight, Cable, Code2, Database, Eye, Flame, Layers, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { LanguageSelect } from '@/components/language-select'
@@ -16,8 +16,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
-import { useSharedGallery, useTemplates } from '@/features/models/hooks'
-import { templateDisplay } from '@/features/models/template-display'
+import { useSharedGallery } from '@/features/models/hooks'
+import { galleryDisplay } from '@/features/models/template-display'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
@@ -43,11 +43,12 @@ export function LandingPage() {
   const status = useSessionStore((state) => state.status)
   // 인증 상태에서도 랜딩 열람 가능 — CTA 행선지만 전환된다
   const authenticated = status === 'authenticated'
-  const { data: templates } = useTemplates()
-  const templateItems = templates?.items ?? []
   const { data: gallery } = useSharedGallery()
-  // 갤러리는 서버가 이미 정렬·선별해 준다 — 템플릿 워크스페이스 제외, 조회수 상위 6(인기) 우선 + 나머지 최근 공유순, 최대 21건
+  // 갤러리는 서버가 이미 정렬·선별해 준다 — 전 워크스페이스 공유(템플릿 포함)를 조회수 상위 3(인기) 우선
+  // + 나머지 최근 공유순으로 최대 21건. 선두 3건이 인기 박스 구간이다(서버 계약 POPULAR_LIMIT와 같은 값)
   const galleryItems = gallery?.items ?? []
+  const popularItems = galleryItems.slice(0, 3)
+  const recentItems = galleryItems.slice(3)
   const { data: releaseNotes } = usePublicReleaseNotes()
   const releaseNoteItems = releaseNotes?.items ?? []
 
@@ -156,90 +157,23 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* 템플릿으로 시작 — 공개 템플릿이 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
-            카드는 미리보기(활성 공유 링크)로 연결되고, 복제는 로그인 후 워크스페이스에서 한다.
-            카드 표기는 한국어 단일(template-display) — 문서 자체는 현지화 그대로다 */}
-        {templateItems.length > 0 && (
-          <section aria-labelledby="landing-templates" className="w-full" data-testid="landing-templates">
-            <h2 id="landing-templates" className="mb-2 text-center text-2xl font-semibold">
-              {t('landing.templates.heading')}
-            </h2>
-            <p className="mb-6 text-center text-sm text-muted-foreground">
-              {t('landing.templates.description')}
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {templateItems.map((template) => {
-                const { name, description } = templateDisplay(template)
-                const { modelId, databaseType, tableCount, relationshipCount, shareToken } = template
-                return (
-                  shareToken ? (
-                    <Link
-                      key={modelId}
-                      to={`/share/${shareToken}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group"
-                    >
-                      <Card className="h-full transition-colors group-hover:border-primary/50">
-                        <CardContent className="flex h-full flex-col gap-2 p-5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
-                              {databaseType}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {t('model.templates.counts', {
-                                tables: tableCount,
-                                relationships: relationshipCount,
-                              })}
-                            </span>
-                          </div>
-                          <h3 className="font-medium">{name}</h3>
-                          {description && (
-                            <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ) : (
-                    // 미리보기 링크 없는 템플릿 — 카드로 정보만(연결되지 않는다)
-                    <Card key={modelId}>
-                      <CardContent className="flex h-full flex-col gap-2 p-5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
-                            {databaseType}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {t('model.templates.counts', {
-                              tables: tableCount,
-                              relationships: relationshipCount,
-                            })}
-                          </span>
-                        </div>
-                        <h3 className="font-medium">{name}</h3>
-                        {description && (
-                          <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 공유된 문서 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김) */}
+        {/* 통합 공유 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
+            전 워크스페이스 공유(템플릿 문서 포함)가 한 목록에 온다 — 템플릿 전용 섹션은 폐지됐다.
+            카드 표기는 한국어 단일(galleryDisplay) — 문서 자체는 현지화 그대로다 */}
         {galleryItems.length > 0 && (
-          <section aria-labelledby="landing-gallery" className="w-full">
+          <section aria-labelledby="landing-gallery" className="w-full" data-testid="landing-gallery">
             <h2 id="landing-gallery" className="mb-6 text-center text-2xl font-semibold">
-              {templateItems.length > 0
-                ? t('landing.gallery.headingCommunity')
-                : t('landing.gallery.heading')}
+              {t('landing.gallery.heading')}
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {/* 공개 뷰어는 새 창으로 — 랜딩 흐름은 그대로 둔다 */}
-              {galleryItems.map(
-                ({ shareToken, modelName, description, databaseType, updatedAt, viewCount }) => (
+            {/* 인기 박스 — 서버 POPULAR_LIMIT(3)가 내려준 선두 3건을 다른 꼴로 강조한다 */}
+            <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+              {t('landing.gallery.popular')}
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-3" data-testid="landing-gallery-popular">
+              {popularItems.map((item) => {
+                const { name, description } = galleryDisplay(item)
+                const { shareToken, databaseType, updatedAt, viewCount } = item
+                return (
                   <Link
                     key={shareToken}
                     to={`/share/${shareToken}`}
@@ -247,31 +181,80 @@ export function LandingPage() {
                     rel="noopener noreferrer"
                     className="group"
                   >
-                    <Card className="h-full transition-colors group-hover:border-primary/50">
-                      <CardContent className="flex h-full flex-col gap-2 p-5">
+                    <Card className="h-full border-primary/40 bg-primary/5 transition-colors group-hover:border-primary/60">
+                      <CardContent className="flex h-full flex-col gap-3 p-6">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            <Flame aria-hidden className="size-3" />
+                            {t('landing.gallery.popularBadge')}
+                          </span>
+                          <span className="rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
                             {databaseType}
                           </span>
-                          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {/* 공개 조회 수 — 인기 정렬 원료 그대로 노출(단순 카운트) */}
-                            <span className="flex items-center gap-1 tabular-nums">
-                              <Eye aria-hidden className="size-3" />
-                              {t('landing.gallery.views', { count: viewCount })}
-                            </span>
-                            {formatDate(updatedAt)}
-                          </span>
                         </div>
-                        <h3 className="font-medium">{modelName}</h3>
+                        <h3 className="text-base font-semibold">{name}</h3>
                         {description && (
                           <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
                         )}
+                        <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          {/* 공개 조회 수 — 인기 구간의 성격 그대로 강조(단순 카운트) */}
+                          <span className="flex items-center gap-1 font-medium tabular-nums text-primary">
+                            <Eye aria-hidden className="size-3.5" />
+                            {t('landing.gallery.views', { count: viewCount })}
+                          </span>
+                          {formatDate(updatedAt)}
+                        </div>
                       </CardContent>
                     </Card>
                   </Link>
-                ),
-              )}
+                )
+              })}
             </div>
+            {/* 최근 공유 — 인기 3을 제외한 나머지, 서버가 최근 발급순으로 내려준다 */}
+            {recentItems.length > 0 && (
+              <>
+                <h3 className="mb-3 mt-10 text-sm font-semibold text-muted-foreground">
+                  {t('landing.gallery.recent')}
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {recentItems.map((item) => {
+                    const { name, description } = galleryDisplay(item)
+                    const { shareToken, databaseType, updatedAt, viewCount } = item
+                    return (
+                      <Link
+                        key={shareToken}
+                        to={`/share/${shareToken}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group"
+                      >
+                        <Card className="h-full transition-colors group-hover:border-primary/50">
+                          <CardContent className="flex h-full flex-col gap-2 p-5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                                {databaseType}
+                              </span>
+                              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {/* 공개 조회 수 — 인기 정렬 원료 그대로 노출(단순 카운트) */}
+                                <span className="flex items-center gap-1 tabular-nums">
+                                  <Eye aria-hidden className="size-3" />
+                                  {t('landing.gallery.views', { count: viewCount })}
+                                </span>
+                                {formatDate(updatedAt)}
+                              </span>
+                            </div>
+                            <h3 className="font-medium">{name}</h3>
+                            {description && (
+                              <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </section>
         )}
 

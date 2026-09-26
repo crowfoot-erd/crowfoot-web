@@ -510,10 +510,11 @@ export const fixtures = {
     endsAt: null,
   },
   /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답. 서버가 이미 정렬·선별을 마친 상태다 —
-   *  템플릿 워크스페이스 제외, 조회수 상위 6(인기) 우선 + 나머지 최근 공유순, 최대 21건.
-   *  첫 항목이 인기 문서(조회수 높음) — 카드 순서·조회수 표기의 원료 (토큰은 위 shares fixture의 활성 링크) */
+   *  전 워크스페이스 공유(템플릿 문서 포함)를 조회수 상위 3(인기) 우선 + 나머지 최근 공유순, 최대 21건.
+   *  선두 3건이 인기 박스 구간 — 카드 순서·조회수 표기의 원료. 3번째는 현지화 템플릿(도서관 zh)로
+   *  한국어 표시맵(galleryDisplay)의 갤러리 경로도 함께 검증한다 */
   sharedGallery: {
-    totalCount: 2,
+    totalCount: 4,
     responses: [
       {
         shareToken: 'Sh4reT0ken0fM0del501aaaa',
@@ -532,6 +533,24 @@ export const fixtures = {
         updatedAt: '2026-09-24T00:00:00Z',
         sharedAt: '2026-09-24T00:00:00Z',
         viewCount: 3,
+      },
+      {
+        shareToken: 'R3CdH4r2yASL7MoWB61H0Y',
+        modelName: '图书馆借阅 ERD',
+        description: '图书馆管理结构 — 图书×作者N:M、ISBN唯一键、借阅与预约管理的 MySQL ERD。',
+        databaseType: 'mysql',
+        updatedAt: '2026-09-26T00:00:00Z',
+        sharedAt: '2026-09-26T00:00:00Z',
+        viewCount: 2,
+      },
+      {
+        shareToken: 'CommunityT0ken0fiUnoTx1',
+        modelName: 'iUnoT ERD',
+        description: '학습 프로젝트 커뮤니티 구조',
+        databaseType: 'mysql',
+        updatedAt: '2026-09-23T00:00:00Z',
+        sharedAt: '2026-09-23T00:00:00Z',
+        viewCount: 0,
       },
     ],
   },

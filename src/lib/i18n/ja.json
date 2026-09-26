@@ -1384,12 +1384,10 @@
     },
     "gallery": {
       "heading": "いま共有されているドキュメント",
-      "headingCommunity": "コミュニティのその他の共有",
+      "popular": "人気のドキュメント",
+      "recent": "最近共有されたドキュメント",
+      "popularBadge": "人気",
       "views": "閲覧 {{count}}回"
-    },
-    "templates": {
-      "heading": "テンプレートからすぐ始める",
-      "description": "ショッピング・ブログ・コミュニティなど様々なドメインのERDテンプレート — プレビューで確認し、ログイン後にワークスペースへ複製して設計を続けられます。"
     },
     "releaseNotes": {
       "heading": "最新リリース"

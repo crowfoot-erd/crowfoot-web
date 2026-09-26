@@ -1,11 +1,11 @@
 /**
  * 랜딩/소개 페이지 컴포넌트 테스트 (frontend-testing.md B2)
  *
- * given: 게스트/인증 세션 상태, 템플릿·공유 갤러리·최근 릴리스 공개 API 응답(MSW)
+ * given: 게스트/인증 세션 상태, 통합 공유 갤러리(인기 3+최근)·최근 릴리스 공개 API 응답(MSW)
  * when: 렌더
- * then: 특징 카드·갤러리·릴리스·CTA 링크 노출, 빈 섹션 숨김과 인증 상태 CTA 전환 규칙 검증
+ * then: 특징 카드·갤러리(인기 박스·템플릿 섹션 부재)·릴리스·CTA 링크 노출, 빈 섹션 숨김과 인증 CTA 규칙 검증
  */
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { Route } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -55,52 +55,48 @@ describe('랜딩 페이지', () => {
     expect(screen.getByTestId('landing-current-version')).toHaveTextContent('현재 버전 v1.18')
   })
 
-  it('게스트 — 템플릿 섹션은 미리보기 링크가 있는 카드만 공개 뷰어로 연결한다', async () => {
+  it('게스트 — 랜딩에는 템플릿 전용 섹션이 없다(통합 갤러리로 흡수)', async () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    // then: 템플릿 헤딩 + fixture 카드(이름·counts) — 인증 없는 공개 API
-    expect(await screen.findByTestId('landing-templates')).toBeVisible()
-    expect(screen.getByRole('heading', { name: '템플릿으로 바로 시작' })).toBeVisible()
-    // shareToken 있는 템플릿 — 미리보기 링크(새 창)
-    const preview = screen.getByRole('link', { name: /쇼핑몰 커머스 ERD/ })
-    expect(preview).toHaveAttribute('href', '/share/T3mplat3T0ken0fShopping1')
-    expect(preview).toHaveAttribute('target', '_blank')
-    expect(screen.getByText('테이블 20개 · 관계 24개')).toBeInTheDocument()
-    // shareToken 없는 템플릿 — 정보 카드일 뿐 링크가 아니다. 현지화 문서(86 zh)는
-    // 카드 표기가 한국어 표시맵으로 내려온다 — 원문 언어는 보이지 않는다
-    expect(screen.getByRole('heading', { name: '도서관 대출 ERD' })).toBeVisible()
-    expect(screen.queryByText('图书馆借阅 ERD')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /도서관 대출 ERD/ })).not.toBeInTheDocument()
+    // then: 템플릿 진입은 워크스페이스 다이얼로그뿐 — 랜딩 섹션·제목 모두 없다
+    await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })
+    expect(screen.queryByTestId('landing-templates')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '템플릿으로 바로 시작' })).not.toBeInTheDocument()
   })
 
-  it('게스트 — 갤러리는 서버가 정렬한 순서 그대로 카드를 내고 조회수를 표시한다', async () => {
+  it('게스트 — 갤러리는 인기 3 박스와 최근 카드로 구성되고 순서는 서버 그대로다', async () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    // then: 템플릿 섹션이 있으면 갤러리 제목은 "그 밖의" — 순서·선별(템플릿 제외·인기 6+최근·21 상한)은 서버 소관
-    expect(await screen.findByRole('heading', { name: '그 밖의 커뮤니티 공유' })).toBeVisible()
-    const card = screen.getByRole('link', { name: /주문 서비스 ERD/ })
-    expect(card).toHaveAttribute('href', '/share/Sh4reT0ken0fM0del501aaaa')
-    expect(card).toHaveAttribute('target', '_blank')
-    // 조회수 표기 — 인기 정렬 원료(단순 카운트)를 카드에도 그대로 노출
-    expect(screen.getByText('조회 128회')).toBeInTheDocument()
-    expect(screen.getByText('조회 3회')).toBeInTheDocument()
-  })
-
-  it('게스트 — 템플릿이 없으면 갤러리 제목이 원래대로 돌아간다', async () => {
-    server.use(
-      // 템플릿 응답을 빈 목록으로 — 갤러리 제목이 기본으로 돌아간다(선별 자체는 서버 소관이라 그대로)
-      http.get('/api/v1/core/templates', () =>
-        HttpResponse.json(ok({ totalCount: 0, responses: [] })),
-      ),
-    )
-    renderWithProviders(<Route path="/" element={<LandingPage />} />)
-
+    // then: 제목은 원래 이름으로 고정 — 순서·선별(전 워크스페이스·인기 3 우선+최근·21 상한)은 서버 소관
     expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })).toBeVisible()
-    expect(screen.getByRole('link', { name: /정산 배치 ERD/ })).toHaveAttribute(
+    // 인기 박스 — 선두 3건(조회수순)이 다른 꼴의 카드로 강조된다
+    expect(screen.getByText('가장 인기 있는 문서')).toBeVisible()
+    const popular = screen.getByTestId('landing-gallery-popular')
+    expect(within(popular).getAllByText('인기')).toHaveLength(3)
+    const order = screen.getByRole('link', { name: /주문 서비스 ERD/ })
+    expect(order).toHaveAttribute('href', '/share/Sh4reT0ken0fM0del501aaaa')
+    expect(order).toHaveAttribute('target', '_blank')
+    expect(within(popular).getByRole('link', { name: /정산 배치 ERD/ })).toHaveAttribute(
       'href',
       '/share/P0pularT0ken0fSettle2c',
     )
-    expect(screen.queryByTestId('landing-templates')).not.toBeInTheDocument()
+    // 현지화 템플릿(86 zh)도 갤러리 카드 표기는 한국어 표시맵(galleryDisplay)으로 내려온다
+    expect(within(popular).getByRole('link', { name: /도서관 대출 ERD/ })).toHaveAttribute(
+      'href',
+      '/share/R3CdH4r2yASL7MoWB61H0Y',
+    )
+    expect(screen.queryByText('图书馆借阅 ERD')).not.toBeInTheDocument()
+    // 조회수 표기 — 인기 정렬 원료(단순 카운트)를 카드에도 그대로 노출
+    expect(screen.getByText('조회 128회')).toBeInTheDocument()
+    expect(screen.getByText('조회 3회')).toBeInTheDocument()
+    expect(screen.getByText('조회 2회')).toBeInTheDocument()
+    // 최근 구간 — 인기 3을 제외한 나머지가 기존 카드 꼴로 온다
+    expect(screen.getByText('최근 공유되고 있는 문서')).toBeVisible()
+    expect(screen.getByRole('link', { name: /iUnoT ERD/ })).toHaveAttribute(
+      'href',
+      '/share/CommunityT0ken0fiUnoTx1',
+    )
+    expect(screen.queryByText('그 밖의 커뮤니티 공유')).not.toBeInTheDocument()
   })
 
   it('게스트 — 공유 중인 문서가 없으면 갤러리 섹션을 숨긴다', async () => {

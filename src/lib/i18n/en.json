@@ -1384,12 +1384,10 @@
     },
     "gallery": {
       "heading": "Documents being shared right now",
-      "headingCommunity": "More from the community",
+      "popular": "Most popular documents",
+      "recent": "Recently shared documents",
+      "popularBadge": "Popular",
       "views": "{{count}} views"
-    },
-    "templates": {
-      "heading": "Start from a template",
-      "description": "Ready-made ERDs across shopping, blogs, communities and more — take a preview, then clone one into your workspace after signing in to keep designing."
     },
     "releaseNotes": {
       "heading": "Latest releases"

@@ -1384,12 +1384,10 @@
     },
     "gallery": {
       "heading": "正在共享中的文档",
-      "headingCommunity": "更多社区共享",
+      "popular": "最受欢迎的文档",
+      "recent": "最近共享的文档",
+      "popularBadge": "热门",
       "views": "浏览 {{count}} 次"
-    },
-    "templates": {
-      "heading": "从模板快速开始",
-      "description": "电商、博客、社区等多种领域的 ERD 模板——先预览，登录后复制到你的工作区继续设计。"
     },
     "releaseNotes": {
       "heading": "最新发布"
