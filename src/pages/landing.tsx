@@ -45,7 +45,7 @@ export function LandingPage() {
   const authenticated = status === 'authenticated'
   const { data: gallery } = useSharedGallery()
   // 갤러리는 서버가 이미 정렬·선별해 준다 — 전 워크스페이스 공유(템플릿 포함)를 조회수 상위 3(인기) 우선
-  // + 나머지 최근 공유순으로 최대 21건. 선두 3건이 인기 박스 구간이다(서버 계약 POPULAR_LIMIT와 같은 값)
+  // + 나머지 최근 공유순으로 최대 18건(인기 3+최근 15). 선두 3건이 인기 박스 구간이다(서버 POPULAR_LIMIT와 같은 값)
   const galleryItems = gallery?.items ?? []
   const popularItems = galleryItems.slice(0, 3)
   const recentItems = galleryItems.slice(3)
@@ -181,10 +181,11 @@ export function LandingPage() {
                     rel="noopener noreferrer"
                     className="group"
                   >
-                    <Card className="h-full border-primary/40 bg-primary/5 transition-colors group-hover:border-primary/60">
+                    {/* 인기 강조는 red 계열 — "뜨거운" 문서라는 신호(디자인 토큰 밖의 국소 악센트) */}
+                    <Card className="h-full border-red-500/40 bg-red-500/5 transition-colors group-hover:border-red-500/60">
                       <CardContent className="flex h-full flex-col gap-3 p-6">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          <span className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
                             <Flame aria-hidden className="size-3" />
                             {t('landing.gallery.popularBadge')}
                           </span>
@@ -197,8 +198,8 @@ export function LandingPage() {
                           <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
                         )}
                         <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                          {/* 공개 조회 수 — 인기 구간의 성격 그대로 강조(단순 카운트) */}
-                          <span className="flex items-center gap-1 font-medium tabular-nums text-primary">
+                          {/* 공개 조회 수 — 인기 구간의 성격 그대로 강조(단순 카운트, red 악센트) */}
+                          <span className="flex items-center gap-1 font-medium tabular-nums text-red-600 dark:text-red-400">
                             <Eye aria-hidden className="size-3.5" />
                             {t('landing.gallery.views', { count: viewCount })}
                           </span>
