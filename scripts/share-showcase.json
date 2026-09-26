@@ -6,27 +6,27 @@
   },
   {
     "token": "PBzX4sZWxD8d0D65wWnCxM",
-    "title": "블로그 CMS ERD",
+    "title": "ブログCMS ERD",
     "description": "ブログCMSの核心スキーマ — 記事×タグのN:M、階層コメント、スラッグ一意キーを含むMySQLのERD。"
   },
   {
     "token": "2LSYdsvx8kkX3V3VEgGABk",
-    "title": "커뮤니티 ERD",
+    "title": "社区论坛 ERD",
     "description": "论坛社区核心结构 — 板块·帖子·评论·私信按主题区域划分的 MySQL ERD，含状态列与复合唯一键。"
   },
   {
     "token": "V7TyMAsiEvU1dxf41Wnif9",
-    "title": "SaaS 구독 결제 ERD",
+    "title": "SaaS Subscription Billing ERD",
     "description": "Core B2B SaaS billing schema — orgs, subscriptions, invoices and payment methods with 1:1 and composite keys on PostgreSQL."
   },
   {
     "token": "hpREAaGNwVHE0az6627JbI",
-    "title": "병원 예약 ERD",
+    "title": "病院予約 ERD",
     "description": "病院予約の診療スキーマ — 患者・医師・診療科・予約枠・診療記録を整理したPostgreSQLのERD。"
   },
   {
     "token": "V6FdhtEqrID020uEqdOZec",
-    "title": "IoT 센서 시계열 ERD",
+    "title": "IoT Sensor Telemetry ERD",
     "description": "IoT sensor telemetry schema — sites, gateways, devices and time-series readings with composite indexes on MySQL."
   },
   {
@@ -36,7 +36,7 @@
   },
   {
     "token": "R3CdH4r2yASL7MoWB61H0Y",
-    "title": "도서관 대출 ERD",
+    "title": "图书馆借阅 ERD",
     "description": "图书馆管理结构 — 图书×作者N:M、ISBN唯一键、借阅与预约管理的 MySQL ERD。"
   }
 ]
