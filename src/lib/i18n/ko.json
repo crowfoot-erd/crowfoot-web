@@ -1359,7 +1359,8 @@
     },
     "footer": {
       "opensource": "모든 코드는 GitHub에 공개됩니다",
-      "terms": "이용약관"
+      "terms": "이용약관",
+      "currentVersion": "현재 버전 v{{version}}"
     },
     "gallery": {
       "heading": "지금 공유되고 있는 문서"

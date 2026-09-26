@@ -50,8 +50,9 @@ describe('랜딩 페이지', () => {
       'href',
       'https://github.com/crowfoot-erd',
     )
-    // 푸터 — 이용약관 링크
+    // 푸터 — 이용약관 링크 + 현재 버전(첫 방문에서도 지금 버전을 알 수 있게)
     expect(screen.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms')
+    expect(screen.getByTestId('landing-current-version')).toHaveTextContent('현재 버전 v1.17')
   })
 
   it('게스트 — 공유 갤러리는 현재 공유 중인 문서를 카드로 렌더하고 공개 뷰어로 연결한다', async () => {

@@ -1359,7 +1359,8 @@
     },
     "footer": {
       "opensource": "すべてのコードはGitHubで公開されています",
-      "terms": "利用規約"
+      "terms": "利用規約",
+      "currentVersion": "現在のバージョン v{{version}}"
     },
     "gallery": {
       "heading": "いま共有されているドキュメント"

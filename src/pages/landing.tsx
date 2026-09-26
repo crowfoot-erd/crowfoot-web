@@ -19,6 +19,7 @@ import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
+import { APP_VERSION } from '@/lib/version'
 import { useSessionStore } from '@/stores/session'
 
 /** 특징 카드 정의 — 핵심(무료 매니지드 DB)이 먼저 온다. 아이콘은 중립 도형만 (lucide v1 브랜드 아이콘 없음) */
@@ -225,7 +226,13 @@ export function LandingPage() {
 
       <footer className="border-t">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 text-xs text-muted-foreground">
-          <span>{t('common.footer')}</span>
+          <span className="flex items-center gap-3">
+            <span>{t('common.footer')}</span>
+            {/* 현재 버전 — 첫 방문에서도 지금 몇 버전인지 알 수 있게 (v1.17) */}
+            <span data-testid="landing-current-version" className="tabular-nums">
+              {t('landing.footer.currentVersion', { version: APP_VERSION })}
+            </span>
+          </span>
           <span className="flex items-center gap-3">
             <Link to="/terms" className="hover:underline">
               {t('landing.footer.terms')}

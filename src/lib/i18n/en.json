@@ -1359,7 +1359,8 @@
     },
     "footer": {
       "opensource": "All code is available on GitHub",
-      "terms": "Terms"
+      "terms": "Terms",
+      "currentVersion": "Current version v{{version}}"
     },
     "gallery": {
       "heading": "Documents being shared right now"
