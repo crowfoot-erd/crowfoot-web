@@ -123,7 +123,8 @@ describe('ERD 탭', () => {
     await userEvent.click(screen.getByRole('button', { name: '템플릿으로 시작' }))
     expect(await screen.findByRole('dialog')).toBeVisible()
     expect(await screen.findByText('쇼핑몰 커머스 ERD')).toBeVisible()
-    expect(screen.getByText('블로그 CMS ERD')).toBeVisible()
+    // 현지화 문서(86 zh)는 한국어 표시맵으로 내려온다
+    expect(screen.getByText('도서관 대출 ERD')).toBeVisible()
   })
 
   it('edits a document name and description via the row action', async () => {

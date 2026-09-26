@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery, useTemplates } from '@/features/models/hooks'
+import { templateDisplay } from '@/features/models/template-display'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
@@ -156,7 +157,8 @@ export function LandingPage() {
         </section>
 
         {/* 템플릿으로 시작 — 공개 템플릿이 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
-            카드는 미리보기(활성 공유 링크)로 연결되고, 복제는 로그인 후 워크스페이스에서 한다 */}
+            카드는 미리보기(활성 공유 링크)로 연결되고, 복제는 로그인 후 워크스페이스에서 한다.
+            카드 표기는 한국어 단일(template-display) — 문서 자체는 현지화 그대로다 */}
         {templateItems.length > 0 && (
           <section aria-labelledby="landing-templates" className="w-full" data-testid="landing-templates">
             <h2 id="landing-templates" className="mb-2 text-center text-2xl font-semibold">
@@ -166,8 +168,10 @@ export function LandingPage() {
               {t('landing.templates.description')}
             </p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {templateItems.map(
-                ({ modelId, name, description, databaseType, tableCount, relationshipCount, shareToken }) =>
+              {templateItems.map((template) => {
+                const { name, description } = templateDisplay(template)
+                const { modelId, databaseType, tableCount, relationshipCount, shareToken } = template
+                return (
                   shareToken ? (
                     <Link
                       key={modelId}
@@ -217,8 +221,9 @@ export function LandingPage() {
                         )}
                       </CardContent>
                     </Card>
-                  ),
-              )}
+                  )
+                )
+              })}
             </div>
           </section>
         )}

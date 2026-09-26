@@ -2,6 +2,7 @@
  * 템플릿 갤러리 다이얼로그 (04-front/02-workspace.md §5 "템플릿으로 시작" — 08-core/09-templates.md)
  *
  * - 공개 목록(무인증) 카드: 이름·설명·DBMS 배지·테이블/관계 수·수정일. 본문은 오지 않는다.
+ *   카드 표기는 한국어 단일(template-display 표시맵 — 현지화 문서도 한국어로, 문서 자체는 그대로).
  * - 미리보기는 그 문서의 활성 공유 링크(shareToken)가 있을 때만 — 기존 공개 뷰어(/share/{token})를
  *   새 탭으로 연다. 링크 없는 템플릿은 미리보기 없이 복제만 가능하다.
  * - 복제: 카드 선택 → 이름(기본=원본 이름, 대상 워크스페이스 내 중복이면 409) → 생성된 문서를
@@ -22,6 +23,7 @@ import { formatDate } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
 import { modelEditorPath } from '@/features/models/api'
 import { useCloneFromTemplate, useTemplates } from '@/features/models/hooks'
+import { templateDisplay } from '@/features/models/template-display'
 import { cn } from 'cn'
 
 export interface TemplateGalleryDialogProps {
@@ -37,9 +39,9 @@ export function TemplateGalleryDialog({ open, onOpenChange, workspaceId }: Templ
   const [selected, setSelected] = useState<TemplateSummary | null>(null)
   const [name, setName] = useState('')
 
-  // 카드 선택 시 이름 기본값은 원본 이름 — 그대로 쓰거나 고쳐 쓴다(409 완화)
+  // 카드 선택 시 이름 기본값은 카드에 보인 한국어 이름 — 그대로 쓰거나 고쳐 쓴다(409 완화)
   useEffect(() => {
-    setName(selected?.name ?? '')
+    setName(selected ? templateDisplay(selected).name : '')
   }, [selected])
 
   const close = (nextOpen: boolean) => {
@@ -87,6 +89,7 @@ export function TemplateGalleryDialog({ open, onOpenChange, workspaceId }: Templ
           <div className="grid gap-3 sm:grid-cols-2" role="list">
             {items.map((template) => {
               const isSelected = selected?.modelId === template.modelId
+              const display = templateDisplay(template)
               return (
                 <div
                   key={template.modelId}
@@ -113,9 +116,9 @@ export function TemplateGalleryDialog({ open, onOpenChange, workspaceId }: Templ
                     </Badge>
                     <span className="text-xs text-muted-foreground">{formatDate(template.updatedAt)}</span>
                   </div>
-                  <p className="font-medium">{template.name}</p>
-                  {template.description ? (
-                    <p className="line-clamp-2 text-sm text-muted-foreground">{template.description}</p>
+                  <p className="font-medium">{display.name}</p>
+                  {display.description ? (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{display.description}</p>
                   ) : null}
                   <p className="text-xs text-muted-foreground">
                     {t('model.templates.counts', {
@@ -149,7 +152,7 @@ export function TemplateGalleryDialog({ open, onOpenChange, workspaceId }: Templ
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={selected.name}
+                placeholder={templateDisplay(selected).name}
                 aria-label={t('model.templates.nameLabel')}
                 className="h-8"
               />

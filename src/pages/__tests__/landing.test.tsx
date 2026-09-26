@@ -66,9 +66,11 @@ describe('랜딩 페이지', () => {
     expect(preview).toHaveAttribute('href', '/share/T3mplat3T0ken0fShopping1')
     expect(preview).toHaveAttribute('target', '_blank')
     expect(screen.getByText('테이블 20개 · 관계 24개')).toBeInTheDocument()
-    // shareToken 없는 템플릿 — 정보 카드일 뿐 링크가 아니다
-    expect(screen.getByRole('heading', { name: '블로그 CMS ERD' })).toBeVisible()
-    expect(screen.queryByRole('link', { name: /블로그 CMS ERD/ })).not.toBeInTheDocument()
+    // shareToken 없는 템플릿 — 정보 카드일 뿐 링크가 아니다. 현지화 문서(86 zh)는
+    // 카드 표기가 한국어 표시맵으로 내려온다 — 원문 언어는 보이지 않는다
+    expect(screen.getByRole('heading', { name: '도서관 대출 ERD' })).toBeVisible()
+    expect(screen.queryByText('图书馆借阅 ERD')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /도서관 대출 ERD/ })).not.toBeInTheDocument()
   })
 
   it('게스트 — 갤러리는 서버가 정렬한 순서 그대로 카드를 내고 조회수를 표시한다', async () => {

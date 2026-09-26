@@ -535,13 +535,14 @@ export const fixtures = {
       },
     ],
   },
-  /** 공개 템플릿 목록(08-core/09-templates.md §1) — 인증 없는 응답. 미리보기 유무를 위해
-   *  활성 공유 토큰이 있는 항목과 없는 항목을 섞는다 */
+  /** 공개 템플릿 목록(08-core/09-templates.md §1) — 인증 없는 응답. 실제 목록 위상을 반영:
+   *  한국어 문서(79 쇼핑몰 — 폴백 그대로)와 현지화 문서(86 도서관 zh — 웹 표시맵이 한국어로
+   *  내린다)를 섞고, 미리보기 유무(활성 공유 토큰)도 섞는다 */
   templates: {
     totalCount: 2,
     responses: [
       {
-        modelId: '771',
+        modelId: '79',
         name: '쇼핑몰 커머스 ERD',
         description: '상품·주문·결제·리뷰 도메인 — 정션 테이블과 복합 UK를 포함',
         databaseType: 'postgresql',
@@ -551,9 +552,9 @@ export const fixtures = {
         updatedAt: '2026-09-25T00:00:00Z',
       },
       {
-        modelId: '772',
-        name: '블로그 CMS ERD',
-        description: '포스트·태그·계층 댓글 — N:M과 셀프 조인을 포함',
+        modelId: '86',
+        name: '图书馆借阅 ERD',
+        description: '图书馆管理结构 — 图书×作者N:M、ISBN唯一键、借阅与预约管理的 MySQL ERD。',
         databaseType: 'mysql',
         tableCount: 12,
         relationshipCount: 9,
