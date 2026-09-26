@@ -1005,6 +1005,7 @@
         "rejected": {
           "read-only": "Your current role is read-only, so the change was not sent",
           "lock-held": "Another user is editing this item, so the change was rejected",
+          "locked": "Rejected — another user is editing this item",
           "payload-too-large": "The change was too large to send",
           "default": "The change was rejected by the server"
         }
