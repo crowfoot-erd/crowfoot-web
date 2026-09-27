@@ -1050,9 +1050,12 @@
         "action_SET_DEFAULT": "设为默认值",
         "noPk": "父表没有主键，因此无法创建外键。",
         "uniqueHint": "非标识型 1:1 关系会自动在所有外键列上创建唯一键以强制 1:1。",
+        "indexHint": "将自动在外键列上创建索引",
         "optionalityHint": "父方为恰好一个（|）时外键为 NOT NULL；为零或一（○|）时允许 NULL。子方多重性仅用于记法表示。",
         "duplicate": "两张表之间只允许一个关系：{{parent}} → {{child}}",
-        "remove": "删除关系"
+        "remove": "删除关系",
+        "mappingTitle": "列映射",
+        "mappingEmpty": "没有映射的列"
       },
       "tableInfo": {
         "title": "表信息",
@@ -1219,6 +1222,38 @@
         "noTables": "此文档中没有表"
       }
     },
+  "validation": {
+    "toggle": "校验",
+    "title": "设计校验",
+    "summary": "错误 {{error}} · 警告 {{warning}} · 提示 {{info}}",
+    "filterLabel": "等级筛选",
+    "empty": "没有问题",
+    "emptyDetail": "已通过全部校验规则",
+    "level": {
+      "error": "错误",
+      "warning": "警告",
+      "info": "提示"
+    },
+    "rules": {
+      "DUPLICATE_TABLE_NAME": "表物理名重复",
+      "DUPLICATE_COLUMN_NAME": "列物理名重复",
+      "DUPLICATE_KEY_NAME": "键名称重复",
+      "FK_TYPE_MISMATCH": "外键类型不一致",
+      "FK_TARGET_NOT_KEY": "外键目标不是主键或唯一键",
+      "FK_NULLABILITY_MISMATCH": "外键可空性不一致",
+      "ONE_TO_ONE_MISSING_UK": "1:1 关系缺少唯一键",
+      "COMPOSITE_KEY_DUPLICATE_COLUMN": "复合键列重复",
+      "MISSING_PK": "缺少主键",
+      "EMPTY_TABLE": "没有列的表",
+      "FK_MAPPING_EMPTY": "外键列映射为空",
+      "ORPHAN_TABLE": "没有关系的表",
+      "CIRCULAR_REFERENCE": "外键循环引用",
+      "NAMING_CONVENTION": "物理名违反命名规则",
+      "MISSING_LOGICAL_NAME": "缺少逻辑名",
+      "FK_WITHOUT_INDEX": "外键首列无索引",
+      "WIDE_TABLE": "列过多（超过 30）"
+    }
+  },
     "import": {
       "button": "导入 .crown",
       "successToast": "已导入“{{name}}”",

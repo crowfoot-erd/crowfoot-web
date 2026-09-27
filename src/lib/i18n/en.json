@@ -1050,9 +1050,12 @@
         "action_SET_DEFAULT": "Set default",
         "noPk": "The parent table has no primary key, so no FK can be created.",
         "uniqueHint": "A non-identifying 1:1 relationship automatically creates a unique key on all FK columns to enforce 1:1.",
+        "indexHint": "An index on the FK columns will be created automatically",
         "optionalityHint": "A parent of exactly one (|) makes the FK NOT NULL; zero or one (○|) allows NULL. Child-side multiplicity is notation only.",
         "duplicate": "Only one relationship is allowed between two tables: {{parent}} → {{child}}",
-        "remove": "Delete relationship"
+        "remove": "Delete relationship",
+        "mappingTitle": "Column mappings",
+        "mappingEmpty": "No columns are mapped"
       },
       "tableInfo": {
         "title": "Table info",
@@ -1219,6 +1222,38 @@
         "noTables": "No tables in this document"
       }
     },
+  "validation": {
+    "toggle": "Validation",
+    "title": "Design validation",
+    "summary": "{{error}} errors · {{warning}} warnings · {{info}} info",
+    "filterLabel": "Severity filter",
+    "empty": "No issues",
+    "emptyDetail": "All validation rules passed",
+    "level": {
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "rules": {
+      "DUPLICATE_TABLE_NAME": "Duplicate table name",
+      "DUPLICATE_COLUMN_NAME": "Duplicate column name",
+      "DUPLICATE_KEY_NAME": "Duplicate key name",
+      "FK_TYPE_MISMATCH": "FK type mismatch",
+      "FK_TARGET_NOT_KEY": "FK target is not a PK or UK",
+      "FK_NULLABILITY_MISMATCH": "FK nullability mismatch",
+      "ONE_TO_ONE_MISSING_UK": "1:1 relationship missing a unique key",
+      "COMPOSITE_KEY_DUPLICATE_COLUMN": "Duplicate column in composite key",
+      "MISSING_PK": "Missing primary key",
+      "EMPTY_TABLE": "Table without columns",
+      "FK_MAPPING_EMPTY": "FK column mapping empty",
+      "ORPHAN_TABLE": "Table without relationships",
+      "CIRCULAR_REFERENCE": "Circular FK reference",
+      "NAMING_CONVENTION": "Physical name violates naming rules",
+      "MISSING_LOGICAL_NAME": "Missing logical name",
+      "FK_WITHOUT_INDEX": "No index on leading FK column",
+      "WIDE_TABLE": "Too many columns (over 30)"
+    }
+  },
     "import": {
       "button": "Import .crown",
       "successToast": "Imported \"{{name}}\"",

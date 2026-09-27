@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -54,6 +54,13 @@ export interface EditorToolbarProps {
   /** 용어 사전 패널 열림 — 토글 버튼 상태. 열람은 멤버 전체라 공개 뷰어만 숨긴다 */
   termsOpen: boolean
   onToggleTermsPanel: () => void
+  /** 검증 패널 열림 — 토글 버튼 상태(05-validation §4.1). 열람은 멤버 전체라 공개 뷰어만 숨긴다 */
+  validationOpen: boolean
+  onToggleValidationPanel: () => void
+  /** 검증 요약 배지 건수 — Error ≥ 1이면 destructive, 아니면 Warning ≥ 1이면 amber(§4.1).
+   *  패널이 닫혀 있어도 배지는 최신 값을 유지한다 */
+  validationErrorCount: number
+  validationWarningCount: number
   nameDisplay: NameDisplayMode
   onNameDisplayChange: (mode: NameDisplayMode) => void
   columnDisplay: ColumnDisplayMode
@@ -89,6 +96,10 @@ export function EditorToolbar({
   onToggleExplorer,
   termsOpen,
   onToggleTermsPanel,
+  validationOpen,
+  onToggleValidationPanel,
+  validationErrorCount,
+  validationWarningCount,
   nameDisplay,
   onNameDisplayChange,
   columnDisplay,
@@ -145,6 +156,39 @@ export function EditorToolbar({
         >
           <BookMarked aria-hidden className="size-3.5" />
           {t('model.editor.termDictionary.toggle')}
+        </Button>
+      ) : null}
+
+      {/* 검증 패널(v1.20 05-validation §4.1) — 문서 자체만 보므로 멤버 전체가 열람한다.
+          요약 배지: Error ≥ 1 destructive, Error 0이고 Warning ≥ 1이면 amber */}
+      {!publicView ? (
+        <Button
+          type="button"
+          variant={validationOpen ? 'secondary' : 'ghost'}
+          size="sm"
+          className="h-7 gap-1.5 px-2"
+          onClick={onToggleValidationPanel}
+          aria-label={t('model.validation.toggle')}
+          aria-pressed={validationOpen}
+          title={t('model.validation.toggle')}
+        >
+          <ShieldCheck aria-hidden className="size-3.5" />
+          {t('model.validation.toggle')}
+          {validationErrorCount > 0 ? (
+            <span
+              data-testid="validation-badge"
+              className="rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-white"
+            >
+              {validationErrorCount}
+            </span>
+          ) : validationWarningCount > 0 ? (
+            <span
+              data-testid="validation-badge"
+              className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-amber-950"
+            >
+              {validationWarningCount}
+            </span>
+          ) : null}
         </Button>
       ) : null}
 

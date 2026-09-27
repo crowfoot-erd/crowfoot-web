@@ -1050,9 +1050,12 @@
         "action_SET_DEFAULT": "デフォルトに設定",
         "noPk": "親テーブルに主キーがないため、FKを作成できません。",
         "uniqueHint": "非識別の1:1リレーションは、全FKカラムにユニークキーを自動作成して1:1を保証します。",
+        "indexHint": "FKカラムにインデックスを自動生成します",
         "optionalityHint": "親がちょうど1 (|) ならFKはNOT NULL、0または1 (○|) ならNULLを許可します。子側の多重度は表記にのみ反映されます。",
         "duplicate": "2つのテーブル間に設定できるリレーションは1つです: {{parent}} → {{child}}",
-        "remove": "リレーションを削除"
+        "remove": "リレーションを削除",
+        "mappingTitle": "カラムマッピング",
+        "mappingEmpty": "マッピングされたカラムがありません"
       },
       "tableInfo": {
         "title": "テーブル情報",
@@ -1219,6 +1222,38 @@
         "noTables": "このドキュメントにテーブルがありません"
       }
     },
+  "validation": {
+    "toggle": "検証",
+    "title": "設計検証",
+    "summary": "エラー {{error}} · 警告 {{warning}} · 参考 {{info}}",
+    "filterLabel": "深刻度フィルター",
+    "empty": "問題なし",
+    "emptyDetail": "すべての検証ルールに合格しました",
+    "level": {
+      "error": "エラー",
+      "warning": "警告",
+      "info": "参考"
+    },
+    "rules": {
+      "DUPLICATE_TABLE_NAME": "テーブル物理名の重複",
+      "DUPLICATE_COLUMN_NAME": "カラム物理名の重複",
+      "DUPLICATE_KEY_NAME": "キー名の重複",
+      "FK_TYPE_MISMATCH": "FK型の不一致",
+      "FK_TARGET_NOT_KEY": "FK参照先がPK・UKでない",
+      "FK_NULLABILITY_MISMATCH": "FK NULL許容の不一致",
+      "ONE_TO_ONE_MISSING_UK": "1:1リレーションにUKなし",
+      "COMPOSITE_KEY_DUPLICATE_COLUMN": "複合キーのカラム重複",
+      "MISSING_PK": "主キーなし",
+      "EMPTY_TABLE": "カラムのないテーブル",
+      "FK_MAPPING_EMPTY": "FKカラムマッピングなし",
+      "ORPHAN_TABLE": "リレーションのないテーブル",
+      "CIRCULAR_REFERENCE": "FK循環参照",
+      "NAMING_CONVENTION": "物理名が命名規則に違反",
+      "MISSING_LOGICAL_NAME": "論理名なし",
+      "FK_WITHOUT_INDEX": "FK先頭カラムにインデックスなし",
+      "WIDE_TABLE": "カラム過多（30超）"
+    }
+  },
     "import": {
       "button": ".crownを取り込む",
       "successToast": "「{{name}}」を取り込みました",

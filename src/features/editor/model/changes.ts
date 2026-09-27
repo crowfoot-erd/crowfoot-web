@@ -306,14 +306,19 @@ function removeTableCascade(doc: EditorDocument, tableId: string): EditorDocumen
 }
 
 /** 관계 생성 — FK 컬럼은 PK 블록 바로 밑(FK 영역 선두)에 삽입 + 식별 관계면 자식 PK에 FK 포함 (05-editor/01-core.md §6)
- *  비식별 1:1은 FK 전체 컬럼에 UK를 만들어 1:1을 강제한다 — 식별은 자식 PK가 이미 유일성을 보장한다. */
+ *  비식별 1:1은 FK 전체 컬럼에 UK를 만들어 1:1을 강제한다 — 식별은 자식 PK가 이미 유일성을 보장한다.
+ *  비식별 1:N은 FK 컬럼 인덱스를 함께 만든다(MySQL InnoDB 관례) — 조인·삭제 성능의 기본값.
+ *  식별(PK 편입)·비식별 1:1(UK)은 상위 키가 선두 컬럼을 이미 덮는다. */
 function applyRelationshipCreate(
   doc: EditorDocument,
   relationship: ErdRelationship,
   fkColumns: ErdColumn[],
 ): EditorDocument {
   const fkIds = fkColumns.map((c) => c.id)
-  const wantUk = relationship.type === 'ONE_TO_ONE' && !relationship.identifying
+  // fkColumns가 빈 diff 재생(collab 병합 — 키는 index/set 등 각자의 diff가 재현)에서는
+  // UK·인덱스를 만들지 않는다 — 컬럼 0개 키는 무의미한 껍데기다
+  const wantUk = fkIds.length > 0 && relationship.type === 'ONE_TO_ONE' && !relationship.identifying
+  const wantIndex = fkIds.length > 0 && relationship.type === 'ONE_TO_MANY' && !relationship.identifying
   let next = mapTable(doc, relationship.childTableId, (table) => {
     const primaryKey = relationship.identifying
       ? table.primaryKey
@@ -334,6 +339,16 @@ function applyRelationshipCreate(
       uniques: wantUk
         ? [...table.uniques, { id: newId(), name: defaultKeyName(doc.model, table, 'unique', fkColumns), columnIds: [...fkIds] }]
         : table.uniques,
+      indexes: wantIndex
+        ? [
+            ...table.indexes,
+            {
+              id: newId(),
+              name: defaultKeyName(doc.model, table, 'index', fkColumns),
+              columns: fkIds.map((columnId) => ({ columnId, order: 'ASC' as const })),
+            },
+          ]
+        : table.indexes,
     }
   })
   next = {
@@ -367,9 +382,10 @@ function removeRelationshipCascade(doc: EditorDocument, relationshipId: string):
  *  · 식별 ↔ 비식별: FK의 자식 PK 편입/해제 + NOT NULL 전환 + 3영역(PK→FK→일반) 재정렬
  *    (복합 PK가 되는 순간 기존 PK의 AI 해제 — pkToggleChanges와 같은 규칙)
  *  · 비식별 1:1: FK 전체 컬럼 UK로 1:1을 강제 — 식별·1:N이면 관계가 만든 UK를 제거한다
+  · 비식별 1:N: FK 컬럼 인덱스를 만든다(생성과 같은 기본값) — 식별·1:1이면 관계가 만든 인덱스를 제거한다
  *  · 부모 기수: 정확히 1(|)이면 FK NOT NULL, 0 또는 1(○|)이면 nullable — 식별 FK는 PK라 항상 NOT NULL
  *  · 유형 전환: 자식 기수가 새 유형에 없는 값이면 기본값으로 보정한다
- *  UK 소유 판정은 FK 집합과 정확히 일치하는 경우만 — 사용자가 직접 만들었거나 고친 UK는 보존한다. */
+ *  UK·인덱스 소유 판정은 FK 집합과 정확히 일치하는 경우만 — 사용자가 직접 만들었거나 고친 키는 보존한다. */
 function applyRelationshipPatch(
   doc: EditorDocument,
   change: Extract<ErdChange, { type: 'relationship/patch' }>,
@@ -398,7 +414,7 @@ function applyRelationshipPatch(
   return mapTable(merged, next.childTableId, (table) => {
     const fkIds = next.columnMappings.map((m) => m.childColumnId)
     const fkSet = new Set(fkIds)
-    let { columns, primaryKey, uniques } = table
+    let { columns, primaryKey, uniques, indexes } = table
 
     if (prev.identifying !== next.identifying) {
       if (next.identifying) {
@@ -426,17 +442,29 @@ function applyRelationshipPatch(
     columns = [...columns].sort((a, b) => rank(a.id) - rank(b.id))
 
     const fkKey = [...fkIds].sort().join('\0')
+    const byId = new Map(columns.map((c) => [c.id, c]))
+    const fkColumns = fkIds.map((id) => byId.get(id)).filter((c): c is ErdColumn => c !== undefined)
     const owned = uniques.find((u) => [...u.columnIds].sort().join('\0') === fkKey)
     const wantUk = next.type === 'ONE_TO_ONE' && !next.identifying
     if (wantUk && !owned) {
-      const byId = new Map(columns.map((c) => [c.id, c]))
-      const fkColumns = fkIds.map((id) => byId.get(id)).filter((c): c is ErdColumn => c !== undefined)
       uniques = [...uniques, { id: newId(), name: defaultKeyName(merged.model, table, 'unique', fkColumns), columnIds: [...fkIds] }]
     } else if (!wantUk && owned) {
       uniques = uniques.filter((u) => u !== owned)
     }
 
-    return { ...table, columns, primaryKey, uniques }
+    // 인덱스 동기화 — UK와 같은 소유 규칙(컬럼 집합 일치)으로 비식별 1:N 기본 인덱스를 맞춘다
+    const ownedIndex = indexes.find((ix) => ix.columns.map((c) => c.columnId).sort().join('\0') === fkKey)
+    const wantIndex = next.type === 'ONE_TO_MANY' && !next.identifying
+    if (wantIndex && !ownedIndex) {
+      indexes = [
+        ...indexes,
+        { id: newId(), name: defaultKeyName(merged.model, table, 'index', fkColumns), columns: fkIds.map((columnId) => ({ columnId, order: 'ASC' as const })) },
+      ]
+    } else if (!wantIndex && ownedIndex) {
+      indexes = indexes.filter((ix) => ix !== ownedIndex)
+    }
+
+    return { ...table, columns, primaryKey, uniques, indexes }
   })
 }
 

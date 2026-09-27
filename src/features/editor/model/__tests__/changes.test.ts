@@ -8,6 +8,7 @@ import {
 } from '@/features/editor/model/content-schema'
 import { emptyContent } from '@/features/editor/model/content-io'
 import { buildRelationship } from '@/features/editor/model/relationship'
+import { validateModel } from '@/features/editor/model/validation'
 
 function doc(): EditorDocument {
   return { model: emptyContent().model, diagram: emptyContent().diagram }
@@ -380,6 +381,61 @@ describe('applyChange — 관계 제약 동기화', () => {
   it('1:N 생성 — UK를 만들지 않는다', () => {
     const { doc: d } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
     expect(childOf(d).uniques).toEqual([])
+  })
+
+  // ── 비식별 1:N 기본 인덱스 (v1.20 — FK_WITHOUT_INDEX와 대응되는 생성 기본값) ──
+
+  it('비식별 1:N 생성 — FK 컬럼 인덱스를 자동 생성한다(MySQL InnoDB 관례) → 검증 참고도 뜨지 않는다', () => {
+    const { doc: d } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
+    const fk = childOf(d).columns.find((c) => c.physicalName === 'users_id')
+    expect(childOf(d).indexes).toEqual([
+      { id: expect.any(String), name: 'idx_orders_users_id', columns: [{ columnId: fk!.id, order: 'ASC' }] },
+    ])
+    // 검증 연동 — 자동 인덱스가 선두 컬럼을 덮으므로 FK_WITHOUT_INDEX가 발화하지 않는다
+    expect(validateModel(d.model).filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
+  })
+
+  it('식별·비식별 1:1 생성 — 인덱스를 만들지 않는다(PK 편입·자동 UK가 선두 컬럼을 이미 덮는다)', () => {
+    const identifying = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: true })
+    expect(childOf(identifying.doc).indexes).toEqual([])
+    const oneToOne = createRelation(setupDoc(), { type: 'ONE_TO_ONE', identifying: false })
+    expect(childOf(oneToOne.doc).indexes).toEqual([])
+  })
+
+  it('관계 삭제 — 자동 생성된 인덱스도 FK 컬럼과 함께 사라진다', () => {
+    const { doc: d, relationshipId } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
+    const after = applyChange(d, { type: 'relationship/remove', relationshipId })
+    expect(childOf(after).columns.map((c) => c.physicalName)).toEqual(['code'])
+    expect(childOf(after).indexes).toEqual([])
+  })
+
+  it('patch 1:N→1:1 — 관계가 만든 인덱스가 UK로 대체된다, 1:1→1:N은 인덱스가 돌아온다', () => {
+    const { doc: d, relationshipId } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
+    const toOne = applyChange(d, { type: 'relationship/patch', relationshipId, patch: { type: 'ONE_TO_ONE' } })
+    expect(childOf(toOne).indexes).toEqual([]) // UK가 유일성·선두 컬럼을 모두 덮는다
+    expect(childOf(toOne).uniques).toHaveLength(1)
+    const back = applyChange(toOne, { type: 'relationship/patch', relationshipId, patch: { type: 'ONE_TO_MANY' } })
+    expect(childOf(back).uniques).toEqual([])
+    expect(childOf(back).indexes).toHaveLength(1)
+  })
+
+  it('patch 비식별→식별 — FK가 PK에 편입되며 관계가 만든 인덱스가 제거된다', () => {
+    const { doc: d, relationshipId } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
+    const after = applyChange(d, { type: 'relationship/patch', relationshipId, patch: { identifying: true } })
+    expect(childOf(after).indexes).toEqual([]) // FK가 PK 일부가 되었다 — 중복 인덱스는 남기지 않는다
+  })
+
+  it('소유 판정 보존 — 사용자가 컬럼을 추가해 FK 집합과 달라진 인덱스는 제거·간섭하지 않는다', () => {
+    const { doc: d, relationshipId } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
+    const fk = childOf(d).columns.find((c) => c.physicalName === 'users_id')!
+    // 사용자가 인덱스에 컬럼 하나를 더함 → FK 집합과 정확히 일치하지 않게 됨
+    const touched = applyChange(d, {
+      type: 'index/set',
+      tableId: 'CHILD',
+      indexes: [{ id: 'ix-custom', name: 'idx_orders_users_id', columns: [{ columnId: fk.id, order: 'ASC' }, { columnId: 'cc-1', order: 'ASC' }] }],
+    })
+    const after = applyChange(touched, { type: 'relationship/patch', relationshipId, patch: { identifying: true } })
+    expect(childOf(after).indexes.map((ix) => ix.id)).toEqual(['ix-custom']) // 보존
   })
 
   it('관계 삭제 — FK 컬럼과 관계가 만든 UK도 함께 사라진다', () => {

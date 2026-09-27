@@ -51,6 +51,7 @@ import { participantColor, useRemoteDrag, useRemoteSelection } from '@/features/
 import { DiffActionBadge } from '@/components/diff-action-badge'
 import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
 import { useCompareHighlight } from './compare-context'
+import { useValidationRing } from './validation-context'
 import { tableSkin } from './table-skin'
 import { CommitInput, CommitSelect } from './inline-inputs'
 import { ColumnTermInput } from './column-term-input'
@@ -550,6 +551,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   } = useEditorCanvas()
   // 버전 비교 하이라이트 — 비교 모드(?compare=N)가 아니면 null(배지 없음 — 본체 캔버스 불변)
   const compareMark = useCompareHighlight(id)
+  // 검증 등급 링 — 패널이 열려 있을 때만(05-validation §4.2). info는 캔버스 표시 없음
+  const validationRing = useValidationRing(id)
   const table = useEditorStore((s) => s.present.model.tables.find((tb) => tb.id === id))
   const width = useEditorStore((s) => s.present.diagram.nodes[id]?.width ?? null)
   // 그룹 멤버는 그룹 색으로 고정, 소속 없는 테이블만 개별 색 — 미니맵·익스플로러와 같은 우선순위
@@ -784,6 +787,9 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         selected && 'border-primary ring-1 ring-primary',
         // 진행 중 관계의 소스 — 하늘색 강조
         isPendingSource && 'border-sky-500 ring-2 ring-sky-500/60',
+        // 검증 문제 링(§4.2) — 선택·관계 진행 중엔 transient 강조가 우선한다
+        validationRing === 'error' && !selected && !isPendingSource && 'border-destructive ring-2 ring-destructive/70',
+        validationRing === 'warning' && !selected && !isPendingSource && 'border-amber-500/70 ring-2 ring-amber-500/50',
       )}
       style={{
         width: displayWidth,
@@ -796,6 +802,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         ...(remoteSelector ? { boxShadow: `0 0 0 2px ${participantColor(remoteSelector)}` } : null),
       }}
       data-remote-selection={remoteSelector ?? undefined}
+      data-validation={validationRing ?? undefined}
       // 버튼·셀렉트의 연속 클릭(NN 토글 등)이 노드 더블클릭(테이블 정보)로 새지 않게 차단.
       // 이름 더블클릭(컬럼 정보)은 input이라 그대로 통과시킨다.
       onDoubleClickCapture={(event) => {

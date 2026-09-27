@@ -121,6 +121,19 @@ export function revokeModelShare(workspaceId: string, modelId: string, shareId: 
   return apiDelete<void>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/shares/${shareId}`)
 }
 
+/** 검증 실행 기록 본문 — 에디터 린터가 계산한 등급별 건수(서버는 재계산하지 않는다) */
+export interface ValidationRunInput {
+  errorCount: number
+  warningCount: number
+  infoCount: number
+}
+
+/** 검증 실행 기록(§1.13) — Editor 이상, 감사 MODEL_VALIDATED만 남긴다. 204 본문 없음.
+ *  패널을 열 때 1회 전송한다(디바운스 재계산마다 보내지 않는다) */
+export function recordValidationRun(workspaceId: string, modelId: string, body: ValidationRunInput) {
+  return apiPost<void>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/validation-runs`, body)
+}
+
 /** 공유 문서 공개 조회 — 인증 없이 토큰으로만 (게이트웨이 화이트리스트 경로) */
 export function fetchSharedDocument(token: string, signal?: AbortSignal) {
   return apiGet<PublicShare>(`/api/v1/core/shares/${token}`, undefined, signal)

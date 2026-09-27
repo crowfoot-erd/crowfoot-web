@@ -1262,6 +1262,11 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
+  // 검증 실행 기록(§1.13) — 감사만 남기고 204 본문 없음. 서버 재계산 없음(에디터 소유)
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/validation-runs`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   // 공유 문서 공개 조회(§1.10) — 인증 없음. expired 토큰은 410, 그 외 없는 토큰은 404
   http.get(`${BASE}/api/v1/core/shares/:token`, ({ params }) => {
     if (params.token === 'expired0000000000000000') return fail('SHARE_INACTIVE', 410)

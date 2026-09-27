@@ -159,6 +159,19 @@ export function RelationshipDialog({
   const effectiveParent = swapped ?? parent
   const effectiveChild = swapped ? parent : child
 
+  // 편집 모드 매핑 표기 재료 — 관계의 컬럼 매핑을 부모·자식 컬럼 물리명으로 해석한다.
+  // 매핑 재구성(편집)은 후속 Phase고 여기선 읽기 전용 노출이다 — 검증(FK 규칙)도 이 매핑을
+  // 기준으로 돌아가므로 무엇이 연결됐는지 보이는 것이 검증 메시지를 읽는 열쇠가 된다
+  const mappingRows = useMemo(() => {
+    if (!relationship || !effectiveParent || !effectiveChild) return []
+    const parentColumn = new Map(effectiveParent.columns.map((column) => [column.id, column] as const))
+    const childColumn = new Map(effectiveChild.columns.map((column) => [column.id, column] as const))
+    return relationship.columnMappings.map((mapping) => ({
+      parent: parentColumn.get(mapping.parentColumnId)?.physicalName ?? mapping.parentColumnId,
+      child: childColumn.get(mapping.childColumnId)?.physicalName ?? mapping.childColumnId,
+    }))
+  }, [relationship, effectiveParent, effectiveChild])
+
   /** 생성 미리보기 — 현재 입력값으로 FK를 만들어 본다 */
   const preview = useMemo(() => {
     if (!isCreate || !effectiveParent || !effectiveChild) return null
@@ -328,6 +341,34 @@ export function RelationshipDialog({
             </div>
           ) : null}
 
+          {/* 편집 모드 — 어떤 컬럼이 매핑됐는지 읽기 전용으로 보여준다(생성 모드는 FK 미리보기가 있다) */}
+          {!isCreate && relationship && effectiveParent && effectiveChild ? (
+            <div className="rounded-md border" data-testid="relationship-mapping">
+              <p className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                {t('model.editor.relationship.mappingTitle')}
+              </p>
+              {mappingRows.length > 0 ? (
+                <ul className="max-h-32 overflow-y-auto p-2 text-xs">
+                  {mappingRows.map((row, index) => (
+                    <li key={index} className="flex items-center gap-2 rounded px-1 py-0.5 font-mono">
+                      <span className="truncate">
+                        {effectiveParent.physicalName}.{row.parent}
+                      </span>
+                      <span aria-hidden className="shrink-0 text-muted-foreground">→</span>
+                      <span className="truncate">
+                        {effectiveChild.physicalName}.{row.child}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="p-3 text-xs text-muted-foreground">
+                  {t('model.editor.relationship.mappingEmpty')}
+                </p>
+              )}
+            </div>
+          ) : null}
+
           {isCreate ? (
             <div className="rounded-md border">
               <p className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -450,7 +491,10 @@ export function RelationshipDialog({
               <p className="text-xs text-muted-foreground">{t('model.editor.relationship.identifyingHint')}</p>
             ) : state.type === 'ONE_TO_ONE' ? (
               <p className="text-xs text-muted-foreground">{t('model.editor.relationship.uniqueHint')}</p>
-            ) : null}
+            ) : (
+              // 비식별 1:N — FK 컬럼에 인덱스를 함께 만든다는 안내(검증 참고와 대응되는 기본값)
+              <p className="text-xs text-muted-foreground">{t('model.editor.relationship.indexHint')}</p>
+            )}
             <p className="text-xs text-muted-foreground">{t('model.editor.relationship.optionalityHint')}</p>
           </div>
 

@@ -149,6 +149,16 @@ describe('deriveChanges — 관계·노트·영역·노드', () => {
     expect(roundTrip(baseDoc(), withRel())).toEqual(withRel())
   })
 
+  it('UI 생성 커맨드가 만든 자동 인덱스 포함 문서도 diff 재생으로 정확히 복원된다', () => {
+    // UI 경로(실제 FK 컬럼 동반 생성) → 비식별 1:N 기본 인덱스가 자식에 함께 생긴다
+    const ui = applyChanges(baseDoc(), [
+      { type: 'relationship/create', relationship: relationship(), fkColumns: [column('C9', 'member_id')] },
+    ] as ErdChange[])
+    expect(ui.model.tables[0].indexes).toHaveLength(1) // 자동 인덱스(idx_member_member_id)
+    // 재생은 relationship/create(fkColumns 없음) + column/add + index/set 조합 — 최종 상태 정확히 일치
+    expect(roundTrip(baseDoc(), ui)).toEqual(ui)
+  })
+
   it('관계 패치는 fkName 등 필드 diff로, 매핑 변경은 remove+create 통째 교체로 도출한다', () => {
     const from = withRel()
     const to = withRel()

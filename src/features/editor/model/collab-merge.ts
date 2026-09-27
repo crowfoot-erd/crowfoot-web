@@ -315,10 +315,10 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
   return changes
 }
 
-/** 관계 생성 커맨드 조립 — 관계 행만 추가한다(FK 컬럼 없음). 컬럼 자체·식별 PK 편입·1:1 UK는
- *  deriveChanges가 각각 column/add·primaryKey/set·uniqueKey/set diff로 이미 실어 실으며,
- *  create가 FK 컬럼을 함께 삽입하면 적용 규칙(삽입 위치)과 무관하게 to 최종 상태를
- *  정확히 재현하기 어렵기 때문이다. UI가 직접 만드는 생성 커맨드(실제 FK 컬럼 동반)와 다르다. */
+/** 관계 생성 커맨드 조립 — 관계 행만 추가한다(FK 컬럼 없음). 컬럼 자체·식별 PK 편입·1:1 UK·
+ *  비식별 1:N 인덱스는 deriveChanges가 각각 column/add·primaryKey/set·uniqueKey/set·index/set
+ *  diff로 이미 실어 실으며, create가 FK 컬럼을 함께 삽입하면 적용 규칙(삽입 위치)과 무관하게
+ *  to 최종 상태를 정확히 재현하기 어렵기 때문이다. UI가 직접 만드는 생성 커맨드(실제 FK 컬럼 동반)와 다르다. */
 function relationshipCreateOf(rel: ErdRelationship): ErdChange {
   return { type: 'relationship/create', relationship: rel, fkColumns: [] }
 }

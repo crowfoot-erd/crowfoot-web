@@ -61,6 +61,10 @@ import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { TermDictionaryPanel } from './TermDictionaryPanel'
+import { ValidationPanel } from './ValidationPanel'
+import { ValidationHighlightContext } from './canvas/validation-context'
+import { useValidationIssues } from '@/features/editor/model/use-validation'
+import type { ValidationLevel } from '@/features/editor/model/validation'
 
 /** 자동 저장 지연 — 마지막 편집 후 이 시간 동안 추가 편집이 없으면 저장한다 */
 const AUTOSAVE_DELAY_MS = 2000
@@ -83,6 +87,17 @@ const TERMS_OPEN_KEY = 'crowfoot.editor.terms-open'
 function readTermsOpen(): boolean {
   try {
     return localStorage.getItem(TERMS_OPEN_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+/** 검증 패널 열림 기억 — 용어사전과 같은 관례(보조 도구라 기본은 닫힘) */
+const VALIDATION_OPEN_KEY = 'crowfoot.editor.validation-open'
+
+function readValidationOpen(): boolean {
+  try {
+    return localStorage.getItem(VALIDATION_OPEN_KEY) === 'true'
   } catch {
     return false
   }
@@ -175,6 +190,38 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       return !open
     })
   }, [])
+  // 검증 패널(v1.20) — 열림은 브라우저에 기억(기본 닫힘)
+  const [validationOpen, setValidationOpen] = useState(readValidationOpen)
+  const toggleValidationPanel = useCallback(() => {
+    setValidationOpen((open) => {
+      try {
+        localStorage.setItem(VALIDATION_OPEN_KEY, String(!open))
+      } catch {
+        // 시크릿 모드 등 저장 실패는 무시 — 상태만 전환한다
+      }
+      return !open
+    })
+  }, [])
+  // 검증(ERD 린터) — 문서 변경을 디바운스해 재계산한다(05-validation §3). 배지가 토글에
+  // 있으므로 패널 열림과 무관하게 항상 최신이고, 공개 뷰어에서는 검증 자체를 안 한다.
+  // 캔버스 링은 패널이 열려 있을 때만(error가 warning보다 우선, info는 캔버스 표시 없음)
+  const validationIssues = useValidationIssues(!publicView, validationOpen)
+  const validationErrorCount = useMemo(
+    () => validationIssues.filter((issue) => issue.level === 'error').length,
+    [validationIssues],
+  )
+  const validationWarningCount = useMemo(
+    () => validationIssues.filter((issue) => issue.level === 'warning').length,
+    [validationIssues],
+  )
+  const validationRingMap = useMemo(() => {
+    const rings = new Map<string, ValidationLevel>()
+    for (const issue of validationIssues) {
+      if (!issue.tableId || issue.level === 'info') continue
+      if (issue.level === 'error' || !rings.has(issue.tableId)) rings.set(issue.tableId, issue.level)
+    }
+    return rings
+  }, [validationIssues])
   const reloadingRef = useRef(false)
   const [remoteChangeOpen, setRemoteChangeOpen] = useState(false)
   const syncedVersionRef = useRef(0)
@@ -757,6 +804,10 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         onToggleExplorer={toggleExplorer}
         termsOpen={termsOpen}
         onToggleTermsPanel={toggleTermsPanel}
+        validationOpen={validationOpen}
+        onToggleValidationPanel={toggleValidationPanel}
+        validationErrorCount={validationErrorCount}
+        validationWarningCount={validationWarningCount}
         nameDisplay={nameDisplay}
         onNameDisplayChange={setNameDisplay}
         columnDisplay={columnDisplay}
@@ -792,6 +843,17 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
             workspaceId={model.workspaceId}
             databaseType={model.databaseType}
             canEdit={canEdit}
+          />
+        ) : null}
+        {/* 검증 패널 — 열림 때만 마운트. 감사 전송은 Editor 멤버십(canEdit)뿐 —
+            Viewer 멤버는 열람만 하고, 역할 게이트는 서버가 다시 걸었다 */}
+        {!publicView ? (
+          <ValidationPanel
+            open={validationOpen}
+            issues={validationIssues}
+            canReport={canEdit}
+            workspaceId={model.workspaceId}
+            modelId={model.modelId}
           />
         ) : null}
         <div className="relative min-w-0 flex-1">
@@ -837,6 +899,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
               )}
             </div>
           )}
+          <ValidationHighlightContext.Provider value={validationOpen ? validationRingMap : null}>
           {hydrated ? (
             <ErdCanvas
               canEdit={editable}
@@ -864,6 +927,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
               <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           )}
+          </ValidationHighlightContext.Provider>
           {/* 문서 채팅 — 공개 뷰어는 게스트(신원 없음)라 렌더하지 않는다 */}
           {!publicView && (
             <ChatDock

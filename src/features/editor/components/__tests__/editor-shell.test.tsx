@@ -2354,3 +2354,77 @@ describe('EditorShell — 협업 3차 실시간 편집(v1.17)', () => {
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled()
   })
 })
+
+describe('EditorShell — 검증 패널(v1.20, 05-validation §4.1)', () => {
+  /** 문제 2개짜리 문서 — PK 없음 + 컬럼 없음(warning 2)이라 배지·목록이 뜬다 */
+  const warnContent = () => {
+    const table = createTable('orders', { logicalName: '주문' })
+    return serializeContent({
+      schemaVersion: 1,
+      model: { tables: [table], relationships: [] },
+      diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], viewport: null },
+    })
+  }
+
+  const renderValidationEditor = async (canEdit = true, content = warnContent()) => {
+    window.localStorage.setItem('crowfoot.editor.explorer-open', 'false')
+    const utils = renderWithProviders(<EditorShell model={modelFixture({ content })} canEdit={canEdit} />, {
+      wrapRoutes: false,
+    })
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+    return utils
+  }
+
+  it('토글로 패널을 열고 localStorage에 기억한다(기본 닫힘) — 재마운트시에도 유지', async () => {
+    const utils = await renderValidationEditor()
+    expect(window.localStorage.getItem('crowfoot.editor.validation-open')).toBeNull()
+    expect(screen.queryByTestId('validation-panel')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /검증/ }))
+    expect(screen.getByTestId('validation-panel')).toBeInTheDocument()
+    expect(window.localStorage.getItem('crowfoot.editor.validation-open')).toBe('true')
+
+    utils.unmount()
+    await renderValidationEditor()
+    expect(screen.getByTestId('validation-panel')).toBeInTheDocument()
+  })
+
+  it('토글 배지는 패널이 닫혀 있어도 최신 요약을 유지한다 — error 0이면 warning 건수', async () => {
+    await renderValidationEditor()
+    // 문서 로드 후 디바운스(500ms)가 지나면 배지가 뜬다 — 경고 2(기본키 없음·컬럼 없는 테이블)
+    const badge = await screen.findByTestId('validation-badge')
+    expect(badge).toHaveTextContent('2')
+  })
+
+  it('패널을 열면 그룹 목록이 뜨고 닫으면 사라진다 — 캔버스 링도 패널 열림에 묶인다', async () => {
+    await renderValidationEditor()
+    fireEvent.click(screen.getByRole('button', { name: /검증/ }))
+
+    const rows = await screen.findAllByTestId('validation-issue')
+    expect(rows.length).toBe(2)
+    // 같은 테이블·같은 등급 → Rule ID 정렬(EMPTY_TABLE이 MISSING_PK보다 앞선다)
+    expect(rows[0]).toHaveTextContent('컬럼 없는 테이블')
+    expect(rows[1]).toHaveTextContent('기본키 없음')
+
+    fireEvent.click(screen.getByRole('button', { name: /검증/ }))
+    expect(screen.queryByTestId('validation-panel')).toBeNull()
+  })
+
+  it('Viewer(canEdit=false)도 열람은 가능하다 — 패널은 뜨고 전송 없음', async () => {
+    await renderValidationEditor(false)
+    fireEvent.click(screen.getByRole('button', { name: /검증/ }))
+    expect(await screen.findAllByTestId('validation-issue')).toHaveLength(2)
+  })
+
+  it('publicView(공개 뷰어)는 검증 토글·패널을 렌더하지 않는다', async () => {
+    window.localStorage.setItem('crowfoot.editor.explorer-open', 'false')
+    window.localStorage.setItem('crowfoot.editor.validation-open', 'true') // 기억과 무관하게 미노출
+    renderWithProviders(<EditorShell model={modelFixture({ content: warnContent() })} canEdit={false} publicView />, {
+      wrapRoutes: false,
+    })
+    await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+
+    expect(screen.queryByRole('button', { name: /검증/ })).toBeNull()
+    expect(screen.queryByTestId('validation-panel')).toBeNull()
+  })
+})

@@ -1050,9 +1050,12 @@
         "action_SET_DEFAULT": "기본값 설정",
         "noPk": "부모 테이블에 기본 키가 없어 FK를 만들 수 없습니다",
         "uniqueHint": "비식별 1:1 관계는 FK 컬럼 전체에 유니크 키를 자동 생성해 1:1을 강제합니다.",
+        "indexHint": "FK 컬럼에 인덱스를 자동 생성합니다",
         "optionalityHint": "부모가 하나(|)면 FK가 NOT NULL, 0 또는 하나(○|)면 NULL을 허용합니다. 자식 쪽 기수는 표기에만 반영됩니다.",
         "duplicate": "두 테이블 사이에는 관계가 하나만 있을 수 있습니다: {{parent}} → {{child}}",
-        "remove": "관계 삭제"
+        "remove": "관계 삭제",
+        "mappingTitle": "컬럼 매핑",
+        "mappingEmpty": "매핑된 컬럼이 없습니다"
       },
       "tableInfo": {
         "title": "테이블 정보",
@@ -1219,6 +1222,38 @@
         "noTables": "문서에 테이블이 없습니다"
       }
     },
+  "validation": {
+    "toggle": "검증",
+    "title": "설계 검증",
+    "summary": "오류 {{error}} · 경고 {{warning}} · 참고 {{info}}",
+    "filterLabel": "등급 필터",
+    "empty": "문제 없음",
+    "emptyDetail": "모든 검증 규칙을 통과했습니다",
+    "level": {
+      "error": "오류",
+      "warning": "경고",
+      "info": "참고"
+    },
+    "rules": {
+      "DUPLICATE_TABLE_NAME": "테이블 물리명 중복",
+      "DUPLICATE_COLUMN_NAME": "컬럼 물리명 중복",
+      "DUPLICATE_KEY_NAME": "키 이름 중복",
+      "FK_TYPE_MISMATCH": "FK 타입 불일치",
+      "FK_TARGET_NOT_KEY": "FK 대상이 PK·UK가 아님",
+      "FK_NULLABILITY_MISMATCH": "FK NULL 허용 불일치",
+      "ONE_TO_ONE_MISSING_UK": "1:1 관계에 UK 없음",
+      "COMPOSITE_KEY_DUPLICATE_COLUMN": "복합 키 컬럼 중복",
+      "MISSING_PK": "기본키 없음",
+      "EMPTY_TABLE": "컬럼 없는 테이블",
+      "FK_MAPPING_EMPTY": "FK 컬럼 매핑 없음",
+      "ORPHAN_TABLE": "관계 없는 테이블",
+      "CIRCULAR_REFERENCE": "FK 순환 참조",
+      "NAMING_CONVENTION": "물리명 명명 규칙 위반",
+      "MISSING_LOGICAL_NAME": "논리명 없음",
+      "FK_WITHOUT_INDEX": "FK 선두 컬럼 인덱스 없음",
+      "WIDE_TABLE": "컬럼 과다(30 초과)"
+    }
+  },
     "import": {
       "button": ".crown 가져오기",
       "successToast": "{{name}} 문서를 가져왔습니다",

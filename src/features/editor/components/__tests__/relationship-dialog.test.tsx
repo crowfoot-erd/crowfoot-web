@@ -1,7 +1,8 @@
 /**
- * 관계 다이얼로그 테스트 — 생성(FK 미리보기·스왑)·부모 PK 없음 차단·중복 차단·편집(삭제·식별 안내)
+ * 관계 다이얼로그 테스트 — 생성(FK 미리보기·스왑)·부모 PK 없음 차단·중복 차단·
+ * 편집(삭제·식별 안내·컬럼 매핑 노출)
  */
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 // Toaster가 테스트 셋업에 없어 토스트 렌더 대신 호출을 단정한다
@@ -115,14 +116,17 @@ describe('RelationshipDialog — 생성', () => {
     const child = tableWithPk('orders')
     renderCreateDialog(parent, child)
 
-    // 기본값 = 1:N 비식별 → UK 힌트 없음
+    // 기본값 = 1:N 비식별 → UK 힌트 없음, 인덱스 자동 생성 안내가 보인다
     expect(screen.queryByText(/유니크 키를 자동 생성/)).toBeNull()
+    expect(screen.getByText('FK 컬럼에 인덱스를 자동 생성합니다')).toBeVisible()
     // radix select는 pointerdown으로 열린다 — 관계 유형 콤보박스를 특정해 연다
     const trigger = screen.getByRole('combobox', { name: '관계 유형' })
     fireEvent.pointerDown(trigger, { button: 0 })
     fireEvent.click(trigger)
     fireEvent.click(await screen.findByRole('option', { name: '1:1' }))
     expect(screen.getByText(/유니크 키를 자동 생성/)).toBeVisible()
+    // 1:1로 바뀌면 UK가 선두 컬럼을 덮는다 — 인덱스 안내는 사라진다
+    expect(screen.queryByText('FK 컬럼에 인덱스를 자동 생성합니다')).toBeNull()
   })
 
   it('부모 기수를 0 또는 하나(○|)로 바꾸면 FK 미리보기에서 NOT NULL이 빠진다', async () => {
@@ -231,6 +235,47 @@ describe('RelationshipDialog — 편집', () => {
     expect(screen.getByText('orders')).toBeVisible()
     // 편집은 방향 전환 제공 안 함
     expect(screen.queryByRole('button', { name: '부모/자식 바꾸기' })).toBeNull()
+  })
+
+  it('편집 모드에서 컬럼 매핑을 부모.컬럼 → 자식.컬럼으로 노출한다 — 검증 메시지를 읽는 열쇠', () => {
+    const { parent, child, relationship } = relationshipFixture()
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={parent}
+        child={child}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+      />,
+      { wrapRoutes: false },
+    )
+
+    const mapping = screen.getByTestId('relationship-mapping')
+    expect(within(mapping).getByText('컬럼 매핑')).toBeVisible()
+    // 물리명 한정 표기 — 검증 패널의 대상 표기(orders.members_id)와 같은 언어
+    expect(within(mapping).getByText('members.id')).toBeVisible()
+    expect(within(mapping).getByText('orders.members_id')).toBeVisible()
+  })
+
+  it('매핑이 비어 있으면 빈 매핑 안내를 보여준다(FK_MAPPING_EMPTY와 마주하는 상태)', () => {
+    const { parent, child, relationship } = relationshipFixture()
+    relationship.columnMappings = []
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={parent}
+        child={child}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+      />,
+      { wrapRoutes: false },
+    )
+
+    expect(screen.getByText('매핑된 컬럼이 없습니다')).toBeVisible()
   })
 
   it('아주 긴 fkName도 설명 줄이 다이얼로그 폭을 밀어내지 않는다 — truncate + title', () => {

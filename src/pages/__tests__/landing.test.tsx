@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
 import { LandingPage } from '@/pages/landing'
+import { APP_VERSION } from '@/lib/version'
 import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
 
 describe('랜딩 페이지', () => {
@@ -52,7 +53,8 @@ describe('랜딩 페이지', () => {
     )
     // 푸터 — 이용약관 링크 + 현재 버전(첫 방문에서도 지금 버전을 알 수 있게)
     expect(screen.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms')
-    expect(screen.getByTestId('landing-current-version')).toHaveTextContent('현재 버전 v1.18')
+    // 버전 표기는 원천(version.ts)과 비교 — 릴리스마다 기대값을 고쳐 쓰지 않게(v1.19 때 누락)
+    expect(screen.getByTestId('landing-current-version')).toHaveTextContent(`현재 버전 v${APP_VERSION}`)
   })
 
   it('게스트 — 랜딩에는 템플릿 전용 섹션이 없다(통합 갤러리로 흡수)', async () => {
