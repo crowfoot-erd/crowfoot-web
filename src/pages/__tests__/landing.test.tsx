@@ -71,10 +71,13 @@ describe('랜딩 페이지', () => {
 
     // then: 제목은 원래 이름으로 고정 — 순서·선별(전 워크스페이스·인기 3 우선+최근·21 상한)은 서버 소관
     expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })).toBeVisible()
-    // 인기 박스 — 선두 3건(조회수순)이 다른 꼴의 카드로 강조된다
+    // 인기 박스 — 선두 3건(반응 수 우선, v1.21)이 다른 꼴의 카드로 강조된다
     expect(screen.getByText('가장 인기 있는 문서')).toBeVisible()
     const popular = screen.getByTestId('landing-gallery-popular')
     expect(within(popular).getAllByText('인기')).toHaveLength(3)
+    // 반응 우선 산정 증명 — 반응 12·조회 3인 정산이 반응 9·조회 128인 주문을 제친다
+    const popularLinks = within(popular).getAllByRole('link')
+    expect(popularLinks[0]).toHaveAttribute('href', '/share/P0pularT0ken0fSettle2c')
     const order = screen.getByRole('link', { name: /주문 서비스 ERD/ })
     expect(order).toHaveAttribute('href', '/share/Sh4reT0ken0fM0del501aaaa')
     expect(order).toHaveAttribute('target', '_blank')
@@ -88,16 +91,21 @@ describe('랜딩 페이지', () => {
       '/share/R3CdH4r2yASL7MoWB61H0Y',
     )
     expect(screen.queryByText('도서관 대출 ERD')).not.toBeInTheDocument()
-    // 조회수 표기 — 인기 정렬 원료(단순 카운트)를 카드에도 그대로 노출
+    // 반응 수 표기(v1.21) — 인기 정렬 1순위 원료를 red 악센트로 노출
+    expect(screen.getByText('반응 12')).toBeInTheDocument()
+    expect(screen.getByText('반응 9')).toBeInTheDocument()
+    expect(screen.getByText('반응 3')).toBeInTheDocument()
+    // 조회수 표기 — 반응 다음의 보조 신호(단순 카운트)를 카드에도 그대로 노출
     expect(screen.getByText('조회 128회')).toBeInTheDocument()
     expect(screen.getByText('조회 3회')).toBeInTheDocument()
     expect(screen.getByText('조회 2회')).toBeInTheDocument()
-    // 최근 구간 — 인기 3을 제외한 나머지가 기존 카드 꼴로 온다
+    // 최근 구간 — 인기 3을 제외한 나머지가 기존 카드 꼴로 온다(반응 수 병기, v1.21)
     expect(screen.getByText('최근 공유되고 있는 문서')).toBeVisible()
     expect(screen.getByRole('link', { name: /iUnoT ERD/ })).toHaveAttribute(
       'href',
       '/share/CommunityT0ken0fiUnoTx1',
     )
+    expect(screen.getByText('반응 0')).toBeInTheDocument()
     expect(screen.queryByText('그 밖의 커뮤니티 공유')).not.toBeInTheDocument()
   })
 

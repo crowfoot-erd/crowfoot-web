@@ -3,11 +3,12 @@
  *
  * given: 공개 조회(/core/shares/{token}) 응답을 MSW로 정의 — 인증 없는 경로
  * when: 라우트로 직접 진입 (게스트 — 세션 없음)
- * then: 문서 메타 + 읽기 전용 툴바(저장·DDL·공유 없음) / 만료 410·없는 토큰 404 안내
+ * then: 문서 메타 + 읽기 전용 툴바(저장·DDL·공유 없음) + 하단 피드백 섹션(v1.21) /
+ *       만료 410·없는 토큰 404 안내(피드백 섹션도 없음)
  *       + head 메타(문서 제목·설명 — 성공 시 색인 허용·canonical /share/{token}·og:article,
  *       대기·오류는 noindex 유지, 00-common §3.11 v1.18 SEO 정책)
  */
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http } from 'msw'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Route } from 'react-router-dom'
@@ -44,6 +45,11 @@ describe('공유 문서 공개 뷰어', () => {
     // then: 홈으로 링크
     expect(screen.getByRole('link', { name: /홈으로/ })).toHaveAttribute('href', '/')
 
+    // then: 하단 피드백 섹션(v1.21) — 반응 버튼·댓글 목록이 실제 데이터로 마운트
+    expect(await screen.findByTestId('share-feedback-section')).toBeVisible()
+    expect(screen.getByTestId('share-reaction-count')).toHaveTextContent('9')
+    expect(screen.getByTestId('share-comment-list')).toBeVisible()
+
     // then: head — 문서 제목·설명·색인 허용·canonical·og:article (00-common §3.11 v1.18)
     expect(document.title).toBe('주문 서비스 ERD — Crowfoot')
     expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(
@@ -69,6 +75,10 @@ describe('공유 문서 공개 뷰어', () => {
 
     expect(await screen.findByText('공유 기간이 아니거나 만료된 링크입니다.')).toBeVisible()
     expect(screen.getByRole('link', { name: /홈으로/ })).toBeVisible()
+    // then: 본체가 만료면 피드백 섹션도 없다(피드백 GET도 같은 410)
+    await waitFor(() => {
+      expect(screen.queryByTestId('share-feedback-section')).not.toBeInTheDocument()
+    })
 
     // then: 오류 화면도 색인 제외 유지 (00-common §3.11)
     expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute(

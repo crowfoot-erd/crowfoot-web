@@ -225,13 +225,17 @@ export interface Model extends ModelSummary {
 
 /* ---------- 문서 공유 링크 (08-core/02-model.md §1.10) ---------- */
 
-/** 공유 링크 — 발급자에게만 보이는 관리 정보. startsAt·endsAt 없음(null)은 각각 즉시·무제한 */
+/** 공유 링크 — 발급자에게만 보이는 관리 정보. startsAt·endsAt 없음(null)은 각각 즉시·무제한.
+ *  카운터 3종(v1.21)은 공유 다이얼로그 링크 행 표기 원료 */
 export interface ModelShare {
   shareId: string
   shareToken: string
   startsAt: string | null
   endsAt: string | null
   createdAt: string
+  viewCount: number
+  reactionCount: number
+  commentCount: number
 }
 
 /** 공유 문서 공개 조회 — 토큰을 아는 누구나 (인증 없음) */
@@ -246,8 +250,8 @@ export interface PublicShare {
 }
 
 /** 공유 갤러리 항목 (08-core/02-model.md §1.10.5) — 랜딩 페이지가 현재 공유 중인 문서를 나열.
- *  전 워크스페이스 공유(템플릿 문서 포함). 순서 = 조회수 상위 3(인기) 우선 + 나머지 최근 공유순,
- *  최대 21건 — 선두 3건이 랜딩 인기 박스 구간. 본문(content) 없음 */
+ *  전 워크스페이스 공유(템플릿 문서 포함). 순서 = 반응 수 상위 3(인기, 반응→조회→최근 순) 우선 +
+ *  나머지 최근 공유순, 최대 18건 — 선두 3건이 랜딩 인기 박스 구간. 본문(content) 없음 */
 export interface SharedGalleryItem {
   shareToken: string
   modelName: string
@@ -255,8 +259,37 @@ export interface SharedGalleryItem {
   databaseType: string
   updatedAt: string
   sharedAt: string
-  /** 공개 조회 수 — 카드에 인기 표기(정렬은 서버가 이미 마쳤다) */
+  /** 반응(좋아요) 수 — 카드 인기 표기 1순위 (정렬은 서버가 이미 마쳤다) */
+  reactionCount: number
+  /** 공개 조회 수 — 카드에 인기 표기(반응 동률의 2순위) */
   viewCount: number
+}
+
+/* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7) ---------- */
+
+/** 공유 문서 댓글 — 익명(별명)과 오너 답글(owner=true, nickname=작성자명) 두 형태.
+ *  parentCommentId는 flat 목록에서 1단계 중첩을 그리는 근거(null = 원댓글) */
+export interface ShareComment {
+  commentId: string
+  parentCommentId: string | null
+  nickname: string
+  content: string
+  owner: boolean
+  createdAt: string
+}
+
+/** 피드백 초기화 응답 — GET .../comments 1회로 반응 버튼과 댓글 목록이 함께 뜬다.
+ *  reacted는 서버 발급 방문자 쿠키(crowfoot_share_actor) 기준 */
+export interface ShareFeedback {
+  reactionCount: number
+  reacted: boolean
+  comments: ShareComment[]
+}
+
+/** 반응 토글 응답 — 카운터는 서버가 정한 정착값(낙관 전환 후 이 값으로 맞춘다) */
+export interface ShareReaction {
+  reactionCount: number
+  reacted: boolean
 }
 
 /* ---------- 템플릿 (08-core/09-templates.md) ---------- */

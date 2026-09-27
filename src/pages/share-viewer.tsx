@@ -4,6 +4,8 @@
  * - 인증 없이 토큰으로만 연다 — 게스트도 볼 수 있는 읽기 전용 화면
  * - 기간(시작·종료) 밖이면 410 SHARE_INACTIVE, 없는 토큰이면 404 SHARE_NOT_FOUND 안내
  * - 본체는 EditorShell 재사용(publicView) — 줌·보기 옵션·이미지 내보내기, 저장·협업 없음
+ * - 하단에 피드백 섹션(반응·익명 댓글, v1.21) — 화면 대부분은 에디터가 차지하고
+ *   아래로 스크롤하면 피드백이 나온다(min-h-dvh 스크롤 구조)
  * - SEO(00-common §3.11 v1.18): 성공 시 문서명·설명으로 색인을 허용한다 — 토큰은 128bit
  *   추측 불가라 노출 통제는 철회(410)로 하고, 대기·오류 화면은 계속 noindex다
  */
@@ -18,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EditorShell } from '@/features/editor'
 import { useSharedDocument } from '@/features/models'
+import { ShareFeedbackSection } from '@/features/models/components/share-feedback-section'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { resultCodeMessage } from '@/lib/result-code'
 
@@ -57,7 +60,7 @@ export function ShareViewerPage() {
   )
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       {share.isPending ? (
         // 공유 문서 조회 — 전체 화면 중앙 스피너 (model-viewer와 같은 관례)
         <div
@@ -105,7 +108,11 @@ export function ShareViewerPage() {
               </Button>
             </div>
           </header>
-          <EditorShell model={toViewerModel(token, share.data)} canEdit={false} publicView />
+          {/* 에디터 — 화면 대부분(70dvh)을 차지, 아래로 스크롤하면 피드백 섹션이 나온다 */}
+          <div className="flex h-[70dvh] min-h-[480px] flex-col">
+            <EditorShell model={toViewerModel(token, share.data)} canEdit={false} publicView />
+          </div>
+          <ShareFeedbackSection token={token} />
         </>
       )}
     </div>

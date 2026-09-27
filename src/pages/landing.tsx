@@ -6,7 +6,7 @@
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Code2, Database, Eye, Flame, Layers, ShieldCheck, Users } from 'lucide-react'
+import { ArrowUpRight, Cable, Code2, Database, Eye, Flame, Heart, Layers, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { LanguageSelect } from '@/components/language-select'
@@ -170,7 +170,7 @@ export function LandingPage() {
               {t('landing.gallery.popular')}
             </h3>
             <div className="grid gap-4 sm:grid-cols-3" data-testid="landing-gallery-popular">
-              {popularItems.map(({ modelName, description, shareToken, databaseType, updatedAt, viewCount }) => {
+              {popularItems.map(({ modelName, description, shareToken, databaseType, updatedAt, reactionCount, viewCount }) => {
                 return (
                   <Link
                     key={shareToken}
@@ -196,10 +196,16 @@ export function LandingPage() {
                           <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
                         )}
                         <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                          {/* 공개 조회 수 — 인기 구간의 성격 그대로 강조(단순 카운트, red 악센트) */}
-                          <span className="flex items-center gap-1 font-medium tabular-nums text-red-600 dark:text-red-400">
-                            <Eye aria-hidden className="size-3.5" />
-                            {t('landing.gallery.views', { count: viewCount })}
+                          {/* 반응 수가 인기 산정 1순위(v1.21) — 능동 신호를 red로, 조회 수는 보조 */}
+                          <span className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 font-medium tabular-nums text-red-600 dark:text-red-400">
+                              <Heart aria-hidden className="size-3.5 fill-current" />
+                              {t('landing.gallery.reactions', { count: reactionCount })}
+                            </span>
+                            <span className="flex items-center gap-1 tabular-nums">
+                              <Eye aria-hidden className="size-3.5" />
+                              {t('landing.gallery.views', { count: viewCount })}
+                            </span>
                           </span>
                           {formatDate(updatedAt)}
                         </div>
@@ -216,7 +222,7 @@ export function LandingPage() {
                   {t('landing.gallery.recent')}
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {recentItems.map(({ modelName, description, shareToken, databaseType, updatedAt, viewCount }) => {
+                  {recentItems.map(({ modelName, description, shareToken, databaseType, updatedAt, reactionCount, viewCount }) => {
                     return (
                       <Link
                         key={shareToken}
@@ -232,7 +238,11 @@ export function LandingPage() {
                                 {databaseType}
                               </span>
                               <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {/* 공개 조회 수 — 인기 정렬 원료 그대로 노출(단순 카운트) */}
+                                {/* 반응 수(v1.21) + 공개 조회 수 — 단순 카운트 병기 */}
+                                <span className="flex items-center gap-1 tabular-nums">
+                                  <Heart aria-hidden className="size-3" />
+                                  {t('landing.gallery.reactions', { count: reactionCount })}
+                                </span>
                                 <span className="flex items-center gap-1 tabular-nums">
                                   <Eye aria-hidden className="size-3" />
                                   {t('landing.gallery.views', { count: viewCount })}

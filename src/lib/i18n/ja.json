@@ -1287,6 +1287,18 @@
       "error": {
         "incompletePeriod": "開始と終了の日時を両方入力してください",
         "reversedPeriod": "終了は開始より後である必要があります"
+      },
+      "feedback": {
+        "counters": "閲覧 {{view}} · 反応 {{reaction}} · コメント {{comment}}",
+        "manage": "コメント管理",
+        "reply": "返信",
+        "replyPlaceholder": "この訪問者に返信してください（1000文字まで）",
+        "replySubmit": "返信を投稿",
+        "emptyComments": "まだコメントがありません",
+        "confirmDeleteTitle": "コメント削除",
+        "confirmDeleteDescription": "このコメントと返信をすべて削除します — 元に戻せません",
+        "repliedToast": "返信を投稿しました",
+        "deletedToast": "コメントを削除しました"
       }
     }
   },
@@ -1294,6 +1306,22 @@
     "badge": "共有",
     "home": "ホーム",
     "notFound": "共有ドキュメントが見つかりません。"
+  },
+  "shareFeedback": {
+    "title": "ドキュメントフィードバック",
+    "reactionLabel": "反応を残す",
+    "nicknameLabel": "ニックネーム",
+    "nicknamePlaceholder": "ニックネーム（30文字まで）",
+    "commentPlaceholder": "このドキュメントへのフィードバックを書いてください",
+    "submit": "コメントを投稿",
+    "ownerBadge": "作成者",
+    "empty": "まだコメントがありません — 最初のコメントをどうぞ",
+    "reactionFailed": "反応の処理に失敗しました",
+    "commentCreatedToast": "コメントを投稿しました",
+    "commentDeletedToast": "コメントを削除しました",
+    "deleteDenied": "自分のコメントのみ削除できます",
+    "confirmDeleteTitle": "コメント削除",
+    "confirmDeleteDescription": "返信付きのコメントは返信も一緒に削除されます"
   },
   "releaseNoteViewer": {
     "badge": "リリースノート",
@@ -1498,7 +1526,8 @@
       "popular": "人気のドキュメント",
       "recent": "最近共有されたドキュメント",
       "popularBadge": "人気",
-      "views": "閲覧 {{count}}回"
+      "views": "閲覧 {{count}}回",
+      "reactions": "反応 {{count}}"
     },
     "releaseNotes": {
       "heading": "最新リリース"

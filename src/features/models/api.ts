@@ -14,6 +14,9 @@ import type {
   OffsetPagingParams,
   PageResult,
   PublicShare,
+  ShareComment,
+  ShareFeedback,
+  ShareReaction,
   SharedGalleryItem,
   SqlImportPreviewResult,
   SqlImportResult,
@@ -142,6 +145,59 @@ export function fetchSharedDocument(token: string, signal?: AbortSignal) {
 /** 공유 갤러리 목록 — 인증 없이(게이트웨이 화이트리스트), 랜딩 페이지가 현재 공유 중인 문서를 나열 */
 export function fetchSharedGallery(signal?: AbortSignal) {
   return apiGetList<SharedGalleryItem>('/api/v1/core/shares', undefined, signal)
+}
+
+/* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7) ---------- */
+
+/** 피드백 초기화 — 반응 상태 + 댓글 목록 1회 fetch (인증 없이, 방문자 쿠키는 서버가 본다) */
+export function fetchShareFeedback(token: string, signal?: AbortSignal) {
+  return apiGet<ShareFeedback>(`/api/v1/core/shares/${token}/comments`, undefined, signal)
+}
+
+/** 반응 토글 — 본문 없는 POST 한 번으로 추가/제거 (인증 없이, 첫 피드백에 방문자 쿠키 발급) */
+export function toggleShareReaction(token: string) {
+  return apiPost<ShareReaction>(`/api/v1/core/shares/${token}/reactions`, undefined)
+}
+
+/** 익명 댓글 등록 본문 — 별명 1~30자 · 내용 1~1000자 (서버 @Size와 같은 상한) */
+export interface CreateShareCommentInput {
+  nickname: string
+  content: string
+}
+
+/** 익명 댓글 등록 (인증 없이) */
+export function createShareComment(token: string, body: CreateShareCommentInput) {
+  return apiPost<ShareComment>(`/api/v1/core/shares/${token}/comments`, body)
+}
+
+/** 익명 본인 댓글 삭제 — 방문자 쿠키가 서버에서 최종 판정(타인·오너 댓글은 403) */
+export function deleteShareComment(token: string, commentId: string) {
+  return apiDelete<void>(`/api/v1/core/shares/${token}/comments/${commentId}`)
+}
+
+/** 오너 답글 등록 — 에디터 공유 다이얼로그(인증) 전용. parentCommentId 필수(1단계 제한) */
+export function createOwnerShareReply(
+  workspaceId: string,
+  modelId: string,
+  shareId: string,
+  body: { parentCommentId: string; content: string },
+) {
+  return apiPost<ShareComment>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/shares/${shareId}/comments`,
+    body,
+  )
+}
+
+/** 오너 댓글 관리 삭제 — 그 링크의 모든 댓글·답글(스팸 대응), 답글은 동반 삭제 */
+export function deleteOwnerShareComment(
+  workspaceId: string,
+  modelId: string,
+  shareId: string,
+  commentId: string,
+) {
+  return apiDelete<void>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/shares/${shareId}/comments/${commentId}`,
+  )
 }
 
 /* ---------- 템플릿 (08-core/09-templates.md) ---------- */

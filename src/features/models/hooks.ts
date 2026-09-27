@@ -8,13 +8,18 @@ import {
   cloneFromTemplate,
   createModel,
   createModelShare,
+  createOwnerShareReply,
+  createShareComment,
   deleteModel,
+  deleteOwnerShareComment,
+  deleteShareComment,
   fetchDatabaseTypes,
   fetchModel,
   fetchModelShares,
   fetchModelVersionDetail,
   fetchModelVersions,
   fetchModels,
+  fetchShareFeedback,
   fetchSharedDocument,
   fetchSharedGallery,
   fetchTemplates,
@@ -23,13 +28,15 @@ import {
   revokeModelShare,
   sqlImport,
   sqlImportPreview,
+  toggleShareReaction,
   updateModel,
   type CloneFromTemplateInput,
   type CreateModelInput,
+  type CreateShareCommentInput,
   type CreateShareInput,
   type SqlImportInput,
 } from '@/features/models/api'
-import type { ModelSummary } from '@/api/types'
+import type { ModelSummary, ShareFeedback } from '@/api/types'
 
 export const modelKeys = {
   list: (workspaceId: string, keyword: string) => ['workspaces', workspaceId, 'models', keyword] as const,
@@ -50,6 +57,8 @@ export const modelKeys = {
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', 'detail', version] as const,
   /** 공개 공유 문서 — 인증과 무관한 별도 루트 키 (게스트도 조회) */
   shared: (token: string) => ['shares', token] as const,
+  /** 공유 문서 피드백(반응·댓글) — shared 하위 키라 ['shares', token] 무효화에 함께 갱신된다 */
+  shareFeedback: (token: string) => ['shares', token, 'feedback'] as const,
   /** 공유 갤러리 — 현재 공유 중인 문서 목록(랜딩), 마찬가지로 인증 무관 루트 키 */
   gallery: ['shares', 'gallery'] as const,
   /** 템플릿 공개 목록 — 인증 무관 루트 키(갤러리와 같은 규칙) */
@@ -241,6 +250,93 @@ export function useSharedDocument(token: string) {
     queryFn: ({ signal }) => fetchSharedDocument(token, signal),
     enabled: token.length > 0,
     retry: false,
+  })
+}
+
+/* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7) ---------- */
+
+/** 피드백 초기화 — 반응 상태 + 댓글 목록 1회 fetch (공개 뷰어 하단 섹션) */
+export function useShareFeedback(token: string) {
+  return useQuery({
+    queryKey: modelKeys.shareFeedback(token),
+    queryFn: ({ signal }) => fetchShareFeedback(token, signal),
+    enabled: token.length > 0,
+    retry: false,
+  })
+}
+
+/** 반응 토글 — 낙관 전환은 컴포넌트가, 정착은 서버 응답으로 캐시를 덮어쓴다 */
+export function useToggleShareReaction(token: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => toggleShareReaction(token),
+    onSuccess: (reaction) => {
+      // 토글은 항상 본문을 돌려주지만 apiPost 원천 타입이 undefined 가능 — 없으면 낙관값 유지
+      if (!reaction) return
+      queryClient.setQueryData<ShareFeedback>(modelKeys.shareFeedback(token), (feedback) =>
+        feedback
+          ? { ...feedback, reactionCount: reaction.reactionCount, reacted: reaction.reacted }
+          : feedback,
+      )
+    },
+    // 실패 시 낙관 전환 원복은 onError 콜백(컴포넌트)이 queryClient로 되돌린다
+  })
+}
+
+/** 익명 댓글 등록 — 성공 시 피드백 전체를 다시 땡긴다(댓글 수 카운터도 서버가 갱신한다) */
+export function useCreateShareComment(token: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CreateShareCommentInput) => createShareComment(token, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
+    },
+  })
+}
+
+/** 익명 본인 댓글 삭제 — 서버(방문자 쿠키)가 최종 판정, 403도 이 훅 호출자가 토스트로 받는다 */
+export function useDeleteShareComment(token: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (commentId: string) => deleteShareComment(token, commentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
+    },
+  })
+}
+
+/** 오너 답글 등록(공유 다이얼로그) — 무효화에 토큰이 필요해 변수에 실어 보낸다 */
+export function useCreateOwnerShareReply(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      shareId,
+      parentCommentId,
+      content,
+    }: { shareId: string; token: string; parentCommentId: string; content: string }) =>
+      createOwnerShareReply(workspaceId, modelId, shareId, { parentCommentId, content }),
+    onSuccess: (_reply, { token }) => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shares(workspaceId, modelId) })
+    },
+  })
+}
+
+/** 오너 댓글 관리 삭제(공유 다이얼로그) — 답글 동반 삭제로 카운터도 내려간다 */
+export function useDeleteOwnerShareComment(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ shareId, commentId }: { shareId: string; token: string; commentId: string }) =>
+      deleteOwnerShareComment(workspaceId, modelId, shareId, commentId),
+    onSuccess: (_void, { token }) => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
+      void queryClient.invalidateQueries({ queryKey: modelKeys.shares(workspaceId, modelId) })
+    },
   })
 }
 

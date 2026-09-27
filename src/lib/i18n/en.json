@@ -1287,6 +1287,18 @@
       "error": {
         "incompletePeriod": "Enter both start and end date/time",
         "reversedPeriod": "End must be after start"
+      },
+      "feedback": {
+        "counters": "{{view}} views · {{reaction}} reactions · {{comment}} comments",
+        "manage": "Manage comments",
+        "reply": "Reply",
+        "replyPlaceholder": "Reply to this visitor (max 1000 chars)",
+        "replySubmit": "Post reply",
+        "emptyComments": "No comments yet",
+        "confirmDeleteTitle": "Delete comment",
+        "confirmDeleteDescription": "This deletes the comment and its replies — this cannot be undone",
+        "repliedToast": "Reply posted",
+        "deletedToast": "Comment deleted"
       }
     }
   },
@@ -1294,6 +1306,22 @@
     "badge": "Shared",
     "home": "Home",
     "notFound": "Shared document not found."
+  },
+  "shareFeedback": {
+    "title": "Document feedback",
+    "reactionLabel": "Leave a reaction",
+    "nicknameLabel": "Nickname",
+    "nicknamePlaceholder": "Nickname (max 30 chars)",
+    "commentPlaceholder": "Share your feedback on this document",
+    "submit": "Post comment",
+    "ownerBadge": "Author",
+    "empty": "No comments yet — be the first",
+    "reactionFailed": "Could not save your reaction",
+    "commentCreatedToast": "Comment posted",
+    "commentDeletedToast": "Comment deleted",
+    "deleteDenied": "You can only delete your own comments",
+    "confirmDeleteTitle": "Delete comment",
+    "confirmDeleteDescription": "Deleting a comment also deletes its replies"
   },
   "releaseNoteViewer": {
     "badge": "Release note",
@@ -1498,7 +1526,8 @@
       "popular": "Most popular documents",
       "recent": "Recently shared documents",
       "popularBadge": "Popular",
-      "views": "{{count}} views"
+      "views": "{{count}} views",
+      "reactions": "{{count}} reactions"
     },
     "releaseNotes": {
       "heading": "Latest releases"

@@ -479,7 +479,7 @@ export const fixtures = {
       },
     ],
   },
-  /** 공유 링크(§1.10) — 기간 있는 링크 1개 + 무제한 링크 1개 */
+  /** 공유 링크(§1.10) — 기간 있는 링크 1개 + 무제한 링크 1개. 카운터 3종(v1.21) 포함 */
   shares: {
     totalCount: 2,
     responses: [
@@ -489,6 +489,9 @@ export const fixtures = {
         startsAt: '2026-09-01T00:00:00Z',
         endsAt: '2026-10-01T00:00:00Z',
         createdAt: '2026-09-10T00:00:00Z',
+        viewCount: 128,
+        reactionCount: 9,
+        commentCount: 3,
       },
       {
         shareId: '902',
@@ -496,6 +499,9 @@ export const fixtures = {
         startsAt: null,
         endsAt: null,
         createdAt: '2026-09-11T00:00:00Z',
+        viewCount: 5,
+        reactionCount: 0,
+        commentCount: 0,
       },
     ],
   },
@@ -509,22 +515,46 @@ export const fixtures = {
     startsAt: null,
     endsAt: null,
   },
+  /** 공유 문서 피드백(§1.10.6·§1.10.7, v1.21) — Sh4reT0ken0fM0del501aaaa 기준 초기화 응답.
+   *  익명 원댓글 2 + 오너 답글 1(원댓글 31에 1단계 중첩) — flat 목록을 웹이 중첩해 그린다 */
+  shareFeedback: {
+    reactionCount: 9,
+    reacted: false,
+    comments: [
+      {
+        commentId: '31',
+        parentCommentId: null,
+        nickname: '첫 방문자',
+        content: '결제 도메인 구조가 한눈에 들어오네요.',
+        owner: false,
+        createdAt: '2026-09-20T10:00:00Z',
+      },
+      {
+        commentId: '32',
+        parentCommentId: '31',
+        nickname: '주문 서비스 오너',
+        content: '피드백 감사합니다 — 정산 배치 문서도 공유해 두었습니다.',
+        owner: true,
+        createdAt: '2026-09-20T10:05:00Z',
+      },
+      {
+        commentId: '33',
+        parentCommentId: null,
+        nickname: '지나가는 DBA',
+        content: '복합 UK 위치가 깔끔합니다.',
+        owner: false,
+        createdAt: '2026-09-21T09:30:00Z',
+      },
+    ],
+  },
   /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답. 서버가 이미 정렬·선별을 마친 상태다 —
-   *  전 워크스페이스 공유(템플릿 문서 포함)를 조회수 상위 3(인기) 우선 + 나머지 최근 공유순,
-   *  최대 18건(인기 3+최근 15). 선두 3건이 인기 박스 구간 — 카드 순서·조회수 표기의 원료.
+   *  전 워크스페이스 공유(템플릿 문서 포함)를 반응 수 상위 3(인기, 반응→조회→최근 순) 우선 +
+   *  나머지 최근 공유순, 최대 18건(인기 3+최근 15). 선두 3건이 인기 박스 구간.
+   *  정산 배치 ERD가 반응 12로 1위(조회 3인데도 — v1.21 반응 우선 산정), 주문 ERD는 반응 9·조회 128로 2위.
    *  3번째는 현지화 템플릿(도서관 zh) — 갤러리 카드는 문서 메타 그대로(원문)임도 함께 검증한다 */
   sharedGallery: {
     totalCount: 4,
     responses: [
-      {
-        shareToken: 'Sh4reT0ken0fM0del501aaaa',
-        modelName: '주문 서비스 ERD',
-        description: '결제 도메인 1차',
-        databaseType: 'postgresql',
-        updatedAt: '2026-09-15T00:00:00Z',
-        sharedAt: '2026-09-10T00:00:00Z',
-        viewCount: 128,
-      },
       {
         shareToken: 'P0pularT0ken0fSettle2c',
         modelName: '정산 배치 ERD',
@@ -532,7 +562,18 @@ export const fixtures = {
         databaseType: 'mysql',
         updatedAt: '2026-09-24T00:00:00Z',
         sharedAt: '2026-09-24T00:00:00Z',
+        reactionCount: 12,
         viewCount: 3,
+      },
+      {
+        shareToken: 'Sh4reT0ken0fM0del501aaaa',
+        modelName: '주문 서비스 ERD',
+        description: '결제 도메인 1차',
+        databaseType: 'postgresql',
+        updatedAt: '2026-09-15T00:00:00Z',
+        sharedAt: '2026-09-10T00:00:00Z',
+        reactionCount: 9,
+        viewCount: 128,
       },
       {
         shareToken: 'R3CdH4r2yASL7MoWB61H0Y',
@@ -541,6 +582,7 @@ export const fixtures = {
         databaseType: 'mysql',
         updatedAt: '2026-09-26T00:00:00Z',
         sharedAt: '2026-09-26T00:00:00Z',
+        reactionCount: 3,
         viewCount: 2,
       },
       {
@@ -550,6 +592,7 @@ export const fixtures = {
         databaseType: 'mysql',
         updatedAt: '2026-09-23T00:00:00Z',
         sharedAt: '2026-09-23T00:00:00Z',
+        reactionCount: 0,
         viewCount: 0,
       },
     ],
@@ -1049,6 +1092,14 @@ function kstDateString(offsetDays = 0): string {
   return new Date(Date.now() + 9 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10)
 }
 
+/** 피드백 경로가 아는 토큰 — 링크 목록·갤러리 fixtures에 있는 토큰 전부(공개 조회 판정과 같은 근거) */
+function knownShareTokens(): string[] {
+  return [
+    ...fixtures.shares.responses.map((share) => share.shareToken),
+    ...fixtures.sharedGallery.responses.map((item) => item.shareToken),
+  ]
+}
+
 /* ---------- auth ---------- */
 
 export const handlers = [
@@ -1240,7 +1291,7 @@ export const handlers = [
     return HttpResponse.json(ok(fixtures.shares))
   }),
 
-  // 공유 링크 발급(§1.10) — 무제한/기간 지정
+  // 공유 링크 발급(§1.10) — 무제한/기간 지정. 새 링크 카운터 3종은 0에서 시작
   http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as { startsAt?: string | null; endsAt?: string | null }
     return HttpResponse.json(
@@ -1251,6 +1302,9 @@ export const handlers = [
           startsAt: body.startsAt ?? null,
           endsAt: body.endsAt ?? null,
           createdAt: '2026-09-15T00:00:00Z',
+          viewCount: 0,
+          reactionCount: 0,
+          commentCount: 0,
         },
       }),
       { status: 201 },
@@ -1278,6 +1332,71 @@ export const handlers = [
 
   // 공유 갤러리 목록(§1.10.5) — 인증 없음. 랜딩 페이지가 현재 공유 중인 문서를 나열
   http.get(`${BASE}/api/v1/core/shares`, () => HttpResponse.json(ok(fixtures.sharedGallery))),
+
+  // 공유 문서 피드백 초기화(§1.10.7, v1.21) — 인증 없음. 반응 상태 + 댓글 목록 1회.
+  // 알려진 토큰(링크 목록·갤러리)이면 피드백을 내리고, 그 외는 공개 조회와 같은 판정(404/410)
+  http.get(`${BASE}/api/v1/core/shares/:token/comments`, ({ params }) => {
+    if (params.token === 'expired0000000000000000') return fail('SHARE_INACTIVE', 410)
+    if (!knownShareTokens().includes(params.token as string)) {
+      return fail('SHARE_NOT_FOUND', 404)
+    }
+    return HttpResponse.json(ok({ response: fixtures.shareFeedback }))
+  }),
+
+  // 반응 토글(§1.10.6, v1.21) — 인증 없음. 목업은 픽스처 불변 원칙이라 정착값만 조립한다
+  http.post(`${BASE}/api/v1/core/shares/:token/reactions`, () =>
+    HttpResponse.json(ok({ response: { reactionCount: 10, reacted: true } })),
+  ),
+
+  // 익명 댓글 등록(§1.10.7, v1.21) — 인증 없음. 요청 본문으로 등록된 모양(익명·원댓글)을 조립
+  http.post(`${BASE}/api/v1/core/shares/:token/comments`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { nickname?: string; content?: string }
+    return HttpResponse.json(
+      ok({
+        response: {
+          commentId: '90',
+          parentCommentId: null,
+          nickname: body.nickname ?? '',
+          content: body.content ?? '',
+          owner: false,
+          createdAt: '2026-09-27T10:00:00Z',
+        },
+      }),
+      { status: 201 },
+    )
+  }),
+
+  // 익명 본인 댓글 삭제(§1.10.7, v1.21) — 방문자 쿠키 판정은 서버 몫이라 목업은 항상 204
+  http.delete(`${BASE}/api/v1/core/shares/:token/comments/:commentId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // 오너 답글 등록(§1.10.7, v1.21) — 인증 경로. 요청 parentCommentId로 1단계 답글을 조립
+  http.post(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares/:shareId/comments`,
+    async ({ request }) => {
+      const body = (await request.json().catch(() => ({}))) as { parentCommentId?: number; content?: string }
+      return HttpResponse.json(
+        ok({
+          response: {
+            commentId: '91',
+            parentCommentId: String(body.parentCommentId ?? ''),
+            nickname: '주문 서비스 오너',
+            content: body.content ?? '',
+            owner: true,
+            createdAt: '2026-09-27T10:05:00Z',
+          },
+        }),
+        { status: 201 },
+      )
+    },
+  ),
+
+  // 오너 댓글 관리 삭제(§1.10.7, v1.21) — 인증 경로. 목업은 항상 204
+  http.delete(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares/:shareId/comments/:commentId`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
 
   // 접속 비콘 수집(10-metrics §3) — 무인증 204. 본문은 기록만 하고 항상 성공한다
   http.post(`${BASE}/api/v1/core/metrics/visit`, () => new HttpResponse(null, { status: 204 })),

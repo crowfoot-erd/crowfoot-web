@@ -1287,6 +1287,18 @@
       "error": {
         "incompletePeriod": "请同时输入开始和结束日期/时间",
         "reversedPeriod": "结束时间必须晚于开始时间"
+      },
+      "feedback": {
+        "counters": "浏览 {{view}} · 反应 {{reaction}} · 评论 {{comment}}",
+        "manage": "管理评论",
+        "reply": "回复",
+        "replyPlaceholder": "回复这位访客（最多 1000 字）",
+        "replySubmit": "发表回复",
+        "emptyComments": "还没有评论",
+        "confirmDeleteTitle": "删除评论",
+        "confirmDeleteDescription": "将删除该评论及其所有回复 — 无法撤销",
+        "repliedToast": "回复已发表",
+        "deletedToast": "评论已删除"
       }
     }
   },
@@ -1294,6 +1306,22 @@
     "badge": "共享",
     "home": "首页",
     "notFound": "未找到共享文档。"
+  },
+  "shareFeedback": {
+    "title": "文档反馈",
+    "reactionLabel": "添加反应",
+    "nicknameLabel": "昵称",
+    "nicknamePlaceholder": "昵称（最多 30 字）",
+    "commentPlaceholder": "留下您对本文档的反馈",
+    "submit": "发表评论",
+    "ownerBadge": "作者",
+    "empty": "还没有评论 — 来抢沙发",
+    "reactionFailed": "反应处理失败",
+    "commentCreatedToast": "评论已发表",
+    "commentDeletedToast": "评论已删除",
+    "deleteDenied": "只能删除自己发表的评论",
+    "confirmDeleteTitle": "删除评论",
+    "confirmDeleteDescription": "删除评论会同时删除其回复"
   },
   "releaseNoteViewer": {
     "badge": "发布说明",
@@ -1498,7 +1526,8 @@
       "popular": "最受欢迎的文档",
       "recent": "最近共享的文档",
       "popularBadge": "热门",
-      "views": "浏览 {{count}} 次"
+      "views": "浏览 {{count}} 次",
+      "reactions": "反应 {{count}}"
     },
     "releaseNotes": {
       "heading": "最新发布"

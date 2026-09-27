@@ -1287,6 +1287,18 @@
       "error": {
         "incompletePeriod": "시작·종료 일시를 모두 지정해 주세요",
         "reversedPeriod": "종료 일시는 시작 일시 이후여야 합니다"
+      },
+      "feedback": {
+        "counters": "조회 {{view}} · 반응 {{reaction}} · 댓글 {{comment}}",
+        "manage": "댓글 관리",
+        "reply": "답글",
+        "replyPlaceholder": "방문자에게 답글을 남겨주세요 (최대 1000자)",
+        "replySubmit": "답글 등록",
+        "emptyComments": "아직 댓글이 없습니다",
+        "confirmDeleteTitle": "댓글 삭제",
+        "confirmDeleteDescription": "이 댓글과 달린 답글을 모두 삭제합니다 — 되돌릴 수 없습니다",
+        "repliedToast": "답글을 등록했습니다",
+        "deletedToast": "댓글을 삭제했습니다"
       }
     }
   },
@@ -1294,6 +1306,22 @@
     "badge": "공유 문서",
     "home": "홈으로",
     "notFound": "공유 문서를 찾을 수 없습니다."
+  },
+  "shareFeedback": {
+    "title": "문서 피드백",
+    "reactionLabel": "반응 남기기",
+    "nicknameLabel": "별명",
+    "nicknamePlaceholder": "별명 (최대 30자)",
+    "commentPlaceholder": "이 문서에 대한 피드백을 남겨주세요",
+    "submit": "댓글 등록",
+    "ownerBadge": "작성자",
+    "empty": "아직 댓글이 없습니다 — 첫 댓글을 남겨주세요",
+    "reactionFailed": "반응 처리에 실패했습니다",
+    "commentCreatedToast": "댓글을 등록했습니다",
+    "commentDeletedToast": "댓글을 삭제했습니다",
+    "deleteDenied": "본인이 작성한 댓글만 삭제할 수 있습니다",
+    "confirmDeleteTitle": "댓글 삭제",
+    "confirmDeleteDescription": "답글이 달린 원댓글은 답글도 함께 삭제됩니다"
   },
   "releaseNoteViewer": {
     "badge": "릴리스 노트",
@@ -1498,7 +1526,8 @@
       "popular": "가장 인기 있는 문서",
       "recent": "최근 공유되고 있는 문서",
       "popularBadge": "인기",
-      "views": "조회 {{count}}회"
+      "views": "조회 {{count}}회",
+      "reactions": "반응 {{count}}"
     },
     "releaseNotes": {
       "heading": "최근 릴리스"
