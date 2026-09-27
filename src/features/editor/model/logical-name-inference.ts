@@ -22,6 +22,7 @@
  */
 import type { ErdChange } from '@/features/editor/model/changes'
 import type { SystemTerm, WorkspaceTerm } from '@/api/types'
+import { splitLogicalName } from '@/features/editor/model/logical-name'
 import { CONTENT_FALLBACK_LANGS } from '@/lib/i18n'
 
 /** 추론 사전 — 물리명(전체·토큰, 소문자) → 라벨 */
@@ -99,9 +100,11 @@ export interface InferenceEntry {
   inferred: string
 }
 
-/** 현재 논리명 (후보 판정 기준) — ''이거나 물리명과 같으면 추론 대상 */
+/** 현재 논리명 (후보 판정 기준) — ''이거나 물리명과 같으면 추론 대상.
+ *  "-----" 구분자 관례(05-editor/01-core.md §3.3)는 앞부분(논리명) 기준으로 판정한다 —
+ *  구분자가 있는 논리명은 이미 설명까지 있는 값이므로 추론이 건드리지 않는다. */
 function isBlankOrSame(logicalName: string | null | undefined, physicalName: string): boolean {
-  const logical = logicalName ?? ''
+  const logical = splitLogicalName(logicalName ?? '').name
   return logical === '' || logical === physicalName
 }
 

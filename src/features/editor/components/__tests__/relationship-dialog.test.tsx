@@ -17,6 +17,7 @@ beforeAll(() => {
 import { RelationshipDialog } from '@/features/editor/components/RelationshipDialog'
 import { createColumn, createTable } from '@/features/editor/model/changes'
 import type { ErdTable } from '@/features/editor/model/content-schema'
+import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { renderWithProviders } from '@/test/test-app'
 
 function tableWithPk(physicalName: string): ErdTable {
@@ -127,6 +128,20 @@ describe('RelationshipDialog — 생성', () => {
     expect(screen.getByText(/유니크 키를 자동 생성/)).toBeVisible()
     // 1:1로 바뀌면 UK가 선두 컬럼을 덮는다 — 인덱스 안내는 사라진다
     expect(screen.queryByText('FK 컬럼에 인덱스를 자동 생성합니다')).toBeNull()
+  })
+
+  it('§6.6 MySQL 문서에서는 인덱스 자동 생성 안내를 숨긴다 — DB(InnoDB)가 만든다', () => {
+    resetEditorStore()
+    useEditorStore.getState().hydrate({
+      modelId: '901',
+      baseVersion: 0,
+      document: { model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], viewport: null } },
+      databaseType: 'mysql',
+    })
+    renderCreateDialog(tableWithPk('members'), tableWithPk('orders'))
+
+    expect(screen.queryByText('FK 컬럼에 인덱스를 자동 생성합니다')).toBeNull()
+    resetEditorStore()
   })
 
   it('부모 기수를 0 또는 하나(○|)로 바꾸면 FK 미리보기에서 NOT NULL이 빠진다', async () => {

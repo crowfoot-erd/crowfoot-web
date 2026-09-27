@@ -40,6 +40,10 @@ interface CommitInputProps {
   /** 키 가로채기 — true를 반환하면 기본 처리(Enter blur·Esc 되돌리기)를 건너뛴다.
    *  제안 목록(↑↓ 이동·Enter 선택)이 내장 처리보다 먼저 키를 판정할 때 쓴다. */
   onKeyDownIntercept?: (event: KeyboardEvent<HTMLInputElement>) => boolean
+  /** 비포커스 표시값 — 저장값(value)과 화면 표기가 다른 필드에 쓴다(논리명 "-----" 구분자
+   *  분리 표기 — 05-editor/01-core.md §3.3). 평소엔 이 값을 보여주고, 포커스하면 편집
+   *  대상인 원문(value)으로 전환해 구분자째 수정한다. title 툴팁은 원문을 유지한다. */
+  displayValue?: string
   className?: string
   ref?: Ref<CommitInputHandle>
 }
@@ -56,11 +60,12 @@ export function CommitInput({
   onFocused,
   onDraftChange,
   onKeyDownIntercept,
+  displayValue,
   className,
   ref,
 }: CommitInputProps) {
   const [draft, setDraft] = useState(value)
-  const focused = useRef(false)
+  const [focused, setFocused] = useState(false)
   const composing = useRef(false)
   const enterDuringComposition = useRef(false)
   /** commitExternal로 blur 중 — 초안 커밋을 건너뛴다(값은 부모가 이미 패치했다) */
@@ -80,7 +85,7 @@ export function CommitInput({
   )
 
   useEffect(() => {
-    if (!focused.current) setDraft(value)
+    if (!focused) setDraft(value)
   }, [value])
 
   const commit = () => {
@@ -98,18 +103,18 @@ export function CommitInput({
       ref={inputRef}
       className={cn('nodrag nowheel rounded-sm bg-transparent px-1 py-0.5 outline-none focus:bg-accent focus:text-accent-foreground', className)}
       type={type}
-      value={draft}
+      value={!focused && displayValue !== undefined ? displayValue : draft}
       title={draft}
       aria-label={ariaLabel}
       placeholder={placeholder}
       disabled={disabled}
       autoFocus={autoFocus}
       onFocus={() => {
-        focused.current = true
+        setFocused(true)
         onFocused?.()
       }}
       onBlur={() => {
-        focused.current = false
+        setFocused(false)
         enterDuringComposition.current = false // 조립 취소 등으로 흘러넘친 플래그 청소
         onDraftChange?.(null)
         if (externalBlur.current) {

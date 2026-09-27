@@ -45,6 +45,8 @@ const AdminTrafficPage = lazy(() => import('@/pages/admin/traffic'))
 import { CommunityBoardPage } from '@/pages/community/board'
 import { CommunityPostDetailPage } from '@/pages/community/post-detail'
 import { CommunityPostFormPage } from '@/pages/community/post-form'
+import { MyShareCommentsPage } from '@/pages/community/my-comments'
+import { MyShareLikesPage } from '@/pages/community/my-likes'
 
 /** 한 언어 영역의 경로 서브트리 — prefix(''|'/en'|'/ja'|'/zh')를 앞에 붙인다 */
 function buildRoutes(prefix: string) {
@@ -83,11 +85,15 @@ function buildRoutes(prefix: string) {
 
           {/* 커뮤니티 — 로그인 사용자 누구나(릴리스 노트 쓰기는 관리자, 서버 판정).
               posts/new 정적 세그먼트가 :postId보다 우선한다(react-router 라우팅 순서 규칙).
-              index Navigate는 상대 경로 — 언어 prefix 안에서도 같은 영역으로 되돌아간다 */}
+              index Navigate는 상대 경로 — 언어 prefix 안에서도 같은 영역으로 되돌아간다.
+              my-comments·my-likes는 내 피드백 역조회(02-model.md §1.10.9) — 인증 회원 데이터 */}
+
           <Route path={`${prefix}/community`}>
             <Route index element={<Navigate to="release-notes" replace />} />
             <Route path="release-notes" element={<CommunityBoardPage board="RELEASE_NOTE" />} />
             <Route path="feedback" element={<CommunityBoardPage board="FEEDBACK" />} />
+            <Route path="my-comments" element={<MyShareCommentsPage />} />
+            <Route path="my-likes" element={<MyShareLikesPage />} />
             <Route path="posts/new" element={<CommunityPostFormPage mode="create" />} />
             <Route path="posts/:postId" element={<CommunityPostDetailPage />} />
             <Route path="posts/:postId/edit" element={<CommunityPostFormPage mode="edit" />} />

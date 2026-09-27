@@ -110,6 +110,8 @@ export interface EditorShellProps {
   onSaved?: (version: number) => void
   /** 공개 공유 뷰어(/share/{token}) — 협업 채널·버전 폴링·워크스페이스 액션을 끈다 (게스트 접근) */
   publicView?: boolean
+  /** 공개 뷰어의 공유 토큰 — 공개 DDL(§1.10.8)·문서 좋아요(§1.10.6) 버튼의 자격 */
+  shareToken?: string
 }
 
 export function EditorShell(props: EditorShellProps) {
@@ -120,7 +122,7 @@ export function EditorShell(props: EditorShellProps) {
   )
 }
 
-function EditorShellInner({ model, canEdit, onSaved, publicView = false }: EditorShellProps) {
+function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareToken }: EditorShellProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const rf = useReactFlow()
@@ -149,7 +151,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
   const areaEdit = useEditorStore((s) =>
     areaEditId ? (s.present.diagram.areas.find((a) => a.id === areaEditId) ?? null) : null,
   )
-  /** 멤버 체크 목록 재료 — 표시 이름은 익스플로러 Names와 같은 규칙(물리 우선 + 논리 묵게).
+  /** 멤버 체크 목록 재료 — 표시 이름은 물리명만(2026-09-28 사용자 확정).
    *  셀렉터는 문서 배열 참조를 받고 파생은 memo로 — 셀렉터에서 새 배열을 만들면 무한 루프다 */
   const modelTables = useEditorStore((s) => s.present.model.tables)
   const areaEditTables = useMemo(
@@ -157,7 +159,6 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       modelTables.map((table) => ({
         id: table.id,
         physical: table.physicalName,
-        logical: table.logicalName,
       })),
     [modelTables],
   )
@@ -271,6 +272,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
       .hydrate({
         modelId: model.modelId,
         baseVersion: model.version,
+        databaseType: model.databaseType,
         document: { model: parsed.model, diagram: parsed.diagram },
         savedDocument: serverParsed
           ? { model: serverParsed.model, diagram: serverParsed.diagram }
@@ -516,6 +518,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         {
           modelId: model.modelId,
           baseVersion: record.serverVersion,
+          databaseType: model.databaseType,
           document: merged,
           savedDocument: record.serverDocument,
         },
@@ -637,8 +640,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         if (copyToClipboard(present, selectedIds)) event.preventDefault()
       } else if (key === 'v') {
         if (!editable) return
-        const { present, commitAll, setSelection } = useEditorStore.getState()
-        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'))
+        const { present, commitAll, setSelection, databaseType } = useEditorStore.getState()
+        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'), databaseType)
         if (pasted) {
           event.preventDefault()
           commitAll(pasted.changes)
@@ -648,9 +651,9 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         // Duplicate — 선택을 그 자리에서 복사+붙여넣기(같은 규칙, 오프셋 32px)
         if (!editable) return
         event.preventDefault()
-        const { present, selectedIds, commitAll, setSelection } = useEditorStore.getState()
+        const { present, selectedIds, commitAll, setSelection, databaseType } = useEditorStore.getState()
         if (!copyToClipboard(present, selectedIds)) return
-        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'))
+        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'), databaseType)
         if (pasted) {
           commitAll(pasted.changes)
           setSelection(pasted.selectedIds)
@@ -741,6 +744,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
           {
             modelId: fresh.modelId,
             baseVersion: fresh.version,
+            databaseType: fresh.databaseType,
             document: { model: parsed.model, diagram: parsed.diagram },
           },
           { force: true },
@@ -822,6 +826,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false }: Edito
         modelId={model.modelId}
         sourceConnectionId={model.sourceConnectionId}
         publicView={publicView}
+        shareToken={shareToken}
         onOpenShortcuts={() => setShortcutsOpen(true)}
       />
       <main className="flex min-h-0 flex-1">

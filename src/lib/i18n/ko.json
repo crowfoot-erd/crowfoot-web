@@ -173,7 +173,7 @@
       "communityTitle": "커뮤니티",
       "communityReleaseNotes": "릴리스 노트",
       "communityFeedback": "제안 및 신고",
-      "adminSystemTerms": "시스템 사전"
+      "communityMyComments": "내가 작성한 댓글",      "communityMyLikes": "좋아요 문서",      "adminSystemTerms": "시스템 사전"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -1062,6 +1062,7 @@
         "physicalName": "물리명",
         "logicalName": "논리명",
         "logicalNamePlaceholder": "예: 주문",
+        "logicalNameSeparatorHint": "설명은 논리명과 ----- 구분자로 함께 저장돼요 (논리명-----설명)",
         "comment": "설명",
         "commentPlaceholder": "테이블 설명",
         "nameRequired": "물리명을 입력하세요",
@@ -1125,6 +1126,7 @@
         "physicalName": "물리명",
         "logicalName": "논리명",
         "logicalNamePlaceholder": "논리명(선택)",
+        "logicalNameSeparatorHint": "설명은 논리명과 ----- 구분자로 함께 저장돼요 (논리명-----설명)",
         "defaultValue": "기본값",
         "defaultValuePlaceholder": "예: 0, NOW()",
         "comment": "코멘트",
@@ -1289,39 +1291,51 @@
         "reversedPeriod": "종료 일시는 시작 일시 이후여야 합니다"
       },
       "feedback": {
-        "counters": "조회 {{view}} · 반응 {{reaction}} · 댓글 {{comment}}",
-        "manage": "댓글 관리",
-        "reply": "답글",
-        "replyPlaceholder": "방문자에게 답글을 남겨주세요 (최대 1000자)",
-        "replySubmit": "답글 등록",
-        "emptyComments": "아직 댓글이 없습니다",
-        "confirmDeleteTitle": "댓글 삭제",
-        "confirmDeleteDescription": "이 댓글과 달린 답글을 모두 삭제합니다 — 되돌릴 수 없습니다",
-        "repliedToast": "답글을 등록했습니다",
-        "deletedToast": "댓글을 삭제했습니다"
+        "counters": "조회 {{view}} · 좋아요 {{reaction}} · 댓글 {{comment}}"
       }
     }
   },
   "shareViewer": {
     "badge": "공유 문서",
     "home": "홈으로",
-    "notFound": "공유 문서를 찾을 수 없습니다."
+    "notFound": "공유 문서를 찾을 수 없습니다.",
+    "tab": {
+      "label": "화면 전환",
+      "erd": "ERD",
+      "comments": "댓글"
+    }
   },
   "shareFeedback": {
     "title": "문서 피드백",
-    "reactionLabel": "반응 남기기",
+    "like": "좋아요",
+    "memberBadge": "회원",
+    "editedMark": "수정됨",
+    "passwordLabel": "비밀번호",
+    "passwordPlaceholder": "비밀번호 (4자 이상)",
+    "passwordHint": "비밀번호는 이 댓글의 수정·삭제에 쓰입니다",
+    "memberFormHint": "회원으로 댓글을 남깁니다 — 내용만 입력하세요",
+    "reactionMemberOnly": "로그인 후 좋아요를 남길 수 있습니다",
+    "commentUpdatedToast": "댓글을 수정했습니다",
+    "forbidden": "본인이 작성한 댓글만 수정·삭제할 수 있습니다",
+    "passwordPromptDescription": "작성 시 설정한 비밀번호를 입력하세요",
+    "editorEmptyTitle": "공유 링크의 피드백이 여기에 표시됩니다",
+    "editorEmptyDescription": "상단 공유 버튼으로 링크를 발급하면 방문자의 좋아요·댓글을 이 탭에서 확인하세요",
+    "reactionLabel": "좋아요 남기기",
+    "reactionButtonLabel": "좋아요",
+    "commentCountLabel": "댓글 {{count}}개",
     "nicknameLabel": "별명",
     "nicknamePlaceholder": "별명 (최대 30자)",
     "commentPlaceholder": "이 문서에 대한 피드백을 남겨주세요",
     "submit": "댓글 등록",
     "ownerBadge": "작성자",
     "empty": "아직 댓글이 없습니다 — 첫 댓글을 남겨주세요",
-    "reactionFailed": "반응 처리에 실패했습니다",
+    "reactionFailed": "좋아요 처리에 실패했습니다",
     "commentCreatedToast": "댓글을 등록했습니다",
     "commentDeletedToast": "댓글을 삭제했습니다",
-    "deleteDenied": "본인이 작성한 댓글만 삭제할 수 있습니다",
     "confirmDeleteTitle": "댓글 삭제",
-    "confirmDeleteDescription": "답글이 달린 원댓글은 답글도 함께 삭제됩니다"
+    "confirmDeleteDescription": "답글이 달린 원댓글은 답글도 함께 삭제됩니다",
+    "reply": "답글",
+    "viewerReadonly": "댓글을 남기려면 댓글 작성(Commenter) 역할 이상이 필요합니다"
   },
   "releaseNoteViewer": {
     "badge": "릴리스 노트",
@@ -1526,8 +1540,9 @@
       "popular": "가장 인기 있는 문서",
       "recent": "최근 공유되고 있는 문서",
       "popularBadge": "인기",
+      "recentBadge": "최근",
       "views": "조회 {{count}}회",
-      "reactions": "반응 {{count}}"
+      "reactions": "좋아요 {{count}}"
     },
     "releaseNotes": {
       "heading": "최근 릴리스"
@@ -1626,6 +1641,27 @@
       "deletedToast": "코멘트를 삭제했습니다.",
       "confirmDeleteTitle": "코멘트 삭제",
       "confirmDeleteDescription": "이 코멘트를 삭제합니다."
+    },
+    "myComments": {
+      "title": "내가 작성한 댓글",
+      "empty": "공유 문서에 작성한 댓글이 없습니다.",
+      "replyBadge": "답글",
+      "table": {
+        "document": "ERD",
+        "content": "댓글 내용",
+        "createdAt": "작성일"
+      }
+    },
+    "myLikes": {
+      "title": "좋아요 문서",
+      "empty": "좋아요한 공유 문서가 없습니다.",
+      "table": {
+        "document": "ERD",
+        "reactions": "좋아요",
+        "comments": "댓글",
+        "views": "조회",
+        "likedAt": "좋아요 날짜"
+      }
     },
     "recent": {
       "title": "최근 게시글",

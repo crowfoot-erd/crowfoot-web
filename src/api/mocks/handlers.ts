@@ -515,8 +515,9 @@ export const fixtures = {
     startsAt: null,
     endsAt: null,
   },
-  /** 공유 문서 피드백(§1.10.6·§1.10.7, v1.21) — Sh4reT0ken0fM0del501aaaa 기준 초기화 응답.
-   *  익명 원댓글 2 + 오너 답글 1(원댓글 31에 1단계 중첩) — flat 목록을 웹이 중첩해 그린다 */
+  /** 공유 문서 피드백(§1.10.6·§1.10.7, v1.21 재설계) — Sh4reT0ken0fM0del501aaaa 기준
+   *  초기화 응답. 비회원 원댓글 + 회원 댓글(수정 이력) + 오너 답글(원댓글 31에 1단계 중첩) —
+   *  flat 목록을 웹이 중첩해 그린다 */
   shareFeedback: {
     reactionCount: 9,
     reacted: false,
@@ -525,25 +526,80 @@ export const fixtures = {
         commentId: '31',
         parentCommentId: null,
         nickname: '첫 방문자',
+        authorType: 'guest',
         content: '결제 도메인 구조가 한눈에 들어오네요.',
-        owner: false,
+        edited: false,
         createdAt: '2026-09-20T10:00:00Z',
       },
       {
         commentId: '32',
         parentCommentId: '31',
         nickname: '주문 서비스 오너',
+        authorType: 'owner',
         content: '피드백 감사합니다 — 정산 배치 문서도 공유해 두었습니다.',
-        owner: true,
+        edited: false,
         createdAt: '2026-09-20T10:05:00Z',
       },
       {
         commentId: '33',
         parentCommentId: null,
         nickname: '지나가는 DBA',
+        authorType: 'member',
         content: '복합 UK 위치가 깔끔합니다.',
-        owner: false,
+        edited: true,
         createdAt: '2026-09-21T09:30:00Z',
+      },
+    ],
+  },
+  /** 내 피드백 역조회(§1.10.9, v1.21 후속) — 인증 회원 데이터. 커뮤니티 내 댓글·좋아한 문서
+   *  메뉴 응답. 피드백 픽스처와 문서 세계를 공유한다(주문 ERD=회원 댓글 33 + 정산 ERD 좋아요) */
+  myShareComments: {
+    totalCount: 2,
+    responses: [
+      {
+        commentId: '33',
+        parentCommentId: null,
+        content: '복합 UK 위치가 깔끔합니다.',
+        edited: true,
+        createdAt: '2026-09-21T09:30:00Z',
+        shareToken: 'Sh4reT0ken0fM0del501aaaa',
+        modelName: '주문 서비스 ERD',
+        databaseType: 'postgresql',
+      },
+      {
+        commentId: '95',
+        parentCommentId: '31',
+        content: '공유해 주셔서 감사합니다 — 참고했습니다.',
+        edited: false,
+        createdAt: '2026-09-26T08:00:00Z',
+        shareToken: 'P0pularT0ken0fSettle2c',
+        modelName: '정산 배치 ERD',
+        databaseType: 'mysql',
+      },
+    ],
+  },
+  myShareReactions: {
+    totalCount: 2,
+    responses: [
+      {
+        reactedAt: '2026-09-26T09:00:00Z',
+        shareToken: 'P0pularT0ken0fSettle2c',
+        modelName: '정산 배치 ERD',
+        description: '일일 정산 집계 파이프라인',
+        databaseType: 'mysql',
+        viewCount: 3,
+        reactionCount: 12,
+        commentCount: 4,
+      },
+      {
+        reactedAt: '2026-09-20T10:05:00Z',
+        shareToken: 'Sh4reT0ken0fM0del501aaaa',
+        modelName: '주문 서비스 ERD',
+        description: '결제 도메인 1차',
+        databaseType: 'postgresql',
+        viewCount: 128,
+        reactionCount: 9,
+        commentCount: 3,
       },
     ],
   },
@@ -1343,22 +1399,26 @@ export const handlers = [
     return HttpResponse.json(ok({ response: fixtures.shareFeedback }))
   }),
 
-  // 반응 토글(§1.10.6, v1.21) — 인증 없음. 목업은 픽스처 불변 원칙이라 정착값만 조립한다
-  http.post(`${BASE}/api/v1/core/shares/:token/reactions`, () =>
-    HttpResponse.json(ok({ response: { reactionCount: 10, reacted: true } })),
-  ),
+  // 반응 토글(§1.10.6, v1.21 재설계 — 회원전용) — 게이트웨이와 같은 판정: Bearer 없으면 401.
+  // 목업은 픽스처 불변 원칙이라 정착값만 조립한다
+  http.post(`${BASE}/api/v1/core/shares/:token/reactions`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok({ response: { reactionCount: 10, reacted: true } }))
+  }),
 
-  // 익명 댓글 등록(§1.10.7, v1.21) — 인증 없음. 요청 본문으로 등록된 모양(익명·원댓글)을 조립
+  // 댓글 등록(§1.10.7 — 선택 인증) — Bearer 유무로 회원/비회원 모드. 본문으로 등록된 모양을 조립
   http.post(`${BASE}/api/v1/core/shares/:token/comments`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as { nickname?: string; content?: string }
+    const isMember = request.headers.get('Authorization') !== null
     return HttpResponse.json(
       ok({
         response: {
           commentId: '90',
           parentCommentId: null,
-          nickname: body.nickname ?? '',
+          nickname: body.nickname ?? '로그인 회원',
+          authorType: isMember ? 'member' : 'guest',
           content: body.content ?? '',
-          owner: false,
+          edited: false,
           createdAt: '2026-09-27T10:00:00Z',
         },
       }),
@@ -1366,25 +1426,61 @@ export const handlers = [
     )
   }),
 
-  // 익명 본인 댓글 삭제(§1.10.7, v1.21) — 방문자 쿠키 판정은 서버 몫이라 목업은 항상 204
+  // 댓글 수정(§1.10.7 — 선택 인증) — 본문 content로 edited=true 응답을 조립
+  http.put(`${BASE}/api/v1/core/shares/:token/comments/:commentId`, async ({ request, params }) => {
+    const body = (await request.json().catch(() => ({}))) as { content?: string }
+    return HttpResponse.json(
+      ok({
+        response: {
+          commentId: String(params.commentId),
+          parentCommentId: null,
+          nickname: '첫 방문자',
+          authorType: 'guest',
+          content: body.content ?? '',
+          edited: true,
+          createdAt: '2026-09-20T10:00:00Z',
+        },
+      }),
+    )
+  }),
+
+  // 댓글 삭제(§1.10.7 — 선택 인증) — 비밀번호·계정 판정은 서버 몫이라 목업은 항상 204
   http.delete(`${BASE}/api/v1/core/shares/:token/comments/:commentId`, () => {
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // 오너 답글 등록(§1.10.7, v1.21) — 인증 경로. 요청 parentCommentId로 1단계 답글을 조립
+  // ---- 멤버 문서 피드백(§1.10.6·§1.10.7 — 문서 열기 댓글 탭, 인증 경로) ----
+  // 토큰 경로와 같은 문서 스레드 — 게이트는 인증(Bearer 없으면 401)만, 권한·본인 판정은 서버 몫
+
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/feedback`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok({ response: fixtures.shareFeedback }))
+  }),
+
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/reactions`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok({ response: { reactionCount: 10, reacted: true } }))
+  }),
+
+  // 멤버 댓글 등록 — 원댓글 {content} / 오너 답글 {content, parentCommentId}
   http.post(
-    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares/:shareId/comments`,
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/comments`,
     async ({ request }) => {
-      const body = (await request.json().catch(() => ({}))) as { parentCommentId?: number; content?: string }
+      if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+      const body = (await request.json().catch(() => ({}))) as {
+        content?: string
+        parentCommentId?: string
+      }
       return HttpResponse.json(
         ok({
           response: {
             commentId: '91',
-            parentCommentId: String(body.parentCommentId ?? ''),
-            nickname: '주문 서비스 오너',
+            parentCommentId: body.parentCommentId ?? null,
+            nickname: body.parentCommentId ? '문서 작성자' : '로그인 회원',
+            authorType: body.parentCommentId ? 'owner' : 'member',
             content: body.content ?? '',
-            owner: true,
-            createdAt: '2026-09-27T10:05:00Z',
+            edited: false,
+            createdAt: '2026-09-28T10:00:00Z',
           },
         }),
         { status: 201 },
@@ -1392,10 +1488,59 @@ export const handlers = [
     },
   ),
 
-  // 오너 댓글 관리 삭제(§1.10.7, v1.21) — 인증 경로. 목업은 항상 204
+  // 멤버 댓글 수정 — 본인 판정은 서버 몫, 본문 content로 edited=true 조립
+  http.put(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/comments/:commentId`,
+    async ({ request, params }) => {
+      if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+      const body = (await request.json().catch(() => ({}))) as { content?: string }
+      return HttpResponse.json(
+        ok({
+          response: {
+            commentId: String(params.commentId),
+            parentCommentId: null,
+            nickname: '지나가는 DBA',
+            authorType: 'member',
+            content: body.content ?? '',
+            edited: true,
+            createdAt: '2026-09-21T09:30:00Z',
+          },
+        }),
+      )
+    },
+  ),
+
   http.delete(
-    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/shares/:shareId/comments/:commentId`,
-    () => new HttpResponse(null, { status: 204 }),
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/comments/:commentId`,
+    ({ request }) => {
+      if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+      return new HttpResponse(null, { status: 204 })
+    },
+  ),
+
+  // 내 피드백 역조회(§1.10.9, v1.21 후속 — 인증) — 커뮤니티 내 댓글·좋아한 문서 메뉴.
+  // 회원전용 경로 — Bearer 없으면 게이트웨이와 같은 401
+  http.get(`${BASE}/api/v1/core/accounts/me/share-comments`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok(fixtures.myShareComments))
+  }),
+  http.get(`${BASE}/api/v1/core/accounts/me/share-reactions`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok(fixtures.myShareReactions))
+  }),
+
+  // 공개 DDL 생성(§1.10.8, v1.21 후속) — 인증 없음(토큰이 자격). 워크스페이스 경로와 같은 형태
+  http.get(`${BASE}/api/v1/core/shares/:token/ddl`, () =>
+    HttpResponse.json(
+      ok({
+        response: {
+          sql: '-- 주문 서비스 ERD — PostgreSQL DDL\nCREATE TABLE member (\n    id BIGINT NOT NULL\n);',
+          warnings: [],
+          tableCount: 2,
+          relationshipCount: 1,
+        },
+      }),
+    ),
   ),
 
   // 접속 비콘 수집(10-metrics §3) — 무인증 204. 본문은 기록만 하고 항상 성공한다

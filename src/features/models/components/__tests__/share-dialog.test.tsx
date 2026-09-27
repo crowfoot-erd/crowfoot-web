@@ -6,7 +6,7 @@
  * then: 목록 렌더(토큰 링크·기간·카운터 라벨)·발급 토스트·클립보드·기간 검증·
  *       오너 답글 등록·댓글 삭제(v1.21 댓글 관리)
  */
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -14,11 +14,12 @@ import { server } from '@/api/mocks/server'
 import { ok as okEnvelope } from '@/api/mocks/handlers'
 import { Toaster } from '@/components/ui/sonner'
 import { ShareDialog } from '@/features/models/components/share-dialog'
-import { renderWithProviders } from '@/test/test-app'
+import { asAuthenticated, renderWithProviders } from '@/test/test-app'
 
 afterEach(() => vi.restoreAllMocks())
 
 function renderDialog() {
+  asAuthenticated() // 오너 관리 경로 — 피드백 조회(useShareFeedback)가 세션 판정 뒤에만 fetch한다
   return renderWithProviders(
     <>
       <ShareDialog
@@ -47,9 +48,9 @@ describe('ShareDialog — 목록', () => {
     )
     // then: 무제한 링크 라벨 — 발급 폼의 라디오('무제한 (기간 제한 없음)')와 목록 행 라벨 2곳
     expect(screen.getAllByText(/무제한/)).toHaveLength(2)
-    // then: 카운터 표기(v1.21) — 기간 라벨 옆에 조회·반응·댓글
-    expect(screen.getByText(/조회 128 · 반응 9 · 댓글 3/)).toBeVisible()
-    expect(screen.getByText(/조회 5 · 반응 0 · 댓글 0/)).toBeVisible()
+    // then: 카운터 표기(v1.21) — 기간 라벨 옆에 조회·좋아요·댓글
+    expect(screen.getByText(/조회 128 · 좋아요 9 · 댓글 3/)).toBeVisible()
+    expect(screen.getByText(/조회 5 · 좋아요 0 · 댓글 0/)).toBeVisible()
   })
 
   it('shows the empty state when no links exist', async () => {
@@ -118,50 +119,5 @@ describe('ShareDialog — 복사·철회', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '철회' })[0])
 
     expect(await screen.findByText('공유 링크를 철회했습니다')).toBeVisible()
-  })
-})
-
-describe('ShareDialog — 댓글 관리 (v1.21)', () => {
-  it('expands the manager and lists comments with the owner badge', async () => {
-    renderDialog()
-
-    // 행 확장 — 목록은 공개 GET(.../comments)를 재사용(원댓글 2 + 오너 답글 1)
-    fireEvent.click((await screen.findAllByTestId('share-manage-comments'))[0])
-
-    const manager = await screen.findByTestId('share-comment-manager')
-    // 피드백 도착 — 매니저 컨테이너는 대기 중에도 렌더된다
-    expect(await within(manager).findByText('첫 방문자')).toBeVisible()
-    expect(within(manager).getByText('지나가는 DBA')).toBeVisible()
-    expect(within(manager).getAllByTestId('share-comment-item')).toHaveLength(3)
-    // 오너 답글 — "작성자" 배지, 답글에는 답글 버튼이 없다(1단계 제한)
-    expect(within(manager).getByText('작성자')).toBeVisible()
-    expect(within(manager).getAllByRole('button', { name: '답글' })).toHaveLength(2)
-  })
-
-  it('posts an owner reply to a top-level comment and toasts success', async () => {
-    renderDialog()
-
-    fireEvent.click((await screen.findAllByTestId('share-manage-comments'))[0])
-    fireEvent.click((await screen.findAllByRole('button', { name: '답글' }))[0])
-
-    // 답글 폼 — 빈 값이면 등록 불가
-    const submit = await screen.findByTestId('owner-reply-submit')
-    expect(submit).toBeDisabled()
-    fireEvent.change(screen.getByTestId('owner-reply-input'), {
-      target: { value: '피드백 감사합니다.' },
-    })
-    fireEvent.click(submit)
-
-    expect(await screen.findByText('답글을 등록했습니다')).toBeVisible()
-  })
-
-  it('deletes a comment from the manager and toasts success', async () => {
-    renderDialog()
-
-    fireEvent.click((await screen.findAllByTestId('share-manage-comments'))[0])
-    fireEvent.click((await screen.findAllByRole('button', { name: '삭제' }))[0])
-    fireEvent.click(await screen.findByRole('button', { name: '확인' }))
-
-    expect(await screen.findByText('댓글을 삭제했습니다')).toBeVisible()
   })
 })

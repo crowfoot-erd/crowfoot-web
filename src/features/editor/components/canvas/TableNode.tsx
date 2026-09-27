@@ -44,6 +44,7 @@ import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
+import { displayLogicalName, splitLogicalName } from '@/features/editor/model/logical-name'
 import { groupColorOf } from '@/features/editor/model/areas'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { useForeignLock } from '@/features/editor/collab-locks'
@@ -334,6 +335,7 @@ function ColumnRow({
           <CommitInput
             className="min-w-0 text-sm font-medium"
             value={column.logicalName}
+            displayValue={displayLogicalName(column.logicalName)}
             onCommit={(value) => patch({ logicalName: value })}
             ariaLabel={`${t('model.editor.table.columnLogicalName')} — ${column.physicalName}`}
             placeholder={t('model.editor.table.logicalNamePlaceholder')}
@@ -365,6 +367,7 @@ function ColumnRow({
             <CommitInput
               className="min-w-0 text-[9px] text-muted-foreground"
               value={column.logicalName}
+              displayValue={displayLogicalName(column.logicalName)}
               onCommit={(value) => patch({ logicalName: value })}
               ariaLabel={`${t('model.editor.table.columnLogicalName')} — ${column.physicalName}`}
               placeholder={canEdit ? t('model.editor.table.logicalNamePlaceholder') : ' '}
@@ -471,15 +474,18 @@ function ColumnRow({
         <span aria-hidden className={SETTING_CELL_RULE} />
       )}
 
-      <button
-        type="button"
-        className="nodrag flex size-5 -m-0.5 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover/row:opacity-100"
-        onClick={() => commit({ type: 'column/remove', tableId, columnId: column.id })}
-        disabled={!canEdit}
-        aria-label={`${t('model.editor.table.removeColumn')} — ${column.physicalName}`}
-      >
-        <X aria-hidden className="size-3" />
-      </button>
+      {canEdit ? (
+        // 행 호버 표시 해제 — 처음부터 보인다(요청). 비활성 NN·AI 버튼과 같은 /40 로
+        // 쉬고 있다가 버튼 호버 시 destructive. 뷰어(읽기 전용)에는 렌더 자체를 안 한다(키 행 X 관례).
+        <button
+          type="button"
+          className="nodrag flex size-5 -m-0.5 items-center justify-center rounded-sm text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => commit({ type: 'column/remove', tableId, columnId: column.id })}
+          aria-label={`${t('model.editor.table.removeColumn')} — ${column.physicalName}`}
+        >
+          <X aria-hidden className="size-3" />
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -747,6 +753,11 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
 
   if (!table) return null
 
+  /* 논리명 "-----" 구분자 분리 표기(05-editor/01-core.md §3.3) — 밴드·컬럼·축소 판은
+     논리명(앞부분)만 노출한다. 설명은 정보 다이얼로그에서 열람·편집한다(2026-09-28 사용자 확정).
+     저장값은 원문 한 문자열 그대로다(테이블 제거 직후 렌더는 table 가드 아래에서 계산) */
+  const bandName = splitLogicalName(table.logicalName)
+
   /** 강조색 스킨 — 헤더 밴드·테두리·축소 라벨 판에 얹는다. 'default'면 스타일 없음(기본 렌더) */
   const skin = tableSkin(color)
 
@@ -784,7 +795,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       data-nodekind="table"
       className={cn(
         'relative flex h-full flex-col rounded-md border bg-card text-card-foreground shadow-sm',
-        selected && 'border-primary ring-1 ring-primary',
+        // 선택 — 선명한 하늘색 링으로 확실히 (검증 링·원격 선택과 같은 2px 언어)
+        selected && 'border-sky-600 ring-2 ring-sky-500',
         // 진행 중 관계의 소스 — 하늘색 강조
         isPendingSource && 'border-sky-500 ring-2 ring-sky-500/60',
         // 검증 문제 링(§4.2) — 선택·관계 진행 중엔 transient 강조가 우선한다
@@ -815,12 +827,12 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         aria-hidden
         className="pointer-events-none invisible absolute left-0 top-0 flex w-max flex-col items-start whitespace-pre"
       >
-        <span data-extras={BAND_EXTRAS} className="px-2 text-xs font-medium">{table.logicalName}</span>
+        <span data-extras={BAND_EXTRAS} className="px-2 text-xs font-medium">{bandName.name}</span>
         <span data-extras={HEADER_EXTRAS} className="px-1 text-xs font-semibold">{nameDraft ?? table.physicalName}</span>
         {table.columns.map((column) => (
           <Fragment key={column.id}>
             {nameDisplay === 'logical' ? (
-              <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-sm font-medium">{column.logicalName}</span>
+              <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-sm font-medium">{displayLogicalName(column.logicalName)}</span>
             ) : (
               <>
                 {/* 컬럼명 span은 실제 input(text-sm font-medium)과 같은 폰트로 재고, FK 배지 폭도 함께 계산한다.
@@ -830,7 +842,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
                   {fkColumnIds.has(column.id) ? <span className="ml-0.5 px-0.5 text-[9px] font-semibold">FK</span> : null}
                 </span>
                 {nameDisplay === 'both' ? (
-                  <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-[9px]">{column.logicalName}</span>
+                  <span data-extras={ROW_FIXED_EXTRAS} className="px-1 text-[9px]">{displayLogicalName(column.logicalName)}</span>
                 ) : null}
               </>
             )}
@@ -865,18 +877,20 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       {compareMark ? <DiffActionBadge action={compareMark} className="-top-2 -right-2 z-10" /> : null}
 
       {/* 드래그 핸들 밴드 — 논리명 상시 표시(보기 옵션과 무관·표시 전용, 수정은 정보 다이얼로그) + 이동 그립.
-          강조색이 지정되면 밴드 배경을 색 틴트로 덮는다(선택 강조 bg-primary/25 대신 링이 선택을 알린다) */}
+          강조색이 지정되면 밴드 배경을 색 틴트로 덮는다(선택 강조 bg-sky-500/20 대신 링이 선택을 알린다) */}
       <div
         className={cn(
           'flex h-7 items-center gap-1 rounded-t-md px-2',
           color === 'default' && 'bg-primary/15',
-          color === 'default' && selected && 'bg-primary/25',
+          color === 'default' && selected && 'bg-sky-500/20',
           canEdit && 'cursor-grab active:cursor-grabbing',
         )}
         style={skin.bandStyle}
         title={t('model.editor.table.dragHandle')}
       >
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-primary/80">{table.logicalName}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-primary/80" title={table.logicalName}>
+          {bandName.name}
+        </span>
         {/* 편집 락 배지 — 남이 구조 편집 다이얼로그를 열고 있으면 보유자 이름 (§2) */}
         {foreignLock ? (
           <span
@@ -1027,7 +1041,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       {/* 축소 렌더 — 노드 상단에 논리명·물리명 불투명 판, 아래 상세엔 반투명 베일(z-30).
           레이어가 클릭을 받아 이 노드가 선택·이동된다 — 겹친 뒤 객체 오선택 방지 */}
       {compact ? (
-        <CompactNameOverlay grab={canEdit} logicalName={table.logicalName} physicalName={table.physicalName} color={color} />
+        <CompactNameOverlay grab={canEdit} logicalName={bandName.name} physicalName={table.physicalName} color={color} />
       ) : null}
 
       {/* 관계 시작 — 점 근처 밴드 클릭으로 캔버스 오버레이 선택기를 연다. 진행 중 관계가 있으면 치운다(클릭 확정 방해 없게) */}

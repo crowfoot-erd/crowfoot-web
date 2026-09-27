@@ -9,6 +9,8 @@ import type {
   ErdRelationship,
   ErdTable,
 } from '@/features/editor/model/content-schema'
+import { dbmsAutoIndexesFk } from '@/features/editor/model/dbms'
+import { splitLogicalName } from '@/features/editor/model/logical-name'
 
 export type ValidationCode =
   | 'DUPLICATE_TABLE_NAME'
@@ -104,7 +106,8 @@ function fkTargetsAKey(rel: ErdRelationship, parent: ErdTable): boolean {
   )
 }
 
-/** FK 선두 컬럼으로 시작하는 인덱스/PK/UK가 자식에 있는지 (FK_WITHOUT_INDEX — 선두 컬럼 일치) */
+/** FK 선두 컬럼으로 시작하는 인덱스/PK/UK가 자식에 있는지 (FK_WITHOUT_INDEX — 선두 컬럼 일치).
+ *  MySQL(InnoDB)처럼 FK 선언이 자식 인덱스를 자동 생성하는 DBMS에서는 호출 자체를 하지 않는다. */
 function fkLeadingColumnIndexed(rel: ErdRelationship, child: ErdTable): boolean {
   const leading = rel.columnMappings[0]?.childColumnId
   if (!leading) return false
@@ -173,7 +176,7 @@ function tablesInFkCycles(model: ErdModelData): Set<string> {
   return inCycle
 }
 
-export function validateModel(model: ErdModelData): ValidationIssue[] {
+export function validateModel(model: ErdModelData, databaseType = ''): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const tableById = new Map(model.tables.map((t) => [t.id, t] as const))
   const columnOf = (tableId: string, columnId: string): ErdColumn | undefined =>
@@ -262,7 +265,9 @@ export function validateModel(model: ErdModelData): ValidationIssue[] {
     if (!PHYSICAL_NAME_PATTERN.test(table.physicalName)) {
       issues.push({ level: 'warning', code: 'NAMING_CONVENTION', tableId: table.id })
     }
-    if (table.logicalName.trim() === '') {
+    // 논리명 "-----" 구분자 관례(05-editor/01-core.md §3.3) — 누락 판정은 구분자 앞부분(논리명) 기준.
+    // "-----설명"처럼 설명만 있는 형태는 논리명 누락으로 본다.
+    if (splitLogicalName(table.logicalName).name.trim() === '') {
       issues.push({ level: 'warning', code: 'MISSING_LOGICAL_NAME', tableId: table.id })
     }
     for (const column of table.columns) {
@@ -274,7 +279,7 @@ export function validateModel(model: ErdModelData): ValidationIssue[] {
           columnId: column.id,
         })
       }
-      if (column.logicalName.trim() === '') {
+      if (splitLogicalName(column.logicalName).name.trim() === '') {
         issues.push({
           level: 'warning',
           code: 'MISSING_LOGICAL_NAME',
@@ -363,7 +368,9 @@ export function validateModel(model: ErdModelData): ValidationIssue[] {
       }
     }
 
-    if (!fkLeadingColumnIndexed(rel, child)) {
+    // FK_WITHOUT_INDEX는 DBMS가 FK 인덱스를 자동 생성하지 않는 문서에서만 건다(§6.6 정책) —
+    // MySQL(InnoDB)은 FK 선언이 자식 인덱스를 만들어 주므로 이 참고가 항상 잡음이다
+    if (!dbmsAutoIndexesFk(databaseType) && !fkLeadingColumnIndexed(rel, child)) {
       issues.push({
         level: 'info',
         code: 'FK_WITHOUT_INDEX',

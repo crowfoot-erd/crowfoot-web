@@ -267,29 +267,63 @@ export interface SharedGalleryItem {
 
 /* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7) ---------- */
 
-/** 공유 문서 댓글 — 익명(별명)과 오너 답글(owner=true, nickname=작성자명) 두 형태.
- *  parentCommentId는 flat 목록에서 1단계 중첩을 그리는 근거(null = 원댓글) */
+/** 공유 문서 댓글 — 비회원(별명+비밀번호)·회원·오너 답글 세 형태(v1.21 재설계).
+ *  authorType: guest=비회원 원본 별명, member=회원(작성 당시 계정 명), owner=문서 작성자 답글.
+ *  edited는 수정 이력(updatedAt ≠ createdAt), parentCommentId는 flat 목록에서
+ *  1단계 중첩을 그리는 근거(null = 원댓글) */
 export interface ShareComment {
   commentId: string
   parentCommentId: string | null
   nickname: string
+  authorType: 'guest' | 'member' | 'owner'
   content: string
-  owner: boolean
+  edited: boolean
   createdAt: string
 }
 
 /** 피드백 초기화 응답 — GET .../comments 1회로 반응 버튼과 댓글 목록이 함께 뜬다.
- *  reacted는 서버 발급 방문자 쿠키(crowfoot_share_actor) 기준 */
+ *  선택 인증: Bearer 토큰을 실으면 reacted가 그 회원 기준, 없으면 비회원(false) */
 export interface ShareFeedback {
   reactionCount: number
   reacted: boolean
   comments: ShareComment[]
 }
 
-/** 반응 토글 응답 — 카운터는 서버가 정한 정착값(낙관 전환 후 이 값으로 맞춘다) */
+/** 반응 토글 응답 — 카운터는 서버가 정한 정착값(낙관 전환 후 이 값으로 맞춘다).
+ *  토글 자체는 회원전용(§1.10.6) — 비회원 요청은 게이트웨이가 401로 막는다 */
 export interface ShareReaction {
   reactionCount: number
   reacted: boolean
+}
+
+/* ---------- 내 공유 문서 피드백 역조회 (08-core/02-model.md §1.10.9 — 인증) ---------- */
+
+/** 내가 작성한 공유 문서 댓글 행 — 커뮤니티 "내 댓글" 메뉴. 댓글에 어느 문서의 것인지
+ *  (shareToken·문서 메타)가 붙는다. 게스트 댓글은 신원이 없어 포함되지 않고,
+ *  링크를 철회하면 FK CASCADE로 행도 자동 소멸한다(최신 활동순) */
+export interface MyShareComment {
+  commentId: string
+  /** null = 원댓글, 값 있음 = 오너 답글(문서 작성자로서 단 답글) */
+  parentCommentId: string | null
+  content: string
+  edited: boolean
+  createdAt: string
+  shareToken: string
+  modelName: string
+  databaseType: string
+}
+
+/** 내가 좋아요한 공유 문서 행 — 커뮤니티 "좋아한 문서" 메뉴. 문서 메타와 카운터 3종에
+ *  좋아요 시각(reactedAt)이 붙는다. 토글로 제거한 문서는 행이 없어 자동 제외된다(최근 반응순) */
+export interface MyShareReaction {
+  reactedAt: string
+  shareToken: string
+  modelName: string
+  description: string | null
+  databaseType: string
+  viewCount: number
+  reactionCount: number
+  commentCount: number
 }
 
 /* ---------- 템플릿 (08-core/09-templates.md) ---------- */

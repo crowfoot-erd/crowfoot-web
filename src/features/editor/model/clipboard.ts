@@ -73,8 +73,13 @@ export interface PasteResult {
   selectedIds: string[]
 }
 
-/** 클립보드를 문서에 붙여넣는 변경 목록 — doc는 변경하지 않는다(순수 계산) */
-export function pasteFromClipboard(doc: EditorDocument, copyLabel: string): PasteResult | null {
+/** 클립보드를 문서에 붙여넣는 변경 목록 — doc는 변경하지 않는다(순수 계산).
+ *  databaseType은 관계 재생의 FK 인덱스 자동 생성 규칙(§6.6)에 들어간다 — 원본 문서와 같은 DBMS */
+export function pasteFromClipboard(
+  doc: EditorDocument,
+  copyLabel: string,
+  databaseType = '',
+): PasteResult | null {
   if (!clipboard || clipboard.payload.tables.length + clipboard.payload.notes.length === 0) return null
   clipboard.pastedCount += 1
   const offset = PASTE_OFFSET * clipboard.pastedCount
@@ -154,7 +159,7 @@ export function pasteFromClipboard(doc: EditorDocument, copyLabel: string): Past
     }
     changes.push(change)
     selectedIds.push(id)
-    working = applyChange(working, change)
+    working = applyChange(working, change, databaseType)
   }
 
   /* ---------- 관계 — FK 컬럼은 여기서 자식 테이블에 삽입된다 ---------- */
@@ -187,7 +192,7 @@ export function pasteFromClipboard(doc: EditorDocument, copyLabel: string): Past
     const change: ErdChange = { type: 'relationship/create', relationship, fkColumns }
     changes.push(change)
     selectedIds.push(relationship.id)
-    working = applyChange(working, change)
+    working = applyChange(working, change, databaseType)
   }
 
   /* ---------- 메모 ---------- */
@@ -203,7 +208,7 @@ export function pasteFromClipboard(doc: EditorDocument, copyLabel: string): Past
     const change: ErdChange = { type: 'note/create', note }
     changes.push(change)
     selectedIds.push(note.id)
-    working = applyChange(working, change)
+    working = applyChange(working, change, databaseType)
   }
 
   return { changes, selectedIds }

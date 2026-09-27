@@ -336,6 +336,7 @@ describe('applyChange — 관계 제약 동기화', () => {
   function createRelation(
     d: EditorDocument,
     init: { type: 'ONE_TO_ONE' | 'ONE_TO_MANY'; identifying: boolean; parentMultiplicity?: Multiplicity },
+    databaseType = '',
   ) {
     const parent = d.model.tables.find((t) => t.id === 'PARENT')
     const child = d.model.tables.find((t) => t.id === 'CHILD')
@@ -350,7 +351,7 @@ describe('applyChange — 관계 제약 동기화', () => {
     })
     if (!built.ok) throw new Error('unreachable')
     return {
-      doc: applyChange(d, { type: 'relationship/create', relationship: built.relationship, fkColumns: built.fkColumns }),
+      doc: applyChange(d, { type: 'relationship/create', relationship: built.relationship, fkColumns: built.fkColumns }, databaseType),
       relationshipId: built.relationship.id,
     }
   }
@@ -385,7 +386,7 @@ describe('applyChange — 관계 제약 동기화', () => {
 
   // ── 비식별 1:N 기본 인덱스 (v1.20 — FK_WITHOUT_INDEX와 대응되는 생성 기본값) ──
 
-  it('비식별 1:N 생성 — FK 컬럼 인덱스를 자동 생성한다(MySQL InnoDB 관례) → 검증 참고도 뜨지 않는다', () => {
+  it('비식별 1:N 생성 — FK 컬럼 인덱스를 자동 생성한다(기본 = FK 인덱스 자동 생성 안 하는 DBMS) → 검증 참고도 뜨지 않는다', () => {
     const { doc: d } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
     const fk = childOf(d).columns.find((c) => c.physicalName === 'users_id')
     expect(childOf(d).indexes).toEqual([
@@ -393,6 +394,25 @@ describe('applyChange — 관계 제약 동기화', () => {
     ])
     // 검증 연동 — 자동 인덱스가 선두 컬럼을 덮으므로 FK_WITHOUT_INDEX가 발화하지 않는다
     expect(validateModel(d.model).filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
+  })
+
+  // ── §6.6 DBMS 분기 — MySQL(InnoDB)은 DB가 자식 인덱스를 만들므로 ERD에 표현하지 않는다 ──
+
+  it('§6.6 MySQL 문서는 비식별 1:N 생성 시 FK 인덱스를 자동 만들지 않는다 — DB가 만든다', () => {
+    const { doc: mysql } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false }, 'mysql')
+    expect(childOf(mysql).indexes).toEqual([])
+    // 검증도 발화하지 않는다 — FK_WITHOUT_INDEX는 자동 생성 안 하는 DBMS에서만 건다
+    expect(validateModel(mysql.model, 'mysql').filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
+
+    const { doc: pg } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false }, 'postgresql')
+    expect(childOf(pg).indexes).toHaveLength(1)
+  })
+
+  it('§6.6 MySQL 문서는 1:1→1:N patch 전환 시에도 인덱스를 만들지 않는다', () => {
+    const { doc: d, relationshipId } = createRelation(setupDoc(), { type: 'ONE_TO_ONE', identifying: false }, 'mysql')
+    const after = applyChange(d, { type: 'relationship/patch', relationshipId, patch: { type: 'ONE_TO_MANY' } }, 'mysql')
+    expect(childOf(after).uniques).toEqual([]) // 1:N이라 UK는 사라지고
+    expect(childOf(after).indexes).toEqual([]) // 인덱스도 생기지 않는다 — DB 몫
   })
 
   it('식별·비식별 1:1 생성 — 인덱스를 만들지 않는다(PK 편입·자동 UK가 선두 컬럼을 이미 덮는다)', () => {

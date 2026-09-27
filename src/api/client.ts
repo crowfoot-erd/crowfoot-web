@@ -263,6 +263,13 @@ export async function apiDelete<T>(path: string, signal?: AbortSignal): Promise<
   return envelope.response as T | undefined
 }
 
+/** DELETE with body — 비밀번호 몸통을 싣는 공유 댓글 삭제(§1.10.7) 등 본문이 필요한 삭제.
+ *  비밀번호를 쿼리로 보내지 않기 위한 형태다(액세스 로그 노출 방지). 204는 undefined 반환 */
+export async function apiDeleteWithBody<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T | undefined> {
+  const envelope = await requestEnvelope('DELETE', path, { body, signal })
+  return envelope.response as T | undefined
+}
+
 /** responses 배열 + totalCount (페이징 없는 목록 — memberships·teams 등) */
 export async function apiGetList<T>(path: string, query?: RequestOptions['query'], signal?: AbortSignal): Promise<ListResult<T>> {
   const envelope = await requestEnvelope('GET', path, { query, signal })

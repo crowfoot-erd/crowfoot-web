@@ -6,16 +6,20 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, Database, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, Heart, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DbmsIcon } from '@/components/dbms-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useConnections } from '@/features/connections/hooks'
 import { ShareDialog } from '@/features/models/components/share-dialog'
+import { modelKeys, useShareFeedback, useToggleShareReaction } from '@/features/models/hooks'
+import { useSessionStore } from '@/stores/session'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,8 +86,11 @@ export interface EditorToolbarProps {
   modelId: string
   /** 리버스 엔지니어링 원천 커넥션 — DB 동기화 버튼 노출 근거(없으면 미노출) */
   sourceConnectionId?: string | null
-  /** 공개 공유 뷰어(/share/{token}) — 워크스페이스 API(DDL)·공유 관리를 숨긴다 */
+  /** 공개 공유 뷰어(/share/{token}) — 워크스페이스 API(공유 관리·버전 기록·문서 파일)를 숨긴다.
+   *  SQL 생성은 공개 DDL(§1.10.8)로, 좋아요는 문서 반응(§1.10.6)으로 계속 쓸 수 있다 */
   publicView?: boolean
+  /** 공개 뷰어의 공유 토큰 — DDL 생성 경로와 문서 좋아요의 자격 */
+  shareToken?: string
   /** 단축키 치트시트 열기 — 보기 기능이라 읽기 전용·공개 뷰어에서도 노출 */
   onOpenShortcuts: () => void
 }
@@ -114,6 +121,7 @@ export function EditorToolbar({
   modelId,
   sourceConnectionId = null,
   publicView = false,
+  shareToken,
   onOpenShortcuts,
 }: EditorToolbarProps) {
   const { t } = useTranslation()
@@ -225,15 +233,16 @@ export function EditorToolbar({
           canEdit={canEdit}
         />
       ) : null}
-      {!publicView && (
-        <DdlButton
-          dbmsId={dbmsId}
-          modelName={modelName}
-          workspaceId={workspaceId}
-          databaseType={databaseType}
-          canEdit={canEdit}
-        />
-      )}
+      {/* SQL 생성 — 읽기 전용·공개 뷰어에서도 쓸 수 있다: 내보내기는 편집이 아니다.
+          공개 뷰어는 공유 토큰 경로(§1.10.8)로, 멤버 화면은 워크스페이스 경로(§1.7)로 생성한다 */}
+      <DdlButton
+        dbmsId={dbmsId}
+        modelName={modelName}
+        workspaceId={workspaceId}
+        databaseType={databaseType}
+        canEdit={canEdit}
+        shareToken={publicView ? shareToken : undefined}
+      />
       {!publicView && canEdit ? (
         <ShareButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} />
       ) : null}
@@ -241,7 +250,13 @@ export function EditorToolbar({
         <VersionHistoryButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} canEdit={canEdit} />
       )}
       <ImageButton modelName={modelName} />
-      <CrownButton modelName={modelName} databaseType={databaseType} modelDescription={modelDescription} />
+      {/* 문서 좋아요 — 공개 뷰어 헤더 전용(§1.10.6). 내보내기 계열 버튼 다음 자리.
+          댓글 탭의 버튼과 같은 쿼리로 정착한다 */}
+      {publicView && shareToken ? <ShareLikeButton token={shareToken} /> : null}
+      {/* .crown 문서 파일은 내 계정 문서에만 — 공개 뷰어에서는 숨긴다(이미지·SQL은 공개) */}
+      {!publicView ? (
+        <CrownButton modelName={modelName} databaseType={databaseType} modelDescription={modelDescription} />
+      ) : null}
 
       <div className="flex-1" />
 
@@ -281,7 +296,8 @@ function DbmsIndicator({ dbmsId }: { dbmsId: string }) {
       className="mr-1 flex h-7 items-center gap-1 rounded-md border bg-muted/40 px-1.5 text-xs text-muted-foreground"
       title={t('model.editor.toolbar.dbmsLocked')}
     >
-      <Database aria-hidden className="size-3.5" />
+      {/* DBMS 상징 아이콘 — dbmsId(템플릿 id)를 그대로 넘겨도 판정이 항등처리된다 */}
+      <DbmsIcon databaseType={dbmsId} className="size-3.5" />
       {template.id === 'common' ? t('model.editor.dbms.common') : template.label}
       <Lock aria-hidden className="size-3" />
     </div>
@@ -504,20 +520,22 @@ function SyncButton({
 }
 
 /** SQL 스크립트 미리보기 — 문서를 대상 DBMS 방언의 DDL로 내보낸다(05-editor/04-dbms-engineering.md §3.1).
- *  읽기 전용 문서에서도 항상 쓸 수 있다 — 내보내기는 편집이 아니다.
- *  배포(§1.8 진입)는 편집 권한이 있을 때만 미리보기 푸터에 노출된다. */
+ *  읽기 전용·공개 뷰어에서도 항상 쓸 수 있다 — 내보내기는 편집이 아니다. 공개 뷰어는
+ *  shareToken 경로(§1.10.8)로 생성하고, 배포(§1.8 진입)는 편집 권한이 있을 때만 노출된다. */
 function DdlButton({
   dbmsId,
   modelName,
   workspaceId,
   databaseType,
   canEdit,
+  shareToken,
 }: {
   dbmsId: string
   modelName: string
   workspaceId: string
   databaseType: string
   canEdit: boolean
+  shareToken?: string
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -542,10 +560,66 @@ function DdlButton({
         dbmsId={dbmsId}
         modelName={modelName}
         workspaceId={workspaceId}
+        shareToken={shareToken}
         databaseType={databaseType}
         canEdit={canEdit}
       />
     </>
+  )
+}
+
+/** 문서 좋아요(§1.10.6) — 공개 뷰어 헤어 버튼. 댓글 탭의 반응 버튼과 같은 쿼리 키로 정착하고,
+ *  회원만 토글(비회원 클릭은 로그인 안내 토스트 — 게이트웨이가 어차피 401로 막는다) */
+function ShareLikeButton({ token }: { token: string }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const isMember = useSessionStore((state) => state.status) === 'authenticated'
+  const feedback = useShareFeedback(token)
+  const toggleReaction = useToggleShareReaction(token)
+  const reacted = feedback.data?.reacted ?? false
+  const count = feedback.data?.reactionCount ?? 0
+
+  const react = () => {
+    if (!isMember) {
+      toast.info(t('shareFeedback.reactionMemberOnly'))
+      return
+    }
+    const current = feedback.data
+    if (!current) return
+    // 낙관 전환 — 댓글 탭 버튼과 같은 쿼리 키라 양쪽이 함께 갱신된다
+    const optimistic = !current.reacted
+    queryClient.setQueryData(modelKeys.shareFeedback(token), {
+      ...current,
+      reacted: optimistic,
+      reactionCount: current.reactionCount + (optimistic ? 1 : -1),
+    })
+    toggleReaction.mutate(undefined, {
+      onError: () => {
+        queryClient.setQueryData(modelKeys.shareFeedback(token), current) // 원복
+        toast.error(t('shareFeedback.reactionFailed'))
+      },
+    })
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={
+        reacted ? 'h-7 gap-1 px-2 text-red-500 hover:text-red-500' : 'h-7 gap-1 px-2'
+      }
+      onClick={react}
+      disabled={toggleReaction.isPending || feedback.isPending}
+      aria-pressed={reacted}
+      aria-label={t('shareFeedback.reactionLabel')}
+      title={isMember ? t('shareFeedback.reactionLabel') : t('shareFeedback.reactionMemberOnly')}
+      data-testid="toolbar-like-button"
+    >
+      <Heart aria-hidden className={`size-4 ${reacted ? 'fill-current' : ''}`} />
+      {t('shareFeedback.like')}
+      <span data-testid="toolbar-like-count">{count}</span>
+    </Button>
   )
 }
 

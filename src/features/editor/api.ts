@@ -73,6 +73,12 @@ export function fetchModelDdl(
   return apiGet<ModelDdlResult>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/ddl`, undefined, signal)
 }
 
+/** 공개 뷰어 DDL 생성(§1.10.8) — 공유 토큰이 자격(무인증 화이트리스트).
+ *  조립은 워크스페이스 경로와 같은 서버 원천 — 응답 형태도 동일하다 */
+export function fetchShareDdl(token: string, signal?: AbortSignal): Promise<ModelDdlResult | undefined> {
+  return apiGet<ModelDdlResult>(`/api/v1/core/shares/${token}/ddl`, undefined, signal)
+}
+
 export interface MigrationDdlResult {
   sql: string
   warnings: ModelDdlWarning[]

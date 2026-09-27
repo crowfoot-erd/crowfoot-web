@@ -26,6 +26,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -42,6 +43,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import type { ColumnPatch } from '@/features/editor/model/changes'
+import { splitLogicalName } from '@/features/editor/model/logical-name'
 import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import { useEditLock } from '@/features/editor/collab-locks'
@@ -129,12 +131,15 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
     },
   })
 
-  // 열릴 때마다 대상 컬럼 값으로 초기화
+  // 열릴 때마다 대상 컬럼 값으로 초기화 — 논리명 "-----" 구분자(05-editor/01-core.md §3.3)는
+  // 두 필드로 나눠 보여준다: 논리명 = 앞부분, 코멘트 필드 = 뒷부분(없으면 빈 칸). 코멘트 필드는
+  // 이 구분자 설명부 소관이라 content의 comment는 여기서 다루지 않는다(테이블 정보와 같은 규칙).
   useEffect(() => {
     if (open && column) {
+      const { name, description } = splitLogicalName(column.logicalName)
       form.reset({
         physicalName: column.physicalName,
-        logicalName: column.logicalName,
+        logicalName: name,
         pk: isPk,
         dataType: column.dataType,
         length: toDisplay(column.length),
@@ -143,7 +148,7 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
         nullable: column.nullable,
         autoIncrement: column.autoIncrement,
         defaultValue: column.defaultValue ?? '',
-        comment: column.comment ?? '',
+        comment: description ?? '',
       })
     }
   }, [open, column, isPk, form])
@@ -162,7 +167,8 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
       pk: values.pk,
       patch: {
         physicalName: values.physicalName,
-        logicalName: values.logicalName,
+        // 저장은 한 문자열로 합친다 — 설명(코멘트 필드)이 있으면 "논리명-----설명" 원문 형태로
+        logicalName: values.comment === '' ? values.logicalName : `${values.logicalName}-----${values.comment}`,
         dataType: values.dataType,
         length: spec?.length ? toNumberOrNull(values.length) : null,
         precision: spec?.precision ? toNumberOrNull(values.precision) : null,
@@ -171,7 +177,6 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
         nullable: values.pk ? false : values.nullable,
         autoIncrement: values.pk && otherPkCount === 0 && isAutoIncrementType(values.dataType) ? values.autoIncrement : false,
         defaultValue: values.defaultValue === '' ? null : values.defaultValue,
-        comment: values.comment === '' ? null : values.comment,
       },
     })
     onOpenChange(false)
@@ -213,6 +218,8 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
                   <FormControl>
                     <Input placeholder={t('model.editor.columnInfo.logicalNamePlaceholder')} {...field} />
                   </FormControl>
+                  {/* "-----" 구분자 관례 안내(05-editor/01-core.md §3.3) — 저장은 한 필드 원문 그대로 */}
+                  <FormDescription>{t('model.editor.columnInfo.logicalNameSeparatorHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

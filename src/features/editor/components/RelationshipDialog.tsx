@@ -33,6 +33,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import type { RelationshipPatch } from '@/features/editor/model/changes'
+import { displayLogicalName } from '@/features/editor/model/logical-name'
 import {
   CHILD_MULTIPLICITIES,
   DEFAULT_CHILD_MULTIPLICITY,
@@ -48,6 +49,8 @@ import {
   type RelationshipType,
 } from '@/features/editor/model/content-schema'
 import { useEditLock } from '@/features/editor/collab-locks'
+import { dbmsAutoIndexesFk } from '@/features/editor/model/dbms'
+import { useEditorStore } from '@/features/editor/store/editor-store'
 
 export interface RelationshipDialogProps {
   open: boolean
@@ -111,6 +114,8 @@ export function RelationshipDialog({
   isDuplicate,
 }: RelationshipDialogProps) {
   const { t } = useTranslation()
+  // 문서 대상 DBMS — MySQL(InnoDB)은 FK 선언이 자식 인덱스를 자동 생성해 ERD에 만들지 않는다(§6.6)
+  const fkIndexAuto = dbmsAutoIndexesFk(useEditorStore((s) => s.databaseType))
   const isCreate = Boolean(parent && child) && !relationship
   // 다이얼로그 수명 락 — 편집은 관계, 생성은 자식 테이블(FK가 붙는 쪽)
   const lockTargetId = relationship?.id ?? child?.id ?? null
@@ -327,15 +332,22 @@ export function RelationshipDialog({
               <p ref={setWidthDriver(3)} className="truncate">
                 <span className="text-muted-foreground">{t('model.editor.relationship.parent')}: </span>
                 <span className="font-medium">{effectiveParent.physicalName}</span>
-                {effectiveParent.logicalName !== effectiveParent.physicalName ? (
-                  <span className="text-muted-foreground"> ({effectiveParent.logicalName})</span>
+                {displayLogicalName(effectiveParent.logicalName) !== effectiveParent.physicalName ? (
+                  // 괄호 보조 표기도 "-----" 설명부는 뺀 논리명만(§3.3) — 원문은 툴팁으로
+                  <span className="text-muted-foreground" title={effectiveParent.logicalName ?? undefined}>
+                    {' '}
+                    ({displayLogicalName(effectiveParent.logicalName)})
+                  </span>
                 ) : null}
               </p>
               <p ref={setWidthDriver(4)} className="truncate">
                 <span className="text-muted-foreground">{t('model.editor.relationship.child')}: </span>
                 <span className="font-medium">{effectiveChild.physicalName}</span>
-                {effectiveChild.logicalName !== effectiveChild.physicalName ? (
-                  <span className="text-muted-foreground"> ({effectiveChild.logicalName})</span>
+                {displayLogicalName(effectiveChild.logicalName) !== effectiveChild.physicalName ? (
+                  <span className="text-muted-foreground" title={effectiveChild.logicalName ?? undefined}>
+                    {' '}
+                    ({displayLogicalName(effectiveChild.logicalName)})
+                  </span>
                 ) : null}
               </p>
             </div>
@@ -491,8 +503,11 @@ export function RelationshipDialog({
               <p className="text-xs text-muted-foreground">{t('model.editor.relationship.identifyingHint')}</p>
             ) : state.type === 'ONE_TO_ONE' ? (
               <p className="text-xs text-muted-foreground">{t('model.editor.relationship.uniqueHint')}</p>
+            ) : fkIndexAuto ? (
+              // MySQL(InnoDB) — DB이 FK 인덱스를 자동 생성하므로 ERD에 만들지 않는다(안내도 없음)
+              null
             ) : (
-              // 비식별 1:N — FK 컬럼에 인덱스를 함께 만든다는 안내(검증 참고와 대응되는 기본값)
+              // 비식별 1:N — FK 컬럼 전체로 복합 인덱스를 함께 만든다는 안내(검증 참고와 대응되는 기본값)
               <p className="text-xs text-muted-foreground">{t('model.editor.relationship.indexHint')}</p>
             )}
             <p className="text-xs text-muted-foreground">{t('model.editor.relationship.optionalityHint')}</p>

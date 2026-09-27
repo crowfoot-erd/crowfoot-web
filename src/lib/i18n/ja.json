@@ -173,7 +173,7 @@
       "communityTitle": "コミュニティ",
       "communityReleaseNotes": "リリースノート",
       "communityFeedback": "フィードバック",
-      "adminSystemTerms": "システム辞書"
+      "communityMyComments": "自分のコメント",      "communityMyLikes": "いいねしたドキュメント",      "adminSystemTerms": "システム辞書"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -1062,6 +1062,7 @@
         "physicalName": "物理名",
         "logicalName": "論理名",
         "logicalNamePlaceholder": "例: 注文",
+        "logicalNameSeparatorHint": "説明は論理名に ----- 区切りで一緒に保存されます（論理名-----説明）",
         "comment": "説明",
         "commentPlaceholder": "テーブルの説明",
         "nameRequired": "物理名は必須です",
@@ -1125,6 +1126,7 @@
         "physicalName": "物理名",
         "logicalName": "論理名",
         "logicalNamePlaceholder": "論理名 (任意)",
+        "logicalNameSeparatorHint": "説明は論理名に ----- 区切りで一緒に保存されます（論理名-----説明）",
         "defaultValue": "デフォルト値",
         "defaultValuePlaceholder": "例: 0, NOW()",
         "comment": "コメント",
@@ -1289,39 +1291,51 @@
         "reversedPeriod": "終了は開始より後である必要があります"
       },
       "feedback": {
-        "counters": "閲覧 {{view}} · 反応 {{reaction}} · コメント {{comment}}",
-        "manage": "コメント管理",
-        "reply": "返信",
-        "replyPlaceholder": "この訪問者に返信してください（1000文字まで）",
-        "replySubmit": "返信を投稿",
-        "emptyComments": "まだコメントがありません",
-        "confirmDeleteTitle": "コメント削除",
-        "confirmDeleteDescription": "このコメントと返信をすべて削除します — 元に戻せません",
-        "repliedToast": "返信を投稿しました",
-        "deletedToast": "コメントを削除しました"
+        "counters": "閲覧 {{view}} · いいね {{reaction}} · コメント {{comment}}"
       }
     }
   },
   "shareViewer": {
     "badge": "共有",
     "home": "ホーム",
-    "notFound": "共有ドキュメントが見つかりません。"
+    "notFound": "共有ドキュメントが見つかりません。",
+    "tab": {
+      "label": "画面切替",
+      "erd": "ERD",
+      "comments": "コメント"
+    }
   },
   "shareFeedback": {
     "title": "ドキュメントフィードバック",
-    "reactionLabel": "反応を残す",
+    "like": "いいね",
+    "memberBadge": "会員",
+    "editedMark": "編集済み",
+    "passwordLabel": "パスワード",
+    "passwordPlaceholder": "パスワード（4文字以上）",
+    "passwordHint": "パスワードはこのコメントの編集・削除に使います",
+    "memberFormHint": "会員としてコメントします — 本文だけ入力してください",
+    "reactionMemberOnly": "ログインすると「いいね」できます",
+    "commentUpdatedToast": "コメントを編集しました",
+    "forbidden": "自分のコメントのみ編集・削除できます",
+    "passwordPromptDescription": "投稿時に設定したパスワードを入力してください",
+    "editorEmptyTitle": "共有リンクのフィードバックがここに表示されます",
+    "editorEmptyDescription": "上部の共有ボタンからリンクを発行すると、訪問者のいいね・コメントをこのタブで確認できます",
+    "reactionLabel": "いいねを残す",
+    "reactionButtonLabel": "いいね",
+    "commentCountLabel": "コメント {{count}}件",
     "nicknameLabel": "ニックネーム",
     "nicknamePlaceholder": "ニックネーム（30文字まで）",
     "commentPlaceholder": "このドキュメントへのフィードバックを書いてください",
     "submit": "コメントを投稿",
     "ownerBadge": "作成者",
     "empty": "まだコメントがありません — 最初のコメントをどうぞ",
-    "reactionFailed": "反応の処理に失敗しました",
+    "reactionFailed": "いいねの処理に失敗しました",
     "commentCreatedToast": "コメントを投稿しました",
     "commentDeletedToast": "コメントを削除しました",
-    "deleteDenied": "自分のコメントのみ削除できます",
     "confirmDeleteTitle": "コメント削除",
-    "confirmDeleteDescription": "返信付きのコメントは返信も一緒に削除されます"
+    "confirmDeleteDescription": "返信付きのコメントは返信も一緒に削除されます",
+    "reply": "返信",
+    "viewerReadonly": "コメントには Commenter 以上の役割が必要です"
   },
   "releaseNoteViewer": {
     "badge": "リリースノート",
@@ -1526,8 +1540,9 @@
       "popular": "人気のドキュメント",
       "recent": "最近共有されたドキュメント",
       "popularBadge": "人気",
+      "recentBadge": "新着",
       "views": "閲覧 {{count}}回",
-      "reactions": "反応 {{count}}"
+      "reactions": "いいね {{count}}"
     },
     "releaseNotes": {
       "heading": "最新リリース"
@@ -1626,6 +1641,27 @@
       "deletedToast": "コメントを削除しました。",
       "confirmDeleteTitle": "コメントを削除",
       "confirmDeleteDescription": "このコメントを削除します。"
+    },
+    "myComments": {
+      "title": "自分のコメント",
+      "empty": "共有ドキュメントに投稿したコメントはまだありません。",
+      "replyBadge": "返信",
+      "table": {
+        "document": "ERD",
+        "content": "コメント内容",
+        "createdAt": "投稿日"
+      }
+    },
+    "myLikes": {
+      "title": "いいねしたドキュメント",
+      "empty": "いいねした共有ドキュメントはまだありません。",
+      "table": {
+        "document": "ERD",
+        "reactions": "いいね",
+        "comments": "コメント",
+        "views": "閲覧",
+        "likedAt": "いいね日"
+      }
     },
     "recent": {
       "title": "最近の投稿",

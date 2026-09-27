@@ -1239,6 +1239,9 @@ export function ErdCanvas({
         nodesConnectable={canEdit}
         // 빈 캔버스 더블클릭 확대 방지 — 더블클릭은 편집기에서 다른 의미로 쓸 일이 없게 한다
         zoomOnDoubleClick={false}
+        // 우하단 "React Flow" 어트리뷰션 배지 제거(2026-09-28 사용자 요청) —
+        // 제품 화면에 라이브러리 표기가 노출될 이유가 없다
+        proOptions={{ hideAttribution: true }}
         elementsSelectable
         // 박스 선택(selectionKeyCode)은 팬·관계 클릭과 제스처가 겹쳐 쓰지 않는다 —
         // 다중 선택은 Shift+클릭으로만(§9)

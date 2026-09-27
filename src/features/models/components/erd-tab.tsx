@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DbmsIcon } from '@/components/dbms-icon'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -132,7 +133,8 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                   ) : null}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="font-mono text-[10px]">
+                  <Badge variant="outline" className="gap-1 font-mono text-[10px]">
+                    <DbmsIcon databaseType={model.databaseType} className="size-3" />
                     {model.databaseType}
                   </Badge>
                 </TableCell>

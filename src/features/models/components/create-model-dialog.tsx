@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { DbmsIcon } from '@/components/dbms-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -162,7 +163,10 @@ export function CreateModelDialog({ open, onOpenChange, workspaceId }: CreateMod
                     <SelectContent>
                       {(databaseTypes.data?.items ?? []).map((type) => (
                         <SelectItem key={type.code} value={type.code}>
-                          {type.displayName}
+                          <span className="flex items-center gap-1.5">
+                            <DbmsIcon databaseType={type.code} className="size-3.5" />
+                            {type.displayName}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>

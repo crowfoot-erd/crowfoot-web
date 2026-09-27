@@ -71,14 +71,17 @@ function issueDoc(): EditorDocument {
   }
 }
 
+/** 문서 DB 종류 — FK_WITHOUT_INDEX가 발화하는 PostgreSQL(§6.6 자동 생성 안 함)로 고정 */
+const DOC_DB = 'postgresql'
+
 function hydrate(doc: EditorDocument) {
-  useEditorStore.getState().hydrate({ modelId: '501', baseVersion: 0, document: doc })
+  useEditorStore.getState().hydrate({ modelId: '501', baseVersion: 0, document: doc, databaseType: DOC_DB })
   return doc
 }
 
 function renderPanel(options: { open?: boolean; issues?: ReturnType<typeof validateModel>; canReport?: boolean } = {}) {
   const doc = hydrate(issueDoc())
-  const { open = true, issues = validateModel(doc.model), canReport = false } = options
+  const { open = true, issues = validateModel(doc.model, DOC_DB), canReport = false } = options
   return renderWithProviders(
     <ReactFlowProvider>
       <ValidationPanel open={open} issues={issues} canReport={canReport} workspaceId="101" modelId="501" />
@@ -185,7 +188,7 @@ describe('ValidationPanel — 감사 전송(§5)', () => {
   it('재렌더(건수 변화)로 추가 전송하지 않는다 — 디바운스 재계산마다 보내지 않는다', async () => {
     trackValidationPosts()
     const doc = hydrate(issueDoc())
-    const utils = renderPanel({ canReport: true, issues: validateModel(doc.model) })
+    const utils = renderPanel({ canReport: true, issues: validateModel(doc.model, DOC_DB) })
     await waitFor(() => expect(validationPosts).toHaveLength(1))
 
     utils.rerender(

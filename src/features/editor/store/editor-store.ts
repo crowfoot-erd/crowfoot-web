@@ -60,6 +60,9 @@ export interface EditorHydrateInput {
   modelId: string
   baseVersion: number
   document: EditorDocument
+  /** 문서 대상 DBMS 코드(모델 메타). 관계 생성의 FK 인덱스 자동 생성 여부·검증 규칙의
+   *  DBMS 분류(§6.6)가 이 값을 본다. 생략하면 공용 취급(DBMS 미지정 문서 — 예전 동작) */
+  databaseType?: string
   /** 마지막 저장본(요약 diff 기준점). 생략하면 document이 곧 저장본(일반 로드).
    *  임시 저장 복원 때만 다르다: document=임시본, savedDocument=서버 본문 — 플러시 저장의
    *  요약이 임시본의 변경분만 말하도록. */
@@ -69,6 +72,8 @@ export interface EditorHydrateInput {
 interface EditorState {
   modelId: string | null
   baseVersion: number
+  /** 문서 대상 DBMS — 수화 시 고정. FK 인덱스 자동 생성 정책(§6.6)의 분류 재료 */
+  databaseType: string
   present: EditorDocument
   past: EditorDocument[]
   future: EditorDocument[]
@@ -105,6 +110,7 @@ interface EditorState {
 export const useEditorStore = create<EditorState>((set, get) => ({
   modelId: null,
   baseVersion: 0,
+  databaseType: '',
   present: emptyDocument,
   past: [],
   future: [],
@@ -120,6 +126,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       modelId: input.modelId,
       baseVersion: input.baseVersion,
+      databaseType: input.databaseType ?? '',
       present: input.document,
       past: [],
       future: [],
@@ -131,8 +138,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   commit: (change) => {
-    const { present, past } = get()
-    const next = applyChange(present, change)
+    const { present, past, databaseType } = get()
+    const next = applyChange(present, change, databaseType)
     set({
       past: [...past.slice(-(STACK_LIMIT - 1)), present],
       present: next,
@@ -144,8 +151,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   commitAll: (changes) => {
     if (changes.length === 0) return
-    const { present, past } = get()
-    const next = applyChanges(present, changes)
+    const { present, past, databaseType } = get()
+    const next = applyChanges(present, changes, databaseType)
     set({
       past: [...past.slice(-(STACK_LIMIT - 1)), present],
       present: next,
@@ -156,15 +163,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   applyRemote: (change) => {
-    const { present, past, future, savedDocument } = get()
-    const next = applyChange(present, change)
+    const { present, past, future, savedDocument, databaseType } = get()
+    const next = applyChange(present, change, databaseType)
     set({
       present: next,
       // undo 스택 rebase — undo해도 원격 변경은 유지되고 내 변경만 되돌아간다.
       // applyChange 불변·구조 공유라 50스냅샷 리플레이 비용은 O(변경분)이다
-      past: past.map((doc) => applyChange(doc, change)),
-      future: future.map((doc) => applyChange(doc, change)),
-      savedDocument: savedDocument ? applyChange(savedDocument, change) : savedDocument,
+      past: past.map((doc) => applyChange(doc, change, databaseType)),
+      future: future.map((doc) => applyChange(doc, change, databaseType)),
+      savedDocument: savedDocument ? applyChange(savedDocument, change, databaseType) : savedDocument,
       selectedIds: pruneSelection(next, get().selectedIds),
     })
   },
@@ -226,11 +233,25 @@ export function resetEditorStore(): void {
   useEditorStore.setState({
     modelId: null,
     baseVersion: 0,
+    databaseType: '',
     present: emptyDocument,
     past: [],
     future: [],
     savedDepth: 0,
     savedDocument: null,
     selectedIds: [],
+  })
+}
+
+/* ---------- 개발 서버 HMR 방어 — 스토어 싱글턴 분열 금지 ----------
+ * 이 모듈이 hot 교체되면 새 useEditorStore 인스턴스가 만들어지는데, Fast Refresh로
+ * 보존된 컴포넌트 상태(구 훅 인스턴스)가 구 스토어에 묶인 채 남아 커밋이 도달하지
+ * 못한다 — 검증 목록이 마지막 상태에 멈추고 새로고침 전까지 안 풀리는 현상(2026-09-28
+ * 운영 재현 조사로 원인 후보로 특정, 단위·브라우저 재현 6종으로 현 코드 결백 확인).
+ * 자체 accept로 Fast Refresh 전파를 끊고 곧장 풀 리로드해 일관성을 보장한다
+ * (운영 빌드는 import.meta.hot이 없어 이 블록 전체가 사라진다). */
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    window.location.reload()
   })
 }

@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
-import { useModelDdl } from '@/features/editor/hooks'
+import { useModelDdl, useShareDdl } from '@/features/editor/hooks'
 import { selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import { downloadTextFile, safeFilename } from '@/lib/download'
 import { ModelDeployDialog } from './ModelDeployDialog'
@@ -32,6 +32,8 @@ export interface SqlPreviewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string
+  /** 공개 뷰어(/share/{token}) — 공유 토큰으로 DDL을 생성한다(§1.10.8, 이때 workspaceId는 쓰지 않는다) */
+  shareToken?: string
   /** 문서명 — 다운로드 파일명 */
   modelName: string
   /** templateIdForDatabase 파생값 — 문서 생성 시점 DBMS */
@@ -64,6 +66,7 @@ export function SqlPreviewDialog({
   open,
   onOpenChange,
   workspaceId,
+  shareToken,
   modelName,
   dbmsId,
   databaseType,
@@ -73,7 +76,10 @@ export function SqlPreviewDialog({
   const modelId = useEditorStore((s) => s.modelId)
   const dirty = useEditorStore(selectDirty)
   const template = dbmsTemplate(dbmsId)
-  const ddl = useModelDdl(workspaceId, modelId, open)
+  // 공개 뷰어는 공유 토큰 경로(§1.10.8), 멤버 화면은 워크스페이스 경로(§1.7) — 조립 원천은 같은 서버
+  const workspaceDdl = useModelDdl(workspaceId, modelId, open && !shareToken)
+  const shareDdl = useShareDdl(shareToken ?? '', open && Boolean(shareToken))
+  const ddl = shareToken ? shareDdl : workspaceDdl
   const result = ddl.data
   const [deployOpen, setDeployOpen] = useState(false)
 

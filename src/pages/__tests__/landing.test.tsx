@@ -92,20 +92,23 @@ describe('랜딩 페이지', () => {
     )
     expect(screen.queryByText('도서관 대출 ERD')).not.toBeInTheDocument()
     // 반응 수 표기(v1.21) — 인기 정렬 1순위 원료를 red 악센트로 노출
-    expect(screen.getByText('반응 12')).toBeInTheDocument()
-    expect(screen.getByText('반응 9')).toBeInTheDocument()
-    expect(screen.getByText('반응 3')).toBeInTheDocument()
+    expect(screen.getByText('좋아요 12')).toBeInTheDocument()
+    expect(screen.getByText('좋아요 9')).toBeInTheDocument()
+    expect(screen.getByText('좋아요 3')).toBeInTheDocument()
     // 조회수 표기 — 반응 다음의 보조 신호(단순 카운트)를 카드에도 그대로 노출
     expect(screen.getByText('조회 128회')).toBeInTheDocument()
     expect(screen.getByText('조회 3회')).toBeInTheDocument()
     expect(screen.getByText('조회 2회')).toBeInTheDocument()
-    // 최근 구간 — 인기 3을 제외한 나머지가 기존 카드 꼴로 온다(반응 수 병기, v1.21)
+    // 최근 구간 — 인기 3을 제외한 나머지가 인기 박스와 같은 꼴(배지→제목→설명→풋터)로 온다.
+    // 배지 아이콘은 인기(Flame·red)와 달리 Clock+primary — "최근"을 나타내는 관용 표기(2026-09-28)
     expect(screen.getByText('최근 공유되고 있는 문서')).toBeVisible()
+    const recent = screen.getByTestId('landing-gallery-recent')
+    expect(within(recent).getAllByText('최근')).toHaveLength(1)
     expect(screen.getByRole('link', { name: /iUnoT ERD/ })).toHaveAttribute(
       'href',
       '/share/CommunityT0ken0fiUnoTx1',
     )
-    expect(screen.getByText('반응 0')).toBeInTheDocument()
+    expect(screen.getByText('좋아요 0')).toBeInTheDocument()
     expect(screen.queryByText('그 밖의 커뮤니티 공유')).not.toBeInTheDocument()
   })
 

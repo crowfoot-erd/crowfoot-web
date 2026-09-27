@@ -3,10 +3,11 @@
  *
  * 오픈 지점: 영역 헤더 설정 버튼·컨텍스트 메뉴. 이름·설명 확정은 area/patch 1커밋,
  * 강조색 스와치와 멤버 체크는 클릭 즉시 커밋(테이블 정보 다이얼로그 관례) — 다이얼로그가
- * 열린 채 캔버스·익스플로러가 바로 반응한다. 멤버 목록의 표시 이름은 익스플로러와 같은
- * 규칙(물리 우선, 논리명이 다를 때 옆에)이라 보는 모드와 어긋나지 않는다.
+ * 열린 채 캔버스·익스플로러가 바로 반응한다.
  * 협업(v1.17): 열려 있는 동안 영역 Edit Session Lock을 잡는다(useEditLock) — 남이
- * 편집 중이면 확정·색·멤버 변경이 막히고 보유자 안내가 뜬다.
+ * 편집 중이면 확정·색·멤버 변경이 막히고 보유자 안내가 뜬다. 멤버 목록의 표시 이름은
+ * 물리명만(2026-09-28 사용자 확정) — 체크판은 식별이 목적이라 논리명(설명 포함 원문)을
+ * 함께 뿌리면 줄이 흐려진다.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -49,8 +50,8 @@ export interface AreaDialogProps {
   onOpenChange: (open: boolean) => void
   /** 대상 영역 — null이면 열리지 않는다 */
   area: ErdArea | null
-  /** 멤버 체크 목록 재료 — 문서 전체 테이블(체크로 포함/제외) */
-  tables: Array<{ id: string; physical: string; logical: string }>
+  /** 멤버 체크 목록 재료 — 문서 전체 테이블(체크로 포함/제외). 표시는 물리명만 */
+  tables: Array<{ id: string; physical: string }>
   /** 강조색 확정 — 스와치 클릭 즉시 호출(1커밋) */
   onColorChange: (areaId: string, color: TableColorValue) => void
   onCommit: (areaId: string, patch: AreaPatch) => void
@@ -180,7 +181,7 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
                 ))}
               </div>
             </FormItem>
-            {/* 멤버 테이블 — 체크 즉시 포함/제외. 표시 이름은 익스플로러와 같은 규칙(물리 우선 + 논리 묵게) */}
+            {/* 멤버 테이블 — 체크 즉시 포함/제외. 표시 이름은 물리명만(2026-09-28 사용자 확정) */}
             <FormItem>
               <div className="flex items-baseline justify-between">
                 <FormLabel>{t('model.editor.areaDialog.tables')}</FormLabel>
@@ -200,9 +201,6 @@ export function AreaDialog({ open, onOpenChange, area, tables, onColorChange, on
                       >
                         <Checkbox checked={checked} disabled={locked} onCheckedChange={(value) => toggleMember(table.id, value === true)} />
                         <span className="min-w-0 truncate">{table.physical}</span>
-                        {table.logical && table.logical !== table.physical ? (
-                          <span className="min-w-0 truncate text-[10px] text-muted-foreground">{table.logical}</span>
-                        ) : null}
                       </label>
                     )
                   })

@@ -14,9 +14,10 @@ import { createArea } from '@/features/editor/model/changes'
 import { TABLE_COLORS } from '@/features/editor/model/content-schema'
 import { renderWithProviders } from '@/test/test-app'
 
+// 표시 이름은 물리명만(2026-09-28) — 논리명(설명 포함 원문)은 받지 않는다
 const TABLES = [
-  { id: 'T-USERS', physical: 'users', logical: '회원' },
-  { id: 'T-LOGS', physical: 'logs', logical: '' },
+  { id: 'T-USERS', physical: 'users' },
+  { id: 'T-LOGS', physical: 'logs' },
 ]
 
 function renderDialog(area = createArea('회원 도메인', { id: 'A1', tableIds: [] })) {

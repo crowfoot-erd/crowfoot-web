@@ -173,7 +173,7 @@
       "communityTitle": "社区",
       "communityReleaseNotes": "发布说明",
       "communityFeedback": "反馈",
-      "adminSystemTerms": "系统词典"
+      "communityMyComments": "我的评论",      "communityMyLikes": "点赞的文档",      "adminSystemTerms": "系统词典"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -1062,6 +1062,7 @@
         "physicalName": "物理名称",
         "logicalName": "逻辑名称",
         "logicalNamePlaceholder": "例如：订单",
+        "logicalNameSeparatorHint": "说明会以 ----- 分隔符与逻辑名一并保存（逻辑名-----说明）",
         "comment": "描述",
         "commentPlaceholder": "表的描述",
         "nameRequired": "物理名称为必填项",
@@ -1125,6 +1126,7 @@
         "physicalName": "物理名称",
         "logicalName": "逻辑名称",
         "logicalNamePlaceholder": "逻辑名（可选）",
+        "logicalNameSeparatorHint": "说明会以 ----- 分隔符与逻辑名一并保存（逻辑名-----说明）",
         "defaultValue": "默认值",
         "defaultValuePlaceholder": "例如 0、NOW()",
         "comment": "注释",
@@ -1289,39 +1291,51 @@
         "reversedPeriod": "结束时间必须晚于开始时间"
       },
       "feedback": {
-        "counters": "浏览 {{view}} · 反应 {{reaction}} · 评论 {{comment}}",
-        "manage": "管理评论",
-        "reply": "回复",
-        "replyPlaceholder": "回复这位访客（最多 1000 字）",
-        "replySubmit": "发表回复",
-        "emptyComments": "还没有评论",
-        "confirmDeleteTitle": "删除评论",
-        "confirmDeleteDescription": "将删除该评论及其所有回复 — 无法撤销",
-        "repliedToast": "回复已发表",
-        "deletedToast": "评论已删除"
+        "counters": "浏览 {{view}} · 点赞 {{reaction}} · 评论 {{comment}}"
       }
     }
   },
   "shareViewer": {
     "badge": "共享",
     "home": "首页",
-    "notFound": "未找到共享文档。"
+    "notFound": "未找到共享文档。",
+    "tab": {
+      "label": "视图切换",
+      "erd": "ERD",
+      "comments": "评论"
+    }
   },
   "shareFeedback": {
     "title": "文档反馈",
-    "reactionLabel": "添加反应",
+    "like": "点赞",
+    "memberBadge": "会员",
+    "editedMark": "已编辑",
+    "passwordLabel": "密码",
+    "passwordPlaceholder": "密码（至少 4 位）",
+    "passwordHint": "密码用于这条评论的修改和删除",
+    "memberFormHint": "以会员身份评论 — 只需输入内容",
+    "reactionMemberOnly": "登录后即可点赞",
+    "commentUpdatedToast": "评论已修改",
+    "forbidden": "只能修改或删除自己的评论",
+    "passwordPromptDescription": "请输入发表评论时设置的密码",
+    "editorEmptyTitle": "共享链接的反馈将显示在这里",
+    "editorEmptyDescription": "通过上方共享按钮发放链接后，可在本标签页查看访客的点赞和评论",
+    "reactionLabel": "点赞",
+    "reactionButtonLabel": "点赞",
+    "commentCountLabel": "评论 {{count}} 条",
     "nicknameLabel": "昵称",
     "nicknamePlaceholder": "昵称（最多 30 字）",
     "commentPlaceholder": "留下您对本文档的反馈",
     "submit": "发表评论",
     "ownerBadge": "作者",
     "empty": "还没有评论 — 来抢沙发",
-    "reactionFailed": "反应处理失败",
+    "reactionFailed": "点赞处理失败",
     "commentCreatedToast": "评论已发表",
     "commentDeletedToast": "评论已删除",
-    "deleteDenied": "只能删除自己发表的评论",
     "confirmDeleteTitle": "删除评论",
-    "confirmDeleteDescription": "删除评论会同时删除其回复"
+    "confirmDeleteDescription": "删除评论会同时删除其回复",
+    "reply": "回复",
+    "viewerReadonly": "发表评论需要 评论者(Commenter)及以上角色"
   },
   "releaseNoteViewer": {
     "badge": "发布说明",
@@ -1526,8 +1540,9 @@
       "popular": "最受欢迎的文档",
       "recent": "最近共享的文档",
       "popularBadge": "热门",
+      "recentBadge": "最新",
       "views": "浏览 {{count}} 次",
-      "reactions": "反应 {{count}}"
+      "reactions": "点赞 {{count}}"
     },
     "releaseNotes": {
       "heading": "最新发布"
@@ -1626,6 +1641,27 @@
       "deletedToast": "评论已删除。",
       "confirmDeleteTitle": "删除评论",
       "confirmDeleteDescription": "该评论将被删除。"
+    },
+    "myComments": {
+      "title": "我的评论",
+      "empty": "还没有在共享文档中发表过评论。",
+      "replyBadge": "回复",
+      "table": {
+        "document": "ERD",
+        "content": "评论内容",
+        "createdAt": "发表日期"
+      }
+    },
+    "myLikes": {
+      "title": "点赞的文档",
+      "empty": "还没有点赞过的共享文档。",
+      "table": {
+        "document": "ERD",
+        "reactions": "点赞",
+        "comments": "评论",
+        "views": "浏览",
+        "likedAt": "点赞日期"
+      }
     },
     "recent": {
       "title": "最新帖子",

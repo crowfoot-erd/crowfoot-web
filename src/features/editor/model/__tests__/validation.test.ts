@@ -341,6 +341,12 @@ describe('validateModel — v1.20 규칙 (05-editor/05-validation.md §2)', () =
     expect(validateModel(m).filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
   })
 
+  it('MySQL(InnoDB) 문서는 FK_WITHOUT_INDEX를 발화하지 않는다 — DB가 자식 인덱스를 만든다', () => {
+    const m = fkPair({ childColumn: { nullable: false } }) // 같은 문서라도 DBMS에 따라 갈린다
+    expect(validateModel(m, 'mysql').filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
+    expect(validateModel(m, 'postgresql').filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(1)
+  })
+
   it('컬럼 30개는 통과, 31개부터 WIDE_TABLE info다', () => {
     const columns = Array.from({ length: 30 }, (_, i) =>
       createColumn({ id: `c${i}`, physicalName: `col_${i}`, logicalName: `컬럼 ${i}` }),

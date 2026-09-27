@@ -21,7 +21,7 @@ import {
   type EditorDocument,
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
-import { parsePhysicalType } from '@/features/editor/model/dbms'
+import { dbmsAutoIndexesFk, parsePhysicalType } from '@/features/editor/model/dbms'
 import { defaultKeyName } from '@/features/editor/model/keys'
 
 export type TablePatch = Partial<Pick<ErdTable, 'logicalName' | 'physicalName' | 'comment'>>
@@ -307,18 +307,25 @@ function removeTableCascade(doc: EditorDocument, tableId: string): EditorDocumen
 
 /** 관계 생성 — FK 컬럼은 PK 블록 바로 밑(FK 영역 선두)에 삽입 + 식별 관계면 자식 PK에 FK 포함 (05-editor/01-core.md §6)
  *  비식별 1:1은 FK 전체 컬럼에 UK를 만들어 1:1을 강제한다 — 식별은 자식 PK가 이미 유일성을 보장한다.
- *  비식별 1:N은 FK 컬럼 인덱스를 함께 만든다(MySQL InnoDB 관례) — 조인·삭제 성능의 기본값.
- *  식별(PK 편입)·비식별 1:1(UK)은 상위 키가 선두 컬럼을 이미 덮는다. */
+ *  비식별 1:N은 FK 컬럼 전체로 복합 인덱스를 함께 만든다(§6.6 인덱스 자동 생성 정책) — 단
+ *  MySQL(InnoDB)처럼 FK 선언이 자식 인덱스를 자동 생성하는 DBMS 문서는 만들지 않는다(DB이 알아서 한다).
+ *  식별(PK 편입)·비식별 1:1(UK)은 상위 키가 선두 컬럼을 이미 덮는다 — PK·UK는 키로만 관리하고
+ *  백킹 인덱스를 별도 Index 객체로 만들지 않는다(모든 DBMS가 자동 생성). */
 function applyRelationshipCreate(
   doc: EditorDocument,
   relationship: ErdRelationship,
   fkColumns: ErdColumn[],
+  databaseType = '',
 ): EditorDocument {
   const fkIds = fkColumns.map((c) => c.id)
   // fkColumns가 빈 diff 재생(collab 병합 — 키는 index/set 등 각자의 diff가 재현)에서는
   // UK·인덱스를 만들지 않는다 — 컬럼 0개 키는 무의미한 껍데기다
   const wantUk = fkIds.length > 0 && relationship.type === 'ONE_TO_ONE' && !relationship.identifying
-  const wantIndex = fkIds.length > 0 && relationship.type === 'ONE_TO_MANY' && !relationship.identifying
+  const wantIndex =
+    fkIds.length > 0 &&
+    relationship.type === 'ONE_TO_MANY' &&
+    !relationship.identifying &&
+    !dbmsAutoIndexesFk(databaseType)
   let next = mapTable(doc, relationship.childTableId, (table) => {
     const primaryKey = relationship.identifying
       ? table.primaryKey
@@ -389,6 +396,7 @@ function removeRelationshipCascade(doc: EditorDocument, relationshipId: string):
 function applyRelationshipPatch(
   doc: EditorDocument,
   change: Extract<ErdChange, { type: 'relationship/patch' }>,
+  databaseType = '',
 ): EditorDocument {
   const prev = doc.model.relationships.find((r) => r.id === change.relationshipId)
   if (!prev) return doc
@@ -452,9 +460,10 @@ function applyRelationshipPatch(
       uniques = uniques.filter((u) => u !== owned)
     }
 
-    // 인덱스 동기화 — UK와 같은 소유 규칙(컬럼 집합 일치)으로 비식별 1:N 기본 인덱스를 맞춘다
+    // 인덱스 동기화 — UK와 같은 소유 규칙(컬럼 집합 일치)으로 비식별 1:N 기본 인덱스를 맞춘다.
+    // MySQL(InnoDB) 문서는 FK 인덱스를 만들지 않는다(§6.6 — DB이 자동 생성), 남아 있으면 제거만
     const ownedIndex = indexes.find((ix) => ix.columns.map((c) => c.columnId).sort().join('\0') === fkKey)
-    const wantIndex = next.type === 'ONE_TO_MANY' && !next.identifying
+    const wantIndex = next.type === 'ONE_TO_MANY' && !next.identifying && !dbmsAutoIndexesFk(databaseType)
     if (wantIndex && !ownedIndex) {
       indexes = [
         ...indexes,
@@ -468,8 +477,11 @@ function applyRelationshipPatch(
   })
 }
 
-/** 단일 변경 적용 — 순수 함수, 원본 불변 */
-export function applyChange(doc: EditorDocument, change: ErdChange): EditorDocument {
+/** 단일 변경 적용 — 순수 함수, 원본 불변.
+ *  databaseType(문서 대상 DBMS)은 관계 생성·전환의 FK 인덱스 자동 생성 여부를 결정한다(§6.6) —
+ *  MySQL(InnoDB)은 DB이 FK 인덱스를 자동 생성하므로 ERD에 만들지 않는다. 협업 리플레이도
+ *  같은 문서 메타로 같은 결과가 나온다(모든 클라이언트가 같은 값을 넘긴다). */
+export function applyChange(doc: EditorDocument, change: ErdChange, databaseType = ''): EditorDocument {
   switch (change.type) {
     case 'table/create':
       return {
@@ -510,9 +522,9 @@ export function applyChange(doc: EditorDocument, change: ErdChange): EditorDocum
     case 'index/set':
       return mapTable(doc, change.tableId, (table) => ({ ...table, indexes: change.indexes }))
     case 'relationship/create':
-      return applyRelationshipCreate(doc, change.relationship, change.fkColumns)
+      return applyRelationshipCreate(doc, change.relationship, change.fkColumns, databaseType)
     case 'relationship/patch':
-      return applyRelationshipPatch(doc, change)
+      return applyRelationshipPatch(doc, change, databaseType)
     case 'relationship/remove':
       return removeRelationshipCascade(doc, change.relationshipId)
     case 'note/create':
@@ -578,8 +590,8 @@ export function applyChange(doc: EditorDocument, change: ErdChange): EditorDocum
 }
 
 /** 연속 변경을 한 번에 — 같은 undo 스택에 들어가는 단위 */
-export function applyChanges(doc: EditorDocument, changes: ErdChange[]): EditorDocument {
-  return changes.reduce((acc, change) => applyChange(acc, change), doc)
+export function applyChanges(doc: EditorDocument, changes: ErdChange[], databaseType = ''): EditorDocument {
+  return changes.reduce((acc, change) => applyChange(acc, change, databaseType), doc)
 }
 
 /** ErdContent 허용 래퍼 — 저장 직전 변환 등에서 사용 */

@@ -6,9 +6,10 @@
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Code2, Database, Eye, Flame, Heart, Layers, ShieldCheck, Users } from 'lucide-react'
+import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, Flame, Heart, Layers, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { DbmsIcon } from '@/components/dbms-icon'
 import { LanguageSelect } from '@/components/language-select'
 import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -187,7 +188,8 @@ export function LandingPage() {
                             <Flame aria-hidden className="size-3" />
                             {t('landing.gallery.popularBadge')}
                           </span>
-                          <span className="rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                            <DbmsIcon databaseType={databaseType} className="size-3" />
                             {databaseType}
                           </span>
                         </div>
@@ -215,13 +217,15 @@ export function LandingPage() {
                 )
               })}
             </div>
-            {/* 최근 공유 — 인기 3을 제외한 나머지, 서버가 최근 발급순으로 내려준다 */}
+            {/* 최근 공유 — 인기 3을 제외한 나머지, 서버가 최근 발급순으로 내려준다.
+                카드 구성은 인기 박스와 같은 꼴(배지 → 제목 → 설명 → 풋터 메타)로 맞췄다 —
+                차이는 악센트뿐: red "뜨거운" 신호 대신 Clock 배지(최근=새 소식, 2026-09-28 사용자 요청) */}
             {recentItems.length > 0 && (
               <>
                 <h3 className="mb-3 mt-10 text-sm font-semibold text-muted-foreground">
                   {t('landing.gallery.recent')}
                 </h3>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="landing-gallery-recent">
                   {recentItems.map(({ modelName, description, shareToken, databaseType, updatedAt, reactionCount, viewCount }) => {
                     return (
                       <Link
@@ -232,28 +236,35 @@ export function LandingPage() {
                         className="group"
                       >
                         <Card className="h-full transition-colors group-hover:border-primary/50">
-                          <CardContent className="flex h-full flex-col gap-2 p-5">
+                          <CardContent className="flex h-full flex-col gap-3 p-6">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                <Clock aria-hidden className="size-3" />
+                                {t('landing.gallery.recentBadge')}
+                              </span>
+                              <span className="flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                                <DbmsIcon databaseType={databaseType} className="size-3" />
                                 {databaseType}
                               </span>
-                              <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {/* 반응 수(v1.21) + 공개 조회 수 — 단순 카운트 병기 */}
-                                <span className="flex items-center gap-1 tabular-nums">
-                                  <Heart aria-hidden className="size-3" />
-                                  {t('landing.gallery.reactions', { count: reactionCount })}
-                                </span>
-                                <span className="flex items-center gap-1 tabular-nums">
-                                  <Eye aria-hidden className="size-3" />
-                                  {t('landing.gallery.views', { count: viewCount })}
-                                </span>
-                                {formatDate(updatedAt)}
-                              </span>
                             </div>
-                            <h3 className="font-medium">{modelName}</h3>
+                            <h3 className="text-base font-semibold">{modelName}</h3>
                             {description && (
                               <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
                             )}
+                            <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                              {/* 반응 수(v1.21) + 공개 조회 수 — 인기 카드와 같은 풋터, 색 악센트 없이 */}
+                              <span className="flex items-center gap-2">
+                                <span className="flex items-center gap-1 tabular-nums">
+                                  <Heart aria-hidden className="size-3.5" />
+                                  {t('landing.gallery.reactions', { count: reactionCount })}
+                                </span>
+                                <span className="flex items-center gap-1 tabular-nums">
+                                  <Eye aria-hidden className="size-3.5" />
+                                  {t('landing.gallery.views', { count: viewCount })}
+                                </span>
+                              </span>
+                              {formatDate(updatedAt)}
+                            </div>
                           </CardContent>
                         </Card>
                       </Link>

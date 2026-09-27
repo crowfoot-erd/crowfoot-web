@@ -9,7 +9,7 @@ import { render, type RenderOptions } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Routes } from 'react-router-dom'
 
-import { setAccessToken } from '@/api/client'
+import { clearAccessToken, setAccessToken } from '@/api/client'
 import '@/lib/i18n'
 import { useSessionStore } from '@/stores/session'
 
@@ -63,6 +63,13 @@ export function renderWithProviders(
 export function asAuthenticated(token = 'test-access-token'): void {
   setAccessToken(token)
   useSessionStore.setState({ status: 'authenticated', sessionExpiredReason: null })
+}
+
+/** 공개 화면 테스트용 — 비회원 상태로 시딩. 피드백 조회(useShareFeedback)는 세션 판정이
+ *  끝난 뒤에만 fetch하므로 bootstrapping(초깃값)으로 두면 비회원 케이스도 대기에 걸린다 */
+export function asGuest(): void {
+  clearAccessToken()
+  useSessionStore.setState({ status: 'unauthenticated', sessionExpiredReason: null })
 }
 
 /** 세션 상태 원복 */

@@ -4,22 +4,27 @@
  * - 인증 없이 토큰으로만 연다 — 게스트도 볼 수 있는 읽기 전용 화면
  * - 기간(시작·종료) 밖이면 410 SHARE_INACTIVE, 없는 토큰이면 404 SHARE_NOT_FOUND 안내
  * - 본체는 EditorShell 재사용(publicView) — 줌·보기 옵션·이미지 내보내기, 저장·협업 없음
- * - 하단에 피드백 섹션(반응·익명 댓글, v1.21) — 화면 대부분은 에디터가 차지하고
- *   아래로 스크롤하면 피드백이 나온다(min-h-dvh 스크롤 구조)
+ * - 화면은 **하단 탭 바(ERD 기본 · 댓글)** 로 전환한다(v1.21 후속 — 스크롤 구조에서 개편):
+ *   ERD가 주인공인 화면이라 에디터가 뷰포트 대부분을 차지하고, 댓글 탭을 누르면
+ *   그 영역 전체가 반응·댓글로 교체된다. 탭 배지는 댓글 수다(피드백 초기화와 같은 쿼리) —
+ *   좋아요는 배지에 합산하지 않는다(2026-09-27 2차 보고: 댓글 0인데 좋아요 때문에
+ *   1로 보이면 댓글이 있는 것처럼 읽힌다). 좋아요 수는 툴바 버튼·섹션 헤더 [♥ n] 칩으로 노출
  * - SEO(00-common §3.11 v1.18): 성공 시 문서명·설명으로 색인을 허용한다 — 토큰은 128bit
  *   추측 불가라 노출 통제는 철회(410)로 하고, 대기·오류 화면은 계속 noindex다
  */
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Loader2 } from 'lucide-react'
+import { Home, Loader2, MessageSquare, Table2 } from 'lucide-react'
 
 import type { Model, PublicShare } from '@/api/types'
 import { isApiError } from '@/api/client'
 import { LanguageSelect } from '@/components/language-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ViewerTabButton } from '@/components/viewer-tab-button'
 import { EditorShell } from '@/features/editor'
-import { useSharedDocument } from '@/features/models'
+import { useSharedDocument, useShareFeedback } from '@/features/models'
 import { ShareFeedbackSection } from '@/features/models/components/share-feedback-section'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { resultCodeMessage } from '@/lib/result-code'
@@ -42,10 +47,15 @@ function toViewerModel(token: string, share: PublicShare): Model {
   }
 }
 
+type ViewerTab = 'erd' | 'comments'
+
 export function ShareViewerPage() {
   const { t } = useTranslation()
   const { token = '' } = useParams()
   const share = useSharedDocument(token)
+  // 탭 배지(총 피드백 수)용 — 섹션과 같은 쿼리 키라 한 번만 fetch된다
+  const feedback = useShareFeedback(token)
+  const [tab, setTab] = useState<ViewerTab>('erd')
   // 제목·설명·canonical은 조회 뒤 — 성공 문서는 색인 허용(SEO 정책 v1.18),
   // 대기·오류 화면은 문서 없는 껍데기이므로 계속 noindex로 막는다
   usePageMeta(
@@ -59,8 +69,11 @@ export function ShareViewerPage() {
       : { noindex: true },
   )
 
+  // 탭 배지 = 댓글 수 — 좋아요 합산은 2026-09-27 2차 보고로 철회(댓글 0인데 1로 보이는 혼란)
+  const commentCount = feedback.data?.comments.length ?? 0
+
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col bg-background">
       {share.isPending ? (
         // 공유 문서 조회 — 전체 화면 중앙 스피너 (model-viewer와 같은 관례)
         <div
@@ -108,11 +121,41 @@ export function ShareViewerPage() {
               </Button>
             </div>
           </header>
-          {/* 에디터 — 화면 대부분(70dvh)을 차지, 아래로 스크롤하면 피드백 섹션이 나온다 */}
-          <div className="flex h-[70dvh] min-h-[480px] flex-col">
-            <EditorShell model={toViewerModel(token, share.data)} canEdit={false} publicView />
+          {/* 탭 본문 — ERD 탭은 에디터가 뷰포트 나머지 전체를 차지한다. 공유 토큰이
+              공개 DDL(§1.10.8)·문서 좋아요(§1.10.6) 버튼의 자격이 된다 */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            {tab === 'erd' ? (
+              <EditorShell
+                model={toViewerModel(token, share.data)}
+                canEdit={false}
+                publicView
+                shareToken={token}
+              />
+            ) : (
+              <ShareFeedbackSection target={{ kind: 'token', token }} />
+            )}
           </div>
-          <ShareFeedbackSection token={token} />
+          {/* 하단 탭 바 — ERD(기본) · 댓글(배지=댓글 수). 좌측 정렬 필 버튼 */}
+          <nav
+            role="tablist"
+            aria-label={t('shareViewer.tab.label')}
+            data-testid="share-viewer-tabs"
+            className="flex h-12 shrink-0 items-center gap-1 border-t bg-background px-3"
+          >
+            <ViewerTabButton
+              active={tab === 'erd'}
+              onClick={() => setTab('erd')}
+              icon={<Table2 aria-hidden className="size-4" />}
+              label={t('shareViewer.tab.erd')}
+            />
+            <ViewerTabButton
+              active={tab === 'comments'}
+              onClick={() => setTab('comments')}
+              icon={<MessageSquare aria-hidden className="size-4" />}
+              label={t('shareViewer.tab.comments')}
+              badge={commentCount}
+            />
+          </nav>
         </>
       )}
     </div>

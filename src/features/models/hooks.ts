@@ -7,18 +7,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cloneFromTemplate,
   createModel,
+  createModelComment,
   createModelShare,
-  createOwnerShareReply,
   createShareComment,
   deleteModel,
-  deleteOwnerShareComment,
+  deleteModelComment,
   deleteShareComment,
   fetchDatabaseTypes,
   fetchModel,
+  fetchModelFeedback,
   fetchModelShares,
   fetchModelVersionDetail,
   fetchModelVersions,
   fetchModels,
+  fetchMyShareComments,
+  fetchMyShareReactions,
   fetchShareFeedback,
   fetchSharedDocument,
   fetchSharedGallery,
@@ -28,14 +31,20 @@ import {
   revokeModelShare,
   sqlImport,
   sqlImportPreview,
+  toggleModelReaction,
   toggleShareReaction,
   updateModel,
+  updateModelComment,
+  updateShareComment,
   type CloneFromTemplateInput,
+  type CreateModelCommentInput,
   type CreateModelInput,
   type CreateShareCommentInput,
   type CreateShareInput,
   type SqlImportInput,
+  type UpdateShareCommentInput,
 } from '@/features/models/api'
+import { useSessionStore } from '@/stores/session'
 import type { ModelSummary, ShareFeedback } from '@/api/types'
 
 export const modelKeys = {
@@ -59,6 +68,14 @@ export const modelKeys = {
   shared: (token: string) => ['shares', token] as const,
   /** 공유 문서 피드백(반응·댓글) — shared 하위 키라 ['shares', token] 무효화에 함께 갱신된다 */
   shareFeedback: (token: string) => ['shares', token, 'feedback'] as const,
+  /** 문서 단위 피드백(멤버 경로 — 문서 열기 댓글 탭) — 토큰 경로와 같은 스레드를
+   *  다른 키로 본다. detail 서브트리라 문서 저장 무효화에 함께 갱신된다 */
+  modelFeedback: (workspaceId: string, modelId: string) =>
+    ['workspaces', workspaceId, 'models', 'detail', modelId, 'feedback'] as const,
+  /** 내 피드백 역조회(§1.10.9) — 인증 회원 데이터(커뮤니티 내 댓글·좋아한 문서 메뉴).
+   *  shares 루트의 형제 서브트리 — shared(token) 무효화에 휩쓸리지 않는다 */
+  myShareComments: ['shares', 'my-comments'] as const,
+  myShareReactions: ['shares', 'my-reactions'] as const,
   /** 공유 갤러리 — 현재 공유 중인 문서 목록(랜딩), 마찬가지로 인증 무관 루트 키 */
   gallery: ['shares', 'gallery'] as const,
   /** 템플릿 공개 목록 — 인증 무관 루트 키(갤러리와 같은 규칙) */
@@ -255,12 +272,17 @@ export function useSharedDocument(token: string) {
 
 /* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7) ---------- */
 
-/** 피드백 초기화 — 반응 상태 + 댓글 목록 1회 fetch (공개 뷰어 하단 섹션) */
+/** 피드백 초기화 — 반응 상태 + 댓글 목록 1회 fetch (공개 뷰어·에디터 댓글 탭).
+ *  선택 인증: 로그인 세션이면 Bearer가 실려 reacted가 회원 기준으로 내려온다.
+ *  새 탭에서 /share/{token}을 열면 세션 부트스트랩(refresh-token 왕복)이 끝나기 전에
+ *  fetch하면 Bearer 없이 익명으로 나가 "좋아요를 남겼는데 회색 하트"가 박제된다 —
+ *  부트스트랩이 판정된 뒤에만 fetch한다(authenticated=Bearer, unauthenticated·error=익명) */
 export function useShareFeedback(token: string) {
+  const sessionStatus = useSessionStore((state) => state.status)
   return useQuery({
     queryKey: modelKeys.shareFeedback(token),
     queryFn: ({ signal }) => fetchShareFeedback(token, signal),
-    enabled: token.length > 0,
+    enabled: token.length > 0 && sessionStatus !== 'bootstrapping',
     retry: false,
   })
 }
@@ -284,7 +306,7 @@ export function useToggleShareReaction(token: string) {
   })
 }
 
-/** 익명 댓글 등록 — 성공 시 피드백 전체를 다시 땡긴다(댓글 수 카운터도 서버가 갱신한다) */
+/** 댓글 등록 — 회원(내용만)·비회원(별명+비밀번호) 모드. 성공 시 피드백 전체를 다시 땡긴다 */
 export function useCreateShareComment(token: string) {
   const queryClient = useQueryClient()
 
@@ -296,47 +318,114 @@ export function useCreateShareComment(token: string) {
   })
 }
 
-/** 익명 본인 댓글 삭제 — 서버(방문자 쿠키)가 최종 판정, 403도 이 훅 호출자가 토스트로 받는다 */
-export function useDeleteShareComment(token: string) {
+/** 댓글 수정 — 비회원 댓글은 비밀번호, 회원 댓글은 계정 판정(서버가 최종 판정, 403도 호출자가 토스트로) */
+export function useUpdateShareComment(token: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (commentId: string) => deleteShareComment(token, commentId),
+    mutationFn: ({ commentId, body }: { commentId: string; body: UpdateShareCommentInput }) =>
+      updateShareComment(token, commentId, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
     },
   })
 }
 
-/** 오너 답글 등록(공유 다이얼로그) — 무효화에 토큰이 필요해 변수에 실어 보낸다 */
-export function useCreateOwnerShareReply(workspaceId: string, modelId: string) {
+/** 댓글 삭제 — 비회원 댓글은 비밀번호 몸통, 회원 댓글은 계정 판정(서버가 최종 판정) */
+export function useDeleteShareComment(token: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({
-      shareId,
-      parentCommentId,
-      content,
-    }: { shareId: string; token: string; parentCommentId: string; content: string }) =>
-      createOwnerShareReply(workspaceId, modelId, shareId, { parentCommentId, content }),
-    onSuccess: (_reply, { token }) => {
+    mutationFn: ({ commentId, password }: { commentId: string; password?: string }) =>
+      deleteShareComment(token, commentId, password),
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
-      void queryClient.invalidateQueries({ queryKey: modelKeys.shares(workspaceId, modelId) })
     },
   })
 }
 
-/** 오너 댓글 관리 삭제(공유 다이얼로그) — 답글 동반 삭제로 카운터도 내려간다 */
-export function useDeleteOwnerShareComment(workspaceId: string, modelId: string) {
+/* ---------- 멤버 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7 — 문서 열기 댓글 탭) ----------
+ * 공유 링크 없이 문서 스레드에 바로 접근 — 뮤테이션 성공은 modelFeedback 키만 무효화한다 */
+
+/** 피드백 초기화(멤버 경로) — 문서 열기 댓글 탭·배지의 원료. 인증 경로라 부트스트랩
+ *  완료 뒤에 fetch한다(401 낭비 방지 — 토큰 경로 useShareFeedback과 같은 가드) */
+export function useModelFeedback(workspaceId: string, modelId: string) {
+  const sessionStatus = useSessionStore((state) => state.status)
+  return useQuery({
+    queryKey: modelKeys.modelFeedback(workspaceId, modelId),
+    queryFn: ({ signal }) => fetchModelFeedback(workspaceId, modelId, signal),
+    enabled: workspaceId.length > 0 && modelId.length > 0 && sessionStatus !== 'bootstrapping',
+    retry: false,
+  })
+}
+
+/** 반응 토글(멤버 경로) — 낙관 전환은 컴포넌트가, 정착은 서버 응답으로 덮어쓴다 */
+export function useToggleModelReaction(workspaceId: string, modelId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ shareId, commentId }: { shareId: string; token: string; commentId: string }) =>
-      deleteOwnerShareComment(workspaceId, modelId, shareId, commentId),
-    onSuccess: (_void, { token }) => {
-      void queryClient.invalidateQueries({ queryKey: modelKeys.shared(token) })
-      void queryClient.invalidateQueries({ queryKey: modelKeys.shares(workspaceId, modelId) })
+    mutationFn: () => toggleModelReaction(workspaceId, modelId),
+    onSuccess: (reaction) => {
+      if (!reaction) return
+      queryClient.setQueryData<ShareFeedback>(modelKeys.modelFeedback(workspaceId, modelId), (feedback) =>
+        feedback
+          ? { ...feedback, reactionCount: reaction.reactionCount, reacted: reaction.reacted }
+          : feedback,
+      )
     },
+  })
+}
+
+/** 멤버 댓글 등록 — 원댓글 {content}, 오너 답글 {content, parentCommentId} */
+export function useCreateModelComment(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CreateModelCommentInput) => createModelComment(workspaceId, modelId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.modelFeedback(workspaceId, modelId) })
+    },
+  })
+}
+
+/** 멤버 댓글 수정 — 본인 댓글만(서버가 최종 판정) */
+export function useUpdateModelComment(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ commentId, body }: { commentId: string; body: UpdateShareCommentInput }) =>
+      updateModelComment(workspaceId, modelId, commentId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.modelFeedback(workspaceId, modelId) })
+    },
+  })
+}
+
+/** 멤버 댓글 삭제 — 본인·문서 작성자·관리자(서버가 최종 판정) */
+export function useDeleteModelComment(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (commentId: string) => deleteModelComment(workspaceId, modelId, commentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: modelKeys.modelFeedback(workspaceId, modelId) })
+    },
+  })
+}
+
+/** 내가 작성한 공유 문서 댓글(§1.10.9) — 커뮤니티 "내 댓글" 메뉴. 인증 회원 전용 경로 */
+export function useMyShareComments() {
+  return useQuery({
+    queryKey: modelKeys.myShareComments,
+    queryFn: ({ signal }) => fetchMyShareComments(signal),
+  })
+}
+
+/** 내가 좋아요한 공유 문서(§1.10.9) — 커뮤니티 "좋아한 문서" 메뉴. 인증 회원 전용 경로 */
+export function useMyShareReactions() {
+  return useQuery({
+    queryKey: modelKeys.myShareReactions,
+    queryFn: ({ signal }) => fetchMyShareReactions(signal),
   })
 }
 

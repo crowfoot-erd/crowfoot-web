@@ -168,6 +168,17 @@ export function physicalType(code: string, dbmsId: string): string {
   return dbmsTemplate(dbmsId).types[code] ?? code
 }
 
+/** FK 선언만으로 자식 컬럼 인덱스를 자동 생성하는 DBMS인지 (05-editor/01-core.md §6.6 — 인덱스 자동 생성 정책).
+ *  MySQL(InnoDB)은 FK 제약 생성 시 자식 컬럼 인덱스가 없으면 알아서 만든다 — 이런 DBMS 문서는
+ *  FK 인덱스를 ERD에 표현하지 않는다(관계 생성 시 자동 생성 스킵 + 검증 FK_WITHOUT_INDEX 미발화).
+ *  PostgreSQL·Oracle·SQL Server 등 나머지는 FK 인덱스를 자동 만들지 않으므로 앱이 대신 만든다.
+ *  PK·UK는 모든 DBMS가 백킹 인덱스를 자동 생성하므로 애초에 별도 Index 객체로 만들지 않는다 —
+ *  이 판정은 "키에 속하지 않은 FK 컬럼" 이야기다.
+ *  새 DBMS 추가 시 이 분류를 반드시 결정한다(InnoDB 계열=자동 생성, 그 외 대부분=앱이 생성). */
+export function dbmsAutoIndexesFk(databaseType: string): boolean {
+  return templateIdForDatabase(databaseType) === 'mysql'
+}
+
 /** 물리 타입 표기를 공용 논리 코드로 되돌린 파싱 결과 — length는 CHAR·VARCHAR 계열,
  *  precision·scale은 DECIMAL·NUMERIC 계열에만 들어간다(나머지는 null) */
 export interface ParsedPhysicalType {

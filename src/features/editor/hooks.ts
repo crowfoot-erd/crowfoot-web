@@ -7,6 +7,7 @@ import {
   deployModel,
   fetchConnectionMigrationDdl,
   fetchModelDdl,
+  fetchShareDdl,
   fetchModelVersion,
   fetchVersionMigrationDdl,
   saveModelContent,
@@ -36,6 +37,18 @@ export function useModelDdl(workspaceId: string, modelId: string | null, enabled
     queryKey: ['workspaces', workspaceId, 'models', modelId, 'ddl'],
     queryFn: ({ signal }) => fetchModelDdl(workspaceId, modelId as string, signal),
     enabled: enabled && modelId !== null,
+    staleTime: 0,
+    gcTime: 30_000,
+    retry: false,
+  })
+}
+
+/** 공개 뷰어 DDL 생성(§1.10.8) — 공유 토큰이 자격. 다이얼로그가 열려 있을 때만 조회한다 */
+export function useShareDdl(token: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['shares', token, 'ddl'],
+    queryFn: ({ signal }) => fetchShareDdl(token, signal),
+    enabled: enabled && token.length > 0,
     staleTime: 0,
     gcTime: 30_000,
     retry: false,

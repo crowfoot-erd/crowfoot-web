@@ -27,6 +27,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -35,6 +36,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { TablePatch } from '@/features/editor/model/changes'
+import { splitLogicalName } from '@/features/editor/model/logical-name'
 import {
   TABLE_COLORS,
   TABLE_COLOR_HEX,
@@ -84,13 +86,16 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
     defaultValues: { physicalName: '', logicalName: '', description: '' },
   })
 
-  // 열릴 때마다 대상 테이블 값으로 초기화
+  // 열릴 때마다 대상 테이블 값으로 초기화 — 논리명 "-----" 구분자(05-editor/01-core.md §3.3)는
+  // 두 필드로 나눠 보여준다: 논리명 필드 = 앞부분, 설명 필드 = 뒷부분(없으면 빈 칸).
+  // 설명 필드는 이 구분자 설명부 소관이라 content의 comment는 여기서 다루지 않는다.
   useEffect(() => {
     if (open && table) {
+      const { name, description } = splitLogicalName(table.logicalName)
       form.reset({
         physicalName: table.physicalName,
-        logicalName: table.logicalName,
-        description: table.comment ?? '',
+        logicalName: name,
+        description: description ?? '',
       })
     }
   }, [open, table, form])
@@ -104,8 +109,8 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
     }
     onCommit(table.id, {
       physicalName: values.physicalName,
-      logicalName: values.logicalName,
-      comment: values.description === '' ? null : values.description,
+      // 저장은 한 문자열로 합친다 — 설명이 있으면 "논리명-----설명" 원문 형태로
+      logicalName: values.description === '' ? values.logicalName : `${values.logicalName}-----${values.description}`,
     })
     onOpenChange(false)
   })
@@ -146,6 +151,8 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
                   <FormControl>
                     <Input placeholder={t('model.editor.tableInfo.logicalNamePlaceholder')} {...field} />
                   </FormControl>
+                  {/* "-----" 구분자 관례 안내(05-editor/01-core.md §3.3) — 저장은 한 필드 원문 그대로 */}
+                  <FormDescription>{t('model.editor.tableInfo.logicalNameSeparatorHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

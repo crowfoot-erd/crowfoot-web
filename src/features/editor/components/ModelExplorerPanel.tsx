@@ -31,6 +31,7 @@ import {
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
 import { tablesOfArea } from '@/features/editor/model/areas'
+import { splitLogicalName } from '@/features/editor/model/logical-name'
 import { searchObjects, type ObjectHit } from '@/features/editor/model/object-search'
 import { useForeignLock } from '@/features/editor/collab-locks'
 import { useEditorStore } from '@/features/editor/store/editor-store'
@@ -321,7 +322,7 @@ function ExplorerBody({
     <aside
       data-testid="model-explorer"
       aria-label={t('model.editor.explorer.title')}
-      className="flex h-full w-64 shrink-0 flex-col border-r bg-background"
+      className="flex h-full w-72 shrink-0 flex-col border-r bg-background"
     >
       <div className="flex items-center gap-2 border-b px-2 py-1.5">
         <div className="relative min-w-0 flex-1">
@@ -600,7 +601,10 @@ function GroupFolder({
             }}
             aria-label={t('model.editor.area.edit')}
             title={t('model.editor.area.edit')}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+            className={cn(
+              'flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:text-foreground',
+              active ? 'text-foreground' : 'text-muted-foreground',
+            )}
           >
             <Pencil aria-hidden className="size-3" />
           </button>
@@ -615,7 +619,10 @@ function GroupFolder({
             }}
             aria-label={t('common.delete')}
             title={t('common.delete')}
-            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+            className={cn(
+              'flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:text-destructive',
+              active ? 'text-foreground' : 'text-muted-foreground',
+            )}
           >
             <Trash2 aria-hidden className="size-3" />
           </button>
@@ -757,8 +764,12 @@ function Names({
   nameDisplay: NameDisplayMode
   query: string
 }) {
+  /* 논리명 "-----" 구분자 분리 표기(05-editor/01-core.md §3.3) — 이름 목록에서는
+     논리명(앞부분)만 노출한다(2026-09-28 사용자 확정). 설명은 검색 매칭(원문 대상)과
+     정보 다이얼로그에서 다룬다 */
+  const { name } = splitLogicalName(logical)
   if (nameDisplay === 'logical') {
-    return <Highlight text={logical || physical} query={query} />
+    return <Highlight text={name || physical} query={query} />
   }
   if (nameDisplay === 'physical') {
     return <Highlight text={physical} query={query} />
@@ -766,11 +777,11 @@ function Names({
   return (
     <>
       <Highlight text={physical} query={query} />
-      {logical && logical !== physical ? (
+      {name && name !== physical ? (
         <>
           {' '}
           <span className="text-[10px] text-muted-foreground">
-            <Highlight text={logical} query={query} />
+            <Highlight text={name} query={query} />
           </span>
         </>
       ) : null}

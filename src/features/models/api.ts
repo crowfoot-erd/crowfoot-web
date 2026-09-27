@@ -2,7 +2,7 @@
  * ERD 문서 API (08-core/02-model.md) — 목록·상세·생성·데이터베이스 종류 코드.
  * content 저장은 에디터 단계(2.x)에서 추가한다.
  */
-import { apiDelete, apiGet, apiGetList, apiGetPage, apiPatch, apiPost } from '@/api/client'
+import { apiDelete, apiDeleteWithBody, apiGet, apiGetList, apiGetPage, apiPatch, apiPost, apiPut } from '@/api/client'
 import type {
   DatabaseType,
   ListResult,
@@ -11,6 +11,8 @@ import type {
   ModelShare,
   ModelVersionDetail,
   ModelVersionEntry,
+  MyShareComment,
+  MyShareReaction,
   OffsetPagingParams,
   PageResult,
   PublicShare,
@@ -147,57 +149,135 @@ export function fetchSharedGallery(signal?: AbortSignal) {
   return apiGetList<SharedGalleryItem>('/api/v1/core/shares', undefined, signal)
 }
 
-/* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7) ---------- */
+/* ---------- 공유 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7 — 선택 인증) ---------- */
 
-/** 피드백 초기화 — 반응 상태 + 댓글 목록 1회 fetch (인증 없이, 방문자 쿠키는 서버가 본다) */
-export function fetchShareFeedback(token: string, signal?: AbortSignal) {
-  return apiGet<ShareFeedback>(`/api/v1/core/shares/${token}/comments`, undefined, signal)
+/** 피드백 응답 정규화 — 서버는 Jackson NON_NULL 직렬화라 최상위 댓글에서 parentCommentId
+ *  필드를 아예 생략한다(런타임 undefined). 섹션은 `=== null` 엄격 비교로 원댓글을 가려내므로
+ *  경계에서 null을 채워 넣는다(토큰·멤버 두 경로가 같은 응답 형태를 쓴다).
+ *  apiGet은 204 대비 undefined를 돌려줄 수 있어 그대로 흘려보낸다 */
+function normalizeFeedback(feedback: ShareFeedback | undefined): ShareFeedback | undefined {
+  if (!feedback) return feedback
+  return {
+    ...feedback,
+    comments: feedback.comments.map((comment) => ({ ...comment, parentCommentId: comment.parentCommentId ?? null })),
+  }
 }
 
-/** 반응 토글 — 본문 없는 POST 한 번으로 추가/제거 (인증 없이, 첫 피드백에 방문자 쿠키 발급) */
+/** 피드백 초기화 — 반응 상태 + 댓글 목록 1회 fetch. 선택 인증 경로: Bearer 토큰이 있으면
+ *  게이트웨이가 검증해 회원 신원으로(reacted가 그 기준), 없으면 비회원으로 내려준다 */
+export function fetchShareFeedback(token: string, signal?: AbortSignal) {
+  return apiGet<ShareFeedback>(`/api/v1/core/shares/${token}/comments`, undefined, signal).then(normalizeFeedback)
+}
+
+/** 반응(좋아요) 토글 — 회원전용. 본문 없는 POST 한 번으로 추가/제거.
+ *  비회원(토큰 없음)은 게이트웨이가 401로 거부한다 — UI는 로그인 안내로 받는다 */
 export function toggleShareReaction(token: string) {
   return apiPost<ShareReaction>(`/api/v1/core/shares/${token}/reactions`, undefined)
 }
 
-/** 익명 댓글 등록 본문 — 별명 1~30자 · 내용 1~1000자 (서버 @Size와 같은 상한) */
+/** 댓글 등록 본문 — 회원은 content만(별명·비밀번호는 서버가 무시), 비회원은 별명·비밀번호 필수.
+ *  상한은 서버 @Size와 같다(별명 30 · 비밀번호 4~100 · 내용 1000) */
 export interface CreateShareCommentInput {
-  nickname: string
+  nickname?: string
+  password?: string
   content: string
 }
 
-/** 익명 댓글 등록 (인증 없이) */
+/** 댓글 등록 (선택 인증 — Bearer 유무로 회원/비회원 모드가 갈린다) */
 export function createShareComment(token: string, body: CreateShareCommentInput) {
   return apiPost<ShareComment>(`/api/v1/core/shares/${token}/comments`, body)
 }
 
-/** 익명 본인 댓글 삭제 — 방문자 쿠키가 서버에서 최종 판정(타인·오너 댓글은 403) */
-export function deleteShareComment(token: string, commentId: string) {
-  return apiDelete<void>(`/api/v1/core/shares/${token}/comments/${commentId}`)
+/** 댓글 수정 본문 — 비회원 댓글은 비밀번호, 회원 댓글은 계정 판정이라 password 없이 */
+export interface UpdateShareCommentInput {
+  content: string
+  password?: string
 }
 
-/** 오너 답글 등록 — 에디터 공유 다이얼로그(인증) 전용. parentCommentId 필수(1단계 제한) */
-export function createOwnerShareReply(
-  workspaceId: string,
-  modelId: string,
-  shareId: string,
-  body: { parentCommentId: string; content: string },
-) {
+/** 댓글 수정 (선택 인증) — 본문만 고치고 응답은 edited=true */
+export function updateShareComment(token: string, commentId: string, body: UpdateShareCommentInput) {
+  return apiPut<ShareComment>(`/api/v1/core/shares/${token}/comments/${commentId}`, body)
+}
+
+/** 댓글 삭제 (선택 인증) — 비회원 댓글은 비밀번호 몸통, 회원 댓글은 계정 판정.
+ *  비밀번호는 쿼리가 아니라 몸통으로 보낸다(액세스 로그 노출 방지) */
+export function deleteShareComment(token: string, commentId: string, password?: string) {
+  return apiDeleteWithBody<void>(
+    `/api/v1/core/shares/${token}/comments/${commentId}`,
+    password !== undefined ? { password } : undefined,
+  )
+}
+
+/* ---------- 멤버 문서 피드백 (08-core/02-model.md §1.10.6·§1.10.7 — 인증, 문서 열기 댓글 탭) ----------
+ * 공유 링크가 없어도 문서 스레드(좋아요·댓글)에 바로 접근하는 문서 단위 경로 —
+ * 토큰 경로와 같은 스레드를 본다(활성 링크가 있으면 같은 댓글 목록이 뜬다) */
+
+/** 피드백 초기화(멤버 경로) — 반응 상태 + 댓글 목록 1회 fetch. 멤버면 역할 무관 */
+export function fetchModelFeedback(workspaceId: string, modelId: string, signal?: AbortSignal) {
+  return apiGet<ShareFeedback>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/feedback`,
+    undefined,
+    signal,
+  ).then(normalizeFeedback)
+}
+
+/** 반응(좋아요) 토글(멤버 경로) — 역할 무관, 본문 없는 POST */
+export function toggleModelReaction(workspaceId: string, modelId: string) {
+  return apiPost<ShareReaction>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/reactions`,
+    undefined,
+  )
+}
+
+/** 멤버 댓글 등록 본문 — Commenter 이상. 답글은 문서 작성자(오너)만 parentCommentId를 실어 보낸다 */
+export interface CreateModelCommentInput {
+  content: string
+  parentCommentId?: string
+}
+
+/** 멤버 댓글 등록 — 회원 경로라 별명·비밀번호 없이 내용만 */
+export function createModelComment(workspaceId: string, modelId: string, body: CreateModelCommentInput) {
   return apiPost<ShareComment>(
-    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/shares/${shareId}/comments`,
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/comments`,
     body,
   )
 }
 
-/** 오너 댓글 관리 삭제 — 그 링크의 모든 댓글·답글(스팸 대응), 답글은 동반 삭제 */
-export function deleteOwnerShareComment(
+/** 멤버 댓글 수정 — 본인 댓글만(오너·관리자도 남의 글은 못 고친다) */
+export function updateModelComment(
   workspaceId: string,
   modelId: string,
-  shareId: string,
   commentId: string,
+  body: UpdateShareCommentInput,
 ) {
-  return apiDelete<void>(
-    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/shares/${shareId}/comments/${commentId}`,
+  return apiPut<ShareComment>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/comments/${commentId}`,
+    body,
   )
+}
+
+/** 멤버 댓글 삭제 — 본인·문서 작성자·관리자. 몸통 없이 경로만 */
+export function deleteModelComment(workspaceId: string, modelId: string, commentId: string) {
+  return apiDelete<void>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/comments/${commentId}`)
+}
+
+/* ---------- 내 공유 문서 피드백 역조회 (08-core/02-model.md §1.10.9 — 인증) ---------- */
+
+/** 내가 작성한 공유 문서 댓글 — 커뮤니티 "내 댓글" 메뉴. 최신 활동순 무페이징.
+ *  회원 댓글·오너 답글만 내려온다(비회원 댓글은 신원이 없다). 원댓글의 parentCommentId는
+ *  NON_NULL 직렬화로 생략돼 오니(normalizeFeedback과 같은 사유) 경계에서 null로 채운다 —
+ *  my-comments 화면의 "답글" 배지가 !== null 엄격 비교 때문 */
+export async function fetchMyShareComments(signal?: AbortSignal) {
+  const result = await apiGetList<MyShareComment>('/api/v1/core/accounts/me/share-comments', undefined, signal)
+  return {
+    ...result,
+    items: result.items.map((comment) => ({ ...comment, parentCommentId: comment.parentCommentId ?? null })),
+  }
+}
+
+/** 내가 좋아요한 공유 문서 — 커뮤니티 "좋아한 문서" 메뉴. 최근 반응순 무페이징 */
+export function fetchMyShareReactions(signal?: AbortSignal) {
+  return apiGetList<MyShareReaction>('/api/v1/core/accounts/me/share-reactions', undefined, signal)
 }
 
 /* ---------- 템플릿 (08-core/09-templates.md) ---------- */

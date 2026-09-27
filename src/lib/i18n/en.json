@@ -173,7 +173,7 @@
       "communityTitle": "Community",
       "communityReleaseNotes": "Release notes",
       "communityFeedback": "Feedback",
-      "adminSystemTerms": "System dictionary"
+      "communityMyComments": "My comments",      "communityMyLikes": "Liked documents",      "adminSystemTerms": "System dictionary"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
@@ -1062,6 +1062,7 @@
         "physicalName": "Physical name",
         "logicalName": "Logical name",
         "logicalNamePlaceholder": "e.g. Order",
+        "logicalNameSeparatorHint": "The description is stored with the logical name as name-----description",
         "comment": "Description",
         "commentPlaceholder": "Table description",
         "nameRequired": "Physical name is required",
@@ -1125,6 +1126,7 @@
         "physicalName": "Physical Name",
         "logicalName": "Logical Name",
         "logicalNamePlaceholder": "Logical name (optional)",
+        "logicalNameSeparatorHint": "The description is stored with the logical name as name-----description",
         "defaultValue": "Default Value",
         "defaultValuePlaceholder": "e.g. 0, NOW()",
         "comment": "Comment",
@@ -1289,39 +1291,51 @@
         "reversedPeriod": "End must be after start"
       },
       "feedback": {
-        "counters": "{{view}} views · {{reaction}} reactions · {{comment}} comments",
-        "manage": "Manage comments",
-        "reply": "Reply",
-        "replyPlaceholder": "Reply to this visitor (max 1000 chars)",
-        "replySubmit": "Post reply",
-        "emptyComments": "No comments yet",
-        "confirmDeleteTitle": "Delete comment",
-        "confirmDeleteDescription": "This deletes the comment and its replies — this cannot be undone",
-        "repliedToast": "Reply posted",
-        "deletedToast": "Comment deleted"
+        "counters": "{{view}} views · {{reaction}} likes · {{comment}} comments"
       }
     }
   },
   "shareViewer": {
     "badge": "Shared",
     "home": "Home",
-    "notFound": "Shared document not found."
+    "notFound": "Shared document not found.",
+    "tab": {
+      "label": "View switch",
+      "erd": "ERD",
+      "comments": "Comments"
+    }
   },
   "shareFeedback": {
     "title": "Document feedback",
-    "reactionLabel": "Leave a reaction",
+    "like": "Like",
+    "memberBadge": "Member",
+    "editedMark": "edited",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Password (4+ characters)",
+    "passwordHint": "The password is used to edit or delete this comment",
+    "memberFormHint": "Commenting as a member — just write your message",
+    "reactionMemberOnly": "Sign in to like this document",
+    "commentUpdatedToast": "Comment updated",
+    "forbidden": "You can only edit or delete your own comments",
+    "passwordPromptDescription": "Enter the password you set when writing this comment",
+    "editorEmptyTitle": "Feedback on your share link appears here",
+    "editorEmptyDescription": "Create a share link from the Share button above to receive likes and comments from visitors",
+    "reactionLabel": "Like",
+    "reactionButtonLabel": "Like",
+    "commentCountLabel": "{{count}} comments",
     "nicknameLabel": "Nickname",
     "nicknamePlaceholder": "Nickname (max 30 chars)",
     "commentPlaceholder": "Share your feedback on this document",
     "submit": "Post comment",
     "ownerBadge": "Author",
     "empty": "No comments yet — be the first",
-    "reactionFailed": "Could not save your reaction",
+    "reactionFailed": "Could not save your like",
     "commentCreatedToast": "Comment posted",
     "commentDeletedToast": "Comment deleted",
-    "deleteDenied": "You can only delete your own comments",
     "confirmDeleteTitle": "Delete comment",
-    "confirmDeleteDescription": "Deleting a comment also deletes its replies"
+    "confirmDeleteDescription": "Deleting a comment also deletes its replies",
+    "reply": "Reply",
+    "viewerReadonly": "Commenting requires the Commenter role or higher"
   },
   "releaseNoteViewer": {
     "badge": "Release note",
@@ -1526,8 +1540,9 @@
       "popular": "Most popular documents",
       "recent": "Recently shared documents",
       "popularBadge": "Popular",
+      "recentBadge": "Recent",
       "views": "{{count}} views",
-      "reactions": "{{count}} reactions"
+      "reactions": "{{count}} likes"
     },
     "releaseNotes": {
       "heading": "Latest releases"
@@ -1626,6 +1641,27 @@
       "deletedToast": "Comment deleted.",
       "confirmDeleteTitle": "Delete comment",
       "confirmDeleteDescription": "This comment will be deleted."
+    },
+    "myComments": {
+      "title": "My comments",
+      "empty": "No comments left on shared documents yet.",
+      "replyBadge": "Reply",
+      "table": {
+        "document": "ERD",
+        "content": "Comment",
+        "createdAt": "Posted"
+      }
+    },
+    "myLikes": {
+      "title": "Liked documents",
+      "empty": "No liked shared documents yet.",
+      "table": {
+        "document": "ERD",
+        "reactions": "Likes",
+        "comments": "Comments",
+        "views": "Views",
+        "likedAt": "Liked"
+      }
     },
     "recent": {
       "title": "Recent posts",

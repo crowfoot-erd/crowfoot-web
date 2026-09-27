@@ -18,6 +18,9 @@ export const VALIDATION_DEBOUNCE_MS = 500
 /** enabled = 패널·배지가 존재하는 화면(공개 뷰어·버전 뷰어는 검증 자체를 안 한다) */
 export function useValidationIssues(enabled: boolean, open: boolean): ValidationIssue[] {
   const model = useEditorStore((s) => s.present.model)
+  // 문서 대상 DBMS — FK_WITHOUT_INDEX 등 DBMS 조건부 규칙의 판정 재료(§6.6). 수화 시 고정이라
+  // 디바운스 대상이 아니라 현재 값을 그대로 쓴다
+  const databaseType = useEditorStore((s) => s.databaseType)
   const [settled, setSettled] = useState(model)
   const prevOpen = useRef(false)
 
@@ -34,5 +37,8 @@ export function useValidationIssues(enabled: boolean, open: boolean): Validation
     return () => clearTimeout(timer)
   }, [enabled, model, open])
 
-  return useMemo(() => (enabled ? validateModel(settled) : []), [enabled, settled])
+  return useMemo(
+    () => (enabled ? validateModel(settled, databaseType) : []),
+    [enabled, settled, databaseType],
+  )
 }
