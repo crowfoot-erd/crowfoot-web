@@ -573,21 +573,21 @@
     },
     "traffic": {
       "title": "流量统计",
-      "subtitle": "基于匿名访问信标与审计日志的站点使用情况 — 以KST一日为基准",
+      "subtitle": "基于页面访问信标与审计日志的站点使用情况 — 以KST一日为基准",
       "period": {
         "days": "{{days}}天"
       },
       "metric": {
         "pv": "页面浏览量",
-        "pvHint": "排除爬虫的页面浏览（同路径30秒去重）",
+        "pvHint": "真人打开的页面浏览量 — 排除爬虫和同一页面30秒内的重复浏览",
         "uuv": "独立访客",
-        "uuvHint": "以Cookie·每日IP哈希识别的独立访客（KST一日）",
+        "uuvHint": "KST一日基准的独立访客数 — 以Cookie识别，无Cookie时按IP",
         "sessions": "会话",
-        "sessionsHint": "30分钟无操作即断开的访问单位",
+        "sessionsHint": "30分钟无操作即重新开始的访问单位",
         "newVisitors": "新访客",
-        "newVisitorsHint": "此浏览器的首次访问（首次下发Cookie）",
+        "newVisitorsHint": "此浏览器首次来访的访客（首次下发Cookie）",
         "bot": "爬虫信标",
-        "botHint": "爬虫等自动访问 — 不计入任何指标"
+        "botHint": "爬虫·脚本等自动访问的次数 — 不计入页面浏览·访客·会话"
       },
       "delta": {
         "new": "新增"

@@ -573,21 +573,21 @@
     },
     "traffic": {
       "title": "Traffic analytics",
-      "subtitle": "Site usage from anonymous visit beacons and audit logs — KST daily basis",
+      "subtitle": "Site usage from page-visit beacons and audit logs — days are measured in KST",
       "period": {
         "days": "{{days}}d"
       },
       "metric": {
         "pv": "Page views",
-        "pvHint": "Page views excluding bots (same-path 30s dedup)",
+        "pvHint": "Page views by humans — bots and repeat views of the same page within 30s are excluded",
         "uuv": "Unique visitors",
-        "uuvHint": "Unique visitors by cookie / daily IP hash (KST day)",
+        "uuvHint": "Unique visitors per KST day — identified by cookie, or by IP when cookies are blocked",
         "sessions": "Sessions",
-        "sessionsHint": "Visits with 30-minute inactivity timeout",
+        "sessionsHint": "A visit unit that restarts after 30 minutes of inactivity",
         "newVisitors": "New visitors",
-        "newVisitorsHint": "First visit from this browser (new cookie)",
+        "newVisitorsHint": "First-time visitors on this browser (first-visit cookie issued)",
         "bot": "Bot beacons",
-        "botHint": "Crawler traffic — excluded from all metrics"
+        "botHint": "Automated hits from crawlers and scripts — excluded from PV, visitors and sessions"
       },
       "delta": {
         "new": "New"
