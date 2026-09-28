@@ -19,6 +19,7 @@ import { createArea, createColumn, createTable, type ErdChange } from '@/feature
 import type { DocumentDiffSummary } from '@/features/editor/model/doc-diff'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
+import { estimateTableHeight } from '@/features/editor/components/canvas/TableNode'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { modelKeys, useModel } from '@/features/models/hooks'
 import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
@@ -1700,6 +1701,60 @@ describe('EditorShell — 자동 배치(elkjs)', () => {
   it('읽기 전용이면 비활성화', async () => {
     await renderEditor(false)
     expect(screen.getByRole('button', { name: '자동 배치' })).toBeDisabled()
+  })
+
+  it('v1.25 — 캐럿에서 허브 중심 배치를 고르면 방사형으로 펼쳐지고 localStorage에 남는다', async () => {
+    window.localStorage.removeItem('crowfoot.editor.layout-mode')
+    await seedChain()
+
+    // radix 트리거는 pointerdown으로 열린다(보기 메뉴 선례)
+    const caret = screen.getByRole('button', { name: '배치 모드' })
+    fireEvent.pointerDown(caret, { button: 0 })
+    fireEvent.click(caret)
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: '허브 중심 배치' }))
+
+    // 체인 A→B→C — 허브 B를 중심으로 A·C가 좌우 같은 수평선(계층형이라면 상하로 벌어진다).
+    // 정렬 기준은 테이블 중심 — FK 컬럼이 늘어난 B·C는 행 수가 달라 좌상단 y가 절반 차이난다
+    const centerY = (id: 'A' | 'B' | 'C') => {
+      const state = useEditorStore.getState().present
+      const table = state.model.tables.find((t) => t.id === id)!
+      const layout = state.diagram.nodes[id]
+      return layout.y + estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length) / 2
+    }
+    await waitFor(() => {
+      expect(Math.abs(centerY('A') - centerY('B'))).toBeLessThanOrEqual(1)
+      expect(Math.abs(centerY('C') - centerY('B'))).toBeLessThanOrEqual(1)
+    })
+    const nodes = useEditorStore.getState().present.diagram.nodes
+    expect((nodes.A.x - nodes.B.x) * (nodes.C.x - nodes.B.x)).toBeLessThan(0)
+    expect(window.localStorage.getItem('crowfoot.editor.layout-mode')).toBe('hub')
+    // 본체 보이는 라벨이 모드명으로 바뀐다(aria-label '자동 배치'는 그대로)
+    expect(screen.getByRole('button', { name: '자동 배치' })).toHaveTextContent('허브 중심 배치')
+
+    window.localStorage.removeItem('crowfoot.editor.layout-mode')
+  })
+
+  it('v1.25 — 하이브리드 배치도 선택할 수 있다(링 각도 + 빈 공간 채우기)', async () => {
+    window.localStorage.removeItem('crowfoot.editor.layout-mode')
+    await seedChain()
+
+    const caret = screen.getByRole('button', { name: '배치 모드' })
+    fireEvent.pointerDown(caret, { button: 0 })
+    fireEvent.click(caret)
+    // 라디오에 3종이 다 있다 (선택과 함께 메뉴는 닫히므로 클릭 전에 단정)
+    expect(await screen.findByRole('menuitemradio', { name: '계층형 배치' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitemradio', { name: '허브 중심 배치' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitemradio', { name: '하이브리드 배치' }))
+
+    expect(window.localStorage.getItem('crowfoot.editor.layout-mode')).toBe('hybrid')
+    // 배치가 실제로 적용됐다 — 시드 좌표(A y=900)와 달라진다
+    await waitFor(() => {
+      const nodes = useEditorStore.getState().present.diagram.nodes
+      expect(nodes.A.y).not.toBe(900)
+    })
+    expect(screen.getByRole('button', { name: '자동 배치' })).toHaveTextContent('하이브리드 배치')
+
+    window.localStorage.removeItem('crowfoot.editor.layout-mode')
   })
 })
 

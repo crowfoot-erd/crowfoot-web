@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, Heart, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, Heart, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, Waypoints, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { downloadDataUrl, downloadTextFile, safeFilename } from '@/lib/download'
-import { layoutTablePositions, orderFkColumns, positionNotes, type TableSizes } from '@/features/editor/model/auto-layout'
+import { layoutHubPositions, layoutTablePositions, orderFkColumns, positionNotes, type AutoLayoutMode, type TableSizes } from '@/features/editor/model/auto-layout'
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
@@ -386,14 +386,40 @@ function ViewMenu({
 /** 자동 배치 — elkjs 계층형(부모가 위)으로 테이블 좌표만 재계산한다(05-editor/02-ui.md §5.1).
  *  관계선은 자체 라우터가 다시 그리고, FK 컬럼은 부모 위치 순으로 정렬해 선이 좌→우로 펴지게
  *  한다. 결과는 묶음 단일 커밋이라 Undo 1회로 되돌아간다. */
+/** 자동 배치 모드 기억 — 브라우저 단위(패널 열림 기억 crowfoot.editor.* 와 같은 관례).
+ *  기본은 계층형(종래 동작) — 모르는 값·저장 불가 환경은 계층형으로 귀결 */
+const LAYOUT_MODE_KEY = 'crowfoot.editor.layout-mode'
+
+const LAYOUT_MODES: AutoLayoutMode[] = ['layered', 'hub', 'hybrid']
+
+/** 모드별 보이는 라벨 키와 아이콘 — 계층형 Network, 허브 Waypoints, 하이브리드 Orbit */
+const LAYOUT_MODE_META: Record<AutoLayoutMode, { labelKey: string; Icon: typeof Network }> = {
+  layered: { labelKey: 'model.editor.toolbar.autoLayoutLayered', Icon: Network },
+  hub: { labelKey: 'model.editor.toolbar.autoLayoutHub', Icon: Waypoints },
+  hybrid: { labelKey: 'model.editor.toolbar.autoLayoutHybrid', Icon: Orbit },
+}
+
+function readLayoutMode(): AutoLayoutMode {
+  try {
+    const raw = localStorage.getItem(LAYOUT_MODE_KEY)
+    return LAYOUT_MODES.includes(raw as AutoLayoutMode) ? (raw as AutoLayoutMode) : 'layered'
+  } catch {
+    return 'layered'
+  }
+}
+
+/** 자동 배치 — 분할 버튼(v1.25 §1). 본체는 현재 모드로 바로 실행하고, 캐럿은 모드 라디오.
+ *  본체 aria-label은 종래 '자동 배치' 그대로(스크린리더 안내·기존 테스트 보존),
+ *  보이는 라벨은 선택된 모드명으로 바뀐다. 모드 선택은 localStorage 즉시 저장 + 즉시 실행. */
 function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
   const { t } = useTranslation()
   const { fitView, getNodes } = useReactFlow()
   const commitAll = useEditorStore((s) => s.commitAll)
   const tableCount = useEditorStore((s) => s.present.model.tables.length)
   const [running, setRunning] = useState(false)
+  const [mode, setMode] = useState<AutoLayoutMode>(readLayoutMode)
 
-  const run = async () => {
+  const run = async (nextMode: AutoLayoutMode) => {
     setRunning(true)
     try {
       // 클릭 시점 문서 스냅샷 — await 사이 편집이 끼어도 node/move는 존재 노드만 갱신해 안전하다
@@ -404,7 +430,12 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
         const m = node.measured
         if (m?.width !== undefined && m.height !== undefined) sizes[node.id] = { w: m.width, h: m.height }
       }
-      const positions = await layoutTablePositions(doc, { sizes })
+      // 허브·하이브리드는 순수 동기 계산(전략만 다름), 계층형은 elkjs 비동기 —
+      // 이후 파이프라인(FK 정렬·노트·fit)은 공통
+      const positions =
+        nextMode === 'layered'
+          ? await layoutTablePositions(doc, { sizes })
+          : layoutHubPositions(doc, { sizes, strategy: nextMode === 'hybrid' ? 'fill' : 'ring' })
       if (Object.keys(positions).length > 0) {
         // FK 컬럼을 부모 테이블 위치 순으로 정렬한다 — 선 부착 순서가 좌→우로 정렬돼 겹침이 줄고,
         // 노트는 테이블 위에 포개지지 않게 위치를 잡는다. 묶음 커밋이라 Undo 1회
@@ -423,20 +454,71 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
     }
   }
 
+  /** 라디오 선택 — 저장과 실행을 함께(모드를 바꾸는 것 자체가 결과 확인이 목적) */
+  const selectMode = (value: string) => {
+    const nextMode: AutoLayoutMode = LAYOUT_MODES.includes(value as AutoLayoutMode)
+      ? (value as AutoLayoutMode)
+      : 'layered'
+    setMode(nextMode)
+    try {
+      localStorage.setItem(LAYOUT_MODE_KEY, nextMode)
+    } catch {
+      // 사생활 보호 모드 등 저장 실패는 세션 상태로만 동작
+    }
+    void run(nextMode)
+  }
+
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-7 gap-1 px-2"
-      onClick={() => void run()}
-      disabled={!canEdit || tableCount < 2 || running}
-      aria-label={t('model.editor.toolbar.autoLayout')}
-      title={t('model.editor.toolbar.autoLayout')}
-    >
-      {t('model.editor.toolbar.autoLayout')}
-      {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <Network aria-hidden className="size-3.5" />}
-    </Button>
+    <div className="flex items-center">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 rounded-r-none px-2"
+        onClick={() => void run(mode)}
+        disabled={!canEdit || tableCount < 2 || running}
+        aria-label={t('model.editor.toolbar.autoLayout')}
+        title={t('model.editor.toolbar.autoLayout')}
+      >
+        {t(LAYOUT_MODE_META[mode].labelKey)}
+        {running ? (
+          <Loader2 aria-hidden className="size-3.5 animate-spin" />
+        ) : (
+          (() => {
+            const Icon = LAYOUT_MODE_META[mode].Icon
+            return <Icon aria-hidden className="size-3.5" />
+          })()
+        )}
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-6 rounded-l-none border-l border-border/60 px-0"
+            disabled={!canEdit || tableCount < 2 || running}
+            aria-label={t('model.editor.toolbar.autoLayoutMode')}
+            title={t('model.editor.toolbar.autoLayoutMode')}
+          >
+            <ChevronDown aria-hidden className="size-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-44">
+          <DropdownMenuRadioGroup value={mode} onValueChange={selectMode}>
+            {LAYOUT_MODES.map((candidate) => {
+              const { labelKey, Icon } = LAYOUT_MODE_META[candidate]
+              return (
+                <DropdownMenuRadioItem key={candidate} value={candidate}>
+                  <Icon aria-hidden className="size-3.5" />
+                  {t(labelKey)}
+                </DropdownMenuRadioItem>
+              )
+            })}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 

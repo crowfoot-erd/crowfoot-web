@@ -4,7 +4,7 @@ import { applyChange, createColumn, createTable } from '@/features/editor/model/
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { emptyContent } from '@/features/editor/model/content-io'
 import { buildRelationship } from '@/features/editor/model/relationship'
-import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutTablePositions, orderFkColumns, positionNotes, refineHubAlignment } from '@/features/editor/model/auto-layout'
+import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutHubPositions, layoutTablePositions, orderFkColumns, positionNotes, refineHubAlignment } from '@/features/editor/model/auto-layout'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
 import { relationshipSharedRoutes } from '@/features/editor/components/canvas/edge-route-table'
 
@@ -600,5 +600,450 @@ describe('auto-layout — orderFkColumns(FK 순서 = 부모 위치 정렬)', () 
     d = seedRelation(d, 'L', 'CHILD')
     expect(orderFkColumns(d, { L: { x: 0, y: 0 }, CHILD: { x: 500, y: 600 } })).toEqual([])
     expect(orderFkColumns(d, {})).toEqual([])
+  })
+})
+
+describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.25)', () => {
+  /** 문서에 그룹을 직접 심는다 — 체인지 경유 없이 배치 입력만 만든다 */
+  function seedAreas(d: EditorDocument, ...areas: Array<{ id: string; name: string; tableIds: string[] }>): EditorDocument {
+    return {
+      ...d,
+      diagram: {
+        ...d.diagram,
+        areas: areas.map((area) => ({ ...area, description: '', color: 'default' })),
+      },
+    }
+  }
+
+  const center = (box: { x: number; y: number; w: number; h: number }) => ({
+    cx: box.x + box.w / 2,
+    cy: box.y + box.h / 2,
+  })
+  const centerById = (d: EditorDocument, positions: Record<string, { x: number; y: number }>) =>
+    Object.fromEntries(boxesOf(d, positions).map((box) => [box.id, center(box)]))
+  /** 두 AABB의 최소 간격(대각이면 직선 거리) — 좌표는 int 반올림이라 허용치 2 */
+  const gapOf = (p: { x: number; y: number; w: number; h: number }, q: { x: number; y: number; w: number; h: number }) => {
+    const dx = Math.max(p.x - (q.x + q.w), q.x - (p.x + p.w), 0)
+    const dy = Math.max(p.y - (q.y + q.h), q.y - (p.y + p.h), 0)
+    return dx === 0 ? dy : dy === 0 ? dx : Math.hypot(dx, dy)
+  }
+  const bboxOf = (d: EditorDocument, positions: Record<string, { x: number; y: number }>, ids: string[]) => {
+    const boxes = boxesOf(d, positions).filter((box) => ids.includes(box.id))
+    return {
+      left: Math.min(...boxes.map((b) => b.x)),
+      top: Math.min(...boxes.map((b) => b.y)),
+      right: Math.max(...boxes.map((b) => b.x + b.w)),
+      bottom: Math.max(...boxes.map((b) => b.y + b.h)),
+    }
+  }
+
+  it('테이블이 2개 미만이면 빈 객체를 돌려준다 (계층형 가드와 동일)', () => {
+    expect(layoutHubPositions(doc())).toEqual({})
+    let d = doc()
+    d = seedTable(d, 'A')
+    expect(layoutHubPositions(d)).toEqual({})
+  })
+
+  it('스타 — 허브가 중앙, 리프는 등거리 사분면(우상·우하·좌하·좌상)에 펼쳐진다', () => {
+    let d = doc()
+    d = seedTable(d, 'P')
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedTable(d, id)
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedRelation(d, 'P', id)
+
+    const positions = layoutHubPositions(d)
+    const c = centerById(d, positions)
+    const distances = ['L1', 'L2', 'L3', 'L4'].map(
+      (id) => Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy),
+    )
+    for (const distance of distances) {
+      expect(Math.abs(distance - distances[0])).toBeLessThanOrEqual(1.5)
+    }
+    // 시작각 12시·리프 균등 분할의 이등분선 — L1 우상(dx>0, dy<0), L2 우하, L3 좌하, L4 좌상
+    const rel = (id: string) => ({ dx: c[id].cx - c.P.cx, dy: c[id].cy - c.P.cy })
+    expect(rel('L1').dx).toBeGreaterThan(0)
+    expect(rel('L1').dy).toBeLessThan(0)
+    expect(rel('L2').dx).toBeGreaterThan(0)
+    expect(rel('L2').dy).toBeGreaterThan(0)
+    expect(rel('L3').dx).toBeLessThan(0)
+    expect(rel('L3').dy).toBeGreaterThan(0)
+    expect(rel('L4').dx).toBeLessThan(0)
+    expect(rel('L4').dy).toBeLessThan(0)
+  })
+
+  it('추정 크기 기준 어떤 두 테이블도 겹치지 않는다 (스타 + 체인 꼬리 + 다양한 폭)', () => {
+    let d = doc()
+    d = seedTable(d, 'P', 10)
+    d = seedTable(d, 'L1', 5)
+    d = seedTable(d, 'L2', 14)
+    d = seedTable(d, 'L3', 7)
+    d = seedTable(d, 'C1', 12)
+    d = seedTable(d, 'C2', 4)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    d = seedRelation(d, 'P', 'L3')
+    d = seedRelation(d, 'L1', 'C1')
+    d = seedRelation(d, 'C1', 'C2')
+
+    const boxes = boxesOf(d, layoutHubPositions(d))
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const [p, q] = [boxes[i], boxes[j]]
+        const overlap = p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h
+        expect(overlap, `${p.id}와 ${q.id}가 겹침`).toBe(false)
+      }
+    }
+  })
+
+  it('단일 성분 문서의 모든 쌍 최소 간격 ≥ nodeNode (반올림 허용치 2)', () => {
+    let d = doc()
+    d = seedTable(d, 'P', 10)
+    d = seedTable(d, 'L1', 5)
+    d = seedTable(d, 'L2', 14)
+    d = seedTable(d, 'L3', 7)
+    d = seedTable(d, 'C1', 12)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    d = seedRelation(d, 'P', 'L3')
+    d = seedRelation(d, 'L2', 'C1')
+
+    const boxes = boxesOf(d, layoutHubPositions(d))
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const gap = gapOf(boxes[i], boxes[j])
+        expect(gap, `${boxes[i].id}↔${boxes[j].id} 간격 ${Math.round(gap)}`).toBeGreaterThanOrEqual(
+          DEFAULT_LAYOUT_SPACING.nodeNode - 2,
+        )
+      }
+    }
+  })
+
+  it('결정론 — 같은 문서를 두 번 배치하면 동일한 결과', () => {
+    let d = doc()
+    for (const id of ['P', 'L1', 'L2', 'C1', 'C2']) d = seedTable(d, id, 6)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    d = seedRelation(d, 'L1', 'C1')
+    d = seedRelation(d, 'C1', 'C2')
+    expect(layoutHubPositions(d)).toEqual(layoutHubPositions(d))
+  })
+
+  it('결정론 — 관계 생성 순서는 결과에 무영향 (인접은 Set, 방문은 문서 순)', () => {
+    const build = (order: Array<[string, string]>) => {
+      let d = doc()
+      for (const id of ['P', 'L1', 'L2', 'C1']) d = seedTable(d, id, 6)
+      for (const [parent, child] of order) d = seedRelation(d, parent, child)
+      return d
+    }
+    const forward = build([
+      ['P', 'L1'],
+      ['P', 'L2'],
+      ['L1', 'C1'],
+    ])
+    const reversed = build([
+      ['L1', 'C1'],
+      ['P', 'L2'],
+      ['P', 'L1'],
+    ])
+    expect(layoutHubPositions(forward)).toEqual(layoutHubPositions(reversed))
+  })
+
+  it('체인(모든 degree ≤ 1) — 가운데 테이블이 허브, 일직선으로 뻗는다', () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'B', 'C')
+    d = seedRelation(d, 'C', 'D')
+
+    const c = centerById(d, layoutHubPositions(d))
+    // 허브 B의 이등분선(6시 방향)에서 단일 자식이 wedge를 승계 — 4개 전부 같은 수평선
+    const ys = [c.A.cy, c.B.cy, c.C.cy, c.D.cy]
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1)
+    expect(c.D.cx).toBeLessThan(c.C.cx)
+    expect(c.C.cx).toBeLessThan(c.B.cx)
+    expect(c.B.cx).toBeLessThan(c.A.cx)
+    expect(Math.abs(c.C.cx - c.B.cx)).toBeLessThan(Math.abs(c.D.cx - c.B.cx))
+  })
+
+  it('성분 분리 — 부성분은 메인 아래(component 간격), 고립 테이블은 우측 열', () => {
+    let d = doc()
+    d = seedTable(d, 'P', 6)
+    for (const id of ['L1', 'L2']) d = seedTable(d, id, 4)
+    d = seedTable(d, 'X', 4)
+    d = seedTable(d, 'Y', 4)
+    d = seedTable(d, 'ISLAND', 4)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    d = seedRelation(d, 'X', 'Y')
+
+    const positions = layoutHubPositions(d)
+    expect(Object.keys(positions).sort()).toEqual(['ISLAND', 'L1', 'L2', 'P', 'X', 'Y'])
+    const main = bboxOf(d, positions, ['P', 'L1', 'L2'])
+    const pair = bboxOf(d, positions, ['X', 'Y'])
+    expect(pair.top).toBeGreaterThanOrEqual(main.bottom + DEFAULT_LAYOUT_SPACING.component - 2)
+    expect(positions.ISLAND.x).toBeGreaterThanOrEqual(main.right + DEFAULT_LAYOUT_SPACING.component - 2)
+  })
+
+  it('그룹 — 경계 관계로 이어진 두 그룹은 각자 응집된 덩어리로 분리 배치된다', () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id, 5)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'C', 'D')
+    d = seedRelation(d, 'B', 'C') // 그룹 경계
+    d = seedAreas(
+      d,
+      { id: 'G1', name: '회원', tableIds: ['A', 'B'] },
+      { id: 'G2', name: '주문', tableIds: ['C', 'D'] },
+    )
+
+    const positions = layoutHubPositions(d)
+    expect(Object.keys(positions).sort()).toEqual(['A', 'B', 'C', 'D'])
+    const g1 = bboxOf(d, positions, ['A', 'B'])
+    const g2 = bboxOf(d, positions, ['C', 'D'])
+    const separated = g1.right <= g2.left || g2.right <= g1.left || g1.bottom <= g2.top || g2.bottom <= g1.top
+    expect(separated).toBe(true)
+    // 그룹 복도(GROUP_PADDING×2)가 있어 멤버 간 최소 간격은 nodeNode보다 훨씬 크다
+    const boxes = boxesOf(d, positions)
+    const a = boxes.find((b) => b.id === 'A')!
+    const c = boxes.find((b) => b.id === 'C')!
+    expect(gapOf(a, c)).toBeGreaterThanOrEqual(DEFAULT_LAYOUT_SPACING.nodeNode)
+  })
+
+  it('내부 관계만 있는 그룹은 자체 허브 덩어리로 — 느슨한 쌍과 component 간격 분리', () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id, 5)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'C', 'D')
+    d = seedAreas(d, { id: 'G1', name: '회원', tableIds: ['A', 'B'] })
+
+    const positions = layoutHubPositions(d)
+    expect(Object.keys(positions).sort()).toEqual(['A', 'B', 'C', 'D'])
+    const group = bboxOf(d, positions, ['A', 'B'])
+    const pair = bboxOf(d, positions, ['C', 'D'])
+    const separated = group.right <= pair.left || pair.right <= group.left || group.bottom <= pair.top || pair.bottom <= group.top
+    expect(separated).toBe(true)
+    const vertical = pair.top - group.bottom
+    const horizontal = Math.max(group.left - pair.right, pair.left - group.right)
+    expect(Math.max(vertical, horizontal)).toBeGreaterThanOrEqual(DEFAULT_LAYOUT_SPACING.component - 2)
+  })
+
+  it('고립 테이블(관계 0)은 우측 열에 문서 순서로 쌓인다', () => {
+    let d = doc()
+    d = seedTable(d, 'A', 5)
+    d = seedTable(d, 'B', 5)
+    for (const id of ['I1', 'I2', 'I3']) d = seedTable(d, id, 4)
+    d = seedRelation(d, 'A', 'B')
+
+    const positions = layoutHubPositions(d)
+    expect(Math.abs(positions.I1.x - positions.I2.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(positions.I2.x - positions.I3.x)).toBeLessThanOrEqual(1)
+    expect(positions.I2.y).toBeGreaterThan(positions.I1.y)
+    expect(positions.I3.y).toBeGreaterThan(positions.I2.y)
+    const boxes = boxesOf(d, positions).filter((b) => b.id.startsWith('I'))
+    expect(gapOf(boxes[0], boxes[1])).toBeGreaterThanOrEqual(DEFAULT_LAYOUT_SPACING.nodeNode - 2)
+    expect(gapOf(boxes[1], boxes[2])).toBeGreaterThanOrEqual(DEFAULT_LAYOUT_SPACING.nodeNode - 2)
+  })
+
+  it('자기 참조 관계는 배치에 무영향 — 관계 배열에서만 빠진 문서와 동일 결과', () => {
+    let d = doc()
+    d = seedTable(d, 'P', 4)
+    for (const id of ['L1', 'L2']) d = seedTable(d, id, 4)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    const loop = d.model.relationships.length
+    d = seedRelation(d, 'P', 'P') // FK 컬럼·인덱스까지 그대로 남긴 채 관계만 비교한다
+
+    const withoutLoop = {
+      ...d,
+      model: { ...d.model, relationships: d.model.relationships.filter((_, i) => i !== loop) },
+    }
+    expect(layoutHubPositions(d)).toEqual(layoutHubPositions(withoutLoop))
+  })
+
+  it('측정 크기(sizes) 오버라이드가 링 반지름에 반영된다 — 허브가 크면 리프가 더 멀어진다', () => {
+    let d = doc()
+    d = seedTable(d, 'P', 4)
+    for (const id of ['L1', 'L2', 'L3']) d = seedTable(d, id, 4)
+    for (const id of ['L1', 'L2', 'L3']) d = seedRelation(d, 'P', id)
+
+    const distanceOf = (positions: Record<string, { x: number; y: number }>) => {
+      const c = centerById(d, positions)
+      return Math.hypot(c.L1.cx - c.P.cx, c.L1.cy - c.P.cy)
+    }
+    const enlarged = layoutHubPositions(d, { sizes: { P: { w: 600, h: 400 } } })
+    expect(distanceOf(enlarged)).toBeGreaterThan(distanceOf(layoutHubPositions(d)))
+  })
+
+  it('모든 좌표는 정수이고 전체 AABB의 min은 padding(계층형 관례)이다', () => {
+    let d = doc()
+    for (const id of ['P', 'L1', 'L2', 'C1', 'ISLAND']) d = seedTable(d, id, 5)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    d = seedRelation(d, 'L1', 'C1')
+
+    const positions = layoutHubPositions(d)
+    for (const pos of Object.values(positions)) {
+      expect(Number.isInteger(pos.x)).toBe(true)
+      expect(Number.isInteger(pos.y)).toBe(true)
+    }
+    const minX = Math.min(...Object.values(positions).map((pos) => pos.x))
+    const minY = Math.min(...Object.values(positions).map((pos) => pos.y))
+    expect(minX).toBe(DEFAULT_LAYOUT_SPACING.padding)
+    expect(minY).toBe(DEFAULT_LAYOUT_SPACING.padding)
+  })
+})
+
+describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)', () => {
+  const fill = (d: EditorDocument) => layoutHubPositions(d, { strategy: 'fill' })
+
+  /** 두 AABB의 최소 간격(대각이면 직선 거리) — fill은 SLACK(+1) 덕에 nodeNode 그대로 보증 */
+  const gapOf = (p: { x: number; y: number; w: number; h: number }, q: { x: number; y: number; w: number; h: number }) => {
+    const dx = Math.max(p.x - (q.x + q.w), q.x - (p.x + p.w), 0)
+    const dy = Math.max(p.y - (q.y + q.h), q.y - (p.y + p.h), 0)
+    return dx === 0 ? dy : dy === 0 ? dx : Math.hypot(dx, dy)
+  }
+  const centerById = (d: EditorDocument, positions: Record<string, { x: number; y: number }>) =>
+    Object.fromEntries(
+      boxesOf(d, positions).map((box) => [box.id, { cx: box.x + box.w / 2, cy: box.y + box.h / 2 }]),
+    )
+
+  it('가드·결정론·정수 좌표 — 링 전략과 같은 계약을 지킨다', () => {
+    expect(fill(doc())).toEqual({})
+    let d = doc()
+    d = seedTable(d, 'A')
+    expect(fill(d)).toEqual({})
+
+    let mixed = doc()
+    for (const id of ['P', 'L1', 'L2', 'C1', 'C2', 'ISLAND']) mixed = seedTable(mixed, id, 5)
+    mixed = seedRelation(mixed, 'P', 'L1')
+    mixed = seedRelation(mixed, 'P', 'L2')
+    mixed = seedRelation(mixed, 'L1', 'C1')
+    mixed = seedRelation(mixed, 'C1', 'C2')
+
+    const first = fill(mixed)
+    expect(fill(mixed)).toEqual(first)
+    expect(Object.keys(first).sort()).toEqual(['C1', 'C2', 'ISLAND', 'L1', 'L2', 'P'])
+    for (const pos of Object.values(first)) {
+      expect(Number.isInteger(pos.x)).toBe(true)
+      expect(Number.isInteger(pos.y)).toBe(true)
+    }
+    const minX = Math.min(...Object.values(first).map((pos) => pos.x))
+    const minY = Math.min(...Object.values(first).map((pos) => pos.y))
+    expect(minX).toBe(DEFAULT_LAYOUT_SPACING.padding)
+    expect(minY).toBe(DEFAULT_LAYOUT_SPACING.padding)
+  })
+
+  it('스타 — 각도는 부채꼴 그대로라 허브 중심 등거리 사분면이 유지된다', () => {
+    let d = doc()
+    d = seedTable(d, 'P')
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedTable(d, id)
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedRelation(d, 'P', id)
+
+    const c = centerById(d, fill(d))
+    const distances = ['L1', 'L2', 'L3', 'L4'].map((id) => Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy))
+    for (const distance of distances) expect(Math.abs(distance - distances[0])).toBeLessThanOrEqual(1.5)
+    expect(c.L1.cx - c.P.cx).toBeGreaterThan(0)
+    expect(c.L1.cy - c.P.cy).toBeLessThan(0)
+    expect(c.L3.cx - c.P.cx).toBeLessThan(0)
+    expect(c.L3.cy - c.P.cy).toBeGreaterThan(0)
+  })
+
+  it('무겹침 — 크기가 제각각인 복합 문서에서 어떤 두 테이블도 겹치지 않고 간격 ≥ nodeNode', () => {
+    let d = doc()
+    d = seedTable(d, 'P', 12)
+    d = seedTable(d, 'L1', 6)
+    d = seedTable(d, 'L2', 15)
+    d = seedTable(d, 'L3', 8)
+    d = seedTable(d, 'C1', 13)
+    d = seedTable(d, 'C2', 5)
+    d = seedTable(d, 'G1', 9)
+    d = seedTable(d, 'G2', 4)
+    d = seedRelation(d, 'P', 'L1')
+    d = seedRelation(d, 'P', 'L2')
+    d = seedRelation(d, 'P', 'L3')
+    d = seedRelation(d, 'L1', 'C1')
+    d = seedRelation(d, 'L1', 'C2')
+    d = seedRelation(d, 'L2', 'G1')
+    d = seedRelation(d, 'G1', 'G2')
+
+    const boxes = boxesOf(d, fill(d))
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const [p, q] = [boxes[i], boxes[j]]
+        const overlap = p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h
+        expect(overlap, `${p.id}와 ${q.id}가 겹침`).toBe(false)
+        expect(gapOf(p, q), `${p.id}↔${q.id} 간격`).toBeGreaterThanOrEqual(DEFAULT_LAYOUT_SPACING.nodeNode)
+      }
+    }
+  })
+
+  it('압축 — 링이 큰 테이블 때문에 바깥으로 늘어날 때 첫 빈틈을 채워 더 안쪽에 들어간다', () => {
+    // 스타 + 한쪽 가지에만 긴 체인 — ring은 링별 최대 지름이 반지름을 끌어올리지만
+    // fill은 자기 레이의 장애물만 피하므로 꼬리가 훨씬 안쪽에 멈춘다
+    let d = doc()
+    d = seedTable(d, 'P', 4)
+    d = seedTable(d, 'BIG', 40) // 링1에 거대 테이블 — ring 반지름을 크게 끌어올린다
+    d = seedTable(d, 'S1', 3)
+    d = seedTable(d, 'S2', 3)
+    d = seedTable(d, 'T1', 3)
+    d = seedTable(d, 'T2', 3)
+    d = seedRelation(d, 'P', 'BIG')
+    d = seedRelation(d, 'P', 'S1')
+    d = seedRelation(d, 'P', 'S2')
+    d = seedRelation(d, 'S1', 'T1')
+    d = seedRelation(d, 'T1', 'T2')
+
+    const ringPos = layoutHubPositions(d)
+    const fillPos = fill(d)
+    const ringC = centerById(d, ringPos)
+    const fillC = centerById(d, fillPos)
+    const dist = (c: Record<string, { cx: number; cy: number }>, id: string) =>
+      Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy)
+    // 체인 꼬리(T2)는 ring보다 허브에 훨씬 가깝다 — 웨지 안쪽 빈틈을 채운 증거
+    expect(dist(fillC, 'T2')).toBeLessThan(dist(ringC, 'T2'))
+    // 전체 AABB 면적도 줄어든다(분산·압축)
+    const area = (positions: Record<string, { x: number; y: number }>) => {
+      const boxes = boxesOf(d, positions)
+      const w = Math.max(...boxes.map((b) => b.x + b.w)) - Math.min(...boxes.map((b) => b.x))
+      const h = Math.max(...boxes.map((b) => b.y + b.h)) - Math.min(...boxes.map((b) => b.y))
+      return w * h
+    }
+    expect(area(fillPos)).toBeLessThan(area(ringPos))
+  })
+
+  it('관계 생성 순서 무영향·그룹 슈퍼노드 강체 — 링 전략 계약 그대로', () => {
+    const build = (order: Array<[string, string]>) => {
+      let d = doc()
+      for (const id of ['A', 'B', 'C', 'D', 'X', 'Y']) d = seedTable(d, id, 5)
+      for (const [parent, child] of order) d = seedRelation(d, parent, child)
+      return {
+        ...d,
+        diagram: {
+          ...d.diagram,
+          areas: [
+            { id: 'G1', name: '회원', description: '', color: 'default' as const, tableIds: ['A', 'B'] },
+          ],
+        },
+      }
+    }
+    const forward = build([
+      ['A', 'B'],
+      ['B', 'C'],
+      ['C', 'D'],
+      ['X', 'Y'],
+    ])
+    const reversed = build([
+      ['X', 'Y'],
+      ['C', 'D'],
+      ['B', 'C'],
+      ['A', 'B'],
+    ])
+    expect(fill(forward)).toEqual(fill(reversed))
+    // 그룹 멤버는 GROUP_PADDING 복도 안에 있다
+    const positions = fill(forward)
+    const boxes = boxesOf(forward, positions)
+    const a = boxes.find((b) => b.id === 'A')!
+    const b = boxes.find((b) => b.id === 'B')!
+    const innerGap = gapOf(a, b)
+    expect(innerGap).toBeGreaterThan(0)
   })
 })
