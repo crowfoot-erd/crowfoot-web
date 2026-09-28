@@ -16,8 +16,14 @@
  *   가로채(onKeyDownIntercept) 이중 커밋 없이 적용한다(commitExternal — 초안 커밋 스킵).
  * - 읽기 전용·공개 뷰어(workspaceId null)·사전 조회 실패에는 목록을 띄우지 않는다
  *   (입력 자체는 그대로 동작).
+ * - 목록은 body 포털로 테이블 위에 떠 있다(2026-09-28 #283, 사용자 보고 — 컬럼 행 안쪽에
+ *   absolute로 떴더니 테이블의 스크롤 컨테이너 높이에 포함돼 스크롤이 생기고 잘렸다):
+ *   입력 앵커를 rAF로 추적해 fixed로 따라다닌다(캔버스 팬·줌·테이블 스크롤 모두 추종),
+ *   아래 공간이 부족하면 위로 플립한다. 포털이라 nowheel/nodrag가 필요 없고 RF 줌 이벤트도
+ *   타지 않는다(휠 체이닝은 overscroll-contain으로 막는다).
  */
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
@@ -113,8 +119,83 @@ export function ColumnTermInput({
   // 목록이 바뀌면(필터·사전 갱신) 활성 항목을 범위 안으로 당긴다
   const active = Math.min(activeIndex, Math.max(items.length - 1, 0))
 
+  /** 제안 앵커(입력 칸)·포털 목록 — rAF 루프에서 위치를 직접 쓴다(상태 아니니 리렌더 없음) */
+  const anchorRef = useRef<HTMLDivElement | null>(null)
+  const listRef = useRef<HTMLUListElement | null>(null)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const LIST_WIDTH = 288 // w-72
+    const LIST_MAX_HEIGHT = 224 // max-h-56
+    let raf = 0
+    const place = () => {
+      const anchor = anchorRef.current
+      const list = listRef.current
+      if (anchor && list) {
+        const rect = anchor.getBoundingClientRect()
+        // 왼쪽은 앵커에 맞추되 오른쪽 화면을 넘지 않게 클램프
+        list.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - LIST_WIDTH - 8))}px`
+        const roomBelow = window.innerHeight - rect.bottom - 8
+        if (roomBelow >= 160) {
+          list.style.top = `${rect.bottom + 2}px`
+          list.style.transform = ''
+          list.style.maxHeight = `${Math.min(LIST_MAX_HEIGHT, roomBelow)}px`
+        } else {
+          // 아래 공간 부족 — 앵커 위로 플립(translateY(-100%)로 하단을 앵커 상단에 댄다)
+          list.style.top = `${rect.top - 2}px`
+          list.style.transform = 'translateY(-100%)'
+          list.style.maxHeight = `${Math.min(LIST_MAX_HEIGHT, rect.top - 8)}px`
+        }
+      }
+      raf = requestAnimationFrame(place)
+    }
+    place() // layout 페이즈에 첫 배치 — fixed 기본 위치가 한 프레임 보이는 플래시를 막는다
+    return () => cancelAnimationFrame(raf)
+  }, [open])
+
+  // 목록은 앵커 안(스크롤 컨테이너)이 아니라 body 위에 떠야 테이블 스크롤을 만들지 않는다
+  const list = open ? (
+    <ul
+      ref={listRef}
+      role="listbox"
+      aria-label={t('model.editor.table.termSuggestLabel')}
+      className="fixed z-50 w-72 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-xs shadow-md"
+    >
+      {items.map((row, index) => {
+        const type = row.types?.[databaseType]
+        return (
+          <li
+            key={row.termId}
+            role="option"
+            aria-selected={index === active}
+            // mousedown 기본(blur)을 막아 클릭 적용이 blur-커밋보다 먼저 확정되게 한다
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => apply(row)}
+            className={cn(
+              'flex cursor-pointer items-center gap-1.5 rounded-sm px-1.5 py-1',
+              index === active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
+            )}
+          >
+            <code className="min-w-0 shrink-0 truncate font-mono text-muted-foreground">
+              {row.term}
+            </code>
+            <span aria-hidden className="shrink-0 text-muted-foreground">
+              →
+            </span>
+            <span className="min-w-0 flex-1 truncate">{row.label}</span>
+            {type ? (
+              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                {type}
+              </span>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  ) : null
+
   return (
-    <div className="relative flex min-w-0 flex-1 items-center">
+    <div ref={anchorRef} className="flex min-w-0 flex-1 items-center">
       <CommitInput
         ref={inputRef}
         className={cn('min-w-0 flex-1', className)}
@@ -137,44 +218,7 @@ export function ColumnTermInput({
         }}
         onKeyDownIntercept={interceptKeyDown}
       />
-      {open ? (
-        <ul
-          role="listbox"
-          aria-label={t('model.editor.table.termSuggestLabel')}
-          className="nodrag nowheel absolute left-0 top-full z-20 mt-0.5 max-h-56 w-72 overflow-y-auto rounded-md border bg-popover p-1 text-xs shadow-md"
-        >
-          {items.map((row, index) => {
-            const type = row.types?.[databaseType]
-            return (
-              <li
-                key={row.termId}
-                role="option"
-                aria-selected={index === active}
-                // mousedown 기본(blur)을 막아 클릭 적용이 blur-커밋보다 먼저 확정되게 한다
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => apply(row)}
-                className={cn(
-                  'flex cursor-pointer items-center gap-1.5 rounded-sm px-1.5 py-1',
-                  index === active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
-                )}
-              >
-                <code className="min-w-0 shrink-0 truncate font-mono text-muted-foreground">
-                  {row.term}
-                </code>
-                <span aria-hidden className="shrink-0 text-muted-foreground">
-                  →
-                </span>
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
-                {type ? (
-                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                    {type}
-                  </span>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
+      {list ? createPortal(list, document.body) : null}
     </div>
   )
 }
