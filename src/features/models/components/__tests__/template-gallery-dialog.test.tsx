@@ -34,9 +34,9 @@ describe('템플릿 갤러리 다이얼로그', () => {
     // then: fixture 템플릿 2건 — 카드 요소 일람
     expect(await screen.findByText('쇼핑몰 커머스 ERD')).toBeVisible()
     expect(screen.getByText('테이블 20개 · 관계 24개')).toBeVisible()
-    // 현지화 문서(86 zh)는 카드 표기가 한국어로 내려온다 — 원문 언어는 보이지 않는다
-    expect(screen.getByText('도서관 대출 ERD')).toBeVisible()
-    expect(screen.queryByText('图书馆借阅 ERD')).not.toBeInTheDocument()
+    // 현지화 문서(86 zh)는 문서 메타 원문 그대로 — 사이트 언어와 무관하게 작성 언어로 보인다
+    expect(screen.getByText('图书馆借阅 ERD')).toBeVisible()
+    expect(screen.queryByText('도서관 대출 ERD')).not.toBeInTheDocument()
     expect(screen.getByText('테이블 12개 · 관계 9개')).toBeVisible()
   })
 
@@ -76,12 +76,12 @@ describe('템플릿 갤러리 다이얼로그', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     const user = userEvent.setup()
     renderGalleryDialog()
-    await screen.findByText('도서관 대출 ERD')
+    await screen.findByText('图书馆借阅 ERD')
 
-    // when: 현지화 템플릿(zh) 선택 — 프리필도 카드 그대로 한국어, 이후 이름을 고쳐 복제
-    await user.click(screen.getByText('도서관 대출 ERD'))
+    // when: 현지화 템플릿(zh) 선택 — 프리필도 카드 그대로 원문(zh), 이후 이름을 고쳐 복제
+    await user.click(screen.getByText('图书馆借阅 ERD'))
     const nameInput = screen.getByLabelText('문서 이름')
-    expect(nameInput).toHaveValue('도서관 대출 ERD')
+    expect(nameInput).toHaveValue('图书馆借阅 ERD')
     await user.clear(nameInput)
     await user.type(nameInput, '주문 서비스 ERD')
     await user.click(screen.getByRole('button', { name: '이 템플릿으로 시작' }))
