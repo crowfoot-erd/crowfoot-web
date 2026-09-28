@@ -173,7 +173,7 @@
       "communityTitle": "커뮤니티",
       "communityReleaseNotes": "릴리스 노트",
       "communityFeedback": "제안 및 신고",
-      "communityMyComments": "내가 작성한 댓글",      "communityMyLikes": "좋아요 문서",      "adminSystemTerms": "시스템 사전"
+      "communityMyComments": "내가 작성한 댓글",      "communityMyLikes": "좋아요 문서",      "communityNotifications": "알림",      "adminSystemTerms": "시스템 사전"
     },
     "userMenu": {
       "signedInAs": "{{name}}",

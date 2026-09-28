@@ -27,7 +27,7 @@ function renderBell() {
     <>
       <Route path="/" element={<NotificationBell />} />
       <Route path="/workspaces/:workspaceId/models/:modelId" element={<LocationDisplay />} />
-      <Route path="/notifications" element={<div>전체 알림 페이지</div>} />
+      <Route path="/community/notifications" element={<div>전체 알림 페이지</div>} />
     </>,
     { route: '/' },
   )
@@ -61,7 +61,11 @@ describe('알림 벨', () => {
     expect(screen.getByText('지나가던 DBA님이 주문 서비스 ERD에 댓글을 남겼습니다')).toBeVisible()
     expect(screen.getByText('marco님이 crowfoot-erd을 좋아합니다')).toBeVisible()
     expect(screen.getByRole('menuitem', { name: '모두 읽음' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: '전체 보기' })).toBeInTheDocument()
+    // 전체 보기 행선지 — v1.25 커뮤니티 메뉴 이전(좌측 사이드바와 같은 곳)
+    expect(screen.getByRole('menuitem', { name: '전체 보기' })).toHaveAttribute(
+      'href',
+      '/community/notifications',
+    )
   })
 
   it('marks the notification read and navigates to the document on row click', async () => {

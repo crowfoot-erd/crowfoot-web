@@ -173,7 +173,7 @@
       "communityTitle": "Community",
       "communityReleaseNotes": "Release notes",
       "communityFeedback": "Feedback",
-      "communityMyComments": "My comments",      "communityMyLikes": "Liked documents",      "adminSystemTerms": "System dictionary"
+      "communityMyComments": "My comments",      "communityMyLikes": "Liked documents",      "communityNotifications": "Notifications",      "adminSystemTerms": "System dictionary"
     },
     "userMenu": {
       "signedInAs": "{{name}}",

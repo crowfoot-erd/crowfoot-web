@@ -11,7 +11,7 @@
  * catch-all 404. 탭 상태(WS 멤버·설정)는 쿼리 파라미터로 유지된다.
  */
 import { Suspense, lazy } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { LANGUAGE_PREFIXES } from '@/lib/i18n'
 import { AdminRoute } from '@/routes/admin-route'
@@ -49,6 +49,13 @@ import { MyShareCommentsPage } from '@/pages/community/my-comments'
 import { MyShareLikesPage } from '@/pages/community/my-likes'
 import { NotificationsPage } from '@/pages/notifications'
 
+/** 구 알림 경로(/notifications, v1.24까지) → 커뮤니티 메뉴 이전(v1.25) — 북마크를 지키며
+ *  같은 언어 영역 안에서 치환한다. 쿼리(?page=)도 그대로 실어 보낸다 */
+function RedirectNotifications() {
+  const location = useLocation()
+  return <Navigate to={`../community/notifications${location.search}`} replace />
+}
+
 /** 한 언어 영역의 경로 서브트리 — prefix(''|'/en'|'/ja'|'/zh')를 앞에 붙인다 */
 function buildRoutes(prefix: string) {
   return (
@@ -84,9 +91,9 @@ function buildRoutes(prefix: string) {
           <Route path={`${prefix}/teams`} element={<TeamsPage />} />
           <Route path={`${prefix}/teams/:teamId`} element={<TeamDetailPage />} />
 
-          {/* 알림(v1.22 — 11-notification.md) — 벨 드롭다운 "전체 보기" 행선지.
-              어떤 역할이든 자기 알림만 오가는 개인 화면(워크스페이스 역할 무관) */}
-          <Route path={`${prefix}/notifications`} element={<NotificationsPage />} />
+          {/* 알림(v1.22 — 11-notification.md)의 구 경로 — v1.25 커뮤니티 메뉴 이전 전 북마크.
+              아래 community/notifications로 같은 언어 영역 안에서 치환한다(쿼리 보존) */}
+          <Route path={`${prefix}/notifications`} element={<RedirectNotifications />} />
 
           {/* 커뮤니티 — 로그인 사용자 누구나(릴리스 노트 쓰기는 관리자, 서버 판정).
               posts/new 정적 세그먼트가 :postId보다 우선한다(react-router 라우팅 순서 규칙).
@@ -99,6 +106,7 @@ function buildRoutes(prefix: string) {
             <Route path="feedback" element={<CommunityBoardPage board="FEEDBACK" />} />
             <Route path="my-comments" element={<MyShareCommentsPage />} />
             <Route path="my-likes" element={<MyShareLikesPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="posts/new" element={<CommunityPostFormPage mode="create" />} />
             <Route path="posts/:postId" element={<CommunityPostDetailPage />} />
             <Route path="posts/:postId/edit" element={<CommunityPostFormPage mode="edit" />} />

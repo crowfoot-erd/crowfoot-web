@@ -173,7 +173,7 @@
       "communityTitle": "社区",
       "communityReleaseNotes": "发布说明",
       "communityFeedback": "反馈",
-      "communityMyComments": "我的评论",      "communityMyLikes": "点赞的文档",      "adminSystemTerms": "系统词典"
+      "communityMyComments": "我的评论",      "communityMyLikes": "点赞的文档",      "communityNotifications": "通知",      "adminSystemTerms": "系统词典"
     },
     "userMenu": {
       "signedInAs": "{{name}}",

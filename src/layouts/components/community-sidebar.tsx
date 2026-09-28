@@ -1,11 +1,11 @@
 /**
  * 커뮤니티 사이드바 (storyboard 00-common §3.1 — /community/*에서 워크스페이스 트리를 대체)
  * 릴리스 노트·제안 및 신고 게시판 메뉴 + 내 피드백(내 댓글·좋아한 문서 — §1.10.9 역조회)
- * 메뉴 + 하단 워크스페이스 복귀 링크.
+ * 메뉴 + 알림 전체 목록(v1.25 이전 — 벨 드롭다운 "전체 보기" 행선지) + 하단 워크스페이스 복귀 링크.
  * 관리자 메뉴(admin-sidebar)와 동일 구조 — 로그인 사용자 누구나 접근한다(쓰기 권한은 게시판별).
  */
 import { Link, NavLink } from 'react-router-dom'
-import { ArrowLeft, Heart, Megaphone, MessageSquareText, ScrollText } from 'lucide-react'
+import { ArrowLeft, Bell, Heart, Megaphone, MessageSquareText, ScrollText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,10 @@ export function CommunitySidebar() {
           <NavLink to="/community/my-likes" className={menuClass}>
             <Heart aria-hidden className="h-4 w-4 text-muted-foreground" />
             {t('shell.sidebar.communityMyLikes')}
+          </NavLink>
+          <NavLink to="/community/notifications" className={menuClass}>
+            <Bell aria-hidden className="h-4 w-4 text-muted-foreground" />
+            {t('shell.sidebar.communityNotifications')}
           </NavLink>
         </nav>
 

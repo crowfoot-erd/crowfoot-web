@@ -2,8 +2,9 @@
  * S-14 알림 페이지 테스트 (storyboard 02-user 본문 Section 9 → 08-core/11-notification.md §5)
  *
  * given: /core/notifications 응답을 MSW로 정의(fixtures.notifications)
- * when: /notifications 진입·행 클릭·페이징
- * then: 표 렌더(유형 문구·문서 링크)·읽음 PATCH 후 문서 이동·빈 상태·다음 페이지 호출
+ * when: /community/notifications 진입·행 클릭·페이징·구 경로(/notifications) 접근
+ * then: 표 렌더(유형 문구·문서 링크)·읽음 PATCH 후 문서 이동·빈 상태·다음 페이지 호출·
+ *       구 경로 치환(쿼리 보존) — v1.25 커뮤니티 메뉴 이전
  */
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,6 +15,7 @@ import { describe, expect, it } from 'vitest'
 import { fixtures, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
 import { NotificationsPage } from '@/pages/notifications'
+import { AppRoutes } from '@/routes/app-routes'
 import { asAuthenticated, renderWithProviders } from '@/test/test-app'
 
 function LocationDisplay() {
@@ -21,11 +23,11 @@ function LocationDisplay() {
   return <div data-testid="location">{`${location.pathname}${location.search}`}</div>
 }
 
-function renderPage(route = '/notifications') {
+function renderPage(route = '/community/notifications') {
   asAuthenticated() // 회원전용 — Bearer가 실려야 200
   return renderWithProviders(
     <>
-      <Route path="/notifications" element={<NotificationsPage />} />
+      <Route path="/community/notifications" element={<NotificationsPage />} />
       <Route path="/workspaces/:workspaceId/models/:modelId" element={<LocationDisplay />} />
     </>,
     { route },
@@ -114,5 +116,26 @@ describe('S-14 알림', () => {
 
     expect(await screen.findByText('새 알림이 없습니다')).toBeVisible()
     expect(screen.queryByRole('button', { name: '모두 읽음' })).not.toBeInTheDocument()
+  })
+
+  it('구 경로 /notifications는 /community/notifications로 치환 — 커뮤니티 사이드바와 함께', async () => {
+    asAuthenticated()
+    renderWithProviders(<AppRoutes />, { route: '/notifications', wrapRoutes: false })
+
+    // then: 리다이렉트 후 목록이 렌더되고 좌측 커뮤니티 메뉴에 알림 항목이 있다
+    expect(await screen.findByText('총 3개')).toBeVisible()
+    expect(screen.getByRole('link', { name: '알림' })).toHaveAttribute(
+      'href',
+      '/community/notifications',
+    )
+  })
+
+  it('구 경로 치환은 쿼리(?page=)도 보존한다', async () => {
+    asAuthenticated()
+    renderWithProviders(<AppRoutes />, { route: '/notifications?page=2', wrapRoutes: false })
+
+    // then: fixtures는 1페이지분(3건)뿐 — ?page=2가 넘어왔다면 빈 페이지가 나온다
+    expect(await screen.findByText('새 알림이 없습니다')).toBeVisible()
+    expect(screen.queryByText('총 3개')).not.toBeInTheDocument()
   })
 })

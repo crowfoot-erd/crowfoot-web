@@ -173,7 +173,7 @@
       "communityTitle": "コミュニティ",
       "communityReleaseNotes": "リリースノート",
       "communityFeedback": "フィードバック",
-      "communityMyComments": "自分のコメント",      "communityMyLikes": "いいねしたドキュメント",      "adminSystemTerms": "システム辞書"
+      "communityMyComments": "自分のコメント",      "communityMyLikes": "いいねしたドキュメント",      "communityNotifications": "通知",      "adminSystemTerms": "システム辞書"
     },
     "userMenu": {
       "signedInAs": "{{name}}",
