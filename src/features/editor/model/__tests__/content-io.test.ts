@@ -108,6 +108,22 @@ describe('content-io', () => {
     expect(() => parseContent(docWithNode({ x: 0, y: 0, width: null, color: '#7c3aed' }))).toThrow()
   })
 
+  it('메모 높이는 선택 — 확정(리사이즈)된 문서는 유지되고 레거시 문서는 undefined로 열린다', () => {
+    const docWithNote = (note: Record<string, unknown>) =>
+      JSON.stringify({
+        schemaVersion: 1,
+        model: { tables: [], relationships: [] },
+        diagram: { nodes: {}, notes: [note], viewport: null },
+      })
+    const base = { id: 'n1', x: 0, y: 0, width: 360, text: '', title: '', color: 'yellow', linkedTableId: null }
+    // 레거시(높이 없음) — 확정 전 메모는 내용 높이
+    expect(parseContent(docWithNote(base)).diagram.notes[0].height).toBeUndefined()
+    // 리사이즈로 확정한 높이는 저장·재열람에 보존된다
+    const pinned = parseContent(docWithNote({ ...base, height: 160 }))
+    expect(pinned.diagram.notes[0].height).toBe(160)
+    expect(JSON.parse(serializeContent(pinned)).diagram.notes[0].height).toBe(160)
+  })
+
   it('PK 컬럼은 항상 일반 컬럼보다 위로 정규화된다 — 같은 영역 안 순서는 유지', () => {
     const mk = (id: string) => ({
       id,

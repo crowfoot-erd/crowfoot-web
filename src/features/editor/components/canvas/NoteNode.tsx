@@ -2,7 +2,8 @@
  * 메모 노드 — 포스트잇 (05-editor/02-ui.md §7, storyboard 02-user §5A)
  *
  * 헤더 밴드(드래그 핸들)에 제목을 표시한다. 밴드 더블클릭 → 편집 다이얼로그(제목 + 강조색 픽커),
- * 본문 textarea 인라인 편집(blur 확정)·폭 리사이즈(드래그 중 폭이 실시간으로 보인다).
+ * 본문 textarea 인라인 편집(blur 확정)·리사이즈(폭·높이 — 드래그 중 크기가 실시간으로 보인다.
+ * 높이는 확정돼야 저장되고, 확정 전에는 내용 rows=4 높이로 자동 결정된다).
  * 위치는 밴드 드래그로 옮기고
  * ErdCanvas가 mouseup에 note/patch로 커밋한다. 밴드 오른쪽 끝 삭제 버튼.
  * 연관 테이블이 지정되면 밴드에 물리명 배지가 붙는다 — 메모를 테이블 위에 드래그해 놓으면
@@ -24,6 +25,8 @@ export type NoteNodeType = Node<NoteNodeData, 'note'>
 
 const DEFAULT_WIDTH = 360
 const MIN_WIDTH = 120
+/** 밴드(h-7) + 본문 여유 2줄 — 이보다 작으면 포스트잇이 뭉개진다 */
+const MIN_HEIGHT = 72
 
 function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
   const { t } = useTranslation()
@@ -40,20 +43,21 @@ function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
   const focused = useRef(false)
   /** 편집 다이얼로그 — 밴드 더블클릭으로 연다 */
   const [editing, setEditing] = useState(false)
-  /** 리사이즈 라이브 프리뷰 폭 — 드래그 중에도 폭이 마우스를 따라 늘어나게 한다(커밋은 onResizeEnd) */
-  const [resizingWidth, setResizingWidth] = useState<number | null>(null)
+  /** 리사이즈 라이브 프리뷰 크기 — 드래그 중에도 폭·높이가 마우스를 따라 늘어나게 한다(커밋은 onResizeEnd).
+   *  높이는 확정 전까지 저장되지 않는다(undefined = 내용 높이) — 확정됐다면 note.height가 우선한다 */
+  const [resizing, setResizing] = useState<{ width: number; height: number } | null>(null)
 
   // 비포커스 시 외부 값(undo) 반영 — 입력 중 덮어쓰지 않는다
   useEffect(() => {
     if (!focused.current) setDraft(note?.text ?? '')
   }, [note?.text])
 
-  // 렌더 크기 보고 — 생성·폭 리사이즈 시 캔버스 겹침 해소(메모 밀어내기)의 트리거.
+  // 렌더 크기 보고 — 생성·리사이즈 시 캔버스 겹침 해소(메모 밀어내기)의 트리거.
   // 위치는 deps에 없다 — 겹침 해소로 밀려난 뒤 재보고→재해소 루프가 생기지 않게.
   const rootRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
     reportSize(id, rootRef.current?.offsetWidth ?? 0, rootRef.current?.offsetHeight ?? 0)
-  }, [id, note?.width, note?.text, reportSize])
+  }, [id, note?.width, note?.height, note?.text, reportSize])
 
   if (!note) return null
 
@@ -69,24 +73,40 @@ function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
     <div
       ref={rootRef}
       data-nodekind="note"
-      className={cn('relative rounded-md border shadow-sm', skin.box, selected && 'ring-1 ring-amber-400')}
-      style={{ ...skin.boxStyle, width: resizingWidth ?? (note.width ?? DEFAULT_WIDTH) }}
+      className={cn(
+        'relative flex flex-col rounded-md border shadow-sm',
+        skin.box,
+        selected && 'ring-1 ring-amber-400',
+      )}
+      style={{
+        ...skin.boxStyle,
+        width: resizing?.width ?? (note.width ?? DEFAULT_WIDTH),
+        // 높이 미확정(undefined)이면 내용(밴드 + textarea rows=4)이 높이를 결정한다
+        height: resizing?.height ?? note.height,
+      }}
     >
       {canEdit ? (
         <NodeResizer
           isVisible={selected}
           minWidth={MIN_WIDTH}
-          onResize={(_, params) => setResizingWidth(Math.round(params.width))}
+          minHeight={MIN_HEIGHT}
+          onResize={(_, params) =>
+            setResizing({ width: Math.round(params.width), height: Math.round(params.height) })
+          }
           onResizeEnd={(_, params) => {
-            commit({ type: 'note/patch', noteId: id, patch: { width: Math.round(params.width) } })
-            setResizingWidth(null)
+            commit({
+              type: 'note/patch',
+              noteId: id,
+              patch: { width: Math.round(params.width), height: Math.round(params.height) },
+            })
+            setResizing(null)
           }}
         />
       ) : null}
-      {/* 리사이즈 중 폭 표시 — 드래그 즉시 값이 보여야 늘리는 폭을 읽을 수 있다 */}
-      {resizingWidth !== null ? (
+      {/* 리사이즈 중 크기 표시 — 드래그 즉시 값이 보여야 늘리는 크기를 읽을 수 있다 */}
+      {resizing !== null ? (
         <span className="nodrag pointer-events-none absolute -top-7 right-0 rounded border bg-popover px-1.5 py-0.5 text-[10px] tabular-nums text-popover-foreground shadow-sm">
-          {resizingWidth}px
+          {resizing.width}×{resizing.height}
         </span>
       ) : null}
 
@@ -133,7 +153,7 @@ function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
       </div>
 
       <textarea
-        className="nodrag nowheel h-auto w-full resize-none bg-transparent p-2 text-xs leading-relaxed outline-none placeholder:opacity-50"
+        className="nodrag nowheel min-h-0 w-full flex-1 resize-none bg-transparent p-2 text-xs leading-relaxed outline-none placeholder:opacity-50"
         rows={4}
         value={draft}
         placeholder={canEdit ? t('model.editor.note.placeholder') : ''}

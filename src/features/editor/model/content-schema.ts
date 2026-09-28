@@ -190,6 +190,8 @@ export const noteSchema = z.object({
   x: z.number(),
   y: z.number(),
   width: z.number(),
+  /** 리사이즈로 확정한 높이 — 없으면 내용(rows=4) 높이로 자동 결정. 이전 문서는 undefined로 열린다 */
+  height: z.number().optional(),
   text: z.string(),
   /** 헤더 밴드에 표시되는 제목 — 빈 문자열이면 자리표시자로 표시 */
   title: z.string().default(''),

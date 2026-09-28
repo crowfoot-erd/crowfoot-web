@@ -212,6 +212,10 @@ describe('applyChange — 관계·메모·노드', () => {
     d = applyChange(d, { type: 'note/patch', noteId: 'N1', patch: { text: '수정', x: 70 } })
     expect(d.diagram.notes[0]).toEqual({ ...note, text: '수정', x: 70 })
 
+    // 리사이즈 확정 — 폭·높이를 함께 저장한다(높이는 확정 전엔 문서에 없다)
+    d = applyChange(d, { type: 'note/patch', noteId: 'N1', patch: { width: 420, height: 160 } })
+    expect(d.diagram.notes[0]).toMatchObject({ width: 420, height: 160 })
+
     const table = createTable('t')
     d = applyChange(d, { type: 'table/create', table, position: { x: 0, y: 0 } })
     d = applyChange(d, { type: 'node/move', positions: { [table.id]: { x: 111, y: 222 } } })

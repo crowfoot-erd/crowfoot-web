@@ -39,7 +39,9 @@ export type RelationshipPatch = Partial<
     | 'onUpdate'
   >
 >
-export type NotePatch = Partial<Pick<ErdNote, 'x' | 'y' | 'width' | 'text' | 'title' | 'color' | 'linkedTableId'>>
+export type NotePatch = Partial<
+  Pick<ErdNote, 'x' | 'y' | 'width' | 'height' | 'text' | 'title' | 'color' | 'linkedTableId'>
+>
 export type AreaPatch = Partial<Pick<ErdArea, 'name' | 'description' | 'color' | 'tableIds'>>
 
 export type ErdChange =
