@@ -15,6 +15,8 @@
  * 문서 전역 계산(연결면·면 분산·통로 레인 라우팅)은 관계 수의 제곱이라 엣지마다 반복하면
  * 프레임 비용이 세제곱으로 커진다 — edge-route-table이 문서·좌표 지문당 한 번 계산한
  * 공유 테이블을 조회하고, 엣지별 남은 일은 양 끝 앵커(자기 관계의 RF 실측 좌표)뿐이다.
+ * 연결면도 공유 테이블의 라이브 면(드래그 중 화면 좌표로 계산)을 따라간다(v1.25 §2) —
+ * RF props의 면은 드롭 커밋 전까지 과거라 "드롭할 때 그때가서 다시 그려지던" 원인이었다.
  * 엣지 id = 관계 id로 스토어를 직접 구독하고 memo로 격리 — 노드 위치가 불변인 엣지는
  * 경로 재계산·리렌더가 없다.
  */
@@ -25,7 +27,6 @@ import { cn } from 'cn'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import {
   insetAnchors,
-  offsetAlongFace,
   orthogonalRoundedPath,
   polylineMidpoint,
   routeWithNormalStubs,
@@ -176,47 +177,41 @@ function RelationshipEdgeComponent({
   )
   const sharedRoute = shared?.routes.get(id) ?? null
 
+  /** 라이브 연결면 — 공유 라우팅 테이블이 boxOf(드래그 중에도 화면 좌표)로 이미 계산한 면.
+   *  RF props(sourcePosition)는 buildEdges가 스토어 좌표로 구운 핸들을 따라가서 드롭 커밋
+   *  전까지 과거 면이다 — 그사이 스텝 방향·글리프 회전·법선 밀기가 면과 어긋나 "드롭할 때
+   *  그때가서 다시 그려지는" 원인이었다(v1.25 §2). 경로가 없을 때(자기 참조·박스 미측정)만
+   *  RF 면으로 폴백 — 자기 참조는 루프 면(selfLoop.side)이 따로 있다 */
+  const liveSourcePosition = sharedRoute?.sourceFace ?? sourcePosition
+  const liveTargetPosition = sharedRoute?.targetFace ?? targetPosition
+
   /** 면 공유 분산 — 여러 선이 같은 면에 포개지지 않게 양 끝 앵커를 면을 따라 벌린다.
-   *  면 길이(좌우 면=높이, 상하 면=폭, RF 실측 우선)로 클램프해 앵커가 면 밖으로 나가지 않게 한다 */
+   *  공유 라우팅이 라이브 박스로 계산한 면 평면 앵커(면 중심 + 분산 오프셋)를 그대로 쓴다 —
+   *  폴백(공유 경로가 없을 때 = 자기 참조 등)은 RF 실측 앵커 그대로 */
   const adjustedAnchors = useMemo(() => {
-    const src = { x: sourceX, y: sourceY }
-    const tgt = { x: targetX, y: targetY }
-    const sourceFaceOffset = sharedRoute?.sourceFaceOffset ?? 0
-    const targetFaceOffset = sharedRoute?.targetFaceOffset ?? 0
-    if (!relationship || (sourceFaceOffset === 0 && targetFaceOffset === 0)) return { source: src, target: tgt }
-    const child = boxOf(relationship.childTableId)
-    const parent = boxOf(relationship.parentTableId)
-    return {
-      source: offsetAlongFace(
-        src,
-        sourcePosition,
-        sourceFaceOffset,
-        sourcePosition === 'left' || sourcePosition === 'right' ? (child?.h ?? 0) : (child?.w ?? 0),
-      ),
-      target: offsetAlongFace(
-        tgt,
-        targetPosition,
-        targetFaceOffset,
-        targetPosition === 'left' || targetPosition === 'right' ? (parent?.h ?? 0) : (parent?.w ?? 0),
-      ),
+    if (sharedRoute) {
+      return { source: sharedRoute.sourceFaceAnchor, target: sharedRoute.targetFaceAnchor }
     }
-  }, [relationship, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, sharedRoute, boxOf])
+    return { source: { x: sourceX, y: sourceY }, target: { x: targetX, y: targetY } }
+  }, [sharedRoute, sourceX, sourceY, targetX, targetY])
 
   /** 라우팅 앵커 — 양 끝을 면 법선(글리프가 뻗는 방향)으로 심볼 폭만큼 밀어 선 몸체가
    *  가장 바깥 심볼 끝에서 시작/끝나게 한다. 라우터의 첫 선분은 면 평행 방향으로 꺾일 수
-   *  있어 경로를 자르는 방식으론 심볼 끝과 맞출 수 없다 — 시작점을 밀면 어떤 경로든 붙는다 */
+   *  있어 경로를 자르는 방식으론 심볼 끝과 맞출 수 없다 — 시작점을 밀면 어떤 경로든 붙는다.
+   *  공유 라우팅이 라우팅 입력으로 쓴 앵커가 곧 엣지 양 끝값이다(라이브 면 기준) */
   const routeAnchors = useMemo(() => {
     if (!relationship || isSelfLoop) return adjustedAnchors
+    if (sharedRoute) return { source: sharedRoute.sourceAnchor, target: sharedRoute.targetAnchor }
     return insetAnchors(
       adjustedAnchors.source,
       adjustedAnchors.target,
-      sourcePosition,
-      targetPosition,
+      liveSourcePosition,
+      liveTargetPosition,
       // 글리프 원점이 면 평면이므로 물러남 = 심볼 폭 그대로 — 몸체가 최외곽 심볼 끝에 정확히 붙는다
       sourceGlyphExtent(relationship),
       targetGlyphExtent(relationship),
     )
-  }, [relationship, isSelfLoop, adjustedAnchors, sourcePosition, targetPosition])
+  }, [relationship, isSelfLoop, adjustedAnchors, sharedRoute, liveSourcePosition, liveTargetPosition])
 
   /** 자기 참조 루프 배치 — 좌/우 면 중 일반 관계가 덜 붙은 쪽에, 앵커는 FK 행·PK 행 높이로
    *  (row-anchors 레지스트리 — 미등록 첫 프레임은 면 중심으로 폴백). 같은 테이블에 자기
@@ -262,11 +257,11 @@ function RelationshipEdgeComponent({
     return routeWithNormalStubs(
       routeAnchors.source,
       routeAnchors.target,
-      sourcePosition,
-      targetPosition,
+      liveSourcePosition,
+      liveTargetPosition,
       shared?.obstacles ?? [],
     )
-  }, [isSelfLoop, selfLoop, relationship, sharedRoute, shared, routeAnchors, sourcePosition, targetPosition])
+  }, [isSelfLoop, selfLoop, relationship, sharedRoute, shared, routeAnchors, liveSourcePosition, liveTargetPosition])
 
   /** 보이는 선 — 일반 관계는 라우팅 앵커가 이미 심볼 폭만큼 물러났고, 자기 참조 루프는
    *  양 끝 선분이 항상 법선(선택한 면)이라 경로를 잘라 물러남을 만든다 */
@@ -308,17 +303,17 @@ function RelationshipEdgeComponent({
       return anchor
     }
     return {
-      source: adjust(adjustedAnchors.source, sourcePosition, relationship?.childTableId),
-      target: adjust(adjustedAnchors.target, targetPosition, relationship?.parentTableId),
+      source: adjust(adjustedAnchors.source, liveSourcePosition, relationship?.childTableId),
+      target: adjust(adjustedAnchors.target, liveTargetPosition, relationship?.parentTableId),
     }
-  }, [adjustedAnchors, sourcePosition, targetPosition, relationship, boxOf])
+  }, [adjustedAnchors, liveSourcePosition, liveTargetPosition, relationship, boxOf])
   const faceStubs = useMemo(() => {
     if (visiblePoints.length < 2) return ''
     // 자식 끝이 발톱이면 스텁은 발목까지만 — 발톱 아래로 선을 깔지 않는다(발톱이 연결부다)
     const head = isSelfLoop
       ? points[0]
       : relationship?.type === 'ONE_TO_MANY'
-        ? outward(faceAnchors.source, sourcePosition, CROWFOOT_ANKLE)
+        ? outward(faceAnchors.source, liveSourcePosition, CROWFOOT_ANKLE)
         : faceAnchors.source
     const tail = isSelfLoop ? points[points.length - 1] : faceAnchors.target
     const intoFace = (from: RouterPoint, to: RouterPoint, overshoot: number): string | null => {
@@ -340,7 +335,7 @@ function RelationshipEdgeComponent({
     ]
       .filter(Boolean)
       .join(' ')
-  }, [visiblePoints, isSelfLoop, points, faceAnchors, relationship, sourcePosition])
+  }, [visiblePoints, isSelfLoop, points, faceAnchors, relationship, liveSourcePosition])
   const path = useMemo(() => orthogonalRoundedPath(visiblePoints), [visiblePoints])
   const labelPoint = useMemo(() => polylineMidpoint(visiblePoints), [visiblePoints])
 
@@ -429,14 +424,14 @@ function RelationshipEdgeComponent({
         className="react-flow__edge-interaction"
       />
       <g
-        transform={`translate(${glyphSource.x} ${glyphSource.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[sourcePosition] ?? 0})`}
+        transform={`translate(${glyphSource.x} ${glyphSource.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[liveSourcePosition] ?? 0})`}
         stroke="currentColor"
         strokeWidth={selected ? 3 : 2.5}
       >
         {sourceGlyph}
       </g>
       <g
-        transform={`translate(${glyphTarget.x} ${glyphTarget.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[targetPosition] ?? 0})`}
+        transform={`translate(${glyphTarget.x} ${glyphTarget.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[liveTargetPosition] ?? 0})`}
         stroke="currentColor"
         strokeWidth={selected ? 3 : 2.5}
       >

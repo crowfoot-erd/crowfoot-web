@@ -48,6 +48,17 @@ export interface RelationshipSharedRoute {
   /** 면 공유 분산 오프셋(자식·부모 끝 각각) — 같은 (테이블, 면)에 붙은 관계끼리 벌리는 폭 */
   sourceFaceOffset: number
   targetFaceOffset: number
+  /** 연결면(자식·부모) — 라이브 박스(boxOf)로 계산한 현재 면. 엣지 렌더가 RF props
+   *  (sourcePosition — 스토어 좌표로 구운 핸들, 드롭 전까지 과거 면) 대신 이 면을 따라가
+   *  드래그 중 렌더 == 드롭 후 렌더가 된다(v1.25 §2 실시간 재경로) */
+  sourceFace: FaceSide
+  targetFace: FaceSide
+  /** 면 평면 앵커(면 중심 + 면 분산 오프셋) — 엣지 스텝·글리프 앵커의 라이브 원천 */
+  sourceFaceAnchor: RouterPoint
+  targetFaceAnchor: RouterPoint
+  /** 라우팅 앵커(면 평면 앵커를 글리프 폭만큼 법선으로 민 것) — 엣지가 양 끝을 교체하는 값 */
+  sourceAnchor: RouterPoint
+  targetAnchor: RouterPoint
 }
 
 export interface SharedRouteTable {
@@ -115,6 +126,16 @@ export function relationshipSharedRoutes(
   // 레인 배정(corridorLanes)과 순차 라우팅(먼저 그린 선의 통로 회피)을 함께 계산한다
   const reqs: CorridorEndpoint[] = []
   const faceOffsets = new Map<string, { source: number; target: number }>()
+  /** 면·앵커 원천 — 라우팅 입력으로 쓴 값 그대로 엣지 렌더에 돌려준다(라이브 면 스펙, v1.25 §2) */
+  const endAnchors = new Map<
+    string,
+    {
+      child: RouterPoint
+      parent: RouterPoint
+      inset: { source: RouterPoint; target: RouterPoint }
+      faces: { child: FaceSide; parent: FaceSide }
+    }
+  >()
   for (const { rel, child, parent, sides } of endsList) {
     const sourceFaceOffset = faceShareOffset(endpoints, rel.id, rel.childTableId)
     const targetFaceOffset = faceShareOffset(endpoints, rel.id, rel.parentTableId)
@@ -139,6 +160,7 @@ export function relationshipSharedRoutes(
       sourceGlyphExtent(rel),
       targetGlyphExtent(rel),
     )
+    endAnchors.set(rel.id, { child: childAnchor, parent: parentAnchor, inset: anchors, faces: sides })
     reqs.push({
       relId: rel.id,
       source: anchors.source,
@@ -154,10 +176,17 @@ export function relationshipSharedRoutes(
   const routes = new Map<string, RelationshipSharedRoute>()
   for (const req of reqs) {
     const offsets = faceOffsets.get(req.relId)!
+    const anchors = endAnchors.get(req.relId)!
     routes.set(req.relId, {
       points: routed.get(req.relId) ?? [],
       sourceFaceOffset: offsets.source,
       targetFaceOffset: offsets.target,
+      sourceFace: anchors.faces.child,
+      targetFace: anchors.faces.parent,
+      sourceFaceAnchor: anchors.child,
+      targetFaceAnchor: anchors.parent,
+      sourceAnchor: anchors.inset.source,
+      targetAnchor: anchors.inset.target,
     })
   }
 
