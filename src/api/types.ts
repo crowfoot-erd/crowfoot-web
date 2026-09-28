@@ -326,6 +326,23 @@ export interface MyShareReaction {
   commentCount: number
 }
 
+/* ---------- 알림 (08-core/11-notification.md §5 — v1.22) ---------- */
+
+/** 알림 행 — 피드백 3종 이벤트(댓글·좋아요·오너 답글)의 수신자별 기록. 문구는 서버에 없다
+ *  (type 기반 i18n 렌더 — shell.notifications.type.*). actorUserId는 게스트 댓글이면 생략되고(NON_NULL),
+ *  actorDisplayName은 서버가 조립한 단일 표시명(회원 users.name / 게스트 별명 스냅샷). */
+export interface NotificationItem {
+  id: string
+  type: 'COMMENT_CREATED' | 'REACTION_ADDED' | 'OWNER_REPLIED'
+  actorUserId?: string
+  actorDisplayName: string | null
+  modelId: string
+  modelName: string
+  workspaceId: string
+  read: boolean
+  createdAt: string
+}
+
 /* ---------- 템플릿 (08-core/09-templates.md) ---------- */
 
 /** 템플릿 공개 목록 항목 (§2.1) — 템플릿 워크스페이스 문서의 메타. 본문(content) 없음.

@@ -47,6 +47,7 @@ import { CommunityPostDetailPage } from '@/pages/community/post-detail'
 import { CommunityPostFormPage } from '@/pages/community/post-form'
 import { MyShareCommentsPage } from '@/pages/community/my-comments'
 import { MyShareLikesPage } from '@/pages/community/my-likes'
+import { NotificationsPage } from '@/pages/notifications'
 
 /** 한 언어 영역의 경로 서브트리 — prefix(''|'/en'|'/ja'|'/zh')를 앞에 붙인다 */
 function buildRoutes(prefix: string) {
@@ -82,6 +83,10 @@ function buildRoutes(prefix: string) {
           <Route path={`${prefix}/workspaces/:workspaceId`} element={<WorkspaceDetailPage />} />
           <Route path={`${prefix}/teams`} element={<TeamsPage />} />
           <Route path={`${prefix}/teams/:teamId`} element={<TeamDetailPage />} />
+
+          {/* 알림(v1.22 — 11-notification.md) — 벨 드롭다운 "전체 보기" 행선지.
+              어떤 역할이든 자기 알림만 오가는 개인 화면(워크스페이스 역할 무관) */}
+          <Route path={`${prefix}/notifications`} element={<NotificationsPage />} />
 
           {/* 커뮤니티 — 로그인 사용자 누구나(릴리스 노트 쓰기는 관리자, 서버 판정).
               posts/new 정적 세그먼트가 :postId보다 우선한다(react-router 라우팅 순서 규칙).

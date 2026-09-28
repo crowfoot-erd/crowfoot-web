@@ -14,6 +14,7 @@ import { useMe } from '@/features/auth'
 import { CreateWorkspaceDialog } from '@/features/workspaces'
 import { AdminSidebar } from '@/layouts/components/admin-sidebar'
 import { CommunitySidebar } from '@/layouts/components/community-sidebar'
+import { NotificationBell } from '@/layouts/components/notification-bell'
 import { TeamSidebar } from '@/layouts/components/team-sidebar'
 import { UserMenu } from '@/layouts/components/user-menu'
 import { WorkspaceSidebar } from '@/layouts/components/workspace-sidebar'
@@ -71,6 +72,7 @@ export function AppLayout() {
             </Button>
             <ThemeToggle />
             <LanguageSelect />
+            <NotificationBell />
             <UserMenu />
           </div>
         </div>

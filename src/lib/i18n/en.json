@@ -183,7 +183,30 @@
       "logout": "Sign out",
       "language": "Language"
     },
-    "defaultBadge": "Default"
+    "defaultBadge": "Default",
+    "notifications": {
+      "bell": "Notifications",
+      "title": "Notifications",
+      "markAll": "Mark all as read",
+      "viewAll": "View all",
+      "empty": "No new notifications",
+      "type": {
+        "COMMENT_CREATED": "{{actor}} left a comment on {{model}}",
+        "REACTION_ADDED": "{{actor}} likes {{model}}",
+        "OWNER_REPLIED": "{{actor}} replied to your comment"
+      },
+      "typeBadge": {
+        "COMMENT_CREATED": "Comment",
+        "REACTION_ADDED": "Like",
+        "OWNER_REPLIED": "Reply"
+      },
+      "table": {
+        "type": "Type",
+        "content": "Content",
+        "document": "Document",
+        "createdAt": "When"
+      }
+    }
   },
   "dashboard": {
     "greeting": "Hello, {{name}}",

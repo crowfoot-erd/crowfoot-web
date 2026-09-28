@@ -603,6 +603,44 @@ export const fixtures = {
       },
     ],
   },
+  /** 알림 목록(v1.22 — 11-notification.md §5) — 최신순(id desc) 3종 유형·게스트 actor(actorUserId 생략)·
+   *  읽음 섞임. 핸들러가 page·size로 슬라이스한다(정규화 규칙은 실물과 동일) */
+  notifications: {
+    responses: [
+      {
+        id: '63',
+        type: 'OWNER_REPLIED',
+        actorUserId: '7',
+        actorDisplayName: '오너',
+        modelId: '501',
+        modelName: '주문 서비스 ERD',
+        workspaceId: '4',
+        read: false,
+        createdAt: '2026-09-28T04:00:00Z',
+      },
+      {
+        id: '62',
+        type: 'COMMENT_CREATED',
+        actorDisplayName: '지나가던 DBA',
+        modelId: '501',
+        modelName: '주문 서비스 ERD',
+        workspaceId: '4',
+        read: true,
+        createdAt: '2026-09-25T09:00:00Z',
+      },
+      {
+        id: '61',
+        type: 'REACTION_ADDED',
+        actorUserId: '8',
+        actorDisplayName: 'marco',
+        modelId: '318',
+        modelName: 'crowfoot-erd',
+        workspaceId: '4',
+        read: false,
+        createdAt: '2026-09-24T07:30:00Z',
+      },
+    ],
+  },
   /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답. 서버가 이미 정렬·선별을 마친 상태다 —
    *  전 워크스페이스 공유(템플릿 문서 포함)를 반응 수 상위 3(인기, 반응→조회→최근 순) 우선 +
    *  나머지 최근 공유순, 최대 18건(인기 3+최근 15). 선두 3건이 인기 박스 구간.
@@ -1527,6 +1565,39 @@ export const handlers = [
   http.get(`${BASE}/api/v1/core/accounts/me/share-reactions`, ({ request }) => {
     if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
     return HttpResponse.json(ok(fixtures.myShareReactions))
+  }),
+
+  // 알림(v1.22 — 11-notification.md §5) — 전부 회원전용(Bearer 없으면 401). 목록은 page·size
+  // 실물 정규화 규칙(page<1→1·size<1→20·size>100→100)대로 슬라이스, 카운트는 안읽음 행 수
+  http.get(`${BASE}/api/v1/core/notifications`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    const params = new URL(request.url).searchParams
+    const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
+    const size = Math.min(100, Math.max(1, Number(params.get('size') ?? '20') || 20))
+    const all = fixtures.notifications.responses
+    return HttpResponse.json(
+      ok({
+        page,
+        size,
+        totalPages: Math.ceil(all.length / size),
+        totalCount: all.length,
+        responses: all.slice((page - 1) * size, page * size),
+      }),
+    )
+  }),
+  http.get(`${BASE}/api/v1/core/notifications/unread-count`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(
+      ok({ response: fixtures.notifications.responses.filter((item) => !item.read).length }),
+    )
+  }),
+  http.patch(`${BASE}/api/v1/core/notifications/:id/read`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok({}))
+  }),
+  http.post(`${BASE}/api/v1/core/notifications/read-all`, ({ request }) => {
+    if (!request.headers.get('Authorization')) return fail('AUTH_TOKEN_INVALID', 401)
+    return HttpResponse.json(ok({}))
   }),
 
   // 공개 DDL 생성(§1.10.8, v1.21 후속) — 인증 없음(토큰이 자격). 워크스페이스 경로와 같은 형태

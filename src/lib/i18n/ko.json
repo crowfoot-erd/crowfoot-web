@@ -183,7 +183,30 @@
       "logout": "로그아웃",
       "language": "언어"
     },
-    "defaultBadge": "기본"
+    "defaultBadge": "기본",
+    "notifications": {
+      "bell": "알림",
+      "title": "알림",
+      "markAll": "모두 읽음",
+      "viewAll": "전체 보기",
+      "empty": "새 알림이 없습니다",
+      "type": {
+        "COMMENT_CREATED": "{{actor}}님이 {{model}}에 댓글을 남겼습니다",
+        "REACTION_ADDED": "{{actor}}님이 {{model}}을 좋아합니다",
+        "OWNER_REPLIED": "{{actor}}님이 내 댓글에 답했습니다"
+      },
+      "typeBadge": {
+        "COMMENT_CREATED": "댓글",
+        "REACTION_ADDED": "좋아요",
+        "OWNER_REPLIED": "답글"
+      },
+      "table": {
+        "type": "유형",
+        "content": "내용",
+        "document": "문서",
+        "createdAt": "시각"
+      }
+    }
   },
   "dashboard": {
     "greeting": "안녕하세요, {{name}}님",

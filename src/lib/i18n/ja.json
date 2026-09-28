@@ -183,7 +183,30 @@
       "logout": "ログアウト",
       "language": "言語"
     },
-    "defaultBadge": "デフォルト"
+    "defaultBadge": "デフォルト",
+    "notifications": {
+      "bell": "通知",
+      "title": "通知",
+      "markAll": "すべて既読にする",
+      "viewAll": "すべて表示",
+      "empty": "新しい通知はありません",
+      "type": {
+        "COMMENT_CREATED": "{{actor}}さんが{{model}}にコメントしました",
+        "REACTION_ADDED": "{{actor}}さんが{{model}}をいいねしました",
+        "OWNER_REPLIED": "{{actor}}さんがあなたのコメントに返信しました"
+      },
+      "typeBadge": {
+        "COMMENT_CREATED": "コメント",
+        "REACTION_ADDED": "いいね",
+        "OWNER_REPLIED": "返信"
+      },
+      "table": {
+        "type": "種類",
+        "content": "内容",
+        "document": "ドキュメント",
+        "createdAt": "日時"
+      }
+    }
   },
   "dashboard": {
     "greeting": "こんにちは、{{name}}さん",

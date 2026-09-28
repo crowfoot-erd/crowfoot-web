@@ -183,7 +183,30 @@
       "logout": "退出登录",
       "language": "语言"
     },
-    "defaultBadge": "默认"
+    "defaultBadge": "默认",
+    "notifications": {
+      "bell": "通知",
+      "title": "通知",
+      "markAll": "全部标为已读",
+      "viewAll": "查看全部",
+      "empty": "暂无新通知",
+      "type": {
+        "COMMENT_CREATED": "{{actor}}在{{model}}上留下了评论",
+        "REACTION_ADDED": "{{actor}}赞了{{model}}",
+        "OWNER_REPLIED": "{{actor}}回复了你的评论"
+      },
+      "typeBadge": {
+        "COMMENT_CREATED": "评论",
+        "REACTION_ADDED": "点赞",
+        "OWNER_REPLIED": "回复"
+      },
+      "table": {
+        "type": "类型",
+        "content": "内容",
+        "document": "文档",
+        "createdAt": "时间"
+      }
+    }
   },
   "dashboard": {
     "greeting": "你好，{{name}}",
