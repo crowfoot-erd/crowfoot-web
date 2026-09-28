@@ -216,6 +216,16 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://crowfoot.java21.net/release-notes/24</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/24" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/24" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/release-notes/24" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/release-notes/24" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/release-notes/24" />
+    <lastmod>2026-09-28</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://crowfoot.java21.net/release-notes/23</loc>
     <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes/23" />
     <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes/23" />
