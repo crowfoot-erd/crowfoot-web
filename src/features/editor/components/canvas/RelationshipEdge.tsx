@@ -325,11 +325,23 @@ function RelationshipEdgeComponent({
       <BaseEdge
         id={id}
         path={path}
+        interactionWidth={0}
         style={{
           stroke: 'currentColor',
           strokeWidth: selected ? 2.5 : 1.5,
           strokeDasharray: relationship.identifying ? undefined : '6 3',
         }}
+      />
+      {/* 클릭 히트 영역 — BaseEdge 내장(20px·butt cap) 대신 폭을 넓혀 선 근처를 짚어도
+       *  잡히게 한다(#278). 코너는 round cap으로 메워 직교 꺾임점의 사각 틈까지 커버.
+       *  transparent stroke 트릭(RF 내장과 같은 방식)이라 눈에 보이지 않는다 */}
+      <path
+        d={path}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={26}
+        strokeLinecap="round"
+        className="react-flow__edge-interaction"
       />
       <g
         transform={`translate(${glyphSource.x} ${glyphSource.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[sourcePosition] ?? 0})`}
@@ -352,6 +364,9 @@ function RelationshipEdgeComponent({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelPoint.x}px, ${labelPoint.y}px)`,
+              // edgelabel-renderer는 DOM 순서가 노드 레이어 아래(z-index 없음)라 그대로면
+              // 라벨이 테이블 뒤로 깔린다(#277) — z-index 1로 노드(auto) 위에 뜨게 한다
+              zIndex: 1,
               pointerEvents: 'none',
             }}
           >
