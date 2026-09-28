@@ -46,6 +46,7 @@ import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
 import { displayLogicalName, splitLogicalName } from '@/features/editor/model/logical-name'
 import { groupColorOf } from '@/features/editor/model/areas'
+import { MIN_WIDTH, tableRenderWidth } from '@/features/editor/model/table-size'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { useForeignLock } from '@/features/editor/collab-locks'
 import { participantColor, useRemoteDrag, useRemoteSelection } from '@/features/editor/collab-presence'
@@ -61,10 +62,6 @@ import { ColumnTermInput } from './column-term-input'
 export type TableNodeData = Record<string, never>
 export type TableNodeType = Node<TableNodeData, 'table'>
 
-const DEFAULT_WIDTH = 370
-/** 컬럼 그리드 고정 칸(그립·PK·사이즈·NN·AI·삭제 ≈ 172px + 간격·행 패딩)을 감당하는 렌더 하한 —
- *  과거에 좁게 저장된 width도 이름 칸이 안 눌리게 한다 */
-const MIN_WIDTH = 330
 /** 타입 칸을 뺀 행 고정 칸 — 그립36·PK16·사이즈64·NN28·AI28·삭제16 + 간격28 + 행 패딩8.
  *  타입 칸은 표가 실제로 쓰는 가장 긴 라벨에 맞춰 가변이라 이름 폭 계산에서는 뺀다. */
 const ROW_FIXED_EXTRAS = 224
@@ -102,19 +99,6 @@ const COMPACT_PHYSICAL_SCREEN_PX = 13
  *  배율이 하한보다 작으면 하한 배율 폰트에 머문다(라벨 폭이 상자를 넘지 않게). */
 export function compactLabelFontSize(screenPx: number, zoom: number): number {
   return screenPx / Math.max(zoom, COMPACT_LABEL_ZOOM_FLOOR)
-}
-
-/** 노드 렌더 폭 — 저장 폭·측정 콘텐츠 폭·하한 중 최대 (ErdCanvas 겹침 해소도 같은 값 사용).
- *  하한은 기본 MIN_WIDTH — 타입 칸이 넓게 측정된 표는 노드가 더 큰 하한을 넘긴다. */
-export function tableRenderWidth(stored: number | null, contentWidth: number, minWidth = MIN_WIDTH): number {
-  return Math.max(stored ?? DEFAULT_WIDTH, contentWidth, minWidth)
-}
-
-/** 겹침 판정용 높이 추정 — Chrome 실측 기준(컬럼 행 47, 키 행 25):
- *  밴드 28 + 컬럼 툴바 29 + PK 구분선 2 + 컬럼 행 × 47 + 컬럼 추가 버튼 24
- *  + UK/IX 컨테이너(빈 28) + 키 행 × 25 + 테두리. 자동 배치(elkjs) 레이어 간격의 기준이 된다. */
-export function estimateTableHeight(columnCount: number, keyRowCount = 0): number {
-  return 112 + columnCount * 47 + keyRowCount * 25
 }
 
 /** 컬럼 표시 모드가 이 영역 행을 그리는지 — 'keys'면 일반 컬럼을 접는다 (PK·FK·UK/IX는 유지) */

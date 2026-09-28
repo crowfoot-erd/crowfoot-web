@@ -6,7 +6,7 @@
  * 사방 좌표에서 CANVAS_MARGIN까지만 여유를 두므로, 객체를 경계 밖으로 옮기면 문서가 커지고
  * 한계도 그 객체를 감싸도록 따라 자란다(경계가 곧 콘텐츠 범위의 함수).
  */
-import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 
 /** 메모 노드 추정 높이 — 헤더 밴드 28 + 본문 textarea 4줄(높이가 사실상 고정이라 추정이 정확하다) */

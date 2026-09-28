@@ -35,7 +35,7 @@ import { splitLogicalName } from '@/features/editor/model/logical-name'
 import { searchObjects, type ObjectHit } from '@/features/editor/model/object-search'
 import { useForeignLock } from '@/features/editor/collab-locks'
 import { useEditorStore } from '@/features/editor/store/editor-store'
-import { estimateTableHeight, tableRenderWidth } from './canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 import type { NameDisplayMode } from './canvas/editor-context'
 
 export interface ModelExplorerPanelProps {

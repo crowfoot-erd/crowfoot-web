@@ -19,7 +19,7 @@ import { createArea, createColumn, createTable, type ErdChange } from '@/feature
 import type { DocumentDiffSummary } from '@/features/editor/model/doc-diff'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
-import { estimateTableHeight } from '@/features/editor/components/canvas/TableNode'
+import { estimateTableHeight } from '@/features/editor/model/table-size'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { modelKeys, useModel } from '@/features/models/hooks'
 import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'

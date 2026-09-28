@@ -13,7 +13,7 @@ import {
   viewportFittedTo,
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
-import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 
 function doc(): EditorDocument {
   return { model: emptyContent().model, diagram: emptyContent().diagram }

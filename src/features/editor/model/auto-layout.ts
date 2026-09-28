@@ -18,7 +18,7 @@ import type { ELK, ElkNode } from 'elkjs/lib/elk.bundled.js'
 
 import type { EditorDocument, ErdTable } from './content-schema'
 import type { ErdChange } from './changes'
-import { estimateTableHeight, tableRenderWidth } from '../components/canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from './table-size'
 
 /** 자동 배치 모드 — 툴바 분할 버튼 표기와 localStorage(crowfoot.editor.layout-mode) 값
  *  (layered=elkjs 계층형, hub=허브 중심 링 방사형, hybrid=링 각도 + 빈 공간 채우기) */

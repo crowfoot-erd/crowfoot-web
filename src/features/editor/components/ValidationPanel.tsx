@@ -21,7 +21,7 @@ import { viewportCenteredOn, type CanvasExtent } from '@/features/editor/model/c
 import { recordValidationRun } from '@/features/models/api'
 import type { ValidationIssue, ValidationLevel } from '@/features/editor/model/validation'
 import { useEditorStore } from '@/features/editor/store/editor-store'
-import { estimateTableHeight, tableRenderWidth } from './canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 
 /** 포커스 클램프용 extent·줌 하한 — 익스플로러(ModelExplorerPanel)와 같은 값 */
 const FOCUS_EXTENT: CanvasExtent = [

@@ -9,7 +9,7 @@
  */
 import { NOTE_ESTIMATED_HEIGHT } from './canvas-bounds'
 import type { EditorDocument } from './content-schema'
-import { estimateTableHeight, tableRenderWidth } from '../components/canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from './table-size'
 
 /** 겹침 해소 후 최소 간격 — 테이블끼리 밀어내는 간격(ErdCanvas GAP)과 같다 */
 export const NOTE_OVERLAP_GAP = 32

@@ -37,7 +37,8 @@ import {
 } from './edge-router'
 import { relationshipSharedRoutes, sourceGlyphExtent, targetGlyphExtent } from './edge-route-table'
 import { columnRowAnchor } from './row-anchors'
-import { estimateTableHeight, tableRenderWidth } from './TableNode'
+import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
+
 
 export type RelationshipEdgeData = Record<string, never>
 export type RelationshipEdgeType = Edge<RelationshipEdgeData, 'relationship'>

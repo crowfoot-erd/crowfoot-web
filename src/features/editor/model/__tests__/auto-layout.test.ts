@@ -5,7 +5,7 @@ import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { emptyContent } from '@/features/editor/model/content-io'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutHubPositions, layoutTablePositions, orderFkColumns, positionNotes, refineHubAlignment } from '@/features/editor/model/auto-layout'
-import { estimateTableHeight, tableRenderWidth } from '@/features/editor/components/canvas/TableNode'
+import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 import { relationshipSharedRoutes } from '@/features/editor/components/canvas/edge-route-table'
 
 function doc(): EditorDocument {
