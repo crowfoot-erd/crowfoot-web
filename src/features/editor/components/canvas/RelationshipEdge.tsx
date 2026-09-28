@@ -264,6 +264,35 @@ function RelationshipEdgeComponent({
     () => trimPolyline(points, loopTrims.start, loopTrims.end),
     [points, loopTrims.start, loopTrims.end],
   )
+  /** 그리는 선 — 라우팅 몸체 양끝에 면 앵커까지의 스텁을 얹어 ○·| 글리프를 관통해 테이블
+   *  면까지 이어진다(#281). 라우팅 시작점은 심볼 끝으로 밀린 채로 둔다 — 법선 스텝(Section 5)이
+   *  꺾는 지점이 글리프 구간 안으로 들어와 심볼을 가로지르지 않게. 스텁은 앵커→밀린 시작점의
+   *  직선(면 법선)이라 어느 경로에도 붙는다. 글리프(2.5px)가 선(1.5px)보다 굵어 관통해도 읽힌다.
+   *  앵커는 RF 핸들 중심이라 실제 면에서 몇 px 바깥(핸들 크기·오프셋에 따라 달라진다) — 끝을
+   *  법선 방향으로 8px 더 밀어 면 안쪽까지 과통과시키면 엣지 레이어가 노드 아래에 묻혀 테이블
+   *  몸체가 초과분을 덮어, 어느 오프셋에서도 선이 면에 닿은 것으로 보인다.
+   *  점선(비식별) 몸체와는 별도 서브패스로 항상 실선으로 그린다 — '6 3' 위상이 스텝 구간에
+   *  빈칸을 맞추면 심볼 바로 뒤~면 사이가 뚫려 선이 닿지 않은 것처럼 보인다 */
+  const faceStubs = useMemo(() => {
+    if (visiblePoints.length < 2) return ''
+    const head = isSelfLoop ? points[0] : adjustedAnchors.source
+    const tail = isSelfLoop ? points[points.length - 1] : adjustedAnchors.target
+    const intoFace = (from: RouterPoint, to: RouterPoint): string | null => {
+      const dx = to.x - from.x
+      const dy = to.y - from.y
+      const len = Math.hypot(dx, dy)
+      if (len < 0.5) return null
+      const ex = to.x + (dx / len) * 8
+      const ey = to.y + (dy / len) * 8
+      return `M ${ex} ${ey} L ${to.x} ${to.y}`
+    }
+    return [
+      intoFace(visiblePoints[0], head),
+      intoFace(visiblePoints[visiblePoints.length - 1], tail),
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }, [visiblePoints, isSelfLoop, points, adjustedAnchors])
   const path = useMemo(() => orthogonalRoundedPath(visiblePoints), [visiblePoints])
   const labelPoint = useMemo(() => polylineMidpoint(visiblePoints), [visiblePoints])
 
@@ -332,11 +361,19 @@ function RelationshipEdgeComponent({
           strokeDasharray: relationship.identifying ? undefined : '6 3',
         }}
       />
+      {/* 면 스텁(#281) — 점선 위상과 무관하게 면까지는 항상 실선. 몸체(BaseEdge)와 각지게 이어져
+       *  스텁 시작점에서 점선 첫 대시가 이어 붙는다 */}
+      <path
+        d={faceStubs}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={selected ? 2.5 : 1.5}
+      />
       {/* 클릭 히트 영역 — BaseEdge 내장(20px·butt cap) 대신 폭을 넓혀 선 근처를 짚어도
        *  잡히게 한다(#278). 코너는 round cap으로 메워 직교 꺾임점의 사각 틈까지 커버.
        *  transparent stroke 트릭(RF 내장과 같은 방식)이라 눈에 보이지 않는다 */}
       <path
-        d={path}
+        d={`${path} ${faceStubs}`}
         fill="none"
         stroke="transparent"
         strokeWidth={26}
