@@ -25,7 +25,7 @@
  * 그룹(주제 영역) 소속 테이블은 **그룹 색이 개별 색을 덮어 고정**한다(groupColorOf — 문서
  * 순서 첫 소속 그룹, 그룹 색이 default면 개별 색 폴백). 미니맵도 같은 우선순위다.
  */
-import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
 import { GripHorizontal, GripVertical, Info, KeyRound, PencilLine, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -54,7 +54,7 @@ import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from '
 import { registerColumnRowAnchors, unregisterColumnRowAnchors } from './row-anchors'
 import { useCompareHighlight } from './compare-context'
 import { useValidationRing } from './validation-context'
-import { tableSkin } from './table-skin'
+import { tableAccentHex, tableSkin } from './table-skin'
 import { CommitInput, CommitSelect } from './inline-inputs'
 import { ColumnTermInput } from './column-term-input'
 
@@ -132,6 +132,20 @@ function nextColumnName(columns: ErdColumn[]): string {
 }
 
 /* ---------- 관계 시작 — 점 근처 클릭 → 캔버스 오버레이 선택 → 대상 테이블 클릭 연결 ---------- */
+
+/** 점(연결 핸들) 공통 꾸밈 — 보이는 마커. 드래그로 선을 긋는 기능은 꺼 둔다(사용자 요청) */
+const DOT_CLASS = '!size-3 !border-2 !border-background !bg-muted-foreground'
+/** 점을 면 안쪽에 바짝 붙인다(2026-09-28 사용자 조정) — RF 기본은 transform으로 점 폭 절반을
+ *  바깥으로 밀어 경계에 걸치게 둔다. 인라인 style로 위치·transform을 통째로 덮어야 이긴다
+ *  (Tailwind v4 변환 유틸리티는 translate 속성이라 transform을 못 덮는다). -1px은 테두리 1px
+ *  보정 — 점 바깥 끝이 면 평면에 닿는다. 앵커(RF 실측 점 중심)가 면에서 점 반지름(6px)
+ *  안쪽에 오므로 글리프 원점(앵커+6)이 면 평면에 정확히 와 발톱·‖가 테이블에 바로 붙는다 */
+const DOT_STYLE: Record<'top' | 'bottom' | 'left' | 'right', CSSProperties> = {
+  top: { top: -1, transform: 'translate(-50%, 0)' },
+  bottom: { bottom: -1, transform: 'translate(-50%, 0)' },
+  left: { left: -1, transform: 'translate(0, -50%)' },
+  right: { right: -1, transform: 'translate(0, -50%)' },
+}
 
 /** 관계 시작 밴드 — 점(연결 핸들) 근처만 반응하는 클릭 영역. hover 강조도 이 영역만 살짝 */
 const RELATION_BANDS: { side: RelationHandleId; className: string }[] = [
@@ -398,7 +412,8 @@ function ColumnRow({
       />
 
       {spec?.precision ? (
-        <span className={cn('flex items-center gap-1 px-1', SETTING_CELL_RULE)}>
+        // 사이즈 칸 더블클릭도 이름 칸과 같은 컬럼 정보(노드 더블클릭=테이블 정보가 아니라) — 2026-09-28 #282
+        <span className={cn('flex items-center gap-1 px-1', SETTING_CELL_RULE)} onDoubleClick={openInfo}>
           <CommitInput
             className={SIZE_INPUT_RULE}
             type="number"
@@ -419,7 +434,7 @@ function ColumnRow({
           />
         </span>
       ) : spec?.length ? (
-        <span className={cn('flex items-center px-1', SETTING_CELL_RULE)}>
+        <span className={cn('flex items-center px-1', SETTING_CELL_RULE)} onDoubleClick={openInfo}>
           <CommitInput
             className={SIZE_INPUT_RULE}
             type="number"
@@ -431,8 +446,9 @@ function ColumnRow({
           />
         </span>
       ) : (
-        // 사이즈 없는 타입도 자리는 지킨다 — 설정 영역 배경·구분선이 행마다 이어진다
-        <span aria-hidden className={SETTING_CELL_RULE} />
+        // 사이즈 없는 타입도 자리는 지킨다 — 설정 영역 배경·구분선이 행마다 이어진다.
+        // 더블클릭은 컬럼 정보(사이즈 칸 관례와 동일)
+        <span className={SETTING_CELL_RULE} onDoubleClick={openInfo} />
       )}
 
       <span className={cn('flex items-center justify-center', SETTING_CELL_RULE)}>
@@ -825,8 +841,6 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       data-nodekind="table"
       className={cn(
         'relative flex h-full flex-col rounded-md border bg-card text-card-foreground shadow-sm',
-        // 선택 — 선명한 하늘색 링으로 확실히 (검증 링·원격 선택과 같은 2px 언어)
-        selected && 'border-sky-600 ring-2 ring-sky-500',
         // 진행 중 관계의 소스 — 하늘색 강조
         isPendingSource && 'border-sky-500 ring-2 ring-sky-500/60',
         // 검증 문제 링(§4.2) — 선택·관계 진행 중엔 transient 강조가 우선한다
@@ -840,8 +854,13 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         ...(remoteOffset
           ? { transform: `translate(${remoteOffset.x}px, ${remoteOffset.y}px)`, transition: 'transform 80ms linear' }
           : null),
-        // 원격 선택 하이라이트 — 선택한 사람의 참가자 색 링
-        ...(remoteSelector ? { boxShadow: `0 0 0 2px ${participantColor(remoteSelector)}` } : null),
+        // 선택 강조(#282) — 파랑 테두리+파랑 링 이중 톤 대신 노드 자기 색 단일 링(스킨 색과 어울리고
+        // 라운드 코너에서도 깔끔하다). 원격 선택 하이라이트는 선택한 사람의 참가자 색 링 — 같은 0 0 0 2px 언어
+        ...(selected
+          ? { boxShadow: `0 0 0 2px ${tableAccentHex(color)}` }
+          : remoteSelector
+            ? { boxShadow: `0 0 0 2px ${participantColor(remoteSelector)}` }
+            : null),
       }}
       data-remote-selection={remoteSelector ?? undefined}
       data-validation={validationRing ?? undefined}
@@ -851,6 +870,15 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
         if ((event.target as HTMLElement).closest('button, select')) event.stopPropagation()
       }}
     >
+      {/* 클릭 여유(#282) — 관계선 히트 영역(±13px)이 노드 바로 옆 클릭을 잡아가는 것을 이긴다.
+          *  바깥 8px만 띠로 잡는다 — 상자 안을 덮으면 안 되는데, positioned 레이어는 in-flow 콘텐츠
+          *  (행 호버 X·input 포커스) 위에 그려져 인테리어 인터랙션이 전부 죽는다(2026-09-28 사용자
+          *  지적). 모서리 8×8은 비워 둔다 — 선은 면 중심에 붙어 경합이 일어나지 않는다.
+          *  눈에는 보이지 않고(투명) 레이아웃 영향도 없다 */}
+      <div aria-hidden className="absolute -top-2 inset-x-0 h-2" />
+      <div aria-hidden className="absolute -bottom-2 inset-x-0 h-2" />
+      <div aria-hidden className="absolute -left-2 inset-y-0 w-2" />
+      <div aria-hidden className="absolute -right-2 inset-y-0 w-2" />
       {/* 자동 폭 측정용 미러 — 레이아웃에 영향 없는 은신 절대 배치, data-extras = 행 고정 칸 */}
       <div
         ref={measureRef}
@@ -1109,16 +1137,18 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       {/* 관계선 엣지는 자식→부모 방향 — RF가 target 노드에서 target 타입 핸들을 찾으므로 각 면에
           source·target을 겹쳐 놓는다(같은 id·위치). source만 있으면 "Couldn't create edge for
           target handle id" 경고와 함께 엣지가 아예 안 그려진다.
-          점은 보이는 마커로 그대로 두되 드래그로 선을 그리는 기능은 꺼 둔다(사용자 요청) —
-          isConnectable=false면 RF가 연결을 시작하지 않는다. target은 보이지 않는 앵커 역할. */}
-      <Handle id="top" type="source" position={Position.Top} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="bottom" type="source" position={Position.Bottom} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="left" type="source" position={Position.Left} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="right" type="source" position={Position.Right} isConnectable={false} className={cn('!size-3 !border-2 !border-background !bg-muted-foreground', !canEdit && '!opacity-0')} />
-      <Handle id="top" type="target" position={Position.Top} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
-      <Handle id="bottom" type="target" position={Position.Bottom} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
-      <Handle id="left" type="target" position={Position.Left} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
-      <Handle id="right" type="target" position={Position.Right} isConnectable={false} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
+          점(DOT_CLASS·DOT_STYLE)은 면 안쪽에 붙은 보이는 마커 — 드래그로 선을 긋는 기능은
+          꺼 둔다(사용자 요청): isConnectable=false면 RF가 연결을 시작하지 않고 pointer-events도
+          꺼져 상자 안 클릭을 가로채지 않는다. target은 같은 자리의 보이지 않는 앵커 역할 —
+          앵커 좌표가 source·target 양쪽에서 같아야 글리프가 면에 정확히 붙는다. */}
+      <Handle id="top" type="source" position={Position.Top} isConnectable={false} style={DOT_STYLE.top} className={cn(DOT_CLASS, !canEdit && '!opacity-0')} />
+      <Handle id="bottom" type="source" position={Position.Bottom} isConnectable={false} style={DOT_STYLE.bottom} className={cn(DOT_CLASS, !canEdit && '!opacity-0')} />
+      <Handle id="left" type="source" position={Position.Left} isConnectable={false} style={DOT_STYLE.left} className={cn(DOT_CLASS, !canEdit && '!opacity-0')} />
+      <Handle id="right" type="source" position={Position.Right} isConnectable={false} style={DOT_STYLE.right} className={cn(DOT_CLASS, !canEdit && '!opacity-0')} />
+      <Handle id="top" type="target" position={Position.Top} isConnectable={false} style={DOT_STYLE.top} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
+      <Handle id="bottom" type="target" position={Position.Bottom} isConnectable={false} style={DOT_STYLE.bottom} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
+      <Handle id="left" type="target" position={Position.Left} isConnectable={false} style={DOT_STYLE.left} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
+      <Handle id="right" type="target" position={Position.Right} isConnectable={false} style={DOT_STYLE.right} className="pointer-events-none !size-3 !border-0 !bg-transparent" />
     </div>
   )
 }

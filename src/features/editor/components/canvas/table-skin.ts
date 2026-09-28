@@ -31,3 +31,8 @@ export function tableSkin(color: TableColorValue): TableSkin {
 export function tableColorHex(color: TableColorValue): string | null {
   return color === 'default' ? null : TABLE_COLOR_HEX[color]
 }
+
+/** 선택 강조 링의 원색(#282) — 노드 자기 색으로 선택을 표시한다. 'default'는 중립 하늘색 */
+export function tableAccentHex(color: TableColorValue): string {
+  return color === 'default' ? '#0ea5e9' : TABLE_COLOR_HEX[color]
+}

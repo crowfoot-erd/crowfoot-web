@@ -73,18 +73,23 @@ function NoteNodeComponent({ id, selected }: NodeProps<NoteNodeType>) {
     <div
       ref={rootRef}
       data-nodekind="note"
-      className={cn(
-        'relative flex flex-col rounded-md border shadow-sm',
-        skin.box,
-        selected && 'ring-1 ring-amber-400',
-      )}
+      className={cn('relative flex flex-col rounded-md border shadow-sm', skin.box)}
       style={{
         ...skin.boxStyle,
+        // 선택 강조(#282) — 무조건 앰버 링 대신 메모 자기 색 단일 링(테이블과 같은 0 0 0 2px 언어)
+        ...(selected ? { boxShadow: `0 0 0 2px ${skin.accentHex}` } : null),
         width: resizing?.width ?? (note.width ?? DEFAULT_WIDTH),
         // 높이 미확정(undefined)이면 내용(밴드 + textarea rows=4)이 높이를 결정한다
         height: resizing?.height ?? note.height,
       }}
     >
+      {/* 클릭 여유(#282) — 바깥 8px만 띠로 잡는다(관계선 히트 ±13px과의 경합에서 노드가 이긴다).
+          *  상자 안을 덮으면 positioned 레이어가 본문 textarea·밴드 버튼 위에 그려져 죽는다
+          *  (2026-09-28). 눈에는 보이지 않고 레이아웃 영향도 없다 */}
+      <div aria-hidden className="absolute -top-2 inset-x-0 h-2" />
+      <div aria-hidden className="absolute -bottom-2 inset-x-0 h-2" />
+      <div aria-hidden className="absolute -left-2 inset-y-0 w-2" />
+      <div aria-hidden className="absolute -right-2 inset-y-0 w-2" />
       {canEdit ? (
         <NodeResizer
           isVisible={selected}

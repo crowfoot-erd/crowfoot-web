@@ -49,6 +49,22 @@ const GLYPH_ANGLE: Record<string, number> = {
   bottom: 90,
 }
 
+/** 까마귀발 발목(x=16) — 발톱 끝(자식) 쪽 스텁은 발목까지만 내려온다. 발톱 아래로 선을 깔면
+ *  가운데 발가락과 겹쳐 '가운데만 연결된' 것처럼 보여 발톱 자체가 연결부가 되게 한다(2026-09-28) */
+const CROWFOOT_ANKLE = 16
+
+/** 점을 면 법선(글리프 +x 방향)으로 d만큼 옮긴다 */
+const outward = (p: RouterPoint, position: string, d: number): RouterPoint =>
+  position === 'left'
+    ? { ...p, x: p.x - d }
+    : position === 'right'
+      ? { ...p, x: p.x + d }
+      : position === 'top'
+        ? { ...p, y: p.y - d }
+        : position === 'bottom'
+          ? { ...p, y: p.y + d }
+          : p
+
 /* ---------- 글리프 조각 — x=0이 노드 경계, +x가 선 쪽. 심볼은 테이블에 가까운 것부터 ---------- */
 
 /** 유일(‖) — 막대 2개, 노드 경계 바로 옆 */
@@ -196,6 +212,7 @@ function RelationshipEdgeComponent({
       adjustedAnchors.target,
       sourcePosition,
       targetPosition,
+      // 글리프 원점이 면 평면이므로 물러남 = 심볼 폭 그대로 — 몸체가 최외곽 심볼 끝에 정확히 붙는다
       sourceGlyphExtent(relationship),
       targetGlyphExtent(relationship),
     )
@@ -268,37 +285,68 @@ function RelationshipEdgeComponent({
    *  면까지 이어진다(#281). 라우팅 시작점은 심볼 끝으로 밀린 채로 둔다 — 법선 스텝(Section 5)이
    *  꺾는 지점이 글리프 구간 안으로 들어와 심볼을 가로지르지 않게. 스텁은 앵커→밀린 시작점의
    *  직선(면 법선)이라 어느 경로에도 붙는다. 글리프(2.5px)가 선(1.5px)보다 굵어 관통해도 읽힌다.
-   *  앵커는 RF 핸들 중심이라 실제 면에서 몇 px 바깥(핸들 크기·오프셋에 따라 달라진다) — 끝을
+   *  스텁 끝점은 실측 면 평면으로 당긴 앵커(faceAnchors)라 핸들 오프셋과 무관하고, 끝을
    *  법선 방향으로 8px 더 밀어 면 안쪽까지 과통과시키면 엣지 레이어가 노드 아래에 묻혀 테이블
    *  몸체가 초과분을 덮어, 어느 오프셋에서도 선이 면에 닿은 것으로 보인다.
    *  점선(비식별) 몸체와는 별도 서브패스로 항상 실선으로 그린다 — '6 3' 위상이 스텝 구간에
    *  빈칸을 맞추면 심볼 바로 뒤~면 사이가 뚫려 선이 닿지 않은 것처럼 보인다 */
+  /** 글리프·스텁의 면 좌표(#281·#282) — 점(핸들)은 면 안쪽에 붙어 있고, 글리프 원점·스텁 끝은
+   *  모두 실측 박스의 면 평면 그 자체다 — 발톱·‖가 테이블에 바로 닿고 1(‖) 쪽 선도 면까지
+   *  이어진다(2026-09-28 사용자 조정). 면을 따라 벌린 앵커 위치(분산 오프셋)만 취하고 법선
+   *  좌표는 박스로 정확히 잡는다 — RF 앵커가 점 중심을 어디로 보고하든 흔들리지 않는다.
+   *  자기 참조 루프 앵커는 이미 면 평면이다 */
+  const faceAnchors = useMemo(() => {
+    const adjust = (anchor: RouterPoint, position: string, tableId: string | undefined): RouterPoint => {
+      const box = tableId ? boxOf(tableId) : null
+      if (!box) return anchor
+      if (position === 'left' || position === 'right') {
+        return { ...anchor, x: position === 'left' ? box.x : box.x + box.w }
+      }
+      if (position === 'top' || position === 'bottom') {
+        return { ...anchor, y: position === 'top' ? box.y : box.y + box.h }
+      }
+      return anchor
+    }
+    return {
+      source: adjust(adjustedAnchors.source, sourcePosition, relationship?.childTableId),
+      target: adjust(adjustedAnchors.target, targetPosition, relationship?.parentTableId),
+    }
+  }, [adjustedAnchors, sourcePosition, targetPosition, relationship, boxOf])
   const faceStubs = useMemo(() => {
     if (visiblePoints.length < 2) return ''
-    const head = isSelfLoop ? points[0] : adjustedAnchors.source
-    const tail = isSelfLoop ? points[points.length - 1] : adjustedAnchors.target
-    const intoFace = (from: RouterPoint, to: RouterPoint): string | null => {
+    // 자식 끝이 발톱이면 스텁은 발목까지만 — 발톱 아래로 선을 깔지 않는다(발톱이 연결부다)
+    const head = isSelfLoop
+      ? points[0]
+      : relationship?.type === 'ONE_TO_MANY'
+        ? outward(faceAnchors.source, sourcePosition, CROWFOOT_ANKLE)
+        : faceAnchors.source
+    const tail = isSelfLoop ? points[points.length - 1] : faceAnchors.target
+    const intoFace = (from: RouterPoint, to: RouterPoint, overshoot: number): string | null => {
       const dx = to.x - from.x
       const dy = to.y - from.y
       const len = Math.hypot(dx, dy)
       if (len < 0.5) return null
-      const ex = to.x + (dx / len) * 8
-      const ey = to.y + (dy / len) * 8
-      return `M ${ex} ${ey} L ${to.x} ${to.y}`
+      const ex = to.x + (dx / len) * overshoot
+      const ey = to.y + (dy / len) * overshoot
+      // 몸체 시작점 → 끝점(±과통과)까지 한 직선 — 글리프 구간(‖·○·발톱) 전체에 선이 깔린다
+      return `M ${from.x} ${from.y} L ${ex} ${ey}`
     }
+    // 발톱 끝은 발목에서 정확히 멈춘다(과통과 0 — 발톱 아래로 선이 새지 않게). ‖ 쪽·루프 끝은
+    // 면 평면을 8px 과통과해 안쪽까지 — 엣지 레이어가 노드 아래라 테이블이 초과분을 덮는다
+    const headOvershoot = !isSelfLoop && relationship?.type === 'ONE_TO_MANY' ? 0 : 8
     return [
-      intoFace(visiblePoints[0], head),
-      intoFace(visiblePoints[visiblePoints.length - 1], tail),
+      intoFace(visiblePoints[0], head, headOvershoot),
+      intoFace(visiblePoints[visiblePoints.length - 1], tail, 8),
     ]
       .filter(Boolean)
       .join(' ')
-  }, [visiblePoints, isSelfLoop, points, adjustedAnchors])
+  }, [visiblePoints, isSelfLoop, points, faceAnchors, relationship, sourcePosition])
   const path = useMemo(() => orthogonalRoundedPath(visiblePoints), [visiblePoints])
   const labelPoint = useMemo(() => polylineMidpoint(visiblePoints), [visiblePoints])
 
-  /** 글리프 앵커 — 평행 분리·자기 참조 루프에서도 물러난 선의 시작·끝점에 정확히 붙는다 */
-  const glyphSource = isSelfLoop ? points[0] : adjustedAnchors.source
-  const glyphTarget = isSelfLoop ? points[points.length - 1] : adjustedAnchors.target
+  /** 글리프 앵커 — 면 평면. 평행 분리·자기 참조 루프는 면 평면 그대로 */
+  const glyphSource = isSelfLoop ? points[0] : faceAnchors.source
+  const glyphTarget = isSelfLoop ? points[points.length - 1] : faceAnchors.target
 
   if (!relationship) return null
 

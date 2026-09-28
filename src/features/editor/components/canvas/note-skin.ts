@@ -20,6 +20,8 @@ export interface NoteSkin {
   bandStyle?: CSSProperties
   /** 자유 색일 때 색 점 인라인 배경색 */
   dotStyle?: CSSProperties
+  /** 선택 강조 링의 원색(#282) — 메모 자기 색으로 선택을 표시한다 */
+  accentHex: string
 }
 
 const PRESET_SKINS: Record<NoteColor, { box: string; band: string; dot: string }> = {
@@ -62,8 +64,8 @@ export const PRESET_HEX: Record<NoteColor, string> = {
 /** 색 → 스킨. 자유 색은 테마 토큰과 혼합해 밝기·다크 모드를 함께 견딘다 */
 export function noteSkin(color: string): NoteSkin {
   const preset = NOTE_COLORS.find((c) => c === color)
-  if (preset) return PRESET_SKINS[preset]
-  if (!isNoteHex(color)) return PRESET_SKINS.yellow // 스키마 밖 값 — 기본 프리셋으로
+  if (preset) return { ...PRESET_SKINS[preset], accentHex: PRESET_HEX[preset] }
+  if (!isNoteHex(color)) return { ...PRESET_SKINS.yellow, accentHex: PRESET_HEX.yellow } // 스키마 밖 값 — 기본 프리셋으로
   const c = color.toLowerCase()
   return {
     // 틴트 배경 + 테두리는 본색, 글자는 테마 기본색 — 다크 모드에서도 읽힌다
@@ -76,6 +78,7 @@ export function noteSkin(color: string): NoteSkin {
     },
     bandStyle: { backgroundColor: `color-mix(in srgb, ${c} 28%, transparent)` },
     dotStyle: { backgroundColor: c },
+    accentHex: c,
   }
 }
 
