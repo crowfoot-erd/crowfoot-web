@@ -84,3 +84,27 @@ describe('edge-route-table — 면 분산 앵커 순서(연결 대상 위치 기
     expect(second).toBe(first) // 같은 객체 — 재계산 없음
   })
 })
+
+describe('edge-route-table — 면 부하(faceLoad — 자기 참조 루프 좌우 선택 근거)', () => {
+  it('테이블별 면에 붙은 관계 끝 수를 센다 — 자기 참조는 제외', () => {
+    // S 왼쪽에 부모 2개, 오른쪽에 자식 1개 — S의 faceLoad는 left 2·right 1
+    const boxes: Record<string, RouterBox> = {
+      S: { x: 300, y: 200, w: 200, h: 150 },
+      A: { x: 0, y: 150, w: 200, h: 150 },
+      B: { x: 0, y: 350, w: 200, h: 150 },
+      C: { x: 700, y: 200, w: 200, h: 150 },
+    }
+    const relationships = [
+      rel('r-a', 'A', 'S'), // S의 왼쪽 면
+      rel('r-b', 'B', 'S'), // S의 왼쪽 면
+      rel('r-c', 'S', 'C'), // S의 오른쪽 면
+      rel('r-self', 'S', 'S'), // 자기 참조 — 면 부하에서 제외
+    ]
+    const tables = Object.keys(boxes).map((id) => ({ id }) as ErdTable)
+
+    const { faceLoad } = relationshipSharedRoutes({}, 'sig-load', tables, relationships, boxOfOf(boxes))
+
+    expect(faceLoad.get('S')).toEqual({ left: 2, right: 1, top: 0, bottom: 0 })
+    expect(faceLoad.get('C')).toEqual({ left: 1, right: 0, top: 0, bottom: 0 })
+  })
+})

@@ -554,7 +554,7 @@ export function offsetAlongFace(point: RouterPoint, face: string, offset: number
 export interface RelationEndpoint {
   relId: string
   tableId: string
-  face: string
+  face: FaceSide
   along: number
 }
 
@@ -849,15 +849,31 @@ export function faceShareOffset(endpoints: RelationEndpoint[], relId: string, ta
   return (index - (group.length - 1) / 2) * FACE_SPACING
 }
 
-/** 자기 참조 관계의 고정 루프 — 오른쪽 면 중심 앵커에서 면을 따라 벌렸다가 돌아온다(장애물 회피 없음) */
-export function selfLoopPoints(anchor: RouterPoint, opts: { spread?: number; outset?: number } = {}): RouterPoint[] {
-  const spread = opts.spread ?? 32
+/** 자기 참조 관계의 고정 루프 — 지정 면의 두 앵커(자식 FK 행·부모 PK 행)에서 면 바깥으로
+ *  벌렸다가 돌아온다(장애물 회피 없음). 두 행이 가까우면 최소 폭(minSpan)으로 벌려 양 끝
+ *  글리프가 겹치지 않게 한다. 앵커 x는 이미 선택한 면의 경계 좌표여야 한다(호출자가 계산). */
+export function selfLoopPoints(
+  childAnchor: RouterPoint,
+  parentAnchor: RouterPoint,
+  opts: { minSpan?: number; outset?: number; side?: 'left' | 'right' } = {},
+): RouterPoint[] {
+  const minSpan = opts.minSpan ?? 64
   const outset = opts.outset ?? 40
+  const dx = opts.side === 'left' ? -outset : outset
+  // 두 행이 붙어 있으면(예: PK 바로 밑 FK) 루프가 납작해 글리프가 포개진다 — 중점 기준 최소 폭으로 벌린다
+  let childY = childAnchor.y
+  let parentY = parentAnchor.y
+  const span = Math.abs(parentY - childY)
+  if (span < minSpan) {
+    const mid = (childY + parentY) / 2
+    childY = mid - minSpan / 2
+    parentY = mid + minSpan / 2
+  }
   return [
-    { x: anchor.x, y: anchor.y - spread },
-    { x: anchor.x + outset, y: anchor.y - spread },
-    { x: anchor.x + outset, y: anchor.y + spread },
-    { x: anchor.x, y: anchor.y + spread },
+    { x: childAnchor.x, y: childY },
+    { x: childAnchor.x + dx, y: childY },
+    { x: parentAnchor.x + dx, y: parentY },
+    { x: parentAnchor.x, y: parentY },
   ]
 }
 

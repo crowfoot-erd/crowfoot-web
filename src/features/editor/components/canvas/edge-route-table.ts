@@ -54,6 +54,8 @@ export interface SharedRouteTable {
   routes: Map<string, RelationshipSharedRoute>
   /** 장애물 박스(전체 테이블) — 공유 경로가 없는 폴백 라우팅에 쓴다 */
   obstacles: RouterBox[]
+  /** 테이블별 면별 붙은 관계 끝 수 — 자기 참조 루프가 덜 붐비는 면(좌/우)을 고르는 근거 */
+  faceLoad: Map<string, Record<FaceSide, number>>
 }
 
 let cache: { doc: object; signature: string; value: SharedRouteTable } | null = null
@@ -159,7 +161,17 @@ export function relationshipSharedRoutes(
     })
   }
 
-  const value = { routes, obstacles }
+  const faceLoad = new Map<string, Record<FaceSide, number>>()
+  for (const e of endpoints) {
+    let load = faceLoad.get(e.tableId)
+    if (!load) {
+      load = { left: 0, right: 0, top: 0, bottom: 0 }
+      faceLoad.set(e.tableId, load)
+    }
+    load[e.face] += 1
+  }
+
+  const value = { routes, obstacles, faceLoad }
   cache = { doc, signature, value }
   return value
 }

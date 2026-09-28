@@ -10,8 +10,8 @@
  * 선 몸체는 양 끝 앵커를 면 법선으로 심볼 폭만큼 밀어(insetAnchors) 글리프의 가장 바깥
  * 심볼 끝에서 시작/끝난다 — 라우터가 첫 선분을 면 평행으로 꺾어도 시작점은 심볼 끝에 붙는다.
  * 같은 테이블의 같은 면에 여러 관계가 붙으면 앵커를 면을 따라 등간격으로 벌려 분산하고
- * (상호 참조도 이 규칙으로 흡수), 자기 참조(같은 테이블 FK)는 오른쪽 면 고정 루프로
- * 그린다(장애물 회피 없음).
+ * (상호 참조도 이 규칙으로 흡수), 자기 참조(같은 테이블 FK)는 좌/우 면 중 일반 관계가 덜
+ * 붙은 쪽에 FK 행→PK 행 높이로 잇는 루프로 그린다(장애물 회피 없음 — 보라색 계열).
  * 문서 전역 계산(연결면·면 분산·통로 레인 라우팅)은 관계 수의 제곱이라 엣지마다 반복하면
  * 프레임 비용이 세제곱으로 커진다 — edge-route-table이 문서·좌표 지문당 한 번 계산한
  * 공유 테이블을 조회하고, 엣지별 남은 일은 양 끝 앵커(자기 관계의 RF 실측 좌표)뿐이다.
@@ -32,8 +32,10 @@ import {
   selfLoopPoints,
   trimPolyline,
   type RouterBox,
+  type RouterPoint,
 } from './edge-router'
 import { relationshipSharedRoutes, sourceGlyphExtent, targetGlyphExtent } from './edge-route-table'
+import { columnRowAnchor } from './row-anchors'
 import { estimateTableHeight, tableRenderWidth } from './TableNode'
 
 export type RelationshipEdgeData = Record<string, never>
@@ -147,13 +149,14 @@ function RelationshipEdgeComponent({
    *  장애물 박스·통로 레인 라우팅(sharedRoutes)은 관계 수의 제곱이라 엣지마다 계산하면
    *  프레임 비용이 세제곱으로 커진다(테이블 수백 개 문서의 드래그 문제 원인).
    *  edge-route-table이 문서(present)·좌표 지문(nodeSignature)당 한 번 계산해 모든 엣지가
-   *  같은 결과를 공유한다 — 장애물 박스도 전체 테이블을 감싸 드래그 중 실시간으로 따라간다 */
+   *  같은 결과를 공유한다 — 장애물 박스도 전체 테이블을 감싸 드래그 중 실시간으로 따라간다.
+   *  자기 참조 엣지도 면 부하(faceLoad — 루프 좌우 선택)를 위해 조회한다(캐시 공유라 공짜) */
   const shared = useMemo(
     () =>
-      relationship && !isSelfLoop
+      relationship
         ? relationshipSharedRoutes(present, nodeSignature, tables, relationships, boxOf)
         : null,
-    [relationship, isSelfLoop, present, nodeSignature, tables, relationships, boxOf],
+    [relationship, present, nodeSignature, tables, relationships, boxOf],
   )
   const sharedRoute = shared?.routes.get(id) ?? null
 
@@ -198,8 +201,40 @@ function RelationshipEdgeComponent({
     )
   }, [relationship, isSelfLoop, adjustedAnchors, sourcePosition, targetPosition])
 
+  /** 자기 참조 루프 배치 — 좌/우 면 중 일반 관계가 덜 붙은 쪽에, 앵커는 FK 행·PK 행 높이로
+   *  (row-anchors 레지스트리 — 미등록 첫 프레임은 면 중심으로 폴백). 같은 테이블에 자기
+   *  참조가 여럿이면 relId 순서로 outset을 벌려 포개짐을 피한다 */
+  const selfLoop = useMemo(() => {
+    if (!relationship || !isSelfLoop) return null
+    const load = shared?.faceLoad.get(relationship.childTableId)
+    const side: 'left' | 'right' = (load?.left ?? 0) < (load?.right ?? 0) ? 'left' : 'right'
+    const selfIndex = relationships
+      .filter((r) => r.childTableId === relationship.childTableId && r.parentTableId === r.childTableId)
+      .sort((a, b) => (a.id < b.id ? -1 : 1))
+      .findIndex((r) => r.id === relationship.id)
+    const outset = 40 + Math.max(0, selfIndex) * 26
+    const box = boxOf(relationship.childTableId)
+    if (!box) return { child: { x: sourceX, y: sourceY }, parent: { x: sourceX, y: sourceY }, side, outset }
+    const faceX = side === 'left' ? box.x : box.x + box.w
+    const anchorAt = (columnId: string | undefined): RouterPoint => {
+      const row = columnId ? columnRowAnchor(relationship.childTableId, columnId) : null
+      // 행을 못 찾으면 면의 위(자식)·아래(부모) 절반으로 — 예전 면 중심 루프와 같은 자리 배분
+      const fallbackY = box.y + box.h * (columnId === relationship.columnMappings[0]?.childColumnId ? 0.4 : 0.6)
+      return { x: faceX, y: row ? box.y + row.top + row.height / 2 : fallbackY }
+    }
+    return {
+      child: anchorAt(relationship.columnMappings[0]?.childColumnId),
+      parent: anchorAt(relationship.columnMappings[relationship.columnMappings.length - 1]?.parentColumnId),
+      side,
+      outset,
+    }
+  }, [relationship, isSelfLoop, shared, boxOf, relationships, sourceX, sourceY])
+
   const points = useMemo(() => {
-    if (isSelfLoop) return selfLoopPoints({ x: sourceX, y: sourceY })
+    if (isSelfLoop)
+      return selfLoop
+        ? selfLoopPoints(selfLoop.child, selfLoop.parent, { side: selfLoop.side, outset: selfLoop.outset })
+        : []
     if (!relationship) return []
     // 첫·끝 선분은 면 법선 — 앵커에서 잠깐 면 바깥으로 나갔다가 꺾여야 글리프 방향이 읽힌다.
     // 문서 전체 관계를 순차 라우팅한 공유 결과에서 내 경로를 가져온다(레인 강제 + 통로 회피).
@@ -214,10 +249,10 @@ function RelationshipEdgeComponent({
       targetPosition,
       shared?.obstacles ?? [],
     )
-  }, [isSelfLoop, sourceX, sourceY, relationship, sharedRoute, shared, routeAnchors, sourcePosition, targetPosition])
+  }, [isSelfLoop, selfLoop, relationship, sharedRoute, shared, routeAnchors, sourcePosition, targetPosition])
 
   /** 보이는 선 — 일반 관계는 라우팅 앵커가 이미 심볼 폭만큼 물러났고, 자기 참조 루프는
-   *  양 끝 선분이 항상 법선(오른쪽)이라 경로를 잘라 물러남을 만든다 */
+   *  양 끝 선분이 항상 법선(선택한 면)이라 경로를 잘라 물러남을 만든다 */
   const loopTrims = useMemo(
     () =>
       relationship && isSelfLoop
@@ -237,6 +272,9 @@ function RelationshipEdgeComponent({
   const glyphTarget = isSelfLoop ? points[points.length - 1] : adjustedAnchors.target
 
   if (!relationship) return null
+
+  /** 자기 참조 글리프 회전각 — RF 핸들(sourcePosition)은 오른쪽 고정이라 실제 루프 면으로 교정 */
+  const loopFaceAngle = isSelfLoop && selfLoop ? GLYPH_ANGLE[selfLoop.side] : null
 
   /** 자식 쪽 글리프 — 1:N은 발톱 계열(0 이상 ○< / 하나 이상 |<), 1:1은 ‖ 계열.
    *  심볼 순서는 선 쪽에서 테이블로 ○ → | → 발톱. */
@@ -277,6 +315,9 @@ function RelationshipEdgeComponent({
     <g
       className={cn(
         'erd-relationship text-muted-foreground',
+        // 자기 참조 — 필드끼리 잇는 루프라는 게 한눈에 읽히게 일반 관계(무채색)와 다른 보라 계열(§8.3).
+        // 선택 강조(파랑)가 우선한다 — twMerge later-wins
+        isSelfLoop && 'text-violet-600 dark:text-violet-400',
         // 선택 — 무채색 테마라 진하게만 하면 식별이 안 된다. 색조 있는 파랑 + 굵기로 강조(§8.3)
         selected && 'erd-relationship--selected text-blue-600 dark:text-blue-400',
       )}
@@ -291,14 +332,14 @@ function RelationshipEdgeComponent({
         }}
       />
       <g
-        transform={`translate(${glyphSource.x} ${glyphSource.y}) rotate(${GLYPH_ANGLE[sourcePosition] ?? 0})`}
+        transform={`translate(${glyphSource.x} ${glyphSource.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[sourcePosition] ?? 0})`}
         stroke="currentColor"
         strokeWidth={selected ? 3 : 2.5}
       >
         {sourceGlyph}
       </g>
       <g
-        transform={`translate(${glyphTarget.x} ${glyphTarget.y}) rotate(${GLYPH_ANGLE[targetPosition] ?? 0})`}
+        transform={`translate(${glyphTarget.x} ${glyphTarget.y}) rotate(${loopFaceAngle ?? GLYPH_ANGLE[targetPosition] ?? 0})`}
         stroke="currentColor"
         strokeWidth={selected ? 3 : 2.5}
       >

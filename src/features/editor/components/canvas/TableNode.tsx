@@ -51,6 +51,7 @@ import { useForeignLock } from '@/features/editor/collab-locks'
 import { participantColor, useRemoteDrag, useRemoteSelection } from '@/features/editor/collab-presence'
 import { DiffActionBadge } from '@/components/diff-action-badge'
 import { useEditorCanvas, type ColumnDisplayMode, type RelationHandleId } from './editor-context'
+import { registerColumnRowAnchors, unregisterColumnRowAnchors } from './row-anchors'
 import { useCompareHighlight } from './compare-context'
 import { useValidationRing } from './validation-context'
 import { tableSkin } from './table-skin'
@@ -292,6 +293,7 @@ function ColumnRow({
   return (
     <div
       data-zone={zone}
+      data-column-row-id={column.id}
       className={cn(
         'group/row grid items-center gap-1 border-t px-1 py-0.5 tabular-nums',
         zone === 'pk' && 'bg-amber-500/[0.07]',
@@ -751,6 +753,54 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
     endDrag()
   }
 
+  /* 행 분류·컬럼 행 위치 등록 — 조기 return 전에 둬 훅 순서를 지킨다(642행 useLayoutEffect 관례).
+     table 부재 시 빈 목록으로 계산해 등록만 비운다 */
+  const pkIds = new Set(table?.primaryKey?.columnIds ?? [])
+  /** 영역별 행 분류 — 표시 순서 = PK → FK(PK 바로 밑) → 일반. index는 원본 배열 기준(드래그 드롭 위치).
+   *  파싱 시점 정규화(content-io)로 데이터가 이미 이 순서지만, 순서가 흐트러져 저장된 문서에 대비해
+   *  렌더에서도 영역 순서를 가둔다(stable sort — 영역 안 순서는 유지). */
+  const ZONE_RANK: Record<'pk' | 'fk' | 'general', number> = { pk: 0, fk: 1, general: 2 }
+  const zoneRows: { zone: 'pk' | 'fk' | 'general'; column: ErdColumn; index: number }[] = (table?.columns ?? [])
+    .map((column, index) => ({
+      zone: pkIds.has(column.id)
+        ? ('pk' as const)
+        : fkColumnIds.has(column.id)
+          ? ('fk' as const)
+          : ('general' as const),
+      column,
+      index,
+    }))
+    .sort((a, b) => ZONE_RANK[a.zone] - ZONE_RANK[b.zone])
+  /** 키만 보기 — 일반 컬럼 행을 감춘다. 높이는 줄지만 폭은 측정 미러(전체 컬럼)가 정하므로
+   *  모드를 전환해도 노드 폭이 흔들리지 않는다 */
+  const visibleRows = zoneRows.filter((row) => isZoneVisible(row.zone, columnDisplay))
+
+  /** 컬럼 행 위치 등록 — 자기 참조 루프가 FK·PK 행 높이에 붙는 앵커의 원천(row-anchors).
+   *  값은 흐름 좌표(offsetTop·offsetHeight)라 줌·팬·드래그와 무관하게 재사용되고, 행 구성
+   *  (증감·재정렬·영역 순서·키만 보기)이 바뀌면 다시 등록한다. ResizeObserver는 서체 로드
+   *  등 레이아웃 외 변화를 받는다 */
+  const rowsSig = visibleRows.map((row) => `${row.column.id}:${row.zone}`).join('|')
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const collect = () => {
+      const rows = new Map<string, { top: number; height: number }>()
+      root.querySelectorAll<HTMLElement>('[data-column-row-id]').forEach((el) => {
+        const columnId = el.dataset.columnRowId
+        if (columnId) rows.set(columnId, { top: el.offsetTop, height: el.offsetHeight })
+      })
+      registerColumnRowAnchors(id, rows)
+    }
+    collect()
+    const observer = new ResizeObserver(collect)
+    observer.observe(root)
+    return () => {
+      observer.disconnect()
+      unregisterColumnRowAnchors(id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rowsSig가 행 구성 변화를 요약한다(컬럼 id·영역 순)
+  }, [id, rowsSig])
+
   if (!table) return null
 
   /* 논리명 "-----" 구분자 분리 표기(05-editor/01-core.md §3.3) — 밴드·컬럼·축소 판은
@@ -768,26 +818,6 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   }
 
   const columnById = new Map(table.columns.map((c) => [c.id, c]))
-
-  const pkIds = new Set(table.primaryKey?.columnIds ?? [])
-  /** 영역별 행 분류 — 표시 순서 = PK → FK(PK 바로 밑) → 일반. index는 원본 배열 기준(드래그 드롭 위치).
-   *  파싱 시점 정규화(content-io)로 데이터가 이미 이 순서지만, 순서가 흐트러져 저장된 문서에 대비해
-   *  렌더에서도 영역 순서를 가둔다(stable sort — 영역 안 순서는 유지). */
-  const ZONE_RANK: Record<'pk' | 'fk' | 'general', number> = { pk: 0, fk: 1, general: 2 }
-  const zoneRows: { zone: 'pk' | 'fk' | 'general'; column: ErdColumn; index: number }[] = table.columns
-    .map((column, index) => ({
-      zone: pkIds.has(column.id)
-        ? ('pk' as const)
-        : fkColumnIds.has(column.id)
-          ? ('fk' as const)
-          : ('general' as const),
-      column,
-      index,
-    }))
-    .sort((a, b) => ZONE_RANK[a.zone] - ZONE_RANK[b.zone])
-  /** 키만 보기 — 일반 컬럼 행을 감춘다. 높이는 줄지만 폭은 측정 미러(전체 컬럼)가 정하므로
-   *  모드를 전환해도 노드 폭이 흔들리지 않는다 */
-  const visibleRows = zoneRows.filter((row) => isZoneVisible(row.zone, columnDisplay))
 
   return (
     <div

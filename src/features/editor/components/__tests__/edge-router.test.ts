@@ -374,22 +374,33 @@ describe('edge-router — 법선 스타브 경로(routeWithNormalStubs)', () => 
 })
 
 describe('edge-router — 자기 참조 루프', () => {
-  it('오른쪽 면에서 벌어져 돌아오는 직교 루프 4점을 만든다 — 시작·끝은 면에 붙는다', () => {
-    const pts = selfLoopPoints({ x: 100, y: 50 })
+  it('두 행 앵커를 잇는 직교 루프 4점을 만든다 — 시작·끝은 각 행 높이의 면에 붙는다', () => {
+    const pts = selfLoopPoints({ x: 100, y: 120 }, { x: 100, y: 200 })
     expect(pts).toEqual([
-      { x: 100, y: 18 },
-      { x: 140, y: 18 },
-      { x: 140, y: 82 },
-      { x: 100, y: 82 },
+      { x: 100, y: 120 },
+      { x: 140, y: 120 },
+      { x: 140, y: 200 },
+      { x: 100, y: 200 },
     ])
   })
 
-  it('spread·outset은 옵션으로 조절할 수 있다', () => {
-    expect(selfLoopPoints({ x: 0, y: 0 }, { spread: 20, outset: 50 })).toEqual([
-      { x: 0, y: -20 },
-      { x: 50, y: -20 },
-      { x: 50, y: 20 },
-      { x: 0, y: 20 },
+  it('두 행이 붙어 있으면 최소 폭(minSpan)으로 벌려 글리프가 겹치지 않게 한다', () => {
+    const pts = selfLoopPoints({ x: 100, y: 100 }, { x: 100, y: 124 }, { minSpan: 64 })
+    expect(pts).toEqual([
+      { x: 100, y: 80 },
+      { x: 140, y: 80 },
+      { x: 140, y: 144 },
+      { x: 100, y: 144 },
+    ])
+  })
+
+  it('왼쪽 면(side=left)이면 바깥으로 -x로 벌린다 — 오른쪽의 거울상', () => {
+    const pts = selfLoopPoints({ x: 100, y: 120 }, { x: 100, y: 200 }, { side: 'left', outset: 50 })
+    expect(pts).toEqual([
+      { x: 100, y: 120 },
+      { x: 50, y: 120 },
+      { x: 50, y: 200 },
+      { x: 100, y: 200 },
     ])
   })
 })
