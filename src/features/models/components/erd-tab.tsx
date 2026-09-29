@@ -2,12 +2,14 @@
  * ERD 탭 (storyboard 02-user §5 — 워크스페이스 상세 첫 번째 탭)
  *
  * - 문서(모델) 목록 — 이름·DB 종류·캔버스 크기·버전·생성자·최근 수정, keyword 검색(300ms 디바운스)
+ * - 목록은 offset 페이징(20/page, ?page= URL — notifications 관례). 문서 수백 건 라이브러리 대응
  * - 문서 열기는 모든 멤버 — 이름·돋보기로 새 창 전체 화면(에디터 셸)에 띄운다
  * - 생성·메타 변경은 Editor 이상, 삭제는 Owner 전용 (1.2·1.4·1.6 최소 역할)
  */
-import { useState } from 'react'
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -43,13 +45,32 @@ export interface ErdTabProps {
 
 export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [keyword, setKeyword] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<ModelSummary | null>(null)
   const [deleting, setDeleting] = useState<ModelSummary | null>(null)
+  const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1)
   const debouncedKeyword = useDebouncedValue(keyword)
-  const models = useModels(workspaceId, debouncedKeyword.trim())
+  const models = useModels(workspaceId, debouncedKeyword.trim(), page)
   const deleteMutation = useDeleteModel(workspaceId)
+
+  /** 페이지 이동 — ?tab= 등 다른 파라미터는 보존(함수형 갱신), 1페이지는 파라미터를 지운다 */
+  const setPage = (nextPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (nextPage <= 1) next.delete('page')
+      else next.set('page', String(nextPage))
+      return next
+    })
+  }
+
+  /** 마지막 페이지의 문서를 지워 현재 페이지가 빈 경우 마지막 유효 페이지로 당긴다 */
+  useEffect(() => {
+    if (models.data && models.data.items.length === 0 && page > 1) {
+      setPage(Math.max(1, models.data.totalPages))
+    }
+  })
 
   const handleDelete = () => {
     if (!deleting) return
@@ -76,7 +97,11 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
           <Search aria-hidden className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
+            onChange={(event) => {
+              setKeyword(event.target.value)
+              // 검색어가 바뀌면 결과 묶음도 달라진다 — 페이지를 1로 되돌린다
+              if (page > 1) setPage(1)
+            }}
             placeholder={t('model.list.searchPlaceholder')}
             className="h-9 w-64 pl-8"
             aria-label={t('model.list.searchPlaceholder')}
@@ -105,6 +130,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
       ) : models.isError ? (
         <ErrorState onRetry={() => void models.refetch()} />
       ) : (models.data?.items.length ?? 0) > 0 ? (
+        <>
         <Table>
           <TableHeader>
             <TableRow>
@@ -181,6 +207,38 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
             ))}
           </TableBody>
         </Table>
+        {/* 문서가 한 페이지(20)를 넘는 워크스페이스만 — 총 건수 + 이전/다음 (notifications 관례) */}
+        {models.data && models.data.totalPages > 1 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">{t('common.total', { count: models.data.totalCount })}</p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={t('common.pagination.prev')}
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                <ChevronLeft aria-hidden />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {t('common.pagination.page', { page: models.data.page, totalPages: models.data.totalPages })}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={t('common.pagination.next')}
+                disabled={page >= models.data.totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                <ChevronRight aria-hidden />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        </>
       ) : (
         <EmptyState
           illustration="workspace"

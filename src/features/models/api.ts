@@ -31,9 +31,9 @@ export type FetchModelsParams = {
   size?: number
 }
 
-/** 모델 목록(요약) — keyword는 이름·설명 부분 일치 */
-export function fetchModels(workspaceId: string, params: FetchModelsParams = {}, signal?: AbortSignal): Promise<ListResult<ModelSummary>> {
-  return apiGetList<ModelSummary>(`/api/v1/core/workspaces/${workspaceId}/models`, params, signal)
+/** 모델 목록(요약) — keyword는 이름·설명 부분 일치, page·size는 offset 페이징(1부터 시작) */
+export function fetchModels(workspaceId: string, params: FetchModelsParams = {}, signal?: AbortSignal): Promise<PageResult<ModelSummary>> {
+  return apiGetPage<ModelSummary>(`/api/v1/core/workspaces/${workspaceId}/models`, params, signal)
 }
 
 /** 모델 상세(1.3) — content를 통째로 내려받는다 */

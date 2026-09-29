@@ -26,15 +26,15 @@ function ok(body: object) {
   }
 }
 
-function renderErdTab(props: { canCreate?: boolean; isOwner?: boolean } = {}) {
-  // ErdTab은 라우트 컨텍스트를 쓰지 않는다 — Route 없이 그대로 렌더.
+function renderErdTab(props: { canCreate?: boolean; isOwner?: boolean; route?: string } = {}) {
+  // ErdTab은 ?page= 쿼리 파라미터를 읽는다 — MemoryRouter 안에서 렌더(별도 Route 불필요).
   // Toaster는 App에만 마운트되므로 토스트 단언용으로 함께 렌더한다
   return renderWithProviders(
     <>
       <ErdTab workspaceId="101" canCreate={props.canCreate ?? true} isOwner={props.isOwner ?? true} />
       <Toaster />
     </>,
-    { wrapRoutes: false },
+    { wrapRoutes: false, route: props.route },
   )
 }
 
@@ -206,6 +206,83 @@ describe('ERD 탭', () => {
 
     // then: 에러 문구 + 재시도 버튼
     expect(await screen.findByRole('button', { name: /다시 시도/ })).toBeVisible()
+  })
+})
+
+describe('ERD 탭 — 문서 목록 페이징', () => {
+  /** 25건 문서 + page/size 슬라이싱 목업 — 요청 page를 기록해 파라미터 전달을 단정한다 */
+  function stubPagedModels() {
+    const requestedPages: number[] = []
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
+        const size = Math.max(1, Number(params.get('size') ?? '20') || 20)
+        requestedPages.push(page)
+        const all = Array.from({ length: 25 }, (_, i) => ({
+          modelId: String(600 + i),
+          workspaceId: '101',
+          name: `라이브러리 문서 ${String(i + 1).padStart(2, '0')}`,
+          description: null,
+          databaseType: 'mysql',
+          sourceConnectionId: null,
+          version: 1,
+          createdBy: { userId: '2', name: '부트스트랩 관리자' },
+          createdAt: '2026-09-29T00:00:00Z',
+          updatedAt: '2026-09-29T00:00:00Z',
+        }))
+        return HttpResponse.json(
+          ok({
+            page,
+            size,
+            totalPages: Math.ceil(all.length / size),
+            totalCount: all.length,
+            responses: all.slice((page - 1) * size, page * size),
+          }),
+        )
+      }),
+    )
+    return { requestedPages }
+  }
+
+  it('한 페이지(20)를 넘는 워크스페이스는 총 건수·페이지 표시로 묶음을 오간다', async () => {
+    const { requestedPages } = stubPagedModels()
+    renderErdTab()
+
+    // then: 1페이지 — 처음 20건만, 21번째는 없다
+    expect(await screen.findByText('라이브러리 문서 01')).toBeVisible()
+    expect(screen.getByText('라이브러리 문서 20')).toBeVisible()
+    expect(screen.queryByText('라이브러리 문서 21')).not.toBeInTheDocument()
+    expect(screen.getByText('총 25개')).toBeVisible()
+    expect(screen.getByText('1 / 2 페이지')).toBeVisible()
+    // 경계 — 1페이지에서 이전은 막혀 있다
+    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled()
+
+    // when: 다음 → 2페이지 요청(page 파라미터) → 남은 5건
+    await userEvent.click(screen.getByRole('button', { name: '다음' }))
+    expect(await screen.findByText('라이브러리 문서 21')).toBeVisible()
+    expect(screen.getByText('라이브러리 문서 25')).toBeVisible()
+    expect(screen.queryByText('라이브러리 문서 01')).not.toBeInTheDocument()
+    expect(requestedPages.at(-1)).toBe(2)
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled()
+  })
+
+  it('?page= 로 직접 진입하고 검색어를 고치면 1페이지로 되돌아간다', async () => {
+    const { requestedPages } = stubPagedModels()
+    renderErdTab({ route: '/?page=2' })
+
+    // then: URL page=2 로 첫 조회 — 21번째부터
+    expect(await screen.findByText('라이브러리 문서 21')).toBeVisible()
+    expect(requestedPages[0]).toBe(2)
+
+    // when: 검색어 입력 → 페이지 리셋 후(즉시) 디바운스 후(새 키워드) 모두 page=1
+    await userEvent.type(screen.getByLabelText('문서 이름·설명 검색'), '회원')
+
+    // then: 요청은 전부 page=1 — 2페이지에 머무르지 않는다
+    await waitFor(() => expect(requestedPages.length).toBeGreaterThan(2))
+    expect(requestedPages.every((p) => p === 1 || p === 2)).toBe(true)
+    expect(requestedPages.at(-1)).toBe(1)
+    expect(screen.getByText('1 / 2 페이지')).toBeVisible()
   })
 })
 

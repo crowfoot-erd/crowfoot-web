@@ -1,6 +1,7 @@
 /**
  * ERD 문서 쿼리/뮤테이션 훅 — 생성 성공 후 목록 invalidate (낙관적 갱신 금지).
- * 목록은 워크스페이스당 문서 수가 적어 size 100 고정 로드(페이징 UI는 에디터 단계).
+ * 목록은 offset 페이징(20/page — ERD 라이브러리처럼 문서 수백 건 워크스페이스 대응,
+ * notifications·admin/users 관례와 같은 page 파라미터).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -47,8 +48,13 @@ import {
 import { useSessionStore } from '@/stores/session'
 import type { ModelSummary, ShareFeedback } from '@/api/types'
 
+/** 문서 목록 페이지 크기 — 서버 size 상한(100) 이하, notifications와 같은 20 */
+export const MODELS_PAGE_SIZE = 20
+
 export const modelKeys = {
-  list: (workspaceId: string, keyword: string) => ['workspaces', workspaceId, 'models', keyword] as const,
+  /** 목록 — page를 키에 포함해야 페이지 이동이 새로 땡긴다 (keyword와 같은 이유) */
+  list: (workspaceId: string, keyword: string, page: number) =>
+    ['workspaces', workspaceId, 'models', keyword, page] as const,
   detail: (workspaceId: string, modelId: string) =>
     ['workspaces', workspaceId, 'models', 'detail', modelId] as const,
   // 협업 버전(폴링·WebSocket 푸시 주입 공용) — detail 키 아래에 둬 함께 invalidate 되지 않게 분리
@@ -83,10 +89,11 @@ export const modelKeys = {
   databaseTypes: ['database-types'] as const,
 }
 
-export function useModels(workspaceId: string, keyword = '') {
+export function useModels(workspaceId: string, keyword = '', page = 1) {
   return useQuery({
-    queryKey: modelKeys.list(workspaceId, keyword),
-    queryFn: ({ signal }) => fetchModels(workspaceId, { keyword: keyword || undefined, size: 100 }, signal),
+    queryKey: modelKeys.list(workspaceId, keyword, page),
+    queryFn: ({ signal }) =>
+      fetchModels(workspaceId, { keyword: keyword || undefined, page, size: MODELS_PAGE_SIZE }, signal),
     enabled: workspaceId.length > 0,
   })
 }
