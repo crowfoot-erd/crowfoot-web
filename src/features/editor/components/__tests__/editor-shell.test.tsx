@@ -1703,7 +1703,7 @@ describe('EditorShell — 자동 배치(elkjs)', () => {
     expect(screen.getByRole('button', { name: '자동 배치' })).toBeDisabled()
   })
 
-  it('v1.25 — 캐럿에서 허브 중심 배치를 고르면 방사형으로 펼쳐지고 localStorage에 남는다', async () => {
+  it('v1.24 — 캐럿에서 허브 중심 배치를 고르면 방사형으로 펼쳐지고 localStorage에 남는다', async () => {
     window.localStorage.removeItem('crowfoot.editor.layout-mode')
     await seedChain()
 
@@ -1734,7 +1734,7 @@ describe('EditorShell — 자동 배치(elkjs)', () => {
     window.localStorage.removeItem('crowfoot.editor.layout-mode')
   })
 
-  it('v1.25 — 하이브리드 배치도 선택할 수 있다(허브 방사형 + 스포크별 계층형 트리)', async () => {
+  it('v1.24 — 하이브리드 배치도 선택할 수 있다(허브 방사형 + 스포크별 계층형 트리)', async () => {
     window.localStorage.removeItem('crowfoot.editor.layout-mode')
     await seedChain()
 

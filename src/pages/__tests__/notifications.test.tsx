@@ -4,7 +4,7 @@
  * given: /core/notifications 응답을 MSW로 정의(fixtures.notifications)
  * when: /community/notifications 진입·행 클릭·페이징·구 경로(/notifications) 접근
  * then: 표 렌더(유형 문구·문서 링크)·읽음 PATCH 후 문서 이동·빈 상태·다음 페이지 호출·
- *       구 경로 치환(쿼리 보존) — v1.25 커뮤니티 메뉴 이전
+ *       구 경로 치환(쿼리 보존) — v1.24 커뮤니티 메뉴 이전
  */
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

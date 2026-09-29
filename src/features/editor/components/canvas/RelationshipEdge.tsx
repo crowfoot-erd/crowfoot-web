@@ -15,7 +15,7 @@
  * 문서 전역 계산(연결면·면 분산·통로 레인 라우팅)은 관계 수의 제곱이라 엣지마다 반복하면
  * 프레임 비용이 세제곱으로 커진다 — edge-route-table이 문서·좌표 지문당 한 번 계산한
  * 공유 테이블을 조회하고, 엣지별 남은 일은 양 끝 앵커(자기 관계의 RF 실측 좌표)뿐이다.
- * 연결면도 공유 테이블의 라이브 면(드래그 중 화면 좌표로 계산)을 따라간다(v1.25 §2) —
+ * 연결면도 공유 테이블의 라이브 면(드래그 중 화면 좌표로 계산)을 따라간다(v1.24 §2) —
  * RF props의 면은 드롭 커밋 전까지 과거라 "드롭할 때 그때가서 다시 그려지던" 원인이었다.
  * 엣지 id = 관계 id로 스토어를 직접 구독하고 memo로 격리 — 노드 위치가 불변인 엣지는
  * 경로 재계산·리렌더가 없다.
@@ -181,7 +181,7 @@ function RelationshipEdgeComponent({
   /** 라이브 연결면 — 공유 라우팅 테이블이 boxOf(드래그 중에도 화면 좌표)로 이미 계산한 면.
    *  RF props(sourcePosition)는 buildEdges가 스토어 좌표로 구운 핸들을 따라가서 드롭 커밋
    *  전까지 과거 면이다 — 그사이 스텝 방향·글리프 회전·법선 밀기가 면과 어긋나 "드롭할 때
-   *  그때가서 다시 그려지는" 원인이었다(v1.25 §2). 경로가 없을 때(자기 참조·박스 미측정)만
+   *  그때가서 다시 그려지는" 원인이었다(v1.24 §2). 경로가 없을 때(자기 참조·박스 미측정)만
    *  RF 면으로 폴백 — 자기 참조는 루프 면(selfLoop.side)이 따로 있다 */
   const liveSourcePosition = sharedRoute?.sourceFace ?? sourcePosition
   const liveTargetPosition = sharedRoute?.targetFace ?? targetPosition

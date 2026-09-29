@@ -49,7 +49,7 @@ import { MyShareCommentsPage } from '@/pages/community/my-comments'
 import { MyShareLikesPage } from '@/pages/community/my-likes'
 import { NotificationsPage } from '@/pages/notifications'
 
-/** 구 알림 경로(/notifications, v1.24까지) → 커뮤니티 메뉴 이전(v1.25) — 북마크를 지키며
+/** 구 알림 경로(/notifications, v1.24까지) → 커뮤니티 메뉴 이전(v1.24) — 북마크를 지키며
  *  같은 언어 영역 안에서 치환한다. 쿼리(?page=)도 그대로 실어 보낸다 */
 function RedirectNotifications() {
   const location = useLocation()
@@ -91,7 +91,7 @@ function buildRoutes(prefix: string) {
           <Route path={`${prefix}/teams`} element={<TeamsPage />} />
           <Route path={`${prefix}/teams/:teamId`} element={<TeamDetailPage />} />
 
-          {/* 알림(v1.22 — 11-notification.md)의 구 경로 — v1.25 커뮤니티 메뉴 이전 전 북마크.
+          {/* 알림(v1.22 — 11-notification.md)의 구 경로 — v1.24 커뮤니티 메뉴 이전 전 북마크.
               아래 community/notifications로 같은 언어 영역 안에서 치환한다(쿼리 보존) */}
           <Route path={`${prefix}/notifications`} element={<RedirectNotifications />} />
 

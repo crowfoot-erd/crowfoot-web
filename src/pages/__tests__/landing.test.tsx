@@ -85,7 +85,7 @@ describe('랜딩 페이지', () => {
       'href',
       '/share/P0pularT0ken0fSettle2c',
     )
-    // 현지화 템플릿(86 zh)도 갤러리 카드는 문서 메타 그대로 — 템플릿 다이얼로그도 같은 규칙(v1.25)
+    // 현지화 템플릿(86 zh)도 갤러리 카드는 문서 메타 그대로 — 템플릿 다이얼로그도 같은 규칙(v1.24)
     expect(within(popular).getByRole('link', { name: /图书馆借阅 ERD/ })).toHaveAttribute(
       'href',
       '/share/R3CdH4r2yASL7MoWB61H0Y',

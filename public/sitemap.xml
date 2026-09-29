@@ -3,7 +3,7 @@
   구글 사이트맵 — 색인 대상은 공개 페이지뿐이다.
   - 보호 경로(/dashboard, /workspaces, /teams, /community, /admin …)는 로그인이 필요해 제외
   - /share/{token} 색인 허용(v1.18): 토큰은 128bit 추측 불가라 노출 통제는 링크 철회(410)로 한다.
-    v1.25부터 활성 공유 전량을 빌드 시 자동 등록한다 — 아래 SHARE-SITEMAP 마커 자리에
+    v1.24부터 활성 공유 전량을 빌드 시 자동 등록한다 — 아래 SHARE-SITEMAP 마커 자리에
     scripts/generate-sitemap.mjs가 GET /api/v1/core/shares/sitemap 원료로 <url> 행을 만들어
     dist/sitemap.xml에 끼워 넣는다(이 원본은 마커만 남는다). 쇼케이스 8종도 같은 규칙으로
     자동 포함 — 토큰이 그대로 다시 등록되므로 share-showcase.json 원천은 변함없다.
@@ -277,5 +277,5 @@
     <lastmod>2026-09-26</lastmod>
     <priority>0.5</priority>
   </url>
-  <!-- SHARE-SITEMAP: 빌드 시 generate-sitemap.mjs가 이 줄을 활성 공유 <url> 행으로 교체한다(v1.25) -->
+  <!-- SHARE-SITEMAP: 빌드 시 generate-sitemap.mjs가 이 줄을 활성 공유 <url> 행으로 교체한다(v1.24) -->
 </urlset>

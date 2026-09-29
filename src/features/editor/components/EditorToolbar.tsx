@@ -408,7 +408,7 @@ function readLayoutMode(): AutoLayoutMode {
   }
 }
 
-/** 자동 배치 — 분할 버튼(v1.25 §1). 본체는 현재 모드로 바로 실행하고, 캐럿은 모드 라디오.
+/** 자동 배치 — 분할 버튼(v1.24 §1). 본체는 현재 모드로 바로 실행하고, 캐럿은 모드 라디오.
  *  본체 aria-label은 종래 '자동 배치' 그대로(스크린리더 안내·기존 테스트 보존),
  *  보이는 라벨은 선택된 모드명으로 바뀐다. 모드 선택은 localStorage 즉시 저장 + 즉시 실행. */
 function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {

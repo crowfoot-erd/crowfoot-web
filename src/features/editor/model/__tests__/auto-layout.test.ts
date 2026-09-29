@@ -603,7 +603,7 @@ describe('auto-layout — orderFkColumns(FK 순서 = 부모 위치 정렬)', () 
   })
 })
 
-describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.25)', () => {
+describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.24)', () => {
   /** 문서에 그룹을 직접 심는다 — 체인지 경유 없이 배치 입력만 만든다 */
   function seedAreas(d: EditorDocument, ...areas: Array<{ id: string; name: string; tableIds: string[] }>): EditorDocument {
     return {
@@ -892,7 +892,7 @@ describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.25)', (
   })
 })
 
-describe('auto-layout — layoutHubPositions 하이브리드 전략(tree, v1.25)', () => {
+describe('auto-layout — layoutHubPositions 하이브리드 전략(tree, v1.24)', () => {
   const tree = (d: EditorDocument) => layoutHubPositions(d, { strategy: 'tree' })
 
   /** 두 AABB의 최소 간격(대각이면 직선 거리) — tree는 SLACK(+1) 덕에 nodeNode 그대로 보증 */

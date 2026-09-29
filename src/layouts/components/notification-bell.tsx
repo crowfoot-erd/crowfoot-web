@@ -2,7 +2,7 @@
  * 알림 벨 (storyboard 00-common §3.1 [12] — v1.22, 계약 08-core/11-notification.md §6)
  * 안읽음 숫자 배지(9+ 캡, 0이면 숨김) — 미읽음 카운트를 30초 폴링한다(로그인 상태에서만).
  * 클릭 → 드롭다운 최근 10건(유형 문구·문서명·상대 시각·안읽음 점). 행 클릭 = 읽음 처리 후
- * 해당 문서로 이동, 하단 "모두 읽음"·"전체 보기"(S-14 /community/notifications — v1.25부터
+ * 해당 문서로 이동, 하단 "모두 읽음"·"전체 보기"(S-14 /community/notifications — v1.24부터
  * 커뮤니티 좌측 메뉴에도 같은 행선지가 있다).
  */
 import { useState } from 'react'

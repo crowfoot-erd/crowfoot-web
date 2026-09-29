@@ -159,7 +159,7 @@ export function LandingPage() {
 
         {/* 통합 공유 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
             전 워크스페이스 공유(템플릿 문서 포함)가 한 목록에 온다 — 템플릿 전용 섹션은 폐지됐다.
-            카드는 문서 메타(제목·설명)를 그대로 — 현지화 문서도 원문 언어로 나온다(v1.25부터
+            카드는 문서 메타(제목·설명)를 그대로 — 현지화 문서도 원문 언어로 나온다(v1.24부터
             워크스페이스 템플릿 다이얼로그도 같은 규칙) */}
         {galleryItems.length > 0 && (
           <section aria-labelledby="landing-gallery" className="w-full" data-testid="landing-gallery">

@@ -50,7 +50,7 @@ export interface RelationshipSharedRoute {
   targetFaceOffset: number
   /** 연결면(자식·부모) — 라이브 박스(boxOf)로 계산한 현재 면. 엣지 렌더가 RF props
    *  (sourcePosition — 스토어 좌표로 구운 핸들, 드롭 전까지 과거 면) 대신 이 면을 따라가
-   *  드래그 중 렌더 == 드롭 후 렌더가 된다(v1.25 §2 실시간 재경로) */
+   *  드래그 중 렌더 == 드롭 후 렌더가 된다(v1.24 §2 실시간 재경로) */
   sourceFace: FaceSide
   targetFace: FaceSide
   /** 면 평면 앵커(면 중심 + 면 분산 오프셋) — 엣지 스텝·글리프 앵커의 라이브 원천 */
@@ -126,7 +126,7 @@ export function relationshipSharedRoutes(
   // 레인 배정(corridorLanes)과 순차 라우팅(먼저 그린 선의 통로 회피)을 함께 계산한다
   const reqs: CorridorEndpoint[] = []
   const faceOffsets = new Map<string, { source: number; target: number }>()
-  /** 면·앵커 원천 — 라우팅 입력으로 쓴 값 그대로 엣지 렌더에 돌려준다(라이브 면 스펙, v1.25 §2) */
+  /** 면·앵커 원천 — 라우팅 입력으로 쓴 값 그대로 엣지 렌더에 돌려준다(라이브 면 스펙, v1.24 §2) */
   const endAnchors = new Map<
     string,
     {

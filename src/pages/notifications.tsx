@@ -3,7 +3,7 @@
  * 전체 목록 페이지 — 오프셋 페이징 20(URL ?page=, admin/users 관례). 행 클릭 = 읽음 처리 후
  * 문서로 이동(문서가 삭제돼 알림만 남은 경우에도 이동 시도 — 도착지 404는 공통 패턴).
  * 문구는 서버에 없다 — type별 i18n(shell.notifications.type.*)로 렌더한다.
- * v1.25부터 커뮤니티 좌측 메뉴 안(/community/notifications) — 구 /notifications는 리다이렉트.
+ * v1.24부터 커뮤니티 좌측 메뉴 안(/community/notifications) — 구 /notifications는 리다이렉트.
  */
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react'
