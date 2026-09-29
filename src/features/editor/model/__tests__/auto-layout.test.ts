@@ -892,10 +892,10 @@ describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.25)', (
   })
 })
 
-describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)', () => {
-  const fill = (d: EditorDocument) => layoutHubPositions(d, { strategy: 'fill' })
+describe('auto-layout — layoutHubPositions 하이브리드 전략(tree, v1.25)', () => {
+  const tree = (d: EditorDocument) => layoutHubPositions(d, { strategy: 'tree' })
 
-  /** 두 AABB의 최소 간격(대각이면 직선 거리) — fill은 SLACK(+1) 덕에 nodeNode 그대로 보증 */
+  /** 두 AABB의 최소 간격(대각이면 직선 거리) — tree는 SLACK(+1) 덕에 nodeNode 그대로 보증 */
   const gapOf = (p: { x: number; y: number; w: number; h: number }, q: { x: number; y: number; w: number; h: number }) => {
     const dx = Math.max(p.x - (q.x + q.w), q.x - (p.x + p.w), 0)
     const dy = Math.max(p.y - (q.y + q.h), q.y - (p.y + p.h), 0)
@@ -907,10 +907,10 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
     )
 
   it('가드·결정론·정수 좌표 — 링 전략과 같은 계약을 지킨다', () => {
-    expect(fill(doc())).toEqual({})
+    expect(tree(doc())).toEqual({})
     let d = doc()
     d = seedTable(d, 'A')
-    expect(fill(d)).toEqual({})
+    expect(tree(d)).toEqual({})
 
     let mixed = doc()
     for (const id of ['P', 'L1', 'L2', 'C1', 'C2', 'ISLAND']) mixed = seedTable(mixed, id, 5)
@@ -919,8 +919,8 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
     mixed = seedRelation(mixed, 'L1', 'C1')
     mixed = seedRelation(mixed, 'C1', 'C2')
 
-    const first = fill(mixed)
-    expect(fill(mixed)).toEqual(first)
+    const first = tree(mixed)
+    expect(tree(mixed)).toEqual(first)
     expect(Object.keys(first).sort()).toEqual(['C1', 'C2', 'ISLAND', 'L1', 'L2', 'P'])
     for (const pos of Object.values(first)) {
       expect(Number.isInteger(pos.x)).toBe(true)
@@ -932,13 +932,13 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
     expect(minY).toBe(DEFAULT_LAYOUT_SPACING.padding)
   })
 
-  it('스타 — 각도는 부채꼴 그대로라 허브 중심 등거리 사분면이 유지된다', () => {
+  it('스타 — 스포크는 부채꼴 각도 그대로라 허브 중심 등거리 사분면이 유지된다', () => {
     let d = doc()
     d = seedTable(d, 'P')
     for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedTable(d, id)
     for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedRelation(d, 'P', id)
 
-    const c = centerById(d, fill(d))
+    const c = centerById(d, tree(d))
     const distances = ['L1', 'L2', 'L3', 'L4'].map((id) => Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy))
     for (const distance of distances) expect(Math.abs(distance - distances[0])).toBeLessThanOrEqual(1.5)
     expect(c.L1.cx - c.P.cx).toBeGreaterThan(0)
@@ -957,6 +957,8 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
     d = seedTable(d, 'C2', 5)
     d = seedTable(d, 'G1', 9)
     d = seedTable(d, 'G2', 4)
+    d = seedTable(d, 'G3', 7)
+    d = seedTable(d, 'G4', 6)
     d = seedRelation(d, 'P', 'L1')
     d = seedRelation(d, 'P', 'L2')
     d = seedRelation(d, 'P', 'L3')
@@ -964,8 +966,10 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
     d = seedRelation(d, 'L1', 'C2')
     d = seedRelation(d, 'L2', 'G1')
     d = seedRelation(d, 'G1', 'G2')
+    d = seedRelation(d, 'L2', 'G3')
+    d = seedRelation(d, 'G3', 'G4')
 
-    const boxes = boxesOf(d, fill(d))
+    const boxes = boxesOf(d, tree(d))
     for (let i = 0; i < boxes.length; i += 1) {
       for (let j = i + 1; j < boxes.length; j += 1) {
         const [p, q] = [boxes[i], boxes[j]]
@@ -976,38 +980,75 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
     }
   })
 
-  it('압축 — 링이 큰 테이블 때문에 바깥으로 늘어날 때 첫 빈틈을 채워 더 안쪽에 들어간다', () => {
-    // 스타 + 한쪽 가지에만 긴 체인 — ring은 링별 최대 지름이 반지름을 끌어올리지만
-    // fill은 자기 레이의 장애물만 피하므로 꼬리가 훨씬 안쪽에 멈춘다
+  it('계층형 블록 — 스포크 체인은 한 레이를 따라 같은 열로 바깥에 뻗는다(링이 도는 게 아니다)', () => {
+    // 스타 허브 P(4스포크)의 첫 스포크 L1에 T1→T2 체인: L1 웨지는 우상 단독이라
+    // 반전 없이 같은 열, 깊이가 늘수록 허브에서 단조 멀어진다 — 트리 블록 증거
     let d = doc()
     d = seedTable(d, 'P', 4)
-    d = seedTable(d, 'BIG', 40) // 링1에 거대 테이블 — ring 반지름을 크게 끌어올린다
-    d = seedTable(d, 'S1', 3)
-    d = seedTable(d, 'S2', 3)
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedTable(d, id, 3)
     d = seedTable(d, 'T1', 3)
     d = seedTable(d, 'T2', 3)
-    d = seedRelation(d, 'P', 'BIG')
-    d = seedRelation(d, 'P', 'S1')
-    d = seedRelation(d, 'P', 'S2')
-    d = seedRelation(d, 'S1', 'T1')
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedRelation(d, 'P', id)
+    d = seedRelation(d, 'L1', 'T1')
     d = seedRelation(d, 'T1', 'T2')
 
-    const ringPos = layoutHubPositions(d)
-    const fillPos = fill(d)
-    const ringC = centerById(d, ringPos)
-    const fillC = centerById(d, fillPos)
-    const dist = (c: Record<string, { cx: number; cy: number }>, id: string) =>
-      Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy)
-    // 체인 꼬리(T2)는 ring보다 허브에 훨씬 가깝다 — 웨지 안쪽 빈틈을 채운 증거
-    expect(dist(fillC, 'T2')).toBeLessThan(dist(ringC, 'T2'))
-    // 전체 AABB 면적도 줄어든다(분산·압축)
-    const area = (positions: Record<string, { x: number; y: number }>) => {
+    const c = centerById(d, tree(d))
+    expect(Math.abs(c.T1.cx - c.L1.cx)).toBeLessThan(60)
+    expect(Math.abs(c.T2.cx - c.T1.cx)).toBeLessThan(60)
+    const dist = (id: string) => Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy)
+    expect(dist('T1')).toBeGreaterThan(dist('L1'))
+    expect(dist('T2')).toBeGreaterThan(dist('T1'))
+  })
+
+  it('형제 서브트리 — 한 스포크의 두 자식은 같은 행에서 부모 중앙 기준 좌우로 갈라진다', () => {
+    // 스타 허브 P의 스포크 L1 밑에 A·B 형제: 같은 행(계층형 블록)·좌우 분리·L1보다 바깥
+    let d = doc()
+    d = seedTable(d, 'P', 4)
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedTable(d, id, 3)
+    d = seedTable(d, 'A', 3)
+    d = seedTable(d, 'B', 3)
+    for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedRelation(d, 'P', id)
+    d = seedRelation(d, 'L1', 'A')
+    d = seedRelation(d, 'L1', 'B')
+
+    const c = centerById(d, tree(d))
+    expect(Math.abs(c.A.cy - c.B.cy)).toBeLessThan(60)
+    const [left, right] = c.A.cx < c.B.cx ? [c.A, c.B] : [c.B, c.A]
+    expect(left.cx).toBeLessThan(c.L1.cx)
+    expect(right.cx).toBeGreaterThan(c.L1.cx)
+    const dist = (id: string) => Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy)
+    expect(dist('A')).toBeGreaterThan(dist('L1'))
+    expect(dist('B')).toBeGreaterThan(dist('L1'))
+  })
+
+  it('허브 모드와 실질 구별 — 체인 문서에서 tree는 ring보다 세로로 길게 뻗는다', () => {
+    // 4스포크 각각에 긴 체인: ring은 동심원으로 감싸 사방으로 넓지만, tree는 스포크별
+    // 세로 블록이 레이를 따라 뻗어 종횡비가 다른 형상이 된다 — "별 차이 없다" 불식
+    let d = doc()
+    d = seedTable(d, 'P', 4)
+    for (const s of ['S1', 'S2', 'S3', 'S4']) {
+      d = seedTable(d, s, 3)
+      d = seedRelation(d, 'P', s)
+      let prev = s
+      for (const t of ['T1', 'T2', 'T3']) {
+        d = seedTable(d, `${s}_${t}`, 3)
+        d = seedRelation(d, prev, `${s}_${t}`)
+        prev = `${s}_${t}`
+      }
+    }
+
+    const dims = (positions: Record<string, { x: number; y: number }>) => {
       const boxes = boxesOf(d, positions)
       const w = Math.max(...boxes.map((b) => b.x + b.w)) - Math.min(...boxes.map((b) => b.x))
       const h = Math.max(...boxes.map((b) => b.y + b.h)) - Math.min(...boxes.map((b) => b.y))
-      return w * h
+      return { w, h }
     }
-    expect(area(fillPos)).toBeLessThan(area(ringPos))
+    const ringDims = dims(layoutHubPositions(d))
+    const treeDims = dims(tree(d))
+    // 형상이 유의미하게 다르다 — 종횡비가 25% 이상 벌어진다
+    const ratioRing = ringDims.w / ringDims.h
+    const ratioTree = treeDims.w / treeDims.h
+    expect(Math.abs(ratioTree - ratioRing) / ratioRing).toBeGreaterThan(0.25)
   })
 
   it('관계 생성 순서 무영향·그룹 슈퍼노드 강체 — 링 전략 계약 그대로', () => {
@@ -1037,9 +1078,9 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(fill, v1.25)
       ['B', 'C'],
       ['A', 'B'],
     ])
-    expect(fill(forward)).toEqual(fill(reversed))
+    expect(tree(forward)).toEqual(tree(reversed))
     // 그룹 멤버는 GROUP_PADDING 복도 안에 있다
-    const positions = fill(forward)
+    const positions = tree(forward)
     const boxes = boxesOf(forward, positions)
     const a = boxes.find((b) => b.id === 'A')!
     const b = boxes.find((b) => b.id === 'B')!

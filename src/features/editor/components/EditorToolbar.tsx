@@ -435,7 +435,7 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       const positions =
         nextMode === 'layered'
           ? await layoutTablePositions(doc, { sizes })
-          : layoutHubPositions(doc, { sizes, strategy: nextMode === 'hybrid' ? 'fill' : 'ring' })
+          : layoutHubPositions(doc, { sizes, strategy: nextMode === 'hybrid' ? 'tree' : 'ring' })
       if (Object.keys(positions).length > 0) {
         // FK 컬럼을 부모 테이블 위치 순으로 정렬한다 — 선 부착 순서가 좌→우로 정렬돼 겹침이 줄고,
         // 노트는 테이블 위에 포개지지 않게 위치를 잡는다. 묶음 커밋이라 Undo 1회

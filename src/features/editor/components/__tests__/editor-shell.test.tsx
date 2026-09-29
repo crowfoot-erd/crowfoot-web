@@ -1734,7 +1734,7 @@ describe('EditorShell — 자동 배치(elkjs)', () => {
     window.localStorage.removeItem('crowfoot.editor.layout-mode')
   })
 
-  it('v1.25 — 하이브리드 배치도 선택할 수 있다(링 각도 + 빈 공간 채우기)', async () => {
+  it('v1.25 — 하이브리드 배치도 선택할 수 있다(허브 방사형 + 스포크별 계층형 트리)', async () => {
     window.localStorage.removeItem('crowfoot.editor.layout-mode')
     await seedChain()
 

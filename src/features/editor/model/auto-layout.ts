@@ -21,12 +21,12 @@ import type { ErdChange } from './changes'
 import { estimateTableHeight, tableRenderWidth } from './table-size'
 
 /** 자동 배치 모드 — 툴바 분할 버튼 표기와 localStorage(crowfoot.editor.layout-mode) 값
- *  (layered=elkjs 계층형, hub=허브 중심 링 방사형, hybrid=링 각도 + 빈 공간 채우기) */
+ *  (layered=elkjs 계층형, hub=허브 중심 링 방사형, hybrid=허브 방사형 + 스포크별 계층형 트리) */
 export type AutoLayoutMode = 'layered' | 'hub' | 'hybrid'
 
 /** 방사형 계산의 배치 전략 — hub/hybrid 두 모드가 layoutHubPositions를 함께 쓴다
- *  (ring=링 반지름 공식, fill=각도 유지 + 자기 레이의 첫 가용 지점) */
-export type HubLayoutStrategy = 'ring' | 'fill'
+ *  (ring=링 반지름 공식의 동심원, tree=허브+1링 방사형에 스포크 서브트리는 계층형 블록) */
+export type HubLayoutStrategy = 'ring' | 'tree'
 
 /** 테이블 렌더 크기 추정치 — ELK 노드 크기와 노트 오프셋이 같은 식을 쓴다 */
 function estimateTableSize(table: ErdTable, width: number | null) {
@@ -312,9 +312,9 @@ interface HubEntity {
 /**
  * 자동 배치(허브 중심 방사형) — 관계가 가장 많은 테이블을 중심에 두고 나머지를 사방으로
  * 펼친다 (05-editor/02-ui.md §5.1, v1.25 — 사용자 요청 "상하좌우, 필요하면 대각선까지").
- * 두 전략: `ring`(허브 모드 — 링 반지름 공식으로 균일한 동심원)과 `fill`(하이브리드 모드 —
- * 각도는 부채꼴 그대로, 반지름은 자기 레이의 첫 가용 지점. 링 형상을 유지하며 성긴 웨지를
- * 안쪽부터 채워 분산·압축한다, 2026-09-29 사용자 요청).
+ * 두 전략: `ring`(허브 모드 — 링 반지름 공식으로 균일한 동심원)과 `tree`(하이브리드 모드 —
+ * 허브와 1링 스포크만 방사형, 각 스포크의 서브트리는 부모 위·자식 아래 계층형 트리 블록으로
+ * 레이 바깥에 뻗는다. 계층형과 허브 중심의 혼합, 2026-09-29 사용자 요청).
  * elkjs를 쓰지 않는 순수 동기 계산이라 같은 문서는 항상 같은 결과를 낸다 — 타이브레이크는
  * 전부 문서 순서라 **관계 생성 순서는 결과에 무영향**이다(elkjs force는 비결정론적,
  * radial은 트리 전용이라 직접 구현했다).
@@ -501,58 +501,154 @@ export function layoutHubPositions(
     }
     const halfDiag = (entity: HubEntity) => Math.hypot(entity.box.w, entity.box.h) / 2
     const boxes = new Map<string, Box>()
-    if (strategy === 'fill') {
-      // ── 하이브리드 — 각도(부채꼴 이등분선)는 그대로 두고 반지름만 자기 레이의 첫 가용
-      // 지점으로 잡는다 (2026-09-29 사용자 요청: 링 형상은 유지하되 상하좌우 대각선의 빈
-      // 공간부터 채워 분산 — 링이 무조건 바깥으로 늘어나는 낭비를 없앤다). BFS 순(링
-      // 오름차순·부모 먼저)으로 하나씩 놓으며, 각 엔티티는 자기 각도 레이 위에서 이미 놓인
-      // 전원과의 AABB 겹침을 반지름 매개변수 r에 대해 정확히 풀어 첫 빈틈에 들어간다 —
-      // 구성상 무겹침이라 이완 패스가 필요 없고, 성긴 웨지는 안쪽부터 채워진다
+    if (strategy === 'tree') {
+      // ── 하이브리드 — 허브와 1링(스포크)까지만 방사형이고, 각 스포크의 서브트리는
+      // 계층형 트리 블록(부모 위·자식 아래, 형제 나란히·부모 중앙)으로 뻗는다
+      // (2026-09-29 사용자 재요청: "계층형과 허브 중심을 섞은 게 하이브리드" — 링 압축만
+      // 바꾼 이전 fill 전략은 형태가 허브 모드와 거의 같았다). 블록은 레이의 사분면에
+      // 맞춰 좌우 반전·상하 반전해 바깥쪽으로 뻗게 하고, 이미 놓인 것들(허브·이전 블록)과
+      // 겹치면 스포크 레이를 따라 첫 빈틈까지 밀어낸다 — 구성상 무겹침이라 이완 불필요.
       const placed: Box[] = []
       const push = (entity: HubEntity, box: Box) => {
         boxes.set(entity.id, box)
         placed.push(box)
       }
       push(hub, { x: -hub.box.w / 2, y: -hub.box.h / 2, w: hub.box.w, h: hub.box.h })
-      // 간격 여유 — nodeNode에 최종 int 반올림(축 최대 ~1.42) 보정 1을 더해 양쪽에 붙인다
+      // 간격 여유 — nodeNode에 최종 int 반올림 보정 1 (블록 내부 간격도 같은 이유로 +1)
       const SLACK = spacing.nodeNode + 1
-      for (const entity of bfsOrder.slice(1)) {
-        const angle = angleOf.get(entity.id)!
-        const ux = Math.cos(angle)
-        const uy = Math.sin(angle)
-        const floor = halfDiag(hub) + halfDiag(entity) + spacing.nodeNode // 허브 최소 반지름
-        // 장애물 하나가 이 레이에서 만드는 겹침 r-구간 — 축별 조건을 1차식으로 풀어 교집합
-        const intervals: Array<[number, number]> = []
+      const GAP = spacing.nodeNode + 1
+
+      const spokes = childrenOf.get(hub.id) ?? []
+      // 링1 반지름 — 허브·스포크 두께 합에 인접 스포크 화음 수용(링 전략 1링 공식 그대로)
+      let radius = halfDiag(hub) + Math.max(...spokes.map(halfDiag)) + spacing.nodeNode
+      if (spokes.length >= 2) {
+        const byAngle = [...spokes].sort(
+          (a, b) => angleOf.get(a.id)! - angleOf.get(b.id)! || a.orderKey - b.orderKey,
+        )
+        for (let i = 0; i < byAngle.length; i += 1) {
+          const a = byAngle[i]
+          const b = byAngle[(i + 1) % byAngle.length]
+          let raw = angleOf.get(b.id)! - angleOf.get(a.id)!
+          if (raw < 0) raw += Math.PI * 2
+          const separation = Math.min(raw, Math.PI * 2 - raw)
+          radius = Math.max(
+            radius,
+            (halfDiag(a) + halfDiag(b) + spacing.nodeNode) / (2 * Math.sin(Math.max(separation, 0.01) / 2)),
+          )
+        }
+      }
+
+      /** 장애물이 이 레이에서 만드는 겹침 r-구간 — 축별 조건을 1차식으로 풀어 교집합 */
+      const blockingIntervals = (
+        ux: number,
+        uy: number,
+        halfW: number,
+        halfH: number,
+        offX: number,
+        offY: number,
+      ): Array<[number, number]> => {
+        const out: Array<[number, number]> = []
         for (const obstacle of placed) {
-          const halfW = (entity.box.w + obstacle.w) / 2 + SLACK
-          const halfH = (entity.box.h + obstacle.h) / 2 + SLACK
-          const axis = (u: number, center: number, half: number): [number, number] | null => {
-            // 이동 중심 r·u에 대해 |r·u - center| < half 를 만족하는 r 의 구간
+          const axis = (u: number, center: number, half: number, off: number): [number, number] | null => {
+            // 이동 기준점 r·u + off 에 대해 |r·u + off - center| < half 인 r 의 구간
             if (Math.abs(u) > 1e-9) {
-              const lo = (center - half) / u
-              const hi = (center + half) / u
+              const lo = (center - half - off) / u
+              const hi = (center + half - off) / u
               return lo <= hi ? [lo, hi] : [hi, lo]
             }
             // 레이가 그 축과 평행 — 조건이 r 무관: 참이면 전구간, 거짓이면 공집합
-            return Math.abs(center) < half ? [-Infinity, Infinity] : null
+            return Math.abs(center - off) < half ? [-Infinity, Infinity] : null
           }
-          const ax = axis(ux, obstacle.x + obstacle.w / 2, halfW)
-          const ay = axis(uy, obstacle.y + obstacle.h / 2, halfH)
+          const ax = axis(ux, obstacle.x + obstacle.w / 2, halfW, offX)
+          const ay = axis(uy, obstacle.y + obstacle.h / 2, halfH, offY)
           if (!ax || !ay) continue
           const from = Math.max(ax[0], ay[0])
           const to = Math.min(ax[1], ay[1])
-          if (from < to) intervals.push([from, to])
+          if (from < to) out.push([from, to])
         }
-        // 첫 가용 r — floor에서 출발, 정렬된 구간을 지나며 밀려난다(구간마다 유한이라 종료 보장)
+        return out
+      }
+
+      for (const spoke of spokes) {
+        const angle = angleOf.get(spoke.id)!
+        const ux = Math.cos(angle)
+        const uy = Math.sin(angle)
+
+        // ── 블록 국소 계산 — 루트(스포크)를 0행, 아래로 깊이별 행 (스택 DFS — 재귀 아님)
+        const subtree: Array<{ entity: HubEntity; depth: number }> = []
+        const stack: Array<[HubEntity, number]> = [[spoke, 0]]
+        while (stack.length > 0) {
+          const [entity, depth] = stack.pop()!
+          subtree.push({ entity, depth })
+          for (const kid of childrenOf.get(entity.id) ?? []) stack.push([kid, depth + 1])
+        }
+        // 서브트리 폭 — 역순(자식 먼저: DFS 팝 순서상 부모가 항상 앞) 누적
+        const widthOf = new Map<string, number>()
+        for (let i = subtree.length - 1; i >= 0; i -= 1) {
+          const { entity } = subtree[i]
+          const kids = childrenOf.get(entity.id) ?? []
+          let inner = 0
+          for (const kid of kids) inner += widthOf.get(kid.id)!
+          if (kids.length > 1) inner += GAP * (kids.length - 1)
+          widthOf.set(entity.id, Math.max(entity.box.w, inner))
+        }
+        // 행 높이·y — 깊이별 최대 높이 누적
+        const rowH: number[] = []
+        for (const { entity, depth } of subtree) rowH[depth] = Math.max(rowH[depth] ?? 0, entity.box.h)
+        const yRow: number[] = [0]
+        for (let d = 1; d < rowH.length; d += 1) yRow[d] = yRow[d - 1] + rowH[d - 1] + GAP
+        // x — 부모 폭 안에 자식들을 중앙 정렬(프리오더, left는 부모가 물려준다)
+        const xOf = new Map<string, number>()
+        const work: Array<[HubEntity, number]> = [[spoke, 0]]
+        while (work.length > 0) {
+          const [entity, left] = work.pop()!
+          xOf.set(entity.id, left + (widthOf.get(entity.id)! - entity.box.w) / 2)
+          const kids = childrenOf.get(entity.id) ?? []
+          if (kids.length === 0) continue
+          const total =
+            kids.reduce((sum, kid) => sum + widthOf.get(kid.id)!, 0) + GAP * (kids.length - 1)
+          let cursor = left + (widthOf.get(entity.id)! - total) / 2
+          for (const kid of kids) {
+            work.push([kid, cursor])
+            cursor += widthOf.get(kid.id)! + GAP
+          }
+        }
+        const blockW = widthOf.get(spoke.id)!
+        const blockH = yRow[rowH.length - 1] + rowH[rowH.length - 1]
+
+        // 사분면 반전 — 블록이 레이 바깥쪽으로 뻗게. 반전 후 루트 중심의 블록 내 위치
+        const mirrorX = ux < 0
+        const flipY = uy < 0
+        const rootCx = mirrorX ? blockW - (xOf.get(spoke.id)! + spoke.box.w / 2) : xOf.get(spoke.id)! + spoke.box.w / 2
+        const rootCy = flipY ? blockH - (yRow[0] + spoke.box.h / 2) : yRow[0] + spoke.box.h / 2
+
+        // 첫 가용 r — 블록 AABB가 허브·이전 블록과 SLACK 여유를 두는 첫 지점
+        const halfW = blockW / 2 + SLACK
+        const halfH = blockH / 2 + SLACK
+        // 블록 중심 = r·u + (W/2 − rootCx, H/2 − rootCy) → off 항으로 흘린다
+        const intervals = blockingIntervals(
+          ux,
+          uy,
+          halfW,
+          halfH,
+          blockW / 2 - rootCx,
+          blockH / 2 - rootCy,
+        )
         intervals.sort((a, b) => a[0] - b[0])
-        let r = floor
+        let r = radius
         for (const [from, to] of intervals) {
           if (r < from) break
           r = Math.max(r, to)
         }
-        const cx = r * ux
-        const cy = r * uy
-        push(entity, { x: cx - entity.box.w / 2, y: cy - entity.box.h / 2, w: entity.box.w, h: entity.box.h })
+        const ox = r * ux - rootCx
+        const oy = r * uy - rootCy
+        for (const { entity, depth } of subtree) {
+          const lx = xOf.get(entity.id)!
+          const ly = yRow[depth]
+          const bx = mirrorX ? blockW - lx - entity.box.w : lx
+          const by = flipY ? blockH - ly - entity.box.h : ly
+          push(entity, { x: ox + bx, y: oy + by, w: entity.box.w, h: entity.box.h })
+        }
       }
     } else {
       // ── 링 반지름 — ① 인접 링 두께 합 ② 링 내 각 인접 쌍의 호 수용(화음 ≥ 지름 합 + 간격).
