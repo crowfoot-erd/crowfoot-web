@@ -85,6 +85,151 @@ function getElk(): Promise<ELK> {
  *  그 공간에서 펴진다. 그룹 안쪽 멤버 간격은 이 값의 영향을 받지 않는다 */
 const GROUP_PADDING = 96
 
+/** 허브 중심 배치의 그룹 슈퍼노드 안쪽 여백 — 계층형 복도(96)보다 작게 둔다. 허브 모드에서
+ *  그룹 상자는 방사형 배치의 점유 반경(외접원)에 그대로 더해져 링 반지름·화음 간격을 벌리므로
+ *  96이면 인접 그룹 멤버의 실거리가 96+nodeNode+96로 벌어져 한 화면에 여러 그룹이 들어오지
+ *  않았다(2026-09-29 사용자 피드백 — 그룹 간격이 너무 멀어 왔다갔다 스크롤해야 된다). 반으로
+ *  줄여도 관계선 복도(nodeNode 140 + 48×2)는 까마귀발 스텁·글리프 여유를 지킨다 */
+const HUB_GROUP_PADDING = 48
+
+/** 허브 링 압축에서 그룹↔그룹 쌍의 보장 간격 — 테이블↔테이블(nodeNode)보다 작다. 그룹 상자는
+ *  안쪽 여백(HUB_GROUP_PADDING)이 상자에 포함돼 있어 상자 사이가 좁아도 멤버 테이블 실거리는
+ *  48+간격+48로 관계선 복도를 지키고, 시각적으로는 묶음끼리 인접해야 한 화면에 여러 그룹이
+ *  들어온다(2026-09-29 사용자 피드백 — 간격이 적당하니 조금만 더 줄여달라) */
+const HUB_GROUP_CLEARANCE = 112
+
+/** 그룹 내부(재귀 배치)용 간격 — 그룹 밖보다 조밀하되 멤버가 붙어 보이지는 않게. 멤버 사이
+ *  관계선은 짧고 레인 경합이 적어 nodeNode보다 줄여도 읽힌다(2026-09-29 사용자 피드백 —
+ *  테이블이 너무 가깝게 붙는다). betweenLayers는 트리 블록(부모-자식 수직 간격)에 쓰인다 */
+function groupInnerSpacing(spacing: LayoutSpacing): LayoutSpacing {
+  return {
+    ...spacing,
+    nodeNode: Math.min(spacing.nodeNode, 120),
+    betweenLayers: Math.min(spacing.betweenLayers, 120),
+  }
+}
+
+/** 그룹 내부 조밀 팩 — 방사형 재귀 대신 쓴다(2026-09-29). 그룹 멤버는 관계로 묶인 작은
+ *  군집이라 원 점유(외접원) 기반 반지름은 2배 남짓 과대 평가해 6테이블 그룹이 1600×1800으로
+ *  퍼졌다(사용자 피드백 — 간격이 너무 멀어 한 화면에 안 들어온다). 내부 관계로 BFS 순서를
+ *  잡아 각 멤버를 인접 멤버(앵커)의 우·하·좌·상 빈자리 중 전체 bbox를 가장 적게 늘리는 곳에
+ *  붙인다 — 2테이블은 나란히, 6테이블은 조밀한 블롭. 모든 쌍 AABB 간격 ≥ gap을 지키고
+ *  후보 순서·평가식이 고정이라 결정론적이다 */
+function packCluster(
+  members: ErdTable[],
+  innerEdges: Array<[string, string]>,
+  sizeOf: (table: ErdTable) => { w: number; h: number },
+  gap: number,
+): Record<string, { x: number; y: number }> {
+  const byId = new Map(members.map((table) => [table.id, table]))
+  // 내부 인접 — 방향 무시, 쌍 수축
+  const neighborsOf = new Map<string, Set<string>>()
+  for (const table of members) neighborsOf.set(table.id, new Set())
+  for (const [a, b] of innerEdges) {
+    if (a === b) continue
+    neighborsOf.get(a)?.add(b)
+    neighborsOf.get(b)?.add(a)
+  }
+  // 시드 — 내부 차수 최대(동륜 문서 순)에서 BFS
+  const start = members.reduce((best, table) => {
+    const bestDeg = neighborsOf.get(best.id)?.size ?? 0
+    const deg = neighborsOf.get(table.id)?.size ?? 0
+    return deg > bestDeg ? table : best
+  }, members[0])
+  const placedOrder: string[] = []
+  const seen = new Set<string>()
+  const queue = [start.id]
+  seen.add(start.id)
+  for (let head = 0; head < queue.length; head += 1) {
+    const id = queue[head]
+    placedOrder.push(id)
+    const next = [...(neighborsOf.get(id) ?? [])]
+      .filter((nid) => byId.has(nid) && !seen.has(nid))
+      .sort((a, b) => members.findIndex((m) => m.id === a) - members.findIndex((m) => m.id === b))
+    for (const nid of next) {
+      seen.add(nid)
+      queue.push(nid)
+    }
+  }
+  for (const table of members) {
+    if (!seen.has(table.id)) placedOrder.push(table.id)
+  }
+
+  const boxes = new Map<string, Box>()
+  const extent = () => {
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const box of boxes.values()) {
+      minX = Math.min(minX, box.x)
+      minY = Math.min(minY, box.y)
+      maxX = Math.max(maxX, box.x + box.w)
+      maxY = Math.max(maxY, box.y + box.h)
+    }
+    return { minX, minY, maxX, maxY, area: (maxX - minX) * (maxY - minY) }
+  }
+  const axisGap = (a: Box, b: Box): number => {
+    const gx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w))
+    const gy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h))
+    return Math.max(gx, gy)
+  }
+  const fits = (candidate: Box, selfId: string): boolean => {
+    for (const [otherId, other] of boxes) {
+      if (otherId !== selfId && axisGap(candidate, other) < gap) return false
+    }
+    return true
+  }
+
+  for (const id of placedOrder) {
+    const table = byId.get(id)!
+    const size = sizeOf(table)
+    if (boxes.size === 0) {
+      boxes.set(id, { x: 0, y: 0, w: size.w, h: size.h })
+      continue
+    }
+    // 앵커 — 이미 놓인 내부 이웃(문서 순), 없으면 마지막으로 놓은 테이블
+    const anchors = [...(neighborsOf.get(id) ?? [])].filter((nid) => boxes.has(nid))
+    const anchorIds = anchors.length > 0 ? anchors : [placedOrder[placedOrder.indexOf(id) - 1] ?? [...boxes.keys()].at(-1)!]
+    const before = extent()
+    let best: { box: Box; score: number } | null = null
+    // 후보 순서 우·하·좌·상(읽기 방향 우선). 평가 — 결과 bbox의 최대 변을 우선 줄인다
+    // (세로 체인 260×2800보다 2열 700×1500이 낫다 — 외부 링 점유가 정방형에 가까울수록
+    // 촘촘히 돌아간다), 동륜은 bbox 면적, 그다음 후보 순서. 고정식이라 결정론 유지
+    const offsets: Array<[number, number]> = [
+      [1, 0],
+      [0, 1],
+      [-1, 0],
+      [0, -1],
+    ]
+    for (const anchorId of anchorIds) {
+      const anchor = boxes.get(anchorId)!
+      for (const [ox, oy] of offsets) {
+        const x = ox > 0 ? anchor.x + anchor.w + gap : ox < 0 ? anchor.x - size.w - gap : anchor.x
+        const y = oy > 0 ? anchor.y + anchor.h + gap : oy < 0 ? anchor.y - size.h - gap : anchor.y
+        const candidate: Box = { x, y, w: size.w, h: size.h }
+        if (!fits(candidate, id)) continue
+        const after = {
+          minX: Math.min(before.minX, x),
+          minY: Math.min(before.minY, y),
+          maxX: Math.max(before.maxX, x + size.w),
+          maxY: Math.max(before.maxY, y + size.h),
+        }
+        const w = after.maxX - after.minX
+        const h = after.maxY - after.minY
+        const score = Math.round(Math.max(w, h) * 10_000 + w * h)
+        if (best === null || score < best.score) best = { box: candidate, score }
+      }
+    }
+    // 전부 막혀도(이론상 없음 — 무한 평면) 보험: 가장 최근 박스 아래 줄바꿈
+    boxes.set(id, best?.box ?? { x: 0, y: extent().maxY + gap, w: size.w, h: size.h })
+  }
+
+  const out: Record<string, { x: number; y: number }> = {}
+  for (const [id, box] of boxes) out[id] = { x: Math.round(box.x), y: Math.round(box.y) }
+  return out
+}
+
 /** 테이블별 첫 소속 그룹(문서 순서) — 계층형(buildLayoutGraph)과 허브 중심 배치
  *  (layoutHubPositions)가 같은 규칙을 공유한다. 스키마는 다중 소속을 허하지만 물리적으로는
  *  한 덩어리에만 속할 수 있다(groupColorOf와 같은 규칙). 존재하지 않는 테이블 id는 무시 */
@@ -301,7 +446,7 @@ interface HubEntity {
   memberIds: string[]
   /** 전체 타이브레이크 — 그룹은 멤버의 최소 문서 인덱스(문서 순서가 곧 결정 순서) */
   orderKey: number
-  /** 외부 그래프에서 차지하는 AABB — 그룹은 멤버 bbox ± GROUP_PADDING */
+  /** 외부 그래프에서 차지하는 AABB — 그룹은 멤버 bbox ± HUB_GROUP_PADDING */
   box: Box
   /** 그룹 내부 배치 결과(재귀 호출 원점계) — isGroup일 때만 */
   localPositions: Record<string, { x: number; y: number }>
@@ -351,24 +496,20 @@ export function layoutHubPositions(
   for (const area of doc.diagram.areas ?? []) {
     const members = doc.model.tables.filter((table) => firstGroupOf.get(table.id) === area.id)
     if (members.length === 0) continue
-    // 내부 배치 — 부분 문서의 areas를 비워 재귀는 깊이 1에서 끝난다(그룹은 중첩되지 않는다)
+    // 내부 배치 — 조밀 팩(packCluster). 방사형 재귀는 원 점유 과대 평가 때문에 그만둔다
     const memberIds = new Set(members.map((table) => table.id))
-    const innerDoc: EditorDocument = {
-      model: {
-        tables: members,
-        relationships: doc.model.relationships.filter(
-          (rel) =>
-            rel.parentTableId !== rel.childTableId &&
-            memberIds.has(rel.parentTableId) &&
-            memberIds.has(rel.childTableId),
-        ),
-      },
-      diagram: { nodes: doc.diagram.nodes, notes: [], areas: [], viewport: null },
+    const innerEdges: Array<[string, string]> = []
+    for (const rel of doc.model.relationships) {
+      if (rel.parentTableId === rel.childTableId) continue
+      if (memberIds.has(rel.parentTableId) && memberIds.has(rel.childTableId)) {
+        innerEdges.push([rel.parentTableId, rel.childTableId])
+      }
     }
+    const inner = groupInnerSpacing(spacing)
     const localPositions =
       members.length >= 2
-        ? layoutHubPositions(innerDoc, options)
-        : { [members[0].id]: { x: spacing.padding, y: spacing.padding } }
+        ? packCluster(members, innerEdges, sizeOfTable, inner.nodeNode)
+        : { [members[0].id]: { x: inner.padding, y: inner.padding } }
     let minX = Infinity
     let minY = Infinity
     let maxX = -Infinity
@@ -386,7 +527,7 @@ export function layoutHubPositions(
       isGroup: true,
       memberIds: members.map((table) => table.id),
       orderKey: Math.min(...members.map((table) => indexOfTable.get(table.id)!)),
-      box: { x: 0, y: 0, w: maxX - minX + GROUP_PADDING * 2, h: maxY - minY + GROUP_PADDING * 2 },
+      box: { x: 0, y: 0, w: maxX - minX + HUB_GROUP_PADDING * 2, h: maxY - minY + HUB_GROUP_PADDING * 2 },
       localPositions,
       localOrigin: { x: minX, y: minY },
     })
@@ -691,6 +832,107 @@ export function layoutHubPositions(
         const cy = radius * Math.sin(angle)
         boxes.set(entity.id, { x: cx - entity.box.w / 2, y: cy - entity.box.h / 2, w: entity.box.w, h: entity.box.h })
       }
+      // ── AABB 압축 — 외접원 반지름은 직사각 점유를 크게 과대 평가한다(260×400 테이블의
+      // 점유 반지름 ≈ 480). 링 각도·질서는 그대로 두고 모든 쌍의 AABB 간격이 nodeNode 이상인
+      // 한도에서 허브 방향으로 당겨 원 낭비를 없앤다(2026-09-29 사용자 피드백 — 간격이 너무
+      // 멀어 한 화면에 여러 그룹이 들어오지 않는다). 보장 복도 폭(nodeNode)은 그대로 지키고
+      // 거리만 축소한다. 허브 핀 고정·문서 순 방문·고정 라운드/이분탐색 — 결정론 유지
+      const axisGap = (a: Box, b: Box): number => {
+        const gx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w))
+        const gy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h))
+        return Math.max(gx, gy) // 옆 이웃은 x분리, 위·아래 이웃은 y분리 하나만 있으면 된다
+      }
+      const groupIds = new Set(comp.filter((entity) => entity.isGroup).map((entity) => entity.id))
+      /** 쌍별 보장 간격 — 그룹↔그룹은 상자가 안쪽 여백을 포함하므로 HUB_GROUP_CLEARANCE로
+       *  조여 묶음끼리 인접하게, 나머지 쌍은 nodeNode 복도를 지킨다 */
+      const pairClearance = (a: string, b: string): number =>
+        groupIds.has(a) && groupIds.has(b) ? HUB_GROUP_CLEARANCE : spacing.nodeNode
+      const compactClear = (moved: Box, selfId: string): boolean => {
+        for (const [otherId, other] of boxes) {
+          if (otherId === selfId) continue
+          if (axisGap(moved, other) < pairClearance(selfId, otherId)) return false
+        }
+        return true
+      }
+      for (let round = 0; round < 3; round += 1) {
+        for (const entity of order) {
+          if (entity.id === hub.id) continue
+          const box = boxes.get(entity.id)!
+          const hubBox = boxes.get(hub.id)!
+          const ux = hubBox.x + hubBox.w / 2 - (box.x + box.w / 2)
+          const uy = hubBox.y + hubBox.h / 2 - (box.y + box.h / 2)
+          const dist = Math.hypot(ux, uy)
+          if (dist < 1e-9) continue
+          const dx = ux / dist
+          const dy = uy / dist
+          let lo = 0
+          let hi = dist * 0.9 // 허브 중심 관통 방지
+          for (let iter = 0; iter < 24; iter += 1) {
+            const mid = (lo + hi) / 2
+            if (compactClear({ x: box.x + dx * mid, y: box.y + dy * mid, w: box.w, h: box.h }, entity.id)) lo = mid
+            else hi = mid
+          }
+          if (lo > 0.5) boxes.set(entity.id, { x: box.x + dx * lo, y: box.y + dy * lo, w: box.w, h: box.h })
+        }
+      }
+      // 접선 정착 — 순수 방사 당김은 각도가 고정돼 이웃 뒤의 빈 부채꼴로 못 들어간다. 허브
+      // 중심 회전(고정 각도 후보 ±4°..±40°) 후 다시 당겨, 지금보다 허브에 가까워지는
+      // 회전만 채택한다(문서 순 방문·고정 후보 순서 — 결정론). 정방형 그룹이 서로 홈에 맞물린다
+      const pullToFloor = (box: Box, selfId: string): Box => {
+        const hubBox = boxes.get(hub.id)!
+        const ux = hubBox.x + hubBox.w / 2 - (box.x + box.w / 2)
+        const uy = hubBox.y + hubBox.h / 2 - (box.y + box.h / 2)
+        const dist = Math.hypot(ux, uy)
+        if (dist < 1e-9) return box
+        const dx = ux / dist
+        const dy = uy / dist
+        let lo = 0
+        let hi = dist * 0.9
+        for (let iter = 0; iter < 24; iter += 1) {
+          const mid = (lo + hi) / 2
+          if (compactClear({ x: box.x + dx * mid, y: box.y + dy * mid, w: box.w, h: box.h }, selfId)) lo = mid
+          else hi = mid
+        }
+        return lo > 0.5 ? { x: box.x + dx * lo, y: box.y + dy * lo, w: box.w, h: box.h } : box
+      }
+      const hubCx = () => {
+        const hubBox = boxes.get(hub.id)!
+        return { x: hubBox.x + hubBox.w / 2, y: hubBox.y + hubBox.h / 2 }
+      }
+      for (let round = 0; round < 2; round += 1) {
+        for (const entity of order) {
+          if (entity.id === hub.id) continue
+          const box = boxes.get(entity.id)!
+          const center = hubCx()
+          const cx = box.x + box.w / 2 - center.x
+          const cy = box.y + box.h / 2 - center.y
+          const currentDist = Math.hypot(cx, cy)
+          let bestBox = box
+          let bestDist = currentDist
+          for (const deg of [4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24, 28, -28, 32, -32, 36, -36, 40, -40]) {
+            const rad = (deg * Math.PI) / 180
+            const rotX = cx * Math.cos(rad) - cy * Math.sin(rad)
+            const rotY = cx * Math.sin(rad) + cy * Math.cos(rad)
+            const rotated: Box = {
+              x: center.x + rotX - box.w / 2,
+              y: center.y + rotY - box.h / 2,
+              w: box.w,
+              h: box.h,
+            }
+            if (!compactClear(rotated, entity.id)) continue
+            const pulled = pullToFloor(rotated, entity.id)
+            const pulledDist = Math.hypot(
+              pulled.x + pulled.w / 2 - center.x,
+              pulled.y + pulled.h / 2 - center.y,
+            )
+            if (pulledDist < bestDist - 1) {
+              bestDist = pulledDist
+              bestBox = pulled
+            }
+          }
+          boxes.set(entity.id, bestBox)
+        }
+      }
       // 이완 안전망 — 설계상 무겹침이지만 반올림·극단 비율 잔털용. 고정 4라운드, 허브 핀 고정,
       // 침투+1 돌파 밀기(한 번에 터뜨린다). 그룹 슈퍼노드는 강체(내부를 건드리지 않는다)
       for (let round = 0; round < 4; round += 1) {
@@ -813,8 +1055,8 @@ export function layoutHubPositions(
       for (const memberId of entity.memberIds) {
         const local = entity.localPositions[memberId]
         out[memberId] = {
-          x: world.x + GROUP_PADDING + local.x - entity.localOrigin.x,
-          y: world.y + GROUP_PADDING + local.y - entity.localOrigin.y,
+          x: world.x + HUB_GROUP_PADDING + local.x - entity.localOrigin.x,
+          y: world.y + HUB_GROUP_PADDING + local.y - entity.localOrigin.y,
         }
       }
     }
@@ -875,9 +1117,13 @@ export function positionNotes(
   const contentTop = Math.min(...tableBoxes.map((box) => box.y))
   let freeY = contentTop
   const out: Record<string, { x: number; y: number }> = {}
+  const placedNotes: Box[] = [] // 이번 패스에 놓은 노트 — 노트끼리 겹침 방지의 장애물
 
   for (const note of doc.diagram.notes) {
-    const noteBox: Box = { x: note.x, y: note.y, w: note.width ?? 360, h: NOTE_STACK_HEIGHT }
+    // 높이는 노트 실제 확정값(note.height) — 미확정이면 rows=4 기본 높이. 스택 전진도 실제
+    // 높이만큼 한다(고정값이면 긴 노트 아래 다음 노트가 파고 들었다, 2026-09-29)
+    const height = note.height ?? NOTE_STACK_HEIGHT
+    const noteBox: Box = { x: note.x, y: note.y, w: note.width ?? 360, h: height }
 
     if (note.linkedTableId && tablePositions[note.linkedTableId] && tableById.has(note.linkedTableId)) {
       const table = tableById.get(note.linkedTableId)!
@@ -886,23 +1132,29 @@ export function positionNotes(
       const offsetY = nextY.get(note.linkedTableId) ?? 0
       let x = pos.x + size.w + NOTE_TABLE_GAP
       const y = pos.y + offsetY
-      // 우측 스택 자리에 다른 테이블이 있으면 겹치지 않을 때까지 오른쪽으로 밀어낸다
-      for (let guard = 0; guard <= tableBoxes.length; guard += 1) {
-        const hit = tableBoxes.find((box) => overlaps({ ...noteBox, x, y }, box))
+      // 우측 스택 자리에 다른 테이블이나 먼저 놓은 노트가 있으면 겹치지 않을 때까지 오른쪽으로
+      const obstacles = [...tableBoxes, ...placedNotes]
+      for (let guard = 0; guard <= obstacles.length; guard += 1) {
+        const hit = obstacles.find((box) => overlaps({ ...noteBox, x, y }, box))
         if (!hit) break
         x = hit.x + hit.w + NOTE_TABLE_GAP
       }
       if (Math.round(x) !== note.x || Math.round(y) !== note.y) {
         out[note.id] = { x: Math.round(x), y: Math.round(y) }
+        noteBox.x = Math.round(x)
+        noteBox.y = Math.round(y)
       }
-      nextY.set(note.linkedTableId, offsetY + NOTE_STACK_HEIGHT + NOTE_STACK_GAP)
+      placedNotes.push(noteBox)
+      nextY.set(note.linkedTableId, offsetY + height + NOTE_STACK_GAP)
       continue
     }
 
     // 자유 노트 — 겹칠 때만 콘텐츠 우측 여백 열로
     if (tableBoxes.some((box) => overlaps(noteBox, box))) {
-      out[note.id] = { x: Math.round(contentRight + NOTE_TABLE_GAP), y: Math.round(freeY) }
-      freeY += NOTE_STACK_HEIGHT + NOTE_STACK_GAP
+      const x = Math.round(contentRight + NOTE_TABLE_GAP)
+      out[note.id] = { x, y: Math.round(freeY) }
+      placedNotes.push({ ...noteBox, x, y: Math.round(freeY) })
+      freeY += height + NOTE_STACK_GAP
     }
   }
   return out

@@ -644,7 +644,7 @@ describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.24)', (
     expect(layoutHubPositions(d)).toEqual({})
   })
 
-  it('스타 — 허브가 중앙, 리프는 등거리 사분면(우상·우하·좌하·좌상)에 펼쳐진다', () => {
+  it('스타 — 허브가 중앙, 리프는 사분면(우상·우하·좌하·좌상)에 펼쳐진다', () => {
     let d = doc()
     d = seedTable(d, 'P')
     for (const id of ['L1', 'L2', 'L3', 'L4']) d = seedTable(d, id)
@@ -652,13 +652,18 @@ describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.24)', (
 
     const positions = layoutHubPositions(d)
     const c = centerById(d, positions)
-    const distances = ['L1', 'L2', 'L3', 'L4'].map(
-      (id) => Math.hypot(c[id].cx - c.P.cx, c[id].cy - c.P.cy),
-    )
-    for (const distance of distances) {
-      expect(Math.abs(distance - distances[0])).toBeLessThanOrEqual(1.5)
+    // 등거리는 폐기(2026-09-29 간격 피드백) — AABB 압축이 방향별 바닥(축 이웃 < 대각 이웃)까지
+    // 당긴다. 대신 리프가 전부 nodeNode 이상 떨어져 있는지로 수렴을 검증한다
+    const boxes = boxesOf(d, positions)
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        expect(gapOf(boxes[i], boxes[j])).toBeGreaterThanOrEqual(
+          DEFAULT_LAYOUT_SPACING.nodeNode - 2,
+        )
+      }
     }
-    // 시작각 12시·리프 균등 분할의 이등분선 — L1 우상(dx>0, dy<0), L2 우하, L3 좌하, L4 좌상
+    // 시작각 12시·리프 균등 분할의 이등분선 — L1 우상(dx>0, dy<0), L2 우하, L3 좌하, L4 좌상.
+    // 압축·접선 정착은 허브를 향해 당기고 관통하지 못하므로 사분면 부호는 불변이다
     const rel = (id: string) => ({ dx: c[id].cx - c.P.cx, dy: c[id].cy - c.P.cy })
     expect(rel('L1').dx).toBeGreaterThan(0)
     expect(rel('L1').dy).toBeLessThan(0)
@@ -747,21 +752,36 @@ describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.24)', (
     expect(layoutHubPositions(forward)).toEqual(layoutHubPositions(reversed))
   })
 
-  it('체인(모든 degree ≤ 1) — 가운데 테이블이 허브, 일직선으로 뻗는다', () => {
+  it('체인(모든 degree ≤ 1) — 가운데 테이블(B)이 허브가 되어 주변으로 조밀하게 붙는다', () => {
     let d = doc()
     for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id)
     d = seedRelation(d, 'A', 'B')
     d = seedRelation(d, 'B', 'C')
     d = seedRelation(d, 'C', 'D')
 
-    const c = centerById(d, layoutHubPositions(d))
-    // 허브 B의 이등분선(6시 방향)에서 단일 자식이 wedge를 승계 — 4개 전부 같은 수평선
-    const ys = [c.A.cy, c.B.cy, c.C.cy, c.D.cy]
-    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(1)
-    expect(c.D.cx).toBeLessThan(c.C.cx)
-    expect(c.C.cx).toBeLessThan(c.B.cx)
-    expect(c.B.cx).toBeLessThan(c.A.cx)
-    expect(Math.abs(c.C.cx - c.B.cx)).toBeLessThan(Math.abs(c.D.cx - c.B.cx))
+    const positions = layoutHubPositions(d)
+    const c = centerById(d, positions)
+    // 일직선은 폐기(2026-09-29 간격 피드백) — AABB 압축이 허브(B)를 향해 당겨 조밀 군집이
+    // 된다. 대신 B가 도형 중심(전체 centroid와 가장 가깄)·무겹침·최소 간격을 검증한다
+    const ids = ['A', 'B', 'C', 'D']
+    const centroid = {
+      x: ids.reduce((sum, id) => sum + c[id].cx, 0) / ids.length,
+      y: ids.reduce((sum, id) => sum + c[id].cy, 0) / ids.length,
+    }
+    const byCentroidDist = [...ids].sort(
+      (a, b) =>
+        Math.hypot(c[a].cx - centroid.x, c[a].cy - centroid.y) -
+        Math.hypot(c[b].cx - centroid.x, c[b].cy - centroid.y),
+    )
+    expect(byCentroidDist[0]).toBe('B')
+    const boxes = boxesOf(d, positions)
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        expect(gapOf(boxes[i], boxes[j])).toBeGreaterThanOrEqual(
+          DEFAULT_LAYOUT_SPACING.nodeNode - 2,
+        )
+      }
+    }
   })
 
   it('성분 분리 — 부성분은 메인 아래(component 간격), 고립 테이블은 우측 열', () => {
@@ -801,7 +821,7 @@ describe('auto-layout — layoutHubPositions(허브 중심 방사형, v1.24)', (
     const g2 = bboxOf(d, positions, ['C', 'D'])
     const separated = g1.right <= g2.left || g2.right <= g1.left || g1.bottom <= g2.top || g2.bottom <= g1.top
     expect(separated).toBe(true)
-    // 그룹 복도(GROUP_PADDING×2)가 있어 멤버 간 최소 간격은 nodeNode보다 훨씬 크다
+    // 그룹 복도(HUB_GROUP_PADDING×2)가 있어 멤버 간 최소 간격은 nodeNode보다 크다
     const boxes = boxesOf(d, positions)
     const a = boxes.find((b) => b.id === 'A')!
     const c = boxes.find((b) => b.id === 'C')!
@@ -1079,7 +1099,7 @@ describe('auto-layout — layoutHubPositions 하이브리드 전략(tree, v1.24)
       ['A', 'B'],
     ])
     expect(tree(forward)).toEqual(tree(reversed))
-    // 그룹 멤버는 GROUP_PADDING 복도 안에 있다
+    // 그룹 멤버는 HUB_GROUP_PADDING 복도 안에 있다
     const positions = tree(forward)
     const boxes = boxesOf(forward, positions)
     const a = boxes.find((b) => b.id === 'A')!
