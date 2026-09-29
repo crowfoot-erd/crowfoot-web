@@ -3,7 +3,7 @@
  * 릴리스마다 이 파일을 해당 버전 시나리오로 다시 쓴다(v1.23 알림에 이어).
  *
  * 실행: npx playwright test e2e/_screenshots.spec.ts
- * 산출: /tmp/crowfoot-v1.25-shots/*.png (dsf=2 요소 캡처) → 마지막 스테이징 패스에서
+ * 산출: /tmp/crowfoot-v1.24-shots/*.png (dsf=2 요소 캡처) → 마지막 스테이징 패스에서
  *       webp(q82)로 변환한다(인코더가 로컬에 없어 Playwright 이중 패스).
  *
  * v1.23 규칙 계승 — 확대 캡처(deployment.md §4): 전체 화면이 아니라 필요한 부분(요소)만.
@@ -24,7 +24,7 @@
 import { mkdirSync } from 'node:fs'
 import { test, type Page } from '@playwright/test'
 
-const OUT = '/tmp/crowfoot-v1.25-shots'
+const OUT = '/tmp/crowfoot-v1.24-shots'
 mkdirSync(OUT, { recursive: true })
 
 export const WS = '34'
@@ -450,7 +450,7 @@ test('v1.25 6장면 + webp 스테이징', async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } })
     const page = await context.newPage()
     for (const name of ['layout-modes', 'hub-layout', 'hybrid-layout', 'drag-live', 'template-cards', 'community-sidebar']) {
-      await page.goto(`file:///tmp/crowfoot-v1.25-shots/${name}.png`)
+      await page.goto(`file:///tmp/crowfoot-v1.24-shots/${name}.png`)
       const img = page.locator('img')
       await img.waitFor()
       await img.evaluate((el) => {
