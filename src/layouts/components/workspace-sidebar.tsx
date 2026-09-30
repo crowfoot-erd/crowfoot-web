@@ -6,7 +6,7 @@
  * 생성 다이얼로그 본체는 AppLayout이 마운트한다(관리자 사이드바로 교체돼도 유지).
  */
 import { NavLink } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { FolderOpen, Plus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -48,7 +48,8 @@ export function WorkspaceSidebar() {
         ) : (
           <>
             <section>
-              <p className="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="flex items-center gap-1.5 px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <FolderOpen aria-hidden className="size-3.5" />
                 {t('shell.sidebar.mine')}
               </p>
               <nav aria-label={t('shell.sidebar.mine')} className="flex flex-col gap-0.5">
@@ -59,8 +60,9 @@ export function WorkspaceSidebar() {
             </section>
 
             {shared.length > 0 ? (
-              <section>
-                <p className="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <section className="mt-1 border-t pt-1">
+                <p className="flex items-center gap-1.5 px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Users aria-hidden className="size-3.5" />
                   {t('shell.sidebar.shared')}
                 </p>
                 <nav aria-label={t('shell.sidebar.shared')} className="flex flex-col gap-0.5">
