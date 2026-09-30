@@ -798,7 +798,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
       observer.disconnect()
       unregisterColumnRowAnchors(id)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- rowsSig가 행 구성 변화를 요약한다(컬럼 id·영역 순)
+    // 의존성은 rowsSig가 행 구성 변화를 요약한다(컬럼 id·영역 순) — react-hooks 규칙은 설정에 없다
   }, [id, rowsSig])
 
   if (!table) return null
