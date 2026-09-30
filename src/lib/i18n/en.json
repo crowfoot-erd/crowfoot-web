@@ -1239,12 +1239,17 @@
       "migration": {
         "titleVersion": "Migration DDL — v{{from}} → v{{to}}",
         "titleConnection": "Migration DDL — Document ↔ DB",
-        "subtitle": "Generates ALTER statements for the difference between the two snapshots. Execution is out of scope.",
+        "subtitle": "Generates ALTER statements for the difference between the two snapshots.",
         "statementCount": "{{count}} statements",
         "warningTitle": "Warnings",
         "loading": "Generating migration DDL…",
         "error": "Failed to generate migration DDL",
-        "button": "Migration DDL"
+        "button": "Migration DDL",
+        "apply": "Apply to database",
+        "applyConfirmTitle": "Apply to the database",
+        "applyConfirmDescription": "This executes {{count}} migration DDL statements on the database of connection {{connection}}. It cannot be undone, and data may be lost if destructive operations are included. Continue?",
+        "applyConfirm": "Apply",
+        "applySuccess": "Migration DDL applied to the database"
       },
       "area": {
         "defaultName": "Group",

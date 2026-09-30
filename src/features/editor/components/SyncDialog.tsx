@@ -197,12 +197,13 @@ export function SyncDialog({
         </DialogFooter>
       </DialogContent>
 
-      {/* 문서↔실제 DB 마이그레이션 DDL — 문서에 반영하는 것과 별개로 DB 쪽 변화를 검토한다 (Editor+) */}
+      {/* 문서↔실제 DB 마이그레이션 DDL — 문서에 반영하는 것과 별개로 DB 쪽 변화를 검토·반영한다 (Editor+) */}
       {canEdit && modelId && sourceConnectionId ? (
         <MigrationDdlDialog
           open={migrationOpen}
           onOpenChange={setMigrationOpen}
           modelName={modelName}
+          connectionName={connection?.name ?? sourceConnectionId}
           mode={{ kind: 'connection', workspaceId, modelId, connectionId: sourceConnectionId }}
         />
       ) : null}

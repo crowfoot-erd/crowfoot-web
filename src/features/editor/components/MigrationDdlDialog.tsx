@@ -1,17 +1,20 @@
 /**
- * 마이그레이션 DDL 다이얼로그 (08-core/02-model.md §1.7.1 — 05-editor/04-dbms-engineering.md §3.3)
+ * 마이그레이션 DDL 다이얼로그 (08-core/02-model.md §1.7.1·§1.15 — 05-editor/04-dbms-engineering.md §3.3)
  *
- * 두 스냅샷의 차이를 ALTER 문으로 생성해 보여준다 — 복사·다운로드만 제공하고 실행은
- * 범위 밖(생성 전용 계약). 배포 버튼이 없는 것이 SqlPreviewDialog(§1.7)와 다른 점이다.
- * mode로 두 경로를 공용화한다: version(버전 A→B — 비교 뷰 헤더)·connection(문서↔실제
- * DB — SyncDialog 푸터, Editor+). 경고는 서버 코드(DESTRUCTIVE·NOT_INTROSPECTED·…)를
- * 그대로 내려오니 파괴 여부에 따라 톤을 갈라 꾸민다.
+ * 두 스냅샷의 차이를 ALTER 문으로 생성해 보여준다 — 복사·다운로드로 검토한다.
+ * mode로 두 경로를 공용화한다: version(버전 A→B — 비교 뷰 헤더, 생성 전용)·
+ * connection(문서↔실제 DB — SyncDialog 푸터, Editor+). connection 모드는 푸터의
+ * 반영 버튼으로 차분을 연결된 DB에 실행한다(§1.15): 경고 확인 다이얼로그를 거쳐
+ * 서버가 실행 시점에 재계산한 문장을 문장별 결과로 보여준다. 경고는 서버 코드
+ * (DESTRUCTIVE·NOT_INTROSPECTED·…)를 그대로 내려오니 파괴 여부에 따라 톤을 갈라 꾸민다.
  */
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Copy, Download, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Copy, Download, Loader2, RefreshCw, Rocket, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Dialog,
   DialogContent,
@@ -21,10 +24,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  useApplyConnectionMigration,
   useConnectionMigrationDdl,
   useVersionMigrationDdl,
 } from '@/features/editor/hooks'
 import { downloadTextFile, safeFilename } from '@/lib/download'
+import { errorMessage } from '@/lib/result-code'
 
 /** 파괴적 연산 경고 코드 — destructive 톤으로 꾸민다 (서버 Warning.DESTRUCTIVE) */
 const DESTRUCTIVE_CODE = 'DESTRUCTIVE'
@@ -39,6 +44,8 @@ export interface MigrationDdlDialogProps {
   /** 문서명 — 다운로드 파일명 */
   modelName: string
   mode: MigrationDdlMode
+  /** 커넥션명(connection 모드) — 반영 확인 문구의 대상 표기. 없으면 ID로 폴백 */
+  connectionName?: string
 }
 
 /** 클립보드 복사 — 비보환 컨텍스트는 임시 textarea 폴백 (SqlPreviewDialog 관례) */
@@ -59,8 +66,16 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function MigrationDdlDialog({ open, onOpenChange, modelName, mode }: MigrationDdlDialogProps) {
+export function MigrationDdlDialog({
+  open,
+  onOpenChange,
+  modelName,
+  mode,
+  connectionName,
+}: MigrationDdlDialogProps) {
   const { t } = useTranslation()
+  // 반영 확인 다이얼로그 — 파괴적 문장 포함 시 destructive 강조(사용자 요청: 실행 전 경고)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const versionQuery = useVersionMigrationDdl(
     mode.kind === 'version' ? mode.workspaceId : '',
     mode.kind === 'version' ? mode.modelId : '',
@@ -76,6 +91,8 @@ export function MigrationDdlDialog({ open, onOpenChange, modelName, mode }: Migr
   )
   const query = mode.kind === 'version' ? versionQuery : connectionQuery
   const result = query.data
+  const apply = useApplyConnectionMigration(mode.kind === 'connection' ? mode.workspaceId : '')
+  const applyResult = mode.kind === 'connection' ? apply.data : undefined
 
   const copy = async () => {
     if (result && (await copyText(result.sql))) {
@@ -87,6 +104,23 @@ export function MigrationDdlDialog({ open, onOpenChange, modelName, mode }: Migr
 
   const download = () => {
     if (result) downloadTextFile(`${safeFilename(modelName)}-migration.sql`, result.sql)
+  }
+
+  /** 반영 실행 — 확인 다이얼로그의 확인 버튼. 성공하면 확인창을 닫고 결과 블록으로 전환한다 */
+  const runApply = () => {
+    if (mode.kind !== 'connection') return
+    apply.mutate(
+      { modelId: mode.modelId, connectionId: mode.connectionId },
+      {
+        onSuccess: () => {
+          setConfirmOpen(false)
+          toast.success(t('model.editor.migration.applySuccess'))
+        },
+        onError: () => {
+          setConfirmOpen(false) // 오류는 본문 안내로 — 확인창을 겹치지 않게 한다
+        },
+      },
+    )
   }
 
   const title =
@@ -164,7 +198,62 @@ export function MigrationDdlDialog({ open, onOpenChange, modelName, mode }: Migr
           </>
         ) : null}
 
+        {apply.isError ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/[0.07] px-3 py-2 text-xs text-foreground">
+            {errorMessage(apply.error)}
+          </div>
+        ) : null}
+
+        {applyResult ? (
+          <div data-testid="migration-apply-result" className="grid gap-2">
+            <p
+              className={`flex items-center gap-1.5 text-sm font-medium ${
+                applyResult.failedCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
+              }`}
+            >
+              {applyResult.failedCount > 0 ? (
+                <AlertTriangle aria-hidden className="size-4" />
+              ) : (
+                <CheckCircle2 aria-hidden className="size-4" />
+              )}
+              {t('model.editor.deploy.summary', {
+                total: applyResult.statements.length,
+                executed: applyResult.executedCount,
+                failed: applyResult.failedCount,
+              })}
+            </p>
+            <ul className="max-h-56 overflow-auto rounded-md border">
+              {applyResult.statements.map((statement, index) => (
+                <li key={index} className="grid gap-0.5 border-b px-3 py-1.5 text-xs last:border-b-0">
+                  <span className="flex items-start gap-1.5 font-mono">
+                    {statement.ok ? (
+                      <CheckCircle2 aria-hidden className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <XCircle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+                    )}
+                    <span className="break-all">{firstLine(statement.sql)}</span>
+                  </span>
+                  {!statement.ok && statement.error ? (
+                    <span className="pl-5 break-all text-destructive">{statement.error}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <DialogFooter>
+          {mode.kind === 'connection' ? (
+            <Button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              disabled={!result || apply.isPending}
+              data-testid="migration-apply"
+            >
+              <Rocket aria-hidden className="size-3.5" />
+              {t('model.editor.migration.apply')}
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" size="sm" onClick={() => void copy()} disabled={!result}>
             <Copy aria-hidden className="size-3.5" />
             {t('model.editor.ddl.copy')}
@@ -178,6 +267,29 @@ export function MigrationDdlDialog({ open, onOpenChange, modelName, mode }: Migr
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* 반영 확인(§1.15) — autocommit이라 되돌릴 수 없다. 파괴적 문장 포함 시 destructive 톤 */}
+      {mode.kind === 'connection' ? (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={t('model.editor.migration.applyConfirmTitle')}
+          description={t('model.editor.migration.applyConfirmDescription', {
+            count: result?.statementCount ?? 0,
+            connection: connectionName ?? mode.connectionId,
+          })}
+          confirmLabel={t('model.editor.migration.applyConfirm')}
+          destructive={hasDestructive}
+          confirming={apply.isPending}
+          onConfirm={runApply}
+        />
+      ) : null}
     </Dialog>
   )
+}
+
+/** 문장의 첫 줄 — ModelDeployDialog와 같은 규칙(비공개 함수라 여기 복제 — copyText 중복 선례) */
+function firstLine(sql: string): string {
+  const newline = sql.indexOf('\n')
+  return newline === -1 ? sql : `${sql.slice(0, newline)} …`
 }

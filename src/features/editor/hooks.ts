@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  applyConnectionMigration,
   deployModel,
   fetchConnectionMigrationDdl,
   fetchModelDdl,
@@ -95,6 +96,30 @@ export function useDeployModel(workspaceId: string) {
   return useMutation({
     mutationFn: ({ modelId, connectionId }: { modelId: string; connectionId: string }) =>
       deployModel(workspaceId, modelId, connectionId),
+  })
+}
+
+/** 마이그레이션 DDL 실행(1.15) — 반영 후 스크립트 쿼리를 무효화해 다이얼로그가 열려 있는
+ *  채 재조회한다: 깨끗하게 반영되면 빈 diff(문장 0)로 수렴해 눈으로 확인시킨다. */
+export function useApplyConnectionMigration(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ modelId, connectionId }: { modelId: string; connectionId: string }) =>
+      applyConnectionMigration(workspaceId, modelId, connectionId),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          'workspaces',
+          workspaceId,
+          'models',
+          variables.modelId,
+          'connections',
+          variables.connectionId,
+          'migration',
+        ],
+      })
+    },
   })
 }
 

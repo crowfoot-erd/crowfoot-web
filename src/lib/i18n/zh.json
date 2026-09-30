@@ -1239,12 +1239,17 @@
       "migration": {
         "titleVersion": "迁移 DDL——v{{from}} → v{{to}}",
         "titleConnection": "迁移 DDL——文档 ↔ 数据库",
-        "subtitle": "根据两个快照之间的差异生成 ALTER 语句。不负责执行。",
+        "subtitle": "根据两个快照之间的差异生成 ALTER 语句。",
         "statementCount": "{{count}} 条语句",
         "warningTitle": "警告",
         "loading": "正在生成迁移 DDL…",
         "error": "生成迁移 DDL 失败",
-        "button": "迁移 DDL"
+        "button": "迁移 DDL",
+        "apply": "应用到数据库",
+        "applyConfirmTitle": "应用到数据库",
+        "applyConfirmDescription": "将在连接 {{connection}} 的数据库上执行 {{count}} 条迁移 DDL 语句。此操作无法撤销，如包含破坏性操作可能导致数据丢失。是否继续？",
+        "applyConfirm": "应用",
+        "applySuccess": "迁移 DDL 已应用到数据库"
       },
       "area": {
         "defaultName": "分组",

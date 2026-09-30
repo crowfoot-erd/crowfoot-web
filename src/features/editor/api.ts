@@ -90,7 +90,7 @@ export interface MigrationDdlResult {
 }
 
 /** 마이그레이션 DDL — 버전 A→B 차이를 ALTER 문으로 (08-core/02-model.md §1.7.1).
- *  생성만 제공한다 — 실행은 범위 밖(경고·복사·검토용 스크립트). */
+ *  버전 비교는 생성 전용 — 스냅샷은 비교 대상일 뿐 실행 대상 커넥션이 없다. */
 export function fetchVersionMigrationDdl(
   workspaceId: string,
   modelId: string,
@@ -117,6 +117,17 @@ export function fetchConnectionMigrationDdl(
     `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/connections/${connectionId}/migration`,
     undefined,
     signal,
+  )
+}
+
+/** 마이그레이션 DDL 실행(§1.15) — 차분을 연결된 DB에 문장별 실행. 요청 본문이 없다:
+ *  서버가 실행 시점에 introspect→diff를 재계산해 그 문장을 실행한다(클라이언트 SQL
+ *  미수용). 한 문장이 실패해도 나머지를 계속 실행해 부분 실패까지 200으로 보고한다
+ *  (1.8 배포와 같은 규칙 — 응답 형태도 deploy와 같다). */
+export function applyConnectionMigration(workspaceId: string, modelId: string, connectionId: string) {
+  return apiPost<ModelDeployResult>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/connections/${connectionId}/migration/execute`,
+    undefined,
   )
 }
 

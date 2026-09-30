@@ -431,6 +431,20 @@ export const fixtures = {
       fromLabel: 'DB',
       toLabel: '문서',
     },
+    /** 마이그레이션 DDL 실행(§1.15) 응답 — 재계산한 문장 1개 성공 기본값.
+     *  부분 실패·DESTRUCTIVE 경고 병합은 server.use()로 덧씌운다 */
+    execute: {
+      executedCount: 1,
+      failedCount: 0,
+      statements: [
+        {
+          sql: 'ALTER TABLE users ADD COLUMN grade VARCHAR(10);',
+          ok: true,
+          error: null,
+        },
+      ],
+      warnings: [] as { code: string; message: string }[],
+    },
   },
   /** 배포 응답(1.8) — 전체 성공 기본값. 부분 실패는 server.use()로 덧씌운다 */
   deploy: {
@@ -1827,6 +1841,21 @@ export const handlers = [
       if (!connection) return fail('CONNECTION_NOT_FOUND', 404)
       if (connection.dbmsType !== matched.databaseType) return fail('INVALID_REQUEST', 400)
       return HttpResponse.json(ok({ response: fixtures.migration.connection }))
+    },
+  ),
+
+  // 마이그레이션 DDL 실행(§1.15) — GET migration과 같은 가드(모델 404·커넥션 404·DBMS 400)
+  http.post(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/connections/:connectionId/migration/execute`,
+    ({ params }) => {
+      const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+      if (!matched) return fail('MODEL_NOT_FOUND', 404)
+      const connection = fixtures.connections.responses.find(
+        (item) => item.connectionId === params.connectionId,
+      )
+      if (!connection) return fail('CONNECTION_NOT_FOUND', 404)
+      if (connection.dbmsType !== matched.databaseType) return fail('INVALID_REQUEST', 400)
+      return HttpResponse.json(ok({ response: fixtures.migration.execute }))
     },
   ),
 

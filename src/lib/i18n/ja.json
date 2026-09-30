@@ -1239,12 +1239,17 @@
       "migration": {
         "titleVersion": "マイグレーションDDL — v{{from}} → v{{to}}",
         "titleConnection": "マイグレーションDDL — ドキュメント ↔ DB",
-        "subtitle": "2つのスナップショットの差分をALTER文として生成します。実行は対象外です。",
+        "subtitle": "2つのスナップショットの差分をALTER文として生成します。",
         "statementCount": "{{count}}件のステートメント",
         "warningTitle": "警告",
         "loading": "マイグレーションDDLを生成中…",
         "error": "マイグレーションDDLの生成に失敗しました",
-        "button": "マイグレーションDDL"
+        "button": "マイグレーションDDL",
+        "apply": "DBに反映",
+        "applyConfirmTitle": "データベースに反映",
+        "applyConfirmDescription": "接続{{connection}}のデータベースに移行DDL {{count}}件を実行します。取り消せず、破壊的操作が含まれる場合はデータが失われる可能性があります。続行しますか？",
+        "applyConfirm": "反映",
+        "applySuccess": "移行DDLをデータベースに反映しました"
       },
       "area": {
         "defaultName": "グループ",
