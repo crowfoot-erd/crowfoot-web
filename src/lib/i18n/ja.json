@@ -101,6 +101,7 @@
       "VERSION_CONFLICT": "別のクライアントが先に保存しました。",
       "MODEL_NOT_FOUND": "ドキュメントが見つかりません。",
       "SQL_IMPORT_NO_TABLES": "SQLスクリプト内にCREATE TABLE文が見つかりません。",
+      "MODEL_ALREADY_CONNECTED": "このドキュメントには既に接続が紐付いています。",
       "CONNECTION_NOT_FOUND": "接続が見つかりません。",
       "CONNECTION_UNREACHABLE": "データベースに接続できません。接続設定を確認してください。",
       "INVALID_DBMS_TYPE": "サポートされていないDBMSです。",
@@ -727,6 +728,18 @@
       "description": "{{name}}を削除します。元に戻せません。",
       "confirm": "削除",
       "successToast": "{{name}}を削除しました"
+    },
+    "connect": {
+      "title": "データベース接続",
+      "description": "「{{model}}」をデータベース接続に紐付けます — 接続するとDB同期でスキーマを比較できます",
+      "connection": "ソース接続",
+      "noMatchingConnection": "このドキュメントと同じDBMS({{dbms}})の接続がありません — 接続管理で登録してください",
+      "connect": "接続",
+      "connecting": "接続中…",
+      "successToast": "「{{name}}」を接続に紐付けました",
+      "rowAction": "{{name}}をデータベースに接続",
+      "toolbar": "データベース接続",
+      "connected": "データベースに接続済み"
     },
     "viewer": {
       "close": "ウィンドウを閉じる"

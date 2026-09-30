@@ -169,6 +169,44 @@ describe('ERD 탭', () => {
     expect(screen.queryByRole('button', { name: '주문 서비스 ERD 문서 삭제' })).not.toBeInTheDocument()
   })
 
+  it('shows the connect action only for unconnected documents', async () => {
+    renderErdTab()
+    await screen.findByText('주문 서비스 ERD')
+
+    // then: 미연결 문서(502 직접 생성)에만 최초 연결 행 액션이 있다 — 연결된 문서(501 리버스)엔 없다
+    expect(screen.getByRole('button', { name: '회원 서비스 ERD 문서를 데이터베이스에 연결' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: '주문 서비스 ERD 문서를 데이터베이스에 연결' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('connects a document to a database via the row action', async () => {
+    renderErdTab()
+    await screen.findByText('주문 서비스 ERD')
+
+    // when: 행 연결 버튼 → 공용 다이얼로그 → 같은 DBMS(mysql) 커넥션 기본 선택 → 연결
+    await userEvent.click(screen.getByRole('button', { name: '회원 서비스 ERD 문서를 데이터베이스에 연결' }))
+    const combobox = await screen.findByRole('combobox')
+    await waitFor(() => expect(combobox).toHaveTextContent('개발 MySQL'))
+    await userEvent.click(screen.getByRole('button', { name: /^연결$/ }))
+
+    // then: 다이얼로그 닫힘 + 성공 토스트
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /^연결$/ })).not.toBeInTheDocument(),
+    )
+    expect(await screen.findByText("'회원 서비스 ERD' 문서를 커넥션에 연결했습니다")).toBeVisible()
+  })
+
+  it('hides the connect action when the role is below Editor', async () => {
+    renderErdTab({ canCreate: false })
+    await screen.findByText('주문 서비스 ERD')
+
+    // then: 뷰어는 메타 변경 계열 진입점이 없다 — 최초 연결도 Editor 이상(1.14)
+    expect(
+      screen.queryByRole('button', { name: '회원 서비스 ERD 문서를 데이터베이스에 연결' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the document in a new window from the view action and the name', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     renderErdTab()

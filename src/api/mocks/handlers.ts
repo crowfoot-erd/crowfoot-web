@@ -720,7 +720,7 @@ export const fixtures = {
     ],
   },
   connections: {
-    totalCount: 1,
+    totalCount: 2,
     responses: [
       {
         connectionId: '301',
@@ -734,6 +734,19 @@ export const fixtures = {
         username: 'app',
         createdBy: { userId: '2', name: '부트스트랩 관리자' },
         createdAt: '2026-09-10T00:00:00Z',
+      },
+      {
+        connectionId: '302',
+        workspaceId: '101',
+        name: '개발 MySQL',
+        dbmsType: 'mysql',
+        host: 'db.dev.example.com',
+        port: 3306,
+        databaseName: 'members',
+        schemaName: null,
+        username: 'root',
+        createdBy: { userId: '2', name: '부트스트랩 관리자' },
+        createdAt: '2026-09-11T00:00:00Z',
       },
     ],
   },
@@ -1826,6 +1839,26 @@ export const handlers = [
     if (!matched) return fail('CONNECTION_NOT_FOUND', 404)
     return HttpResponse.json(ok({ response: fixtures.deploy }))
   }),
+
+  // 문서-데이터베이스 최초 연결(§1.14) — 미연결 문서에 원천 지정. 픽스처 불변 원칙:
+  // 상태를 바꾸지 않고 갱신된 요약을 조립해 돌려준다(연결 자체는 성공 응답으로 충분)
+  http.post(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/connections`,
+    async ({ params, request }) => {
+      const body = (await request.json().catch(() => ({}))) as { connectionId?: string }
+      const model = fixtures.models.responses.find((item) => item.modelId === params.modelId)
+      if (!model) return fail('MODEL_NOT_FOUND', 404)
+      if (model.sourceConnectionId !== null) return fail('MODEL_ALREADY_CONNECTED', 409)
+      const connection = fixtures.connections.responses.find(
+        (item) => item.connectionId === body.connectionId,
+      )
+      if (!connection) return fail('CONNECTION_NOT_FOUND', 404)
+      if (connection.dbmsType !== model.databaseType) return fail('INVALID_REQUEST', 400)
+      return HttpResponse.json(
+        ok({ response: { ...model, sourceConnectionId: connection.connectionId } }),
+      )
+    },
+  ),
 
   // 모델 삭제 — 204
   http.delete(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId`, () =>

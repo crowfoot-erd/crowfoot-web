@@ -5,9 +5,11 @@
  * - 목록은 offset 페이징(20/page, ?page= URL — notifications 관례). 문서 수백 건 라이브러리 대응
  * - 문서 열기는 모든 멤버 — 이름·돋보기로 새 창 전체 화면(에디터 셸)에 띄운다
  * - 생성·메타 변경은 Editor 이상, 삭제는 Owner 전용 (1.2·1.4·1.6 최소 역할)
+ * - 데이터베이스 최초 연결(1.14)은 미연결 문서에만 — Editor 이상 행 액션(Link2).
+ *   연결된 문서는 DB 종류 배지에 링크 표시로 구분한다
  */
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Link2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -27,6 +29,7 @@ import { errorMessage } from '@/lib/result-code'
 import type { ModelSummary } from '@/api/types'
 import { DatabaseImportButton } from '@/features/connections'
 import {
+  ConnectDatabaseDialog,
   CreateModelDialog,
   EditModelDialog,
   ImportCrownButton,
@@ -50,6 +53,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<ModelSummary | null>(null)
   const [deleting, setDeleting] = useState<ModelSummary | null>(null)
+  const [connecting, setConnecting] = useState<ModelSummary | null>(null)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1)
   const debouncedKeyword = useDebouncedValue(keyword)
   const models = useModels(workspaceId, debouncedKeyword.trim(), page)
@@ -139,7 +143,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
               <TableHead>{t('model.list.columns.version')}</TableHead>
               <TableHead>{t('model.list.columns.createdBy')}</TableHead>
               <TableHead>{t('model.list.columns.updatedAt')}</TableHead>
-              <TableHead className="w-28" />
+              <TableHead className="w-36" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -162,6 +166,12 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                   <Badge variant="outline" className="gap-1 font-mono text-[10px]">
                     <DbmsIcon databaseType={model.databaseType} className="size-3" />
                     {model.databaseType}
+                    {/* 원천 커넥션 연결 표시 — 리버스 생성 또는 최초 연결(1.14)된 문서 */}
+                    {model.sourceConnectionId ? (
+                      <span title={t('model.connect.connected')} className="inline-flex">
+                        <Link2 aria-hidden className="size-3 text-emerald-600 dark:text-emerald-400" />
+                      </span>
+                    ) : null}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">v{model.version}</TableCell>
@@ -178,6 +188,19 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                     >
                       <Search aria-hidden className="h-4 w-4" />
                     </Button>
+                    {/* 데이터베이스 최초 연결(1.14) — 미연결 문서에만. 연결되면 이 버튼은
+                        DB 동기화(에디터)로 전환된다 */}
+                    {canCreate && model.sourceConnectionId === null ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConnecting(model)}
+                        aria-label={t('model.connect.rowAction', { name: model.name })}
+                      >
+                        <Link2 aria-hidden className="h-4 w-4" />
+                      </Button>
+                    ) : null}
                     {canCreate ? (
                       <Button
                         type="button"
@@ -261,6 +284,15 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
 
       <CreateModelDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={workspaceId} />
       <EditModelDialog model={editing} onOpenChange={(open) => !open && setEditing(null)} workspaceId={workspaceId} />
+      {/* 최초 연결 다이얼로그 — 공용 컴포넌트(에디터 툴바와 같은 것)를 행 액션에서도 쓴다 */}
+      {connecting ? (
+        <ConnectDatabaseDialog
+          open
+          onOpenChange={(open) => !open && setConnecting(null)}
+          workspaceId={workspaceId}
+          model={connecting}
+        />
+      ) : null}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}

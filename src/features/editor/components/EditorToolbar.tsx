@@ -6,7 +6,7 @@
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
  */
 import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, Heart, History, Keyboard, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, Waypoints, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, Waypoints, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { DbmsIcon } from '@/components/dbms-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useConnections } from '@/features/connections/hooks'
+import { ConnectDatabaseDialog } from '@/features/models/components/connect-database-dialog'
 import { ShareDialog } from '@/features/models/components/share-dialog'
 import { modelKeys, useShareFeedback, useToggleShareReaction } from '@/features/models/hooks'
 import { useSessionStore } from '@/stores/session'
@@ -224,6 +225,16 @@ export function EditorToolbar({
       <AutoLayoutButton canEdit={canEdit} />
       {!publicView && canEdit ? (
         <LogicalNamesButton workspaceId={workspaceId} />
+      ) : null}
+      {/* 데이터베이스 최초 연결(§1.14) — 미연결 문서에만. 연결 성공으로 models 프리픽스가
+          무효화되면 상세가 재조회돼 이 버튼은 사라지고 아래 DB 동기화가 그 자리에 나타난다 */}
+      {!publicView && canEdit && !sourceConnectionId ? (
+        <ConnectDatabaseButton
+          workspaceId={workspaceId}
+          modelId={modelId}
+          modelName={modelName}
+          databaseType={databaseType}
+        />
       ) : null}
       {!publicView && canEdit && sourceConnectionId ? (
         <SyncButton
@@ -526,6 +537,48 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
  *  (05-editor/04-dbms-engineering.md §3.2). 이미 있는 논리명은 건드리지 않고,
  *  적용은 undo 1회로 복구된다. 커스텀 사전은 워크스페이스 API라 공개 뷰어에서 숨긴다.
  *  시스템 라벨 해석 언어는 다이얼로그 안에서 고른다(v1.14) — 사전 편집은 용어 사전 패널이 맡는다. */
+/** 데이터베이스 최초 연결(§1.14) — 미연결 문서에 원천 커넥션을 지정한다. ERD 탭 행
+ *  액션과 같은 공용 ConnectDatabaseDialog를 쓴다(양쪽 진입점, 공통 구조) */
+function ConnectDatabaseButton({
+  workspaceId,
+  modelId,
+  modelName,
+  databaseType,
+}: {
+  workspaceId: string
+  modelId: string
+  modelName: string
+  databaseType: string
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 px-2"
+        onClick={() => setOpen(true)}
+        aria-label={t('model.connect.toolbar')}
+        title={t('model.connect.toolbar')}
+      >
+        <Link2 aria-hidden className="size-3.5" />
+        {t('model.connect.toolbar')}
+      </Button>
+      {open ? (
+        <ConnectDatabaseDialog
+          open
+          onOpenChange={setOpen}
+          workspaceId={workspaceId}
+          model={{ modelId, name: modelName, databaseType }}
+        />
+      ) : null}
+    </>
+  )
+}
+
 function LogicalNamesButton({ workspaceId }: { workspaceId: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)

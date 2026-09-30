@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   cloneFromTemplate,
+  connectModel,
   createModel,
   createModelComment,
   createModelShare,
@@ -132,6 +133,21 @@ export function useDeleteModel(workspaceId: string) {
 
   return useMutation({
     mutationFn: (modelId: string) => deleteModel(workspaceId, modelId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
+  })
+}
+
+/** 문서-데이터베이스 최초 연결(§1.14) — 성공 시 models 프리픽스를 무효화한다.
+ *  목록과 상세가 같은 프리픽스 아래 있어, 에디터에서 연결하면 상세 재조회로
+ *  DB 동기화 버튼(원천 연결 노출 조건)으로 바로 전이된다 */
+export function useConnectModel(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ modelId, connectionId }: { modelId: string; connectionId: string }) =>
+      connectModel(workspaceId, modelId, connectionId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
     },

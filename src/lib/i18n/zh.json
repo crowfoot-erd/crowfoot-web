@@ -101,6 +101,7 @@
       "VERSION_CONFLICT": "其他客户端已先保存。",
       "MODEL_NOT_FOUND": "未找到文档。",
       "SQL_IMPORT_NO_TABLES": "SQL 脚本中未找到 CREATE TABLE 语句。",
+      "MODEL_ALREADY_CONNECTED": "此文档已关联连接。",
       "CONNECTION_NOT_FOUND": "未找到连接。",
       "CONNECTION_UNREACHABLE": "无法连接数据库。请检查连接设置。",
       "INVALID_DBMS_TYPE": "不支持的 DBMS。",
@@ -727,6 +728,18 @@
       "description": "将删除 {{name}}。此操作无法撤销。",
       "confirm": "删除",
       "successToast": "已删除 {{name}}"
+    },
+    "connect": {
+      "title": "连接数据库",
+      "description": "将“{{model}}”关联到数据库连接——关联后可用 DB 同步比较架构",
+      "connection": "来源连接",
+      "noMatchingConnection": "没有与此文档 DBMS（{{dbms}}）相同的连接——请在连接管理中注册",
+      "connect": "连接",
+      "connecting": "连接中…",
+      "successToast": "已将“{{name}}”关联到连接",
+      "rowAction": "将 {{name}} 连接到数据库",
+      "toolbar": "连接数据库",
+      "connected": "已连接到数据库"
     },
     "viewer": {
       "close": "关闭窗口"

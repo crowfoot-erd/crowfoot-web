@@ -101,6 +101,7 @@
       "VERSION_CONFLICT": "Another client saved first.",
       "MODEL_NOT_FOUND": "Document not found.",
       "SQL_IMPORT_NO_TABLES": "No CREATE TABLE statements found in the SQL script.",
+      "MODEL_ALREADY_CONNECTED": "This document is already connected to a connection.",
       "CONNECTION_NOT_FOUND": "Connection not found.",
       "CONNECTION_UNREACHABLE": "Cannot reach the database. Check the connection settings.",
       "INVALID_DBMS_TYPE": "Unsupported DBMS.",
@@ -727,6 +728,18 @@
       "description": "Delete {{name}}. This cannot be undone.",
       "confirm": "Delete",
       "successToast": "Deleted {{name}}"
+    },
+    "connect": {
+      "title": "Connect to database",
+      "description": "Connects '{{model}}' to a database connection — once connected, you can compare schemas with DB sync",
+      "connection": "Source connection",
+      "noMatchingConnection": "No connection with the same DBMS ({{dbms}}) as this document — register one in connection management",
+      "connect": "Connect",
+      "connecting": "Connecting…",
+      "successToast": "Connected '{{name}}' to a connection",
+      "rowAction": "Connect {{name}} to a database",
+      "toolbar": "Connect database",
+      "connected": "Connected to a database"
     },
     "viewer": {
       "close": "Close window"

@@ -98,6 +98,15 @@ export function deleteModel(workspaceId: string, modelId: string) {
   return apiDelete<void>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}`)
 }
 
+/** 문서-데이터베이스 최초 연결(§1.14) — 미연결 문서에 원천 커넥션을 지정한다 (Editor 이상).
+ *  응답은 갱신된 요약(sourceConnectionId 세팅). 이미 연결된 문서는 409 MODEL_ALREADY_CONNECTED */
+export function connectModel(workspaceId: string, modelId: string, connectionId: string) {
+  return apiPost<ModelSummary>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/connections`,
+    { connectionId },
+  )
+}
+
 /** 데이터베이스 종류 코드(활성만) — 생성 다이얼로그 드롭다운 */
 export function fetchDatabaseTypes(signal?: AbortSignal): Promise<ListResult<DatabaseType>> {
   return apiGetList<DatabaseType>('/api/v1/core/database-types', undefined, signal)

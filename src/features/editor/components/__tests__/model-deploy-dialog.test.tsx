@@ -97,9 +97,10 @@ describe('ModelDeployDialog — 대상 선택', () => {
 
   it('같은 DBMS 커넥션이 없으면 안내한다', async () => {
     seedStore()
-    renderDialog('mysql')
+    // 목업 커넥션은 postgresql(301)·mysql(302) — 둘 다 없는 DBMS로 매칭 0건을 만든다
+    renderDialog('oracle')
 
-    expect(await screen.findByText(/같은 DBMS\(mysql\)의 커넥션이 없습니다/)).toBeVisible()
+    expect(await screen.findByText(/같은 DBMS\(oracle\)의 커넥션이 없습니다/)).toBeVisible()
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled()
   })
 })
