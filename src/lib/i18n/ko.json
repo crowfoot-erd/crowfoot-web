@@ -108,6 +108,10 @@
       "QUERY_TIMEOUT": "실행 제한 시간을 넘어 취소했습니다",
       "QUERY_FAILED": "데이터베이스가 조회를 거부했습니다",
       "INVALID_VALUE": "값이 컬럼 타입에 맞지 않습니다",
+      "OBJECT_NOT_EDITABLE": "이 객체는 편집할 수 없습니다",
+      "ROW_CONFLICT": "대상 행이 없거나 그 사이에 바뀌었습니다. 다시 조회해 주세요",
+      "ROW_CHANGE_FAILED": "데이터베이스가 변경을 거부했습니다",
+      "VALUE_TOO_LARGE": "값이 너무 큽니다",
       "MULTIPLE_STATEMENTS": "한 번에 한 문장만 실행할 수 있습니다",
       "UNSUPPORTED_STATEMENT": "이 콘솔에서는 그 문장을 실행하지 않습니다",
       "CONFIRMATION_REQUIRED": "실행 전에 확인이 필요합니다",
@@ -1871,6 +1875,36 @@
         "IN": "목록 중 하나",
         "IS_NULL": "NULL",
         "IS_NOT_NULL": "NULL 아님"
+      }
+    },
+    "edit": {
+      "rowActions": "행 작업",
+      "addRow": "행 추가",
+      "deleteRow": "행 삭제",
+      "restoreRow": "삭제 취소",
+      "removeInsert": "추가 취소",
+      "editCell": "{{column}} 편집",
+      "newCell": "새 행의 {{column}}",
+      "openLongValue": "{{column}} 전체 값 보기",
+      "setNull": "NULL",
+      "defaultPlaceholder": "기본값",
+      "pending": "변경 {{count}}건",
+      "summary": "추가 {{inserted}} · 수정 {{updated}} · 삭제 {{deleted}}",
+      "apply": "적용",
+      "discard": "되돌리기",
+      "success": "변경 {{count}}건을 적용했습니다",
+      "failed": "적용하지 못했습니다. 변경은 전부 되돌렸습니다.",
+      "discardConfirm": "적용하지 않은 변경이 있습니다. 버릴까요?",
+      "confirm": {
+        "title": "변경 {{count}}건을 적용할까요?",
+        "target": "대상: {{name}} / {{object}}",
+        "deleteWarning": "{{count}}행을 삭제합니다. 적용하면 되돌릴 수 없습니다."
+      },
+      "longValue": {
+        "title": "{{column}} 값",
+        "length": "전체 {{formatted}}자",
+        "save": "변경에 담기",
+        "tooLarge": "값이 너무 커서 읽을 수 없습니다(전체 {{formatted}}자)"
       }
     },
     "structure": {

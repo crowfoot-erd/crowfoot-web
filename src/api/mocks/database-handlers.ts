@@ -45,6 +45,8 @@ export const databaseFixtures = {
     ['4', 'PAID', '선물 포장', { binary: true, length: 2048, previewHex: '89504e47' }],
     ['5', 'CANCELLED', '고객 요청', null],
   ] satisfies CellValue[][],
+  /** 3번 주문의 memo 전체 — 행 조회에서는 앞부분만 잘려 내려온다 */
+  longMemo: '긴 메모의 앞부분' + ' 그리고 이어지는 뒷부분'.repeat(3),
   orderStructure: {
     name: 'orders',
     kind: 'TABLE',
@@ -154,4 +156,30 @@ export const databaseHandlers = [
       }),
     )
   }),
+
+  /** 행 편집 적용 — 건수만 세어 돌려준다. 실패 시나리오는 테스트가 server.use()로 덧씌운다 */
+  http.post(`${BASE}/objects/:objectName/changes`, async ({ request }) => {
+    const body = (await request.json()) as { changes: { op: string }[] }
+    const countOf = (op: string) => body.changes.filter((change) => change.op === op).length
+    return HttpResponse.json(
+      ok({
+        response: {
+          inserted: countOf('INSERT'),
+          updated: countOf('UPDATE'),
+          deleted: countOf('DELETE'),
+          generatedKeys: body.changes
+            .map((change, index) => ({ change, index }))
+            .filter(({ change }) => change.op === 'INSERT')
+            .map(({ index }) => ({ index, key: { id: String(100 + index) } })),
+          elapsedMs: 21,
+        },
+      }),
+    )
+  }),
+
+  /** 긴 값 읽기 — 3번 주문의 memo 전체 */
+  http.post(`${BASE}/objects/:objectName/cell`, () =>
+    HttpResponse.json(ok({ response: { column: 'memo', value: databaseFixtures.longMemo, length: databaseFixtures.longMemo.length } })),
+  ),
 ]
+

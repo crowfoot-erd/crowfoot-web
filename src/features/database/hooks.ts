@@ -7,7 +7,9 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 
 import {
+  applyRowChanges,
   countObjectRows,
+  fetchCellValue,
   fetchDatabaseObjects,
   fetchObjectRows,
   fetchObjectStructure,
@@ -15,6 +17,7 @@ import {
   type RowFilter,
   type RowsQuery,
 } from '@/features/database/api'
+import type { RowChange } from '@/features/database/row-edits'
 
 export const databaseKeys = {
   objects: (workspaceId: string, connectionId: string) =>
@@ -70,5 +73,31 @@ export function useRunQuery(workspaceId: string, connectionId: string) {
     mutationFn: ({ sql, confirmed }: { sql: string; confirmed: boolean }) =>
       runQuery(workspaceId, connectionId, sql, confirmed),
     retry: false,
+  })
+}
+
+/** 행 편집 적용 — 자동으로 다시 시도하지 않는다(같은 변경이 두 번 들어가면 안 된다) */
+export function useApplyRowChanges(workspaceId: string, connectionId: string, objectName: string) {
+  return useMutation({
+    mutationFn: (changes: RowChange[]) => applyRowChanges(workspaceId, connectionId, objectName, changes),
+    retry: false,
+  })
+}
+
+/** 긴 값 읽기 — 잘린 셀을 열었을 때만 읽는다. 다시 열면 다시 읽는다(화면이 값을 오래 붙들지 않는다) */
+export function useCellValue(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string,
+  target: { key: Record<string, string>; column: string } | null,
+) {
+  return useQuery({
+    queryKey: ['database', workspaceId, connectionId, 'cell', objectName, target] as const,
+    queryFn: ({ signal }) =>
+      fetchCellValue(workspaceId, connectionId, objectName, target?.key ?? {}, target?.column ?? '', signal),
+    enabled: target !== null,
+    retry: false,
+    refetchOnWindowFocus: false,
+    gcTime: 0,
   })
 }

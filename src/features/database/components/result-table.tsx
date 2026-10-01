@@ -16,7 +16,7 @@ import {
 import { formatNumber } from '@/lib/format'
 import { cn } from 'cn'
 
-const NUMERIC: ReadonlySet<string> = new Set(['integer', 'decimal', 'float'])
+export const NUMERIC: ReadonlySet<string> = new Set(['integer', 'decimal', 'float'])
 /** 바이트 순서 표시 — 엑셀이 CSV의 한글을 깨뜨리지 않게 파일 맨 앞에 붙인다 */
 const BOM = String.fromCharCode(0xfeff)
 
@@ -106,7 +106,7 @@ export function ResultTable({ columns, rows, sort = null, onSort, dimmed = false
 }
 
 /** 셀 하나 — NULL·빈 문자열·잘린 값·이진 값을 구분해 보여 준다(§5.2) */
-function DataCell({ cell, category }: { cell: CellValue; category: string }) {
+export function DataCell({ cell, category }: { cell: CellValue; category: string }) {
   const { t } = useTranslation()
   const base = 'max-w-96 truncate border-r px-2 py-1 align-top last:border-r-0'
 

@@ -160,6 +160,37 @@ export function runQuery(workspaceId: string, connectionId: string, sql: string,
   return apiPost<QueryResult>(`${base(workspaceId, connectionId)}/queries`, { sql, confirmed })
 }
 
+/** 행 편집 적용 결과(§3.5) */
+export interface ChangesResult {
+  inserted: number
+  updated: number
+  deleted: number
+  /** 추가한 행의 기본 키 — index는 요청의 변경 번호(0부터) */
+  generatedKeys: { index: number; key: Record<string, string> }[]
+  elapsedMs: number
+}
+
+/** 모아 둔 변경을 한 번에 적용한다 — 요청 하나가 트랜잭션 하나다. 하나라도 실패하면 전부 되돌린다 */
+export function applyRowChanges(workspaceId: string, connectionId: string, objectName: string, changes: unknown[]) {
+  return apiPost<ChangesResult>(`${objectBase(workspaceId, connectionId, objectName)}/changes`, { changes })
+}
+
+/** 긴 값 읽기(§3.7) — 잘려 내려온 문자 값 하나를 통째로 읽는다. NULL이면 value가 null이다 */
+export function fetchCellValue(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string,
+  key: Record<string, string>,
+  column: string,
+  signal?: AbortSignal,
+) {
+  return apiPost<{ column: string; value: string | null; length: number }>(
+    `${objectBase(workspaceId, connectionId, objectName)}/cell`,
+    { key, column },
+    signal,
+  )
+}
+
 /** 데이터 브라우저 화면 경로 — 새 창 전체 화면(§5.1). object를 주면 그 객체를 고른 상태로 열린다 */
 export function databaseBrowserPath(workspaceId: string, connectionId: string, objectName?: string): string {
   const path = `/workspaces/${workspaceId}/connections/${connectionId}/data`

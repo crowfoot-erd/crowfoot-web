@@ -108,6 +108,10 @@
       "QUERY_TIMEOUT": "超过执行时间上限，已取消",
       "QUERY_FAILED": "数据库拒绝了查询",
       "INVALID_VALUE": "值与列类型不匹配",
+      "OBJECT_NOT_EDITABLE": "此对象不可编辑",
+      "ROW_CONFLICT": "目标行不存在或已被更改，请重新查询",
+      "ROW_CHANGE_FAILED": "数据库拒绝了更改",
+      "VALUE_TOO_LARGE": "值过大",
       "MULTIPLE_STATEMENTS": "一次只能执行一条语句",
       "UNSUPPORTED_STATEMENT": "此控制台不执行该语句",
       "CONFIRMATION_REQUIRED": "执行前需要确认",
@@ -1871,6 +1875,36 @@
         "IN": "其中之一",
         "IS_NULL": "为 NULL",
         "IS_NOT_NULL": "不为 NULL"
+      }
+    },
+    "edit": {
+      "rowActions": "行操作",
+      "addRow": "添加行",
+      "deleteRow": "删除行",
+      "restoreRow": "取消删除",
+      "removeInsert": "取消添加",
+      "editCell": "编辑 {{column}}",
+      "newCell": "新行的 {{column}}",
+      "openLongValue": "查看 {{column}} 的完整值",
+      "setNull": "NULL",
+      "defaultPlaceholder": "默认值",
+      "pending": "{{count}} 项更改",
+      "summary": "添加 {{inserted}} · 修改 {{updated}} · 删除 {{deleted}}",
+      "apply": "应用",
+      "discard": "撤销",
+      "success": "已应用 {{count}} 项更改",
+      "failed": "未能应用，所有更改已回滚。",
+      "discardConfirm": "有尚未应用的更改，要放弃吗？",
+      "confirm": {
+        "title": "要应用 {{count}} 项更改吗？",
+        "target": "目标: {{name}} / {{object}}",
+        "deleteWarning": "将删除 {{count}} 行，应用后无法撤销。"
+      },
+      "longValue": {
+        "title": "{{column}} 的值",
+        "length": "共 {{formatted}} 个字符",
+        "save": "加入更改",
+        "tooLarge": "值过大，无法读取（共 {{formatted}} 个字符）"
       }
     },
     "structure": {

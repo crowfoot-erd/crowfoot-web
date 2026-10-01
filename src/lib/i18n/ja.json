@@ -108,6 +108,10 @@
       "QUERY_TIMEOUT": "実行時間の上限を超えたためキャンセルしました",
       "QUERY_FAILED": "データベースが照会を拒否しました",
       "INVALID_VALUE": "値がカラムの型に合いません",
+      "OBJECT_NOT_EDITABLE": "このオブジェクトは編集できません",
+      "ROW_CONFLICT": "対象の行が存在しないか、その間に変更されました。再読み込みしてください",
+      "ROW_CHANGE_FAILED": "データベースが変更を拒否しました",
+      "VALUE_TOO_LARGE": "値が大きすぎます",
       "MULTIPLE_STATEMENTS": "一度に実行できるのは1文だけです",
       "UNSUPPORTED_STATEMENT": "このコンソールではその文を実行しません",
       "CONFIRMATION_REQUIRED": "実行前に確認が必要です",
@@ -1871,6 +1875,36 @@
         "IN": "いずれか",
         "IS_NULL": "NULL",
         "IS_NOT_NULL": "NULLでない"
+      }
+    },
+    "edit": {
+      "rowActions": "行の操作",
+      "addRow": "行を追加",
+      "deleteRow": "行を削除",
+      "restoreRow": "削除を取り消す",
+      "removeInsert": "追加を取り消す",
+      "editCell": "{{column}}を編集",
+      "newCell": "新しい行の{{column}}",
+      "openLongValue": "{{column}}の値全体を見る",
+      "setNull": "NULL",
+      "defaultPlaceholder": "デフォルト値",
+      "pending": "変更 {{count}}件",
+      "summary": "追加 {{inserted}} · 編集 {{updated}} · 削除 {{deleted}}",
+      "apply": "適用",
+      "discard": "元に戻す",
+      "success": "変更{{count}}件を適用しました",
+      "failed": "適用できませんでした。変更はすべて取り消されました。",
+      "discardConfirm": "適用していない変更があります。破棄しますか？",
+      "confirm": {
+        "title": "変更{{count}}件を適用しますか？",
+        "target": "対象: {{name}} / {{object}}",
+        "deleteWarning": "{{count}}行を削除します。適用すると元に戻せません。"
+      },
+      "longValue": {
+        "title": "{{column}}の値",
+        "length": "全{{formatted}}文字",
+        "save": "変更に加える",
+        "tooLarge": "値が大きすぎて読み込めません(全{{formatted}}文字)"
       }
     },
     "structure": {

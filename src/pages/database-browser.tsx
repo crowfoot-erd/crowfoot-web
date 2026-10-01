@@ -6,7 +6,7 @@
  * - 고른 객체와 탭은 주소(쿼리)에 둔다 — 새로고침·링크에서 그대로 열린다
  * - Editor 이상만 쓴다. 권한이 없으면 API를 부르지 않고 안내만 보여 준다
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Columns3, Loader2, Rows3, SquareTerminal, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -50,6 +50,8 @@ export default function DatabaseBrowserPage() {
   // 구조 탭과 같은 쿼리 — 고른 객체가 그 사이 사라졌는지(OBJECT_NOT_FOUND)를 여기서도 알아챈다
   const structure = useObjectStructure(workspaceId, connectionId, selectedObject ? selectedObject.name : null)
   const refetchObjects = objects.refetch
+  /** 데이터 탭에 적용하지 않은 변경이 있는지 */
+  const [dirty, setDirty] = useState(false)
 
   usePageMeta({
     title: `${connection?.name ?? t('database.title')} — ${t('common.appName')}`,
@@ -63,9 +65,19 @@ export default function DatabaseBrowserPage() {
 
   /** 객체를 고르면 그 객체의 데이터 탭으로 간다 — SQL 탭에 있었어도 */
   const select = (name: string) => {
+    if (name === selected && tab === 'data') return
+    if (!confirmDiscard()) return
     setSearchParams({ object: name }, { replace: false })
   }
+  /** 적용하지 않은 변경이 있으면 버려도 되는지 묻는다 — 데이터 탭을 떠나면 변경이 사라진다 */
+  const confirmDiscard = () => {
+    if (!dirty || tab !== 'data') return true
+    const ok = window.confirm(t('database.edit.discardConfirm'))
+    if (ok) setDirty(false)
+    return ok
+  }
   const switchTab = (next: BrowserTab) => {
+    if (next !== tab && !confirmDiscard()) return
     const params: Record<string, string> = {}
     if (selected) params.object = selected
     if (next !== 'data') params.tab = next
@@ -173,7 +185,14 @@ export default function DatabaseBrowserPage() {
           ) : selectedObject ? (
             tab === 'data' ? (
               // 객체가 바뀌면 조건·정렬·페이지를 처음으로 되돌린다
-              <DataTab key={selectedObject.name} workspaceId={workspaceId} connectionId={connectionId} object={selectedObject} />
+              <DataTab
+                key={selectedObject.name}
+                workspaceId={workspaceId}
+                connectionId={connectionId}
+                connectionName={connection?.name ?? ''}
+                object={selectedObject}
+                onDirtyChange={setDirty}
+              />
             ) : (
               <StructureTab workspaceId={workspaceId} connectionId={connectionId} objectName={selectedObject.name} />
             )

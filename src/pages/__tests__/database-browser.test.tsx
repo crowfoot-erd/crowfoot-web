@@ -9,7 +9,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { Route } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { fail, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
@@ -23,13 +23,13 @@ function renderBrowser(route = '/workspaces/101/connections/302/data') {
   return renderWithProviders(<Route path={PATH} element={<DatabaseBrowserPage />} />, { route })
 }
 
-/** 첫 컬럼(id) 값들 — 표의 행 순서 확인용 */
+/** id 컬럼 값들 — 표의 행 순서 확인용. orders는 편집할 수 있는 표라 첫 칸이 행 작업이고 둘째 칸이 id다 */
 function idsInTable(): string[] {
   const table = screen.getByRole('table')
   return within(table)
     .getAllByRole('row')
     .slice(1)
-    .map((row) => within(row).getAllByRole('cell')[0].textContent ?? '')
+    .map((row) => within(row).getAllByRole('cell')[1].textContent ?? '')
 }
 
 beforeEach(() => {
@@ -86,10 +86,11 @@ describe('데이터 브라우저 — 데이터 탭', () => {
     const rows = within(table).getAllByRole('row')
     expect(rows).toHaveLength(6) // 머리 1 + 5행
     // 1행: memo NULL / 2행: memo 빈 문자열(빈 칸) / 3행: 잘린 값 / 4행: 이진 값
-    expect(within(rows[1]).getAllByRole('cell')[2]).toHaveTextContent('NULL')
-    expect(within(rows[2]).getAllByRole('cell')[2]).toBeEmptyDOMElement()
-    expect(within(rows[3]).getAllByRole('cell')[2]).toHaveTextContent('긴 메모의 앞부분… 전체 51,234자')
-    expect(within(rows[4]).getAllByRole('cell')[3]).toHaveTextContent('이진 2,048바이트')
+    // (첫 칸은 행 작업 — id·status·memo·receipt는 1~4번 칸이다)
+    expect(within(rows[1]).getAllByRole('cell')[3]).toHaveTextContent('NULL')
+    expect(within(rows[2]).getAllByRole('cell')[3]).toBeEmptyDOMElement()
+    expect(within(rows[3]).getAllByRole('cell')[3]).toHaveTextContent('긴 메모의 앞부분…')
+    expect(within(rows[4]).getAllByRole('cell')[4]).toHaveTextContent('이진 2,048바이트')
     // 아래 줄 — 표시 행 수와 추정 행 수(정확한 수는 세기 전)
     expect(screen.getByText('5행 표시')).toBeVisible()
     expect(screen.getByText('약 128,400행')).toBeVisible()
@@ -378,6 +379,194 @@ describe('데이터 브라우저 — SQL 탭', () => {
     await userEvent.click(within(screen.getByRole('list', { name: '실행 이력' })).getByRole('button'))
 
     expect(input).toHaveValue('SELECT * FROM orders')
+  })
+})
+
+describe('데이터 브라우저 — 행 편집', () => {
+  const ORDERS = '/workspaces/101/connections/302/data?object=orders'
+  const CHANGES = '/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/changes'
+
+  /** id로 표의 행을 찾는다(첫 칸은 행 작업, 둘째 칸이 id) */
+  function rowOf(id: string): HTMLElement {
+    const row = within(screen.getByRole('table'))
+      .getAllByRole('row')
+      .find((candidate) => within(candidate).queryAllByRole('cell')[1]?.textContent === id)
+    if (!row) throw new Error(`행을 찾지 못했다: ${id}`)
+    return row
+  }
+
+  /** 적용 요청의 본문을 모은다 */
+  function captureChanges() {
+    const bodies: { changes: unknown[] }[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/changes')) void request.clone().json().then((body) => bodies.push(body as { changes: unknown[] }))
+    })
+    return bodies
+  }
+
+  it('셀을 고치고 행을 추가·삭제해도 [적용] 전에는 서버에 가지 않는다 — 적용하면 한 번에 보낸다', async () => {
+    const bodies = captureChanges()
+    renderBrowser(ORDERS)
+    await screen.findByRole('table')
+
+    // 수정 — 두 번 눌러 편집, Enter로 담는다
+    await userEvent.dblClick(within(rowOf('1')).getAllByRole('cell')[2])
+    const input = screen.getByLabelText('status 편집')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'DONE{Enter}')
+    expect(within(rowOf('1')).getAllByRole('cell')[2]).toHaveTextContent('DONE')
+    expect(within(rowOf('1')).getAllByRole('cell')[2]).toHaveAttribute('data-changed', 'true')
+
+    // NULL로 설정 — 4번 주문의 memo
+    await userEvent.dblClick(within(rowOf('4')).getAllByRole('cell')[3])
+    await userEvent.click(screen.getByRole('button', { name: 'NULL' }))
+    expect(within(rowOf('4')).getAllByRole('cell')[3]).toHaveTextContent('NULL')
+
+    // 삭제 표시 — 5번 주문
+    await userEvent.click(within(rowOf('5')).getByRole('button', { name: '행 삭제' }))
+    // 추가 — 채운 칸만 보낸다
+    await userEvent.click(screen.getByRole('button', { name: '행 추가' }))
+    await userEvent.type(screen.getByLabelText('새 행의 status'), 'NEW')
+
+    expect(screen.getByText('변경 4건')).toBeVisible()
+    expect(screen.getByText('추가 1 · 수정 2 · 삭제 1')).toBeVisible()
+    expect(bodies).toHaveLength(0)
+
+    // 적용 — 확인 다이얼로그가 요약과 삭제 경고를 보여 준다
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('변경 4건을 적용할까요?')).toBeVisible()
+    expect(within(dialog).getByText('대상: 개발 MySQL / orders')).toBeVisible()
+    expect(within(dialog).getByText('1행을 삭제합니다. 적용하면 되돌릴 수 없습니다.')).toBeVisible()
+    await userEvent.click(within(dialog).getByRole('button', { name: '적용' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].changes).toEqual([
+      { op: 'DELETE', key: { id: '5' } },
+      { op: 'UPDATE', key: { id: '1' }, values: { status: 'DONE' }, original: { status: 'PAID' } },
+      { op: 'UPDATE', key: { id: '4' }, values: { memo: null }, original: { memo: '선물 포장' } },
+      { op: 'INSERT', values: { status: 'NEW' } },
+    ])
+    // 성공하면 모아 둔 변경이 비워진다
+    await waitFor(() => expect(screen.queryByText(/^변경 \d+건$/)).not.toBeInTheDocument())
+    server.events.removeAllListeners()
+  })
+
+  it('Esc는 편집을 취소하고, 원래 값으로 되돌리면 변경이 사라진다 — [되돌리기]는 전부 버린다', async () => {
+    renderBrowser(ORDERS)
+    await screen.findByRole('table')
+
+    await userEvent.dblClick(within(rowOf('1')).getAllByRole('cell')[2])
+    await userEvent.type(screen.getByLabelText('status 편집'), 'X{Escape}')
+    expect(screen.queryByText(/^변경 \d+건$/)).not.toBeInTheDocument()
+
+    await userEvent.dblClick(within(rowOf('1')).getAllByRole('cell')[2])
+    await userEvent.type(screen.getByLabelText('status 편집'), 'X{Enter}')
+    expect(screen.getByText('변경 1건')).toBeVisible()
+    await userEvent.dblClick(within(rowOf('1')).getAllByRole('cell')[2])
+    const input = screen.getByLabelText('status 편집')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'PAID{Enter}')
+    expect(screen.queryByText(/^변경 \d+건$/)).not.toBeInTheDocument()
+
+    await userEvent.click(within(rowOf('2')).getByRole('button', { name: '행 삭제' }))
+    await userEvent.click(screen.getByRole('button', { name: '되돌리기' }))
+    expect(screen.queryByText(/^변경 \d+건$/)).not.toBeInTheDocument()
+    expect(within(rowOf('2')).getByRole('button', { name: '행 삭제' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('적용이 실패하면 변경은 화면에 남고, 실패한 행에 데이터베이스 문구가 붙는다', async () => {
+    server.use(
+      http.post(CHANGES, () =>
+        HttpResponse.json(
+          {
+            header: { isSuccessful: false, resultCode: 'ROW_CHANGE_FAILED', resultMessage: '데이터베이스가 변경을 거부했습니다' },
+            errors: [{ field: 'changes[1]', code: 'ROW_CHANGE_FAILED', message: "Column 'status' cannot be null" }],
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+    renderBrowser(ORDERS)
+    await screen.findByRole('table')
+    await userEvent.click(within(rowOf('5')).getByRole('button', { name: '행 삭제' }))
+    await userEvent.dblClick(within(rowOf('2')).getAllByRole('cell')[2])
+    await userEvent.type(screen.getByLabelText('status 편집'), '!{Enter}')
+
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('적용하지 못했습니다. 변경은 전부 되돌렸습니다.')
+    // 변경은 그대로 — 두 번째 변경(2번 주문 수정)의 행에 문구가 붙는다
+    expect(screen.getByText('변경 2건')).toBeVisible()
+    expect(rowOf('2')).toHaveAttribute('title', "Column 'status' cannot be null")
+    expect(rowOf('5')).not.toHaveAttribute('title')
+  })
+
+  it('잘린 값은 눌러서 통째로 읽고, 고친 값은 전체 문자열을 편집 전 값과 함께 담는다', async () => {
+    const bodies = captureChanges()
+    renderBrowser(ORDERS)
+    await screen.findByRole('table')
+
+    await userEvent.click(within(rowOf('3')).getByRole('button', { name: 'memo 전체 값 보기' }))
+    const dialog = await screen.findByRole('dialog')
+    const textarea = await within(dialog).findByRole('textbox', { name: 'memo 값' })
+    expect((textarea as HTMLTextAreaElement).value).toContain('그리고 이어지는 뒷부분')
+    expect(within(dialog).getByRole('button', { name: '변경에 담기' })).toBeDisabled()
+
+    await userEvent.type(textarea, ' 끝')
+    await userEvent.click(within(dialog).getByRole('button', { name: '변경에 담기' }))
+    expect(screen.getByText('변경 1건')).toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    const full = '긴 메모의 앞부분' + ' 그리고 이어지는 뒷부분'.repeat(3)
+    expect(bodies[0].changes).toEqual([
+      { op: 'UPDATE', key: { id: '3' }, values: { memo: `${full} 끝` }, original: { memo: full } },
+    ])
+    server.events.removeAllListeners()
+  })
+
+  it('적용하지 않은 변경이 있으면 다른 객체로 옮기기 전에 묻는다', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderBrowser(ORDERS)
+    await screen.findByRole('table')
+    await userEvent.click(within(rowOf('1')).getByRole('button', { name: '행 삭제' }))
+
+    await userEvent.click(screen.getByRole('button', { name: /^users/ }))
+    expect(confirmSpy).toHaveBeenCalledWith('적용하지 않은 변경이 있습니다. 버릴까요?')
+    // 취소 — 그대로 orders의 변경이 남아 있다
+    expect(screen.getByText('변경 1건')).toBeVisible()
+
+    confirmSpy.mockReturnValue(true)
+    await userEvent.click(screen.getByRole('tab', { name: 'SQL' }))
+    expect(await screen.findByLabelText('SQL 입력')).toBeVisible()
+    confirmSpy.mockRestore()
+  })
+
+  it('뷰와 기본 키 없는 테이블에는 편집 동작이 없다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () =>
+        HttpResponse.json(
+          ok({
+            response: {
+              columns: [{ name: 'message', typeName: 'VARCHAR(100)', category: 'character', nullable: true, primaryKey: false }],
+              rows: [['hello']],
+              page: 1, size: 100, hasNext: false, truncated: false, elapsedMs: 1,
+            },
+          }),
+        ),
+      ),
+    )
+    renderBrowser('/workspaces/101/connections/302/data?object=order_logs')
+    await screen.findByRole('table')
+
+    expect(screen.getByText('기본 키가 없는 테이블은 편집할 수 없습니다')).toBeVisible()
+    expect(screen.queryByRole('button', { name: '행 추가' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '행 삭제' })).not.toBeInTheDocument()
+    await userEvent.dblClick(screen.getByText('hello'))
+    expect(screen.queryByLabelText('message 편집')).not.toBeInTheDocument()
   })
 })
 

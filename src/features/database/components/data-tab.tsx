@@ -3,12 +3,19 @@
  *
  * 조건은 [적용]을 눌러야 서버로 간다 — 값을 치는 동안 대상 DB에 질의를 쏟지 않는다.
  * 전체 행 수는 세지 않는다. 다음 페이지 유무만 알고, 정확한 수는 사용자가 눌렀을 때만 센다.
+ *
+ * 편집(기본 키가 있는 테이블만): 고친 내용은 화면에 모아 두고 [적용]을 눌러야 한 번에 보낸다.
+ * 적용은 한 트랜잭션이다 — 하나라도 실패하면 전부 되돌리고, 변경은 화면에 그대로 남는다.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Download, Loader2, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
+import { isApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/error-state'
@@ -19,9 +26,12 @@ import {
   type RowSort,
   type RowsQuery,
 } from '@/features/database/api'
+import { EditableTable, type LongValueTarget } from '@/features/database/components/editable-table'
+import { LongValueDialog } from '@/features/database/components/long-value-dialog'
 import { ResultTable, toCsv } from '@/features/database/components/result-table'
 import { databaseErrorMessage } from '@/features/database/errors'
-import { useCountRows, useObjectRows } from '@/features/database/hooks'
+import { useApplyRowChanges, useCountRows, useObjectRows } from '@/features/database/hooks'
+import { EMPTY_EDITS, addInsert, buildChanges, countEdits, setCell, type RowEdits } from '@/features/database/row-edits'
 import { downloadTextFile, safeFilename } from '@/lib/download'
 import { formatNumber } from '@/lib/format'
 
@@ -59,11 +69,16 @@ function toFilters(drafts: FilterDraft[]): RowFilter[] {
 export interface DataTabProps {
   workspaceId: string
   connectionId: string
+  /** 확인 다이얼로그에 보여 줄 커넥션 이름 */
+  connectionName: string
   object: DatabaseObject
+  /** 적용하지 않은 변경이 있는지 — 부모가 다른 객체로 옮기기 전에 확인을 받는 데 쓴다 */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
+export function DataTab({ workspaceId, connectionId, connectionName, object, onDirtyChange }: DataTabProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<RowSort[]>([])
   const [drafts, setDrafts] = useState<FilterDraft[]>([])
@@ -74,6 +89,61 @@ export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
   const rows = useObjectRows(workspaceId, connectionId, object.name, query)
   const count = useCountRows(workspaceId, connectionId, object.name)
   const columns = rows.data?.columns ?? []
+
+  // 편집 — 모아 둔 변경, 실패 위치, 열어 둔 긴 값
+  const apply = useApplyRowChanges(workspaceId, connectionId, object.name)
+  const [edits, setEdits] = useState<RowEdits>(EMPTY_EDITS)
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
+  const [applyError, setApplyError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [longValue, setLongValue] = useState<LongValueTarget | null>(null)
+  const counts = countEdits(edits)
+  const dirty = counts.total > 0
+
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
+
+  // 적용하지 않은 변경이 있으면 창을 닫기 전에 브라우저가 확인을 받는다
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
+  const changeEdits = (next: RowEdits) => {
+    setEdits(next)
+    setRowErrors({})
+    setApplyError(null)
+  }
+
+  const applyEdits = () => {
+    const { changes, targets } = buildChanges(edits)
+    apply.mutate(changes, {
+      onSuccess: () => {
+        toast.success(t('database.edit.success', { count: changes.length }))
+        setConfirming(false)
+        setEdits(EMPTY_EDITS)
+        setRowErrors({})
+        setApplyError(null)
+        count.reset()
+        void queryClient.invalidateQueries({ queryKey: ['database', workspaceId, connectionId, 'rows', object.name] })
+      },
+      onError: (error) => {
+        setConfirming(false)
+        setApplyError(databaseErrorMessage(error))
+        // 서버가 몇 번째 변경에서 실패했는지 알려 준다(errors[0].field = "changes[n]") — 그 행에 문구를 붙인다
+        const failed = isApiError(error) ? error.errors?.[0] : undefined
+        const index = Number(/^changes\[(\d+)\]$/.exec(failed?.field ?? '')?.[1] ?? -1)
+        const target = targets[index]
+        if (target) {
+          const where = target.kind === 'row' ? `row:${target.rowKey}` : `insert:${target.id}`
+          setRowErrors({ [where]: failed?.message || databaseErrorMessage(error) })
+        }
+      },
+    })
+  }
 
   const applyFilters = () => {
     setApplied(toFilters(drafts))
@@ -176,6 +246,18 @@ export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
             <Plus aria-hidden />
             {t('database.data.addFilter')}
           </Button>
+          {object.editable ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => changeEdits(addInsert(edits))}
+              disabled={columns.length === 0}
+            >
+              <Plus aria-hidden />
+              {t('database.edit.addRow')}
+            </Button>
+          ) : null}
           {drafts.length > 0 || applied.length > 0 ? (
             <>
               <Button type="submit" size="sm">
@@ -221,20 +303,56 @@ export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
             <ErrorState message={databaseErrorMessage(rows.error)} onRetry={() => void rows.refetch()} />
           </div>
         ) : (
-          <ResultTable
-            columns={rows.data.columns}
-            rows={rows.data.rows}
-            sort={sort[0] ?? null}
-            onSort={toggleSort}
-            dimmed={rows.isPlaceholderData}
-          />
+          object.editable ? (
+            <EditableTable
+              columns={rows.data.columns}
+              rows={rows.data.rows}
+              sort={sort[0] ?? null}
+              onSort={toggleSort}
+              dimmed={rows.isPlaceholderData}
+              edits={edits}
+              onEditsChange={changeEdits}
+              onOpenLongValue={setLongValue}
+              rowErrors={rowErrors}
+            />
+          ) : (
+            <ResultTable
+              columns={rows.data.columns}
+              rows={rows.data.rows}
+              sort={sort[0] ?? null}
+              onSort={toggleSort}
+              dimmed={rows.isPlaceholderData}
+            />
+          )
         )}
-        {rows.data && rows.data.rows.length === 0 && !rows.isError ? (
+        {rows.data && rows.data.rows.length === 0 && edits.inserts.length === 0 && !rows.isError ? (
           <p className="p-6 text-center text-sm text-muted-foreground">
             {applied.length > 0 ? t('database.data.emptyFiltered') : t('database.data.empty')}
           </p>
         ) : null}
       </div>
+
+      {/* 모아 둔 변경 — 적용하기 전에는 서버에 가지 않는다 */}
+      {dirty ? (
+        <div className="flex flex-wrap items-center gap-3 border-t bg-amber-500/10 px-3 py-2 text-sm" role="status">
+          <span className="font-medium">{t('database.edit.pending', { count: counts.total })}</span>
+          <span className="text-xs text-muted-foreground">
+            {t('database.edit.summary', { inserted: counts.inserted, updated: counts.updated, deleted: counts.deleted })}
+          </span>
+          {applyError ? (
+            <span role="alert" className="text-xs text-destructive">
+              {t('database.edit.failed')} {applyError}
+            </span>
+          ) : null}
+          <div className="flex-1" />
+          <Button type="button" variant="ghost" size="sm" onClick={() => changeEdits(EMPTY_EDITS)} disabled={apply.isPending}>
+            {t('database.edit.discard')}
+          </Button>
+          <Button type="button" size="sm" onClick={() => setConfirming(true)} disabled={apply.isPending}>
+            {t('database.edit.apply')}
+          </Button>
+        </div>
+      ) : null}
 
       {/* 아래 줄 — 페이지 넘김·행 수 */}
       <div className="flex flex-wrap items-center gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
@@ -283,6 +401,42 @@ export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
           {count.isPending ? t('database.data.counting') : t('database.data.countExact')}
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={(open) => {
+          if (!open) setConfirming(false)
+        }}
+        title={t('database.edit.confirm.title', { count: counts.total })}
+        description={
+          <span className="grid gap-1">
+            <span>{t('database.edit.confirm.target', { name: connectionName, object: object.name })}</span>
+            <span>
+              {t('database.edit.summary', { inserted: counts.inserted, updated: counts.updated, deleted: counts.deleted })}
+            </span>
+            {counts.deleted > 0 ? (
+              <span className="font-medium text-destructive">{t('database.edit.confirm.deleteWarning', { count: counts.deleted })}</span>
+            ) : null}
+          </span>
+        }
+        confirmLabel={t('database.edit.apply')}
+        destructive={counts.deleted > 0}
+        confirming={apply.isPending}
+        onConfirm={applyEdits}
+      />
+
+      {longValue ? (
+        <LongValueDialog
+          workspaceId={workspaceId}
+          connectionId={connectionId}
+          objectName={object.name}
+          target={{ key: longValue.key, column: longValue.column.name, nullable: longValue.column.nullable }}
+          onClose={() => setLongValue(null)}
+          onSave={(value, original) => {
+            changeEdits(setCell(edits, longValue.rowKey, longValue.key, longValue.column.name, value, original))
+            setLongValue(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
