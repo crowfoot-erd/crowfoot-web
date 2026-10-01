@@ -2,13 +2,16 @@ import '@testing-library/jest-dom/vitest'
 
 import { cleanup } from '@testing-library/react'
 import { toHaveNoViolations } from 'jest-axe'
-import { afterEach, beforeAll, afterAll, expect } from 'vitest'
+import { afterEach, beforeAll, afterAll, expect, vi } from 'vitest'
 
 import { server } from '@/api/mocks/server'
 import { resetModelContentState } from '@/api/mocks/handlers'
 import i18n from '@/lib/i18n'
 
 expect.extend(toHaveNoViolations)
+
+// SQL 입력 칸(CodeMirror)은 jsdom에서 타이핑을 받지 못한다 — 화면 테스트는 textarea 대역을 쓴다(__mocks__/sql-editor.tsx)
+vi.mock('@/features/database/components/sql-editor')
 
 // jsdom navigator는 en-US — 문구 기대값 기준 언어를 ko로 고정한다
 void i18n.changeLanguage('ko')

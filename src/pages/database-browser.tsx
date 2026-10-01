@@ -19,6 +19,7 @@ import { LanguageSelect } from '@/components/language-select'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewerTabButton } from '@/components/viewer-tab-button'
 import { useConnections } from '@/features/connections/hooks'
+import { columnLabelsOf, useLogicalNames } from '@/features/database/logical-names'
 import { DataTab } from '@/features/database/components/data-tab'
 import { ObjectList } from '@/features/database/components/object-list'
 import { SqlTab } from '@/features/database/components/sql-tab'
@@ -37,6 +38,8 @@ export default function DatabaseBrowserPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selected = searchParams.get('object')
   const tabParam = searchParams.get('tab')
+  /** 논리명을 읽어 올 ERD 문서 — 에디터에서 들어올 때 붙는다(§5.2) */
+  const modelParam = searchParams.get('model')
   const tab: BrowserTab = tabParam === 'structure' || tabParam === 'sql' ? tabParam : 'data'
 
   const myWorkspaces = useMyWorkspaces()
@@ -50,6 +53,7 @@ export default function DatabaseBrowserPage() {
   // 구조 탭과 같은 쿼리 — 고른 객체가 그 사이 사라졌는지(OBJECT_NOT_FOUND)를 여기서도 알아챈다
   const structure = useObjectStructure(workspaceId, connectionId, selectedObject ? selectedObject.name : null)
   const refetchObjects = objects.refetch
+  const logicalNames = useLogicalNames(workspaceId, connectionId, modelParam, canUse)
   /** 데이터 탭에 적용하지 않은 변경이 있는지 */
   const [dirty, setDirty] = useState(false)
 
@@ -67,7 +71,7 @@ export default function DatabaseBrowserPage() {
   const select = (name: string) => {
     if (name === selected && tab === 'data') return
     if (!confirmDiscard()) return
-    setSearchParams({ object: name }, { replace: false })
+    setSearchParams(modelParam ? { object: name, model: modelParam } : { object: name }, { replace: false })
   }
   /** 적용하지 않은 변경이 있으면 버려도 되는지 묻는다 — 데이터 탭을 떠나면 변경이 사라진다 */
   const confirmDiscard = () => {
@@ -81,6 +85,7 @@ export default function DatabaseBrowserPage() {
     const params: Record<string, string> = {}
     if (selected) params.object = selected
     if (next !== 'data') params.tab = next
+    if (modelParam) params.model = modelParam
     setSearchParams(params, { replace: true })
   }
 
@@ -181,6 +186,7 @@ export default function DatabaseBrowserPage() {
               connectionId={connectionId}
               connectionName={connection?.name ?? ''}
               dbmsType={connection?.dbmsType ?? objects.data?.dbmsType ?? ''}
+              objectNames={(objects.data?.objects ?? []).map((object) => object.name)}
             />
           ) : selectedObject ? (
             tab === 'data' ? (
@@ -191,6 +197,7 @@ export default function DatabaseBrowserPage() {
                 connectionId={connectionId}
                 connectionName={connection?.name ?? ''}
                 object={selectedObject}
+                columnLabels={columnLabelsOf(logicalNames.data, selectedObject.name)}
                 onDirtyChange={setDirty}
               />
             ) : (

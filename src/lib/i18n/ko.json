@@ -1036,6 +1036,7 @@
         "createTable": "엔터티 생성",
         "createNote": "메모 생성",
         "tableInfo": "테이블 정보",
+        "viewTableData": "이 테이블의 데이터 보기",
         "removeTable": "테이블 삭제",
         "removeNote": "메모 삭제",
         "editRelationship": "관계 편집",

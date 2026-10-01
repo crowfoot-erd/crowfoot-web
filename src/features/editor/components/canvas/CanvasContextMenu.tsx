@@ -2,7 +2,7 @@
  * 캔버스 컨텍스트 메뉴 (05-editor/02-ui.md §8.1, storyboard 02-user §5A)
  *
  * 빈 영역 = 엔터티·메모 생성(우클릭한 화면 좌표를 캔버스 좌표로 변환해 그 위치에 생성),
- * 테이블 노드 = 정보·그룹 소속·삭제, 메모 노드 = 삭제, 관계선 = 편집·삭제.
+ * 테이블 노드 = 정보·데이터 보기(원천 커넥션이 있을 때)·그룹 소속·삭제, 메모 노드 = 삭제, 관계선 = 편집·삭제.
  * 그룹(주제 영역)은 캔버스 객체가 아니라 논리 소속이라 여기서 만들고 뺀다 — 우클릭한
  * 테이블이 선택 상태면 **선택 전체**가 대상(다중 선택 → 그룹 생성), 아니면 그 테이블만.
  * 한 테이블은 한 그룹에만 소속한다 — 대상이 이미 그룹에 있으면 '그룹에 추가'가 잠기고,
@@ -13,10 +13,11 @@
  */
 import { useRef, useState } from 'react'
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
-import { Expand, FolderPlus, FolderMinus, FolderPen, Info, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
+import { Expand, FolderPlus, FolderMinus, FolderPen, Info, Pencil, Plus, Rows3, StickyNote, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
+import { useConnections } from '@/features/connections/hooks'
 import { TABLE_COLOR_HEX } from '@/features/editor/model/content-schema'
 
 export interface CanvasPoint {
@@ -33,6 +34,7 @@ export type ContextMenuAction =
   | { type: 'editGroup'; areaId: string }
   | { type: 'exitGroupView' }
   | { type: 'tableInfo'; tableId: string }
+  | { type: 'viewTableData'; tableId: string }
   | { type: 'removeTable'; tableId: string }
   | { type: 'removeNote'; noteId: string }
   | { type: 'editRelationship'; relationshipId: string }
@@ -54,6 +56,9 @@ interface CanvasContextMenuProps {
   groups: readonly ContextMenuGroup[]
   /** 보기 필터로 들어가 있는 그룹 이름 — null이면 전체 보기(돌아가기 항목이 없다) */
   activeAreaName: string | null
+  /** 문서의 원천 커넥션 — 있으면 테이블 메뉴에 "이 테이블의 데이터 보기"가 생긴다
+   *  (09-database-manager/00-data-browser.md §5.1). 직접 만든 문서와 공개 뷰어는 null */
+  dataSource?: { workspaceId: string; connectionId: string } | null
   onAction: (action: ContextMenuAction) => void
   children: React.ReactNode
 }
@@ -101,7 +106,38 @@ function GroupRow({ group }: { group: ContextMenuGroup }) {
   )
 }
 
-export function CanvasContextMenu({ toFlow, selectedTableIds, groups, activeAreaName, onAction, children }: CanvasContextMenuProps) {
+/** "이 테이블의 데이터 보기" — 원천 커넥션이 삭제됐으면 숨긴다.
+ *  커넥션 목록은 메뉴를 열 때 조회한다(항목이 메뉴 내용 안에서 마운트된다 — 도구 메뉴의 "데이터 보기"와 같다) */
+function ViewDataItem({
+  dataSource,
+  onSelect,
+}: {
+  dataSource: { workspaceId: string; connectionId: string }
+  onSelect: () => void
+}) {
+  const { t } = useTranslation()
+  const connections = useConnections(dataSource.workspaceId)
+  const exists = (connections.data?.items ?? []).some(
+    (connection) => connection.connectionId === dataSource.connectionId,
+  )
+  if (!exists) return null
+  return (
+    <ContextMenuPrimitive.Item className={SUB_ITEM_CLASS} onSelect={onSelect}>
+      <Rows3 aria-hidden />
+      {t('model.editor.contextMenu.viewTableData')}
+    </ContextMenuPrimitive.Item>
+  )
+}
+
+export function CanvasContextMenu({
+  toFlow,
+  selectedTableIds,
+  groups,
+  activeAreaName,
+  dataSource = null,
+  onAction,
+  children,
+}: CanvasContextMenuProps) {
   const { t } = useTranslation()
   const [target, setTarget] = useState<MenuTarget>({ kind: 'canvas' })
   const screenRef = useRef<CanvasPoint>({ x: 0, y: 0 })
@@ -183,6 +219,12 @@ export function CanvasContextMenu({ toFlow, selectedTableIds, groups, activeArea
                 <Info aria-hidden />
                 {t('model.editor.contextMenu.tableInfo')}
               </ContextMenuPrimitive.Item>
+              {dataSource ? (
+                <ViewDataItem
+                  dataSource={dataSource}
+                  onSelect={() => onAction({ type: 'viewTableData', tableId: target.tableId })}
+                />
+              ) : null}
               <ContextMenuPrimitive.Separator className="mx-1 my-1 h-px bg-border" />
               <ContextMenuPrimitive.Item
                 className={SUB_ITEM_CLASS}

@@ -6,7 +6,7 @@
  *   확인 다이얼로그를 거쳐 다시 보낸다
  * - 실행 이력은 이 브라우저에만 남는다. 서버에는 SQL 본문을 저장하지 않는다
  */
-import { useRef, useState } from 'react'
+import { Suspense, lazy, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { CircleCheck, CircleX, Download, History, Loader2, Play } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import type { QueryResult, StatementKind } from '@/features/database/api'
 import { ResultTable, toCsv } from '@/features/database/components/result-table'
+import type { SqlEditorHandle } from '@/features/database/components/sql-editor'
 import { databaseErrorMessage } from '@/features/database/errors'
 import { databaseKeys, useRunQuery } from '@/features/database/hooks'
 import { pushSqlHistory, readSqlHistory, type SqlHistoryEntry } from '@/features/database/sql-history'
@@ -23,19 +24,24 @@ import { statementToRun } from '@/features/database/sql-statements'
 import { downloadTextFile } from '@/lib/download'
 import { formatDateTime, formatNumber } from '@/lib/format'
 
+// 편집기(CodeMirror)는 SQL 탭을 열 때만 내려받는다
+const SqlEditor = lazy(() => import('@/features/database/components/sql-editor'))
+
 export interface SqlTabProps {
   workspaceId: string
   connectionId: string
   connectionName: string
   /** database_types 코드 — 문장 경계 규칙(따옴표·주석)이 DBMS마다 다르다 */
   dbmsType: string
+  /** 테이블·뷰 이름 — 입력 칸의 자동 완성에 쓴다 */
+  objectNames: readonly string[]
 }
 
-export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType }: SqlTabProps) {
+export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, objectNames }: SqlTabProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const run = useRunQuery(workspaceId, connectionId)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<SqlEditorHandle>(null)
   const [sql, setSql] = useState('')
   const [result, setResult] = useState<QueryResult | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
@@ -74,11 +80,11 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType }: 
   }
 
   const runCurrent = () => {
-    const textarea = textareaRef.current
+    const selection = editorRef.current?.selection() ?? { from: sql.length, to: sql.length }
     const statement = statementToRun(
       sql,
-      textarea?.selectionStart ?? sql.length,
-      textarea?.selectionEnd ?? sql.length,
+      selection.from,
+      selection.to,
       dbmsType.trim().toLowerCase() === 'mysql',
     )
     if (statement === '') return
@@ -88,22 +94,18 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType }: 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="grid gap-2 border-b p-2">
-        <textarea
-          ref={textareaRef}
-          value={sql}
-          onChange={(event) => setSql(event.target.value)}
-          onKeyDown={(event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-              event.preventDefault()
-              runCurrent()
-            }
-          }}
-          spellCheck={false}
-          rows={8}
-          aria-label={t('database.sql.input')}
-          placeholder={t('database.sql.placeholder')}
-          className="w-full resize-y rounded-md border border-input bg-background p-2 font-mono text-sm leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
+        <Suspense fallback={<div className="h-44 rounded-md border border-input" aria-hidden />}>
+          <SqlEditor
+            ref={editorRef}
+            value={sql}
+            onChange={setSql}
+            onRun={runCurrent}
+            dbmsType={dbmsType}
+            objectNames={objectNames}
+            ariaLabel={t('database.sql.input')}
+            placeholder={t('database.sql.placeholder')}
+          />
+        </Suspense>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" onClick={runCurrent} disabled={run.isPending || sql.trim() === ''}>
             {run.isPending ? <Loader2 aria-hidden className="animate-spin" /> : <Play aria-hidden />}
@@ -133,7 +135,7 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType }: 
                   onClick={() => {
                     setSql(entry.sql)
                     setHistoryOpen(false)
-                    textareaRef.current?.focus()
+                    editorRef.current?.focus()
                   }}
                 >
                   {entry.ok ? (

@@ -1036,6 +1036,7 @@
         "createTable": "新建实体",
         "createNote": "新建备注",
         "tableInfo": "表信息",
+        "viewTableData": "查看此表的数据",
         "removeTable": "删除表",
         "removeNote": "删除备注",
         "editRelationship": "编辑关系",

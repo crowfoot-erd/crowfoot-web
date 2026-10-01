@@ -1271,7 +1271,28 @@ describe('EditorShell — 도구 메뉴 항목 노출 조건', () => {
     // 연결된 문서에는 데이터 보기도 함께 나온다 — 원천 커넥션의 데이터 브라우저를 새 창으로 연다
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     fireEvent.click(screen.getByRole('menuitem', { name: '데이터 보기' }))
-    expect(openSpy).toHaveBeenCalledWith('/workspaces/101/connections/301/data', '_blank', 'noopener,noreferrer')
+    // 문서 id를 함께 넘긴다 — 데이터 브라우저가 이 문서의 논리명을 컬럼 머리에 보여 준다
+    expect(openSpy).toHaveBeenCalledWith('/workspaces/101/connections/301/data?model=501', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
+  })
+
+  it('테이블 우클릭 → "이 테이블의 데이터 보기"는 그 테이블을 고른 상태로 데이터 브라우저를 연다', async () => {
+    await renderEditor()
+    const table = createTable('order_items')
+    useEditorStore.getState().commitAll([
+      { type: 'table/create', table, position: { x: 0, y: 0 } },
+      { type: 'column/add', tableId: table.id, column: createColumn({ id: 'c1', physicalName: 'qty', dataType: 'INT' }) },
+    ])
+    const node = (await screen.findByLabelText('컬럼 물리명 — qty')).closest('[data-nodekind="table"]') as HTMLElement
+    fireEvent.contextMenu(node)
+
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    fireEvent.click(await screen.findByRole('menuitem', { name: '이 테이블의 데이터 보기' }))
+    expect(openSpy).toHaveBeenCalledWith(
+      '/workspaces/101/connections/301/data?object=order_items&model=501',
+      '_blank',
+      'noopener,noreferrer',
+    )
     openSpy.mockRestore()
   })
 

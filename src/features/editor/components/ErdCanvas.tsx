@@ -58,6 +58,7 @@ import type { EditorDocument } from '@/features/editor/model/content-schema'
 import type { CursorPayload, RemoteCursorState } from '@/features/editor/collab'
 import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab-presence'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
+import { databaseBrowserPath } from '@/features/database'
 import { EmptyCanvasHint } from './canvas/empty-canvas-hint'
 import {
   EditorCanvasContext,
@@ -300,6 +301,8 @@ export interface ErdCanvasProps {
   columnDisplay: ColumnDisplayMode
   /** 문서 식별자 — 마지막 화면(줌·팬)을 브라우저에 기억하는 키 */
   modelId: string | null
+  /** 문서의 원천 커넥션 — 테이블 우클릭 메뉴의 "이 테이블의 데이터 보기" 근거. 없으면 항목이 없다 */
+  sourceConnectionId?: string | null
   /** 보기 필터로 선택된 주제 영역 — null이면 전체. 뷰 상태라 undo 대상이 아니다(EditorShell 소유) */
   activeAreaId: string | null
   /** 보기 필터 해제 — 컨텍스트 메뉴 '전체 화면으로 돌아가기'가 쓴다(EditorShell 소유 상태) */
@@ -321,6 +324,7 @@ export function ErdCanvas({
   workspaceId,
   databaseType,
   modelId,
+  sourceConnectionId = null,
   activeAreaId,
   onActiveAreaChange,
   onOpenAreaEdit,
@@ -946,6 +950,20 @@ export function ErdCanvas({
         case 'tableInfo':
           setInfoTableId(action.tableId)
           return
+        case 'viewTableData': {
+          // 그 테이블을 고른 상태로 데이터 브라우저를 새 창으로 연다(09-database-manager/00-data-browser.md §5.1)
+          const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === action.tableId)
+          if (!table || !workspaceId || !sourceConnectionId) return
+          window.open(
+            databaseBrowserPath(workspaceId, sourceConnectionId, {
+              objectName: table.physicalName,
+              modelId: modelId ?? undefined,
+            }),
+            '_blank',
+            'noopener,noreferrer',
+          )
+          return
+        }
         case 'removeTable':
           commit({ type: 'table/remove', tableId: action.tableId })
           return
@@ -959,7 +977,7 @@ export function ErdCanvas({
           commit({ type: 'relationship/remove', relationshipId: action.relationshipId })
       }
     },
-    [commit, t, onOpenAreaEdit],
+    [commit, t, onOpenAreaEdit, workspaceId, sourceConnectionId, modelId],
   )
 
   /* ---------- 다이얼로그 재료 ---------- */
@@ -1323,6 +1341,7 @@ export function ErdCanvas({
           selectedTableIds={selectedTableIds}
           groups={contextGroups}
           activeAreaName={present.diagram.areas.find((area) => area.id === activeAreaId)?.name ?? null}
+          dataSource={workspaceId && sourceConnectionId ? { workspaceId, connectionId: sourceConnectionId } : null}
           onAction={handleContextMenuAction}
         >
           {flow}

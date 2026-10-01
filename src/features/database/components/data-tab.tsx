@@ -72,11 +72,13 @@ export interface DataTabProps {
   /** 확인 다이얼로그에 보여 줄 커넥션 이름 */
   connectionName: string
   object: DatabaseObject
+  /** 컬럼 이름(소문자) → ERD 논리명 — 머리글에 함께 보여 준다 */
+  columnLabels?: Record<string, string>
   /** 적용하지 않은 변경이 있는지 — 부모가 다른 객체로 옮기기 전에 확인을 받는 데 쓴다 */
   onDirtyChange?: (dirty: boolean) => void
 }
 
-export function DataTab({ workspaceId, connectionId, connectionName, object, onDirtyChange }: DataTabProps) {
+export function DataTab({ workspaceId, connectionId, connectionName, object, columnLabels, onDirtyChange }: DataTabProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
@@ -310,6 +312,7 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, onD
               sort={sort[0] ?? null}
               onSort={toggleSort}
               dimmed={rows.isPlaceholderData}
+              columnLabels={columnLabels}
               edits={edits}
               onEditsChange={changeEdits}
               onOpenLongValue={setLongValue}
@@ -322,6 +325,7 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, onD
               sort={sort[0] ?? null}
               onSort={toggleSort}
               dimmed={rows.isPlaceholderData}
+              columnLabels={columnLabels}
             />
           )
         )}

@@ -43,9 +43,11 @@ export interface ResultTableProps {
   onSort?: (column: string) => void
   /** 다음 결과를 기다리는 동안 흐리게 */
   dimmed?: boolean
+  /** 컬럼 이름(소문자) → ERD 논리명 — 있으면 머리글에 함께 보여 준다 */
+  columnLabels?: Record<string, string>
 }
 
-export function ResultTable({ columns, rows, sort = null, onSort, dimmed = false }: ResultTableProps) {
+export function ResultTable({ columns, rows, sort = null, onSort, dimmed = false, columnLabels }: ResultTableProps) {
   const { t } = useTranslation()
 
   return (
@@ -59,6 +61,9 @@ export function ResultTable({ columns, rows, sort = null, onSort, dimmed = false
                 <span className={cn(column.primaryKey && 'underline decoration-dotted underline-offset-4')}>
                   {column.name}
                 </span>
+                {columnLabels?.[column.name.toLowerCase()] ? (
+                  <span className="text-xs font-normal text-muted-foreground">{columnLabels[column.name.toLowerCase()]}</span>
+                ) : null}
                 <span className="text-[10px] font-normal text-muted-foreground">{column.typeName}</span>
                 {direction === 'ASC' ? <ArrowUp aria-hidden className="size-3" /> : null}
                 {direction === 'DESC' ? <ArrowDown aria-hidden className="size-3" /> : null}

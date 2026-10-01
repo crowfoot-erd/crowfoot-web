@@ -47,6 +47,8 @@ export interface EditableTableProps {
   onOpenLongValue: (target: LongValueTarget) => void
   /** 서버가 알려 준 실패 위치 — `row:{행 키}` 또는 `insert:{번호}` → 문구 */
   rowErrors: Record<string, string>
+  /** 컬럼 이름(소문자) → ERD 논리명 — 있으면 머리글에 함께 보여 준다 */
+  columnLabels?: Record<string, string>
 }
 
 interface EditingCell {
@@ -65,6 +67,7 @@ export function EditableTable({
   onEditsChange,
   onOpenLongValue,
   rowErrors,
+  columnLabels,
 }: EditableTableProps) {
   const { t } = useTranslation()
   const [editing, setEditing] = useState<EditingCell | null>(null)
@@ -100,6 +103,9 @@ export function EditableTable({
                   <span className={cn(column.primaryKey && 'underline decoration-dotted underline-offset-4')}>
                     {column.name}
                   </span>
+                  {columnLabels?.[column.name.toLowerCase()] ? (
+                    <span className="text-xs font-normal text-muted-foreground">{columnLabels[column.name.toLowerCase()]}</span>
+                  ) : null}
                   <span className="text-[10px] font-normal text-muted-foreground">{column.typeName}</span>
                   {direction === 'ASC' ? <ArrowUp aria-hidden className="size-3" /> : null}
                   {direction === 'DESC' ? <ArrowDown aria-hidden className="size-3" /> : null}

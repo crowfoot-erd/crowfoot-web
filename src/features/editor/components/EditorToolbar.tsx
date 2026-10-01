@@ -775,6 +775,7 @@ function ToolsMenu({
           {canEdit && sourceConnectionId ? (
             <SyncMenuItem
               workspaceId={workspaceId}
+              modelId={modelId}
               sourceConnectionId={sourceConnectionId}
               onSelect={() => setActive('sync')}
             />
@@ -837,10 +838,12 @@ function ToolsMenu({
  *  커넥션 목록은 메뉴를 열 때 조회한다(항목이 메뉴 내용 안에서 마운트된다). */
 function SyncMenuItem({
   workspaceId,
+  modelId,
   sourceConnectionId,
   onSelect,
 }: {
   workspaceId: string
+  modelId: string
   sourceConnectionId: string
   onSelect: () => void
 }) {
@@ -860,7 +863,7 @@ function SyncMenuItem({
       {/* 데이터 보기 — 원천 커넥션의 데이터 브라우저를 새 창으로 연다(09-database-manager/00-data-browser.md §5.1) */}
       <DropdownMenuItem
         onSelect={() =>
-          window.open(databaseBrowserPath(workspaceId, sourceConnectionId), '_blank', 'noopener,noreferrer')
+          window.open(databaseBrowserPath(workspaceId, sourceConnectionId, { modelId }), '_blank', 'noopener,noreferrer')
         }
       >
         <Rows3 aria-hidden />

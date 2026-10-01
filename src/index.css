@@ -51,6 +51,13 @@
 }
 
 :root {
+  /* SQL 입력 칸의 문법 강조 색 (features/database/components/sql-editor.tsx) */
+  --sql-keyword: oklch(0.45 0.2 290);
+  --sql-string: oklch(0.48 0.14 150);
+  --sql-number: oklch(0.52 0.17 45);
+  --sql-comment: oklch(0.55 0.02 260);
+  --sql-type: oklch(0.5 0.13 230);
+  --sql-selection: oklch(0.6 0.12 250 / 0.25);
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -86,6 +93,12 @@
 }
 
 .dark {
+  --sql-keyword: oklch(0.78 0.14 290);
+  --sql-string: oklch(0.8 0.14 150);
+  --sql-number: oklch(0.8 0.13 60);
+  --sql-comment: oklch(0.65 0.02 260);
+  --sql-type: oklch(0.78 0.11 230);
+  --sql-selection: oklch(0.7 0.12 250 / 0.3);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);

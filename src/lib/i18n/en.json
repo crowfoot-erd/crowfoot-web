@@ -1036,6 +1036,7 @@
         "createTable": "New entity",
         "createNote": "New note",
         "tableInfo": "Table info",
+        "viewTableData": "View this table's data",
         "removeTable": "Delete table",
         "removeNote": "Delete note",
         "editRelationship": "Edit relationship",

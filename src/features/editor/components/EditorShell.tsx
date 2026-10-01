@@ -914,6 +914,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
               workspaceId={publicView ? null : model.workspaceId}
               databaseType={model.databaseType}
               modelId={model.modelId}
+              sourceConnectionId={publicView ? null : model.sourceConnectionId}
               activeAreaId={activeArea}
               onActiveAreaChange={setActiveAreaId}
               onOpenAreaEdit={setAreaEditId}

@@ -1036,6 +1036,7 @@
         "createTable": "新規エンティティ",
         "createNote": "新規メモ",
         "tableInfo": "テーブル情報",
+        "viewTableData": "このテーブルのデータを見る",
         "removeTable": "テーブルを削除",
         "removeNote": "メモを削除",
         "editRelationship": "リレーションを編集",

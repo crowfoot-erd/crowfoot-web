@@ -13,6 +13,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { fail, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
+import { createColumn, createTable } from '@/features/editor/model/changes'
+import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
 import type { RowsQuery } from '@/features/database/api'
 import DatabaseBrowserPage from '@/pages/database-browser'
 import { asAuthenticated, renderWithProviders } from '@/test/test-app'
@@ -567,6 +569,82 @@ describe('데이터 브라우저 — 행 편집', () => {
     expect(screen.queryByRole('button', { name: '행 삭제' })).not.toBeInTheDocument()
     await userEvent.dblClick(screen.getByText('hello'))
     expect(screen.queryByLabelText('message 편집')).not.toBeInTheDocument()
+  })
+})
+
+describe('데이터 브라우저 — ERD 논리명', () => {
+  const base = emptyContent()
+  const content = serializeContent({
+    ...base,
+    model: {
+      ...base.model,
+      tables: [
+        createTable('orders', {
+          logicalName: '주문',
+          columns: [
+            createColumn({ physicalName: 'id', logicalName: '주문 번호', dataType: 'BIGINT' }),
+            createColumn({ physicalName: 'STATUS', logicalName: '상태' }),
+            createColumn({ physicalName: 'memo', logicalName: 'memo', dataType: 'TEXT' }),
+          ],
+        }),
+      ],
+    },
+  })
+  const summary = (modelId: string, sourceConnectionId: string | null) => ({
+    modelId, workspaceId: '101', name: `문서 ${modelId}`, description: null, databaseType: 'mysql', sourceConnectionId,
+    version: 3, createdBy: null, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
+  })
+  /** 문서 목록과 상세를 정한다 — 상세는 요청된 id를 기록한다 */
+  function useModels(models: ReturnType<typeof summary>[]) {
+    const requested: string[] = []
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models', () =>
+        HttpResponse.json(ok({ responses: models, totalCount: models.length, page: 1, size: 100, totalPages: 1 })),
+      ),
+      http.get('/api/v1/core/workspaces/101/models/:modelId', ({ params }) => {
+        requested.push(String(params.modelId))
+        const found = models.find((model) => model.modelId === params.modelId)
+        return found
+          ? HttpResponse.json(ok({ response: { ...found, content } }))
+          : HttpResponse.json({ header: { isSuccessful: false, resultCode: 'MODEL_NOT_FOUND', resultMessage: 'x' } }, { status: 404 })
+      }),
+    )
+    return requested
+  }
+  const header = (name: string) => within(screen.getByRole('table')).getByRole('columnheader', { name: new RegExp(`^${name}`) })
+
+  it('이 커넥션을 원천으로 하는 문서가 하나면 컬럼 머리에 논리명을 함께 보여 준다 — 물리명과 같은 논리명은 뺀다', async () => {
+    useModels([summary('700', '302'), summary('701', null)])
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+
+    await waitFor(() => expect(header('id')).toHaveTextContent('주문 번호'))
+    // 대소문자가 달라도 같은 컬럼이다
+    expect(header('status')).toHaveTextContent('상태')
+    expect(header('memo').textContent).toBe('memoTEXT')
+  })
+
+  it('원천 문서가 둘 이상이면 고를 수 없으니 보여 주지 않는다 — 주소에 문서가 있으면 그 문서를 쓴다', async () => {
+    const requested = useModels([summary('700', '302'), summary('702', '302')])
+    const first = renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    await waitFor(() => expect(header('id')).toBeVisible())
+    expect(requested).toEqual([])
+    expect(header('id')).not.toHaveTextContent('주문 번호')
+    first.unmount()
+
+    renderBrowser('/workspaces/101/connections/302/data?object=orders&model=702')
+    await screen.findByRole('table')
+    await waitFor(() => expect(header('id')).toHaveTextContent('주문 번호'))
+    expect(requested).toEqual(['702'])
+  })
+
+  it('주소의 문서가 다른 커넥션의 문서면 쓰지 않는다', async () => {
+    useModels([summary('703', '999')])
+    renderBrowser('/workspaces/101/connections/302/data?object=orders&model=703')
+    await screen.findByRole('table')
+    await waitFor(() => expect(header('id')).toBeVisible())
+    expect(header('id')).not.toHaveTextContent('주문 번호')
   })
 })
 

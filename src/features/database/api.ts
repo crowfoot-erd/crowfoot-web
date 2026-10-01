@@ -191,8 +191,19 @@ export function fetchCellValue(
   )
 }
 
-/** 데이터 브라우저 화면 경로 — 새 창 전체 화면(§5.1). object를 주면 그 객체를 고른 상태로 열린다 */
-export function databaseBrowserPath(workspaceId: string, connectionId: string, objectName?: string): string {
+/**
+ * 데이터 브라우저 화면 경로 — 새 창 전체 화면(§5.1).
+ * object를 주면 그 객체를 고른 상태로 열린다. model은 논리명을 읽어 올 ERD 문서다(§5.2 — 에디터에서 들어올 때).
+ */
+export function databaseBrowserPath(
+  workspaceId: string,
+  connectionId: string,
+  options: { objectName?: string; modelId?: string } = {},
+): string {
+  const params = new URLSearchParams()
+  if (options.objectName) params.set('object', options.objectName)
+  if (options.modelId) params.set('model', options.modelId)
+  const query = params.toString()
   const path = `/workspaces/${workspaceId}/connections/${connectionId}/data`
-  return objectName ? `${path}?object=${encodeURIComponent(objectName)}` : path
+  return query ? `${path}?${query}` : path
 }
