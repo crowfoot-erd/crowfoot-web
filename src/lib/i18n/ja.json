@@ -766,6 +766,7 @@
           "keys": "キーのみ (PK・FK)"
         },
         "dbmsLocked": "対象DBMS — ドキュメント作成時に固定されます",
+        "dbmsConvert": "別のDBMSに複製",
         "autoLayout": "自動レイアウト",
         "autoLayoutLayered": "階層型レイアウト",
         "autoLayoutHub": "ハブ中心レイアウト",
@@ -1230,6 +1231,30 @@
           "prepare": "キャプチャ範囲を計算中…",
           "render": "画像をレンダリング中… 大きなドキュメントには時間がかかることがあります",
           "save": "ファイルを保存中…"
+        }
+      },
+      "dbmsConvert": {
+        "title": "別のDBMSに複製",
+        "notice": "対象DBMSだけが異なる新しいドキュメントを作成します。このドキュメントは変更されません。",
+        "target": "対象DBMS",
+        "targetPlaceholder": "対象DBMSを選択",
+        "noTarget": "変換できる他のDBMSがありません",
+        "name": "新しいドキュメント名",
+        "nameRequired": "ドキュメント名を入力してください",
+        "nameTooLong": "ドキュメント名は100文字以内にしてください",
+        "defaultName": "{{name}} ({{dbms}})",
+        "submit": "新しいドキュメントとして複製",
+        "cancel": "キャンセル",
+        "successToast": "{{name}} を作成しました",
+        "report": {
+          "title": "チェック結果",
+          "clean": "表記が変わる型や合わない型はありません",
+          "typeChanges": "表記が変わる型",
+          "columnCount": "{{count}}カラム",
+          "normalized": "共通型に整理されるカラム",
+          "unsupported": "合わない型 {{count}}件",
+          "unsupportedHint": "新しいドキュメントに元の値のまま残ります。作成後に直接修正してください。",
+          "addedIndexes": "追加されるFKインデックス"
         }
       },
       "crown": {

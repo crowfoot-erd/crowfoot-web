@@ -766,6 +766,7 @@
           "keys": "키만 (PK·FK)"
         },
         "dbmsLocked": "문서 대상 DBMS — 문서 생성 시점에 고정됩니다",
+        "dbmsConvert": "다른 DBMS로 복제",
         "autoLayout": "자동 배치",
         "autoLayoutLayered": "계층형 배치",
         "autoLayoutHub": "허브 중심 배치",
@@ -1230,6 +1231,30 @@
           "prepare": "캡처 범위를 계산하는 중…",
           "render": "이미지로 렌더링하는 중… 큰 문서는 몇 초 이상 걸릴 수 있습니다",
           "save": "파일로 저장하는 중…"
+        }
+      },
+      "dbmsConvert": {
+        "title": "다른 DBMS로 복제",
+        "notice": "대상 DBMS만 다른 새 문서를 만듭니다. 이 문서는 바뀌지 않습니다.",
+        "target": "대상 DBMS",
+        "targetPlaceholder": "대상 DBMS 선택",
+        "noTarget": "전환할 수 있는 다른 DBMS가 없습니다",
+        "name": "새 문서 이름",
+        "nameRequired": "문서 이름을 입력해 주세요",
+        "nameTooLong": "문서 이름은 100자 이하여야 합니다",
+        "defaultName": "{{name}} ({{dbms}})",
+        "submit": "새 문서로 복제",
+        "cancel": "취소",
+        "successToast": "{{name}} 문서를 만들었습니다",
+        "report": {
+          "title": "검사 결과",
+          "clean": "표기가 바뀌는 타입이나 맞지 않는 타입이 없습니다",
+          "typeChanges": "표기가 바뀌는 타입",
+          "columnCount": "컬럼 {{count}}개",
+          "normalized": "공용 타입으로 정리되는 컬럼",
+          "unsupported": "맞지 않는 타입 {{count}}개",
+          "unsupportedHint": "새 문서에 원래 값 그대로 남습니다. 만든 뒤 직접 고쳐 주세요.",
+          "addedIndexes": "추가되는 FK 인덱스"
         }
       },
       "crown": {

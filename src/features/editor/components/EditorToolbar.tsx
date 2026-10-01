@@ -40,6 +40,7 @@ import { dbmsTemplate } from '@/features/editor/model/dbms'
 import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
+import { ConvertDbmsDialog } from './ConvertDbmsDialog'
 import { LogicalNamesDialog } from './LogicalNamesDialog'
 import { useAreaViewFit } from './ModelExplorerPanel'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
@@ -271,7 +272,14 @@ export function EditorToolbar({
 
       <div className="flex-1" />
 
-      <DbmsIndicator dbmsId={dbmsId} />
+      <DbmsIndicator
+        dbmsId={dbmsId}
+        convert={
+          !publicView && canEdit
+            ? { workspaceId, modelName, modelDescription, databaseType }
+            : undefined
+        }
+      />
       <ViewMenu
         nameDisplay={nameDisplay}
         onNameDisplayChange={onNameDisplayChange}
@@ -296,22 +304,59 @@ export function EditorToolbar({
   )
 }
 
-/** 문서 대상 DBMS — 문서 생성 시점의 코드 테이블 값으로 고정, 에디터에서 전환하지 않는다.
- *  DBMS 간 전환은 저장된 타입의 마이그레이션 검사가 필요해 1차 제외 (05-editor/01-core.md §17). */
-function DbmsIndicator({ dbmsId }: { dbmsId: string }) {
+/** 문서 대상 DBMS — 문서 생성 시점의 코드 테이블 값으로 고정, 제자리에서 바꾸지 않는다 (05-editor/01-core.md §17).
+ *  편집 가능한 로그인 문서에서는 배지가 버튼이다 — 누르면 대상 DBMS만 다른 새 문서로 복제하는
+ *  다이얼로그가 열린다 (05-editor/04-dbms-engineering.md §3.5). 그 밖의 화면에서는 표시만 한다. */
+function DbmsIndicator({
+  dbmsId,
+  convert,
+}: {
+  dbmsId: string
+  /** 다른 DBMS로 복제에 필요한 원본 메타 — 없으면 표시 전용 배지 */
+  convert?: { workspaceId: string; modelName: string; modelDescription: string | null; databaseType: string }
+}) {
   const { t } = useTranslation()
   const template = dbmsTemplate(dbmsId)
-
-  return (
-    <div
-      className="mr-1 flex h-7 items-center gap-1 rounded-md border bg-muted/40 px-1.5 text-xs text-muted-foreground"
-      title={t('model.editor.toolbar.dbmsLocked')}
-    >
+  const [open, setOpen] = useState(false)
+  const badgeClass =
+    'mr-1 flex h-7 items-center gap-1 rounded-md border bg-muted/40 px-1.5 text-xs text-muted-foreground'
+  const content = (
+    <>
       {/* DBMS 상징 아이콘 — dbmsId(템플릿 id)를 그대로 넘겨도 판정이 항등처리된다 */}
       <DbmsIcon databaseType={dbmsId} className="size-3.5" />
       {template.id === 'common' ? t('model.editor.dbms.common') : template.label}
       <Lock aria-hidden className="size-3" />
-    </div>
+    </>
+  )
+
+  if (!convert) {
+    return (
+      <div className={badgeClass} title={t('model.editor.toolbar.dbmsLocked')}>
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`${badgeClass} cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        title={`${t('model.editor.toolbar.dbmsLocked')} · ${t('model.editor.toolbar.dbmsConvert')}`}
+        aria-label={t('model.editor.toolbar.dbmsConvert')}
+        onClick={() => setOpen(true)}
+      >
+        {content}
+      </button>
+      <ConvertDbmsDialog
+        open={open}
+        onOpenChange={setOpen}
+        workspaceId={convert.workspaceId}
+        modelName={convert.modelName}
+        modelDescription={convert.modelDescription}
+        databaseType={convert.databaseType}
+      />
+    </>
   )
 }
 

@@ -766,6 +766,7 @@
           "keys": "仅键（PK·FK）"
         },
         "dbmsLocked": "目标 DBMS——在创建文档时固定",
+        "dbmsConvert": "复制为其他DBMS",
         "autoLayout": "自动布局",
         "autoLayoutLayered": "分层布局",
         "autoLayoutHub": "中心辐射布局",
@@ -1230,6 +1231,30 @@
           "prepare": "正在计算截取范围…",
           "render": "正在渲染图像…大型文档可能需要一些时间",
           "save": "正在保存文件…"
+        }
+      },
+      "dbmsConvert": {
+        "title": "复制为其他DBMS",
+        "notice": "创建一个仅目标DBMS不同的新文档。当前文档不会改变。",
+        "target": "目标DBMS",
+        "targetPlaceholder": "选择目标DBMS",
+        "noTarget": "没有可转换的其他DBMS",
+        "name": "新文档名称",
+        "nameRequired": "请输入文档名称",
+        "nameTooLong": "文档名称不能超过100个字符",
+        "defaultName": "{{name}} ({{dbms}})",
+        "submit": "复制为新文档",
+        "cancel": "取消",
+        "successToast": "已创建文档 {{name}}",
+        "report": {
+          "title": "检查结果",
+          "clean": "没有表示法变化的类型，也没有不兼容的类型",
+          "typeChanges": "表示法会变化的类型",
+          "columnCount": "{{count}} 列",
+          "normalized": "整理为通用类型的列",
+          "unsupported": "不兼容的类型 {{count}} 个",
+          "unsupportedHint": "这些列在新文档中保持原值。创建后请自行修改。",
+          "addedIndexes": "将添加的FK索引"
         }
       },
       "crown": {

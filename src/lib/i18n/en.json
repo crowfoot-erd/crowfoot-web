@@ -766,6 +766,7 @@
           "keys": "Keys only (PK·FK)"
         },
         "dbmsLocked": "Target DBMS — fixed at document creation",
+        "dbmsConvert": "Duplicate for another DBMS",
         "autoLayout": "Auto layout",
         "autoLayoutLayered": "Layered layout",
         "autoLayoutHub": "Hub-centered layout",
@@ -1230,6 +1231,30 @@
           "prepare": "Measuring the capture range…",
           "render": "Rendering the image… large documents can take a while",
           "save": "Saving the file…"
+        }
+      },
+      "dbmsConvert": {
+        "title": "Duplicate for another DBMS",
+        "notice": "Creates a new document with a different target DBMS. This document is not changed.",
+        "target": "Target DBMS",
+        "targetPlaceholder": "Select a target DBMS",
+        "noTarget": "There is no other DBMS to convert to",
+        "name": "New document name",
+        "nameRequired": "Enter a document name",
+        "nameTooLong": "The document name must be 100 characters or fewer",
+        "defaultName": "{{name}} ({{dbms}})",
+        "submit": "Duplicate as new document",
+        "cancel": "Cancel",
+        "successToast": "Created document {{name}}",
+        "report": {
+          "title": "Check results",
+          "clean": "No type notation changes and no incompatible types",
+          "typeChanges": "Types whose notation changes",
+          "columnCount": "{{count}} column(s)",
+          "normalized": "Columns normalized to common types",
+          "unsupported": "{{count}} incompatible type(s)",
+          "unsupportedHint": "These stay as they are in the new document. Fix them yourself after it is created.",
+          "addedIndexes": "FK indexes to be added"
         }
       },
       "crown": {
