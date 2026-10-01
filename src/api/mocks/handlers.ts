@@ -1164,7 +1164,7 @@ export const fixtures = {
     } as Record<string, { key: string; count: number; share: number; displayName: string | null }[]>,
     actions: [
       { action: 'MODEL_CREATED', count: 10 },
-      { action: 'LOGIN_SUCCEEDED', count: 7 },
+      { action: 'USER_LOGGED_IN', count: 7 },
       { action: 'WORKSPACE_CREATED', count: 4 },
       { action: 'MODEL_UPDATED', count: 3 },
     ],
