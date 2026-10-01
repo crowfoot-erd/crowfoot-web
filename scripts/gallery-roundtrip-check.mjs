@@ -10,7 +10,7 @@ const page = await (await browser.newContext()).newPage()
 
 /* 1) 게스트 — 랜딩 갤러리(실 gateway 왕복) + 히어로 카피 */
 await page.goto(WEB + '/')
-await page.waitForSelector('h2:has-text("지금 공유되고 있는 문서")', { timeout: 15_000 })
+await page.waitForSelector('h2:has-text("지금 공유되고 있는 ERD")', { timeout: 15_000 })
 const heroText = await page.locator('h1').innerText()
 console.log(`[히어로] "${heroText.replace(/\n/g, ' ')}" — 스텝 3종: ${await page.locator('section[aria-label="사용 흐름"] h3').count()}`)
 const cards = page.locator('a[href^="/share/"]')
@@ -55,7 +55,7 @@ await page.route('**/api/v1/auth/refresh-token', (r) =>
 await page.getByRole('button', { name: /검증/ }).click()
 await page.getByRole('menuitem', { name: '로그아웃' }).click()
 await page.waitForURL((u) => u.pathname === '/', { timeout: 15_000 })
-await page.waitForSelector('h1:has-text("한 장의 ERD가")', { timeout: 15_000 })
+await page.waitForSelector('h1:has-text("브라우저에서 그리는 무료 ERD")', { timeout: 15_000 })
 console.log(`[로그아웃] ${page.url()} 도착 — 랜딩 히어로 렌더 (/login 아님 확인)`)
 
 /* 4) 파비콘 — 로고 기반 재작성 반영 */

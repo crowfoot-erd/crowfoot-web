@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import i18n from '@/lib/i18n'
 import { SITE_ORIGIN, usePageMeta, type PageMeta } from '@/hooks/usePageMeta'
 
-const DEFAULT_TITLE = 'Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지'
+const DEFAULT_TITLE = 'Crowfoot — 무료 온라인 ERD 툴 | 설계부터 DB 생성까지'
 const DEFAULT_DESCRIPTION = '기본 서비스 설명'
 
 function seedMeta(attr: 'name' | 'property', key: string, content: string) {

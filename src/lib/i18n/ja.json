@@ -1540,11 +1540,11 @@
     "skippedToast": "スキップしたステートメント: {{skipped}}"
   },
   "landing": {
-    "badge": "無料・オープンソースのERDエディター",
+    "badge": "無料のオンラインERDツール · オープンソース",
     "hero": {
-      "title": "1枚のダイアグラムから",
-      "titleAccent": "動くデータベースへ",
-      "description": "設計し、一緒に磨き、そのまま実行 — データ作業のすべてをブラウザ1つで。"
+      "title": "ブラウザで描く無料のERD、",
+      "titleAccent": "そのまま実際のデータベースに",
+      "description": "インストール不要。ブラウザでER図を描き、チームとリアルタイムで磨き上げ、MySQL・PostgreSQLのデータベースまですぐに作成できます。既存のDBからERDを自動生成し、DDLやマイグレーションSQLも出力します。"
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1552,18 +1552,18 @@
       "free": "無料"
     },
     "steps": {
-      "label": "利用の流れ",
+      "label": "ERD作成からDB構築まで",
       "draw": {
-        "title": "描く",
-        "description": "インストールも設定も不要。ブラウザーでそのままERDを描けます。"
+        "title": "ERDを描く",
+        "description": "インストールも設定も不要。ブラウザでテーブル・カラム・リレーションを描きます。既存のDBやSQL(DDL)から読み込むこともできます。"
       },
       "refine": {
         "title": "一緒に磨く",
-        "description": "同じドキュメントをチームで編集し、変更はリアルタイムでマージされます。"
+        "description": "同じERDを複数人で同時に編集できます。変更はリアルタイムで統合され、保存するたびにバージョンが残ります。"
       },
       "run": {
-        "title": "実行する",
-        "description": "設計どおりの形のPostgreSQLまたはMySQLデータベースを無料で受け取れます。"
+        "title": "DBにする",
+        "description": "設計どおりのDDLを生成し、MySQL・PostgreSQLに反映します。開発用データベースも無料で発行できます。"
       }
     },
     "cta": {
@@ -1574,22 +1574,46 @@
       "goApp": "アプリへ移動"
     },
     "features": {
-      "heading": "主な機能",
+      "heading": "ERD設計に必要な機能をひとつに",
       "managed": {
-        "title": "無料マネージドデータベース",
-        "description": "1アカウントあたり最大5個のPostgreSQLまたはMySQL開発用データベースを無料で利用できます。テスト済みですぐ接続できます。"
+        "title": "無料のMySQL・PostgreSQLデータベース",
+        "description": "開発用のMySQL・PostgreSQLデータベースを1アカウントにつき最大5個まで無料で発行します。描いたERDをすぐに実際のテーブルにできます。"
       },
       "editor": {
-        "title": "ブラウザーERDエディター",
-        "description": "インストール・設定不要。Crow's Foot表記法でテーブルとリレーションをブラウザー上でそのまま描けます。"
+        "title": "オンラインERDエディター",
+        "description": "インストール不要でブラウザからすぐに使えます。クロウズフット(Crow's Foot)記法でテーブルとリレーションを描き、論理名と物理名をあわせて管理します。"
       },
       "collaboration": {
-        "title": "リアルタイム共同編集",
-        "description": "同じドキュメントを一緒に編集 — 在席状況と変更がリアルタイムで同期されます。"
+        "title": "リアルタイムERD共同編集",
+        "description": "同じドキュメントを複数人で同時に編集できます。相手のカーソルと変更がリアルタイムで見え、編集内容は自動的に統合されます。"
       },
       "connections": {
-        "title": "自分のデータベースを持ち込む",
-        "description": "既に運用しているデータベースの接続プロファイルを保存し、ワンクリックでテストできます。"
+        "title": "DBからERDを自動生成",
+        "description": "稼働中のMySQL・PostgreSQLに接続すると、テーブルとリレーションを読み取ってERDを自動で描きます(リバースエンジニアリング)。スキーマが変わったらドキュメントに再反映できます。"
+      },
+      "sql": {
+        "title": "DDL・マイグレーションSQLの生成",
+        "description": "ERDからCREATE TABLEスクリプトを生成し、変更された部分だけをALTER文で出力します。SQL(DDL)を貼り付けてERDとして取り込むこともできます。"
+      },
+      "validation": {
+        "title": "ERD設計チェック",
+        "description": "主キーの欠落、名前の重複、型が合わない外部キーなどの設計上の問題を17のルールで自動チェックします。"
+      },
+      "history": {
+        "title": "バージョン履歴と比較",
+        "description": "保存するたびにバージョンが残ります。2つのバージョンの差分を比較し、好きな時点に戻せます。"
+      },
+      "library": {
+        "title": "ERDサンプル・テンプレート",
+        "description": "EC、医療、教育、金融など実務テーマのERDサンプル509種を閲覧し、テンプレートを複製してすぐに始められます。"
+      },
+      "share": {
+        "title": "リンク共有とフィードバック",
+        "description": "読み取り専用リンクでERDを共有します。ログインなしで閲覧でき、コメントやいいねで意見を受け取れます。"
+      },
+      "export": {
+        "title": "画像・SQLのエクスポート",
+        "description": "ERDをPNG画像、SQLスクリプト、ドキュメントファイル(.crown)としてダウンロードできます。"
       },
       "roles": {
         "title": "ワークスペースとチームのロール",
@@ -1606,7 +1630,7 @@
       "currentVersion": "現在のバージョン v{{version}}"
     },
     "gallery": {
-      "heading": "いま共有されているドキュメント",
+      "heading": "いま共有されているERD",
       "popular": "人気のドキュメント",
       "recent": "最近共有されたドキュメント",
       "popularBadge": "人気",
@@ -1618,8 +1642,8 @@
       "heading": "最新リリース"
     },
     "seo": {
-      "title": "Crowfoot — 無料ERDエディター · 設計から実DBの構築まで",
-      "description": "ブラウザでERDを描き、リアルタイムで共同編集し、実際のデータベースまで作成できる無料のデータモデリングツール。"
+      "title": "Crowfoot — 無料オンラインERDツール | 設計からDB作成まで",
+      "description": "インストール不要、ブラウザで使える無料ERDツール。リアルタイム共同編集、DBからのERD自動生成、DDL・マイグレーションSQL、無料のMySQL・PostgreSQLデータベースまで。"
     }
   },
   "terms": {

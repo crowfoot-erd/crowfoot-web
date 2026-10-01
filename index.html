@@ -13,10 +13,10 @@
          배포 산물에서 걷어낸다 — 인라인 스크립트 안의 주석은 못 걷으니 HTML 주석으로만 단다.
          메타 태그 구조(title·description·og:*·canonical·JSON-LD·html lang)를 바꾸면
          prerender.mjs의 셀렉터가 빌드를 실패시킨다 — 그 게이트를 피하려면 두 파일을 같이 고친다 -->
-    <title>Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지</title>
+    <title>Crowfoot — 무료 온라인 ERD 툴 | 설계부터 DB 생성까지</title>
     <meta
       name="description"
-      content="웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구."
+      content="설치 없이 브라우저에서 쓰는 무료 ERD 툴. 실시간 협업, DB에서 ERD 자동 생성, DDL·마이그레이션 SQL, 무료 MySQL·PostgreSQL 데이터베이스까지."
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://crowfoot.java21.net/" />
@@ -25,10 +25,10 @@
     <!-- Open Graph·Twitter — 링크 공유 미리보기(og:image 재생성: node scripts/generate-og-image.mjs) -->
     <meta property="og:site_name" content="Crowfoot" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지" />
+    <meta property="og:title" content="Crowfoot — 무료 온라인 ERD 툴 | 설계부터 DB 생성까지" />
     <meta
       property="og:description"
-      content="웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구."
+      content="설치 없이 브라우저에서 쓰는 무료 ERD 툴. 실시간 협업, DB에서 ERD 자동 생성, DDL·마이그레이션 SQL, 무료 MySQL·PostgreSQL 데이터베이스까지."
     />
     <meta property="og:url" content="https://crowfoot.java21.net/" />
     <meta property="og:locale" content="ko_KR" />
@@ -43,10 +43,12 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "Crowfoot",
+        "alternateName": "Crowfoot ERD",
         "url": "https://crowfoot.java21.net/",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Web",
-        "description": "웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구.",
+        "isAccessibleForFree": true,
+        "description": "설치 없이 브라우저에서 쓰는 무료 ERD 툴. 실시간 협업, DB에서 ERD 자동 생성, DDL·마이그레이션 SQL, 무료 MySQL·PostgreSQL 데이터베이스까지.",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
       }
     </script>

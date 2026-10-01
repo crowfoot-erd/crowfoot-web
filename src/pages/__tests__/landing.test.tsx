@@ -21,28 +21,35 @@ describe('랜딩 페이지', () => {
     resetSessionState()
   })
 
-  it('게스트 — 히어로·핵심 강조·특징 6종·CTA를 렌더한다', () => {
+  it('게스트 — 히어로·핵심 강조·특징 12종·CTA를 렌더한다', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('한 장의 ERD가')
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('실제 데이터베이스가 됩니다')
+    // h1에 검색 핵심어(무료 ERD)가 들어 있다
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('그대로 실제 데이터베이스가 됩니다')
     // 핵심 강조 — 무료 매니지드 DB 조건
     expect(screen.getByText('PostgreSQL · MySQL')).toBeInTheDocument()
     expect(screen.getByText('계정당 최대 5개')).toBeInTheDocument()
     expect(screen.getByText('무료 제공')).toBeInTheDocument()
-    // 특징 6종 카드 — 매니지드 DB가 첫 번째
+    // 특징 12종 카드 — 매니지드 DB가 첫 번째
     for (const title of [
-      '무료 매니지드 데이터베이스',
-      '브라우저 ERD 에디터',
-      '실시간 협업',
-      '데이터베이스 연동',
+      '무료 MySQL·PostgreSQL 데이터베이스',
+      '온라인 ERD 에디터',
+      '실시간 ERD 협업',
+      'DB에서 ERD 자동 생성',
+      'DDL·마이그레이션 SQL 생성',
+      'ERD 설계 검증',
+      '버전 기록과 비교',
+      'ERD 예제·템플릿',
+      '링크 공유와 피드백',
+      '이미지·SQL 내보내기',
       '워크스페이스·팀 권한',
       '오픈소스',
     ]) {
       expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
     }
-    // 3단계 흐름 — 그리기 → 함께 다듬기 → 실행
-    for (const title of ['그리기', '함께 다듬기', '실행하기']) {
+    // 3단계 흐름 — ERD 그리기 → 함께 다듬기 → DB로 만들기
+    for (const title of ['ERD 그리기', '함께 다듬기', 'DB로 만들기']) {
       expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
     }
     // CTA — 로그인 링크와 GitHub 외부 링크
@@ -61,7 +68,7 @@ describe('랜딩 페이지', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
     // then: 템플릿 진입은 워크스페이스 다이얼로그뿐 — 랜딩 섹션·제목 모두 없다
-    await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })
+    await screen.findByRole('heading', { name: '지금 공유되고 있는 ERD' })
     expect(screen.queryByTestId('landing-templates')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '템플릿으로 바로 시작' })).not.toBeInTheDocument()
   })
@@ -70,7 +77,7 @@ describe('랜딩 페이지', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
     // then: 제목은 원래 이름으로 고정 — 순서·선별(전 워크스페이스·인기 3 우선+최근·21 상한)은 서버 소관
-    expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 문서' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: '지금 공유되고 있는 ERD' })).toBeVisible()
     // 인기 박스 — 선두 3건(반응 수 우선, v1.21)이 다른 꼴의 카드로 강조된다
     expect(screen.getByText('가장 인기 있는 문서')).toBeVisible()
     const popular = screen.getByTestId('landing-gallery-popular')
@@ -122,9 +129,9 @@ describe('랜딩 페이지', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
     // 갤러리 로드가 확정될 때까지 대기 후 — 헤딩이 없다
-    await screen.findByRole('heading', { name: '주요 기능' })
+    await screen.findByRole('heading', { name: 'ERD 설계에 필요한 기능을 한곳에' })
     await expect
-      .poll(() => screen.queryByRole('heading', { name: '지금 공유되고 있는 문서' }))
+      .poll(() => screen.queryByRole('heading', { name: '지금 공유되고 있는 ERD' }))
       .toBeNull()
   })
 
@@ -154,7 +161,7 @@ describe('랜딩 페이지', () => {
     )
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    await screen.findByRole('heading', { name: '주요 기능' })
+    await screen.findByRole('heading', { name: 'ERD 설계에 필요한 기능을 한곳에' })
     await expect
       .poll(() => screen.queryByRole('heading', { name: '최근 릴리스' }))
       .toBeNull()
@@ -170,7 +177,7 @@ describe('랜딩 페이지', () => {
     )
 
     // then: 리다이렉트 없이 랜딩이 렌더된다 — 인증 사용자도 열람 가능
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('한 장의 ERD가')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
     // 히어로 CTA·헤더 버튼 모두 앱(대시보드)으로 — 로그인 유도는 사라진다
     expect(screen.getByRole('link', { name: '앱으로 이동' })).toHaveAttribute('href', '/dashboard')
     expect(screen.getByRole('link', { name: '대시보드' })).toHaveAttribute('href', '/dashboard')

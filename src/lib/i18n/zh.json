@@ -1540,11 +1540,11 @@
     "skippedToast": "已跳过的语句：{{skipped}}"
   },
   "landing": {
-    "badge": "免费开源的 ERD 编辑器",
+    "badge": "免费在线 ERD 工具 · 开源",
     "hero": {
-      "title": "从一张图表",
-      "titleAccent": "到真实运行的数据库",
-      "description": "设计、协作完善，然后运行——数据工作的每一步都在一个浏览器标签页中完成。"
+      "title": "在浏览器中绘制的免费 ERD，",
+      "titleAccent": "直接变成真实的数据库",
+      "description": "无需安装，在浏览器中绘制 ER 图，与团队实时协作完善，并立即创建 MySQL、PostgreSQL 数据库。还可以从现有数据库自动生成 ERD，并生成 DDL 和迁移 SQL。"
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1552,18 +1552,18 @@
       "free": "免费"
     },
     "steps": {
-      "label": "使用流程",
+      "label": "从绘制 ERD 到创建数据库",
       "draw": {
-        "title": "绘制",
-        "description": "直接在浏览器中绘制 ERD——无需安装，无需配置。"
+        "title": "绘制 ERD",
+        "description": "无需安装和配置，在浏览器中绘制表、列和关系。也可以从现有数据库或 SQL（DDL）导入。"
       },
       "refine": {
         "title": "协作完善",
-        "description": "与团队编辑同一文档，变更实时合并。"
+        "description": "多人同时编辑同一个 ERD。更改实时合并，每次保存都会留下版本。"
       },
       "run": {
-        "title": "运行",
-        "description": "获得一个与你的设计完全一致的免费 PostgreSQL 或 MySQL 数据库。"
+        "title": "生成数据库",
+        "description": "按照设计生成 DDL 并应用到 MySQL、PostgreSQL。还可以免费获得开发用数据库。"
       }
     },
     "cta": {
@@ -1574,22 +1574,46 @@
       "goApp": "前往应用"
     },
     "features": {
-      "heading": "功能",
+      "heading": "ERD 设计所需的功能尽在一处",
       "managed": {
-        "title": "免费托管数据库",
-        "description": "每个账户最多可开通 5 个免费的 PostgreSQL 或 MySQL 开发数据库——经过测试，随时可连接。"
+        "title": "免费的 MySQL、PostgreSQL 数据库",
+        "description": "每个账号最多可免费获得 5 个开发用 MySQL、PostgreSQL 数据库，可以把绘制的 ERD 立即变成真实的表。"
       },
       "editor": {
-        "title": "浏览器 ERD 编辑器",
-        "description": "无需安装，无需配置。直接在浏览器中使用 Crow's Foot 记法绘制表和关系。"
+        "title": "在线 ERD 编辑器",
+        "description": "无需安装，在浏览器中即可使用。使用鱼尾纹（Crow's Foot）表示法绘制表和关系，并同时管理逻辑名和物理名。"
       },
       "collaboration": {
-        "title": "实时协作",
-        "description": "共同编辑同一文档——在线状态和变更实时同步。"
+        "title": "实时 ERD 协作",
+        "description": "多人同时编辑同一个文档。可以实时看到对方的光标和更改，编辑内容会自动合并。"
       },
       "connections": {
-        "title": "接入你自己的数据库",
-        "description": "保存你已有数据库的连接信息，一键测试连通性。"
+        "title": "从数据库自动生成 ERD",
+        "description": "连接到正在运行的 MySQL、PostgreSQL，读取表和关系并自动绘制 ERD（逆向工程）。架构发生变化时可以重新同步到文档。"
+      },
+      "sql": {
+        "title": "生成 DDL 和迁移 SQL",
+        "description": "从 ERD 生成 CREATE TABLE 脚本，并仅将更改的部分输出为 ALTER 语句。也可以粘贴 SQL（DDL）导入为 ERD。"
+      },
+      "validation": {
+        "title": "ERD 设计检查",
+        "description": "通过 17 条规则自动检查缺少主键、名称重复、外键类型不匹配等设计问题。"
+      },
+      "history": {
+        "title": "版本记录与比较",
+        "description": "每次保存都会留下版本。可以比较两个版本的差异，并恢复到任意时间点。"
+      },
+      "library": {
+        "title": "ERD 示例与模板",
+        "description": "浏览电商、医疗、教育、金融等实际业务主题的 509 个 ERD 示例，或复制模板立即开始。"
+      },
+      "share": {
+        "title": "链接分享与反馈",
+        "description": "通过只读链接分享 ERD。无需登录即可查看，并可通过评论和点赞收集意见。"
+      },
+      "export": {
+        "title": "导出图片和 SQL",
+        "description": "将 ERD 下载为 PNG 图片、SQL 脚本或文档文件（.crown）。"
       },
       "roles": {
         "title": "工作区与团队角色",
@@ -1606,7 +1630,7 @@
       "currentVersion": "当前版本 v{{version}}"
     },
     "gallery": {
-      "heading": "正在共享中的文档",
+      "heading": "正在分享的 ERD",
       "popular": "最受欢迎的文档",
       "recent": "最近共享的文档",
       "popularBadge": "热门",
@@ -1618,8 +1642,8 @@
       "heading": "最新发布"
     },
     "seo": {
-      "title": "Crowfoot — 免费 ERD 编辑器 · 从设计到真实数据库运行",
-      "description": "在浏览器中绘制 ERD、实时协作，甚至创建真实数据库的免费数据建模工具。"
+      "title": "Crowfoot — 免费在线 ERD 工具 | 设计、协作、创建数据库",
+      "description": "无需安装、在浏览器中使用的免费 ERD 工具。实时协作、从现有数据库自动生成 ERD、生成 DDL 和迁移 SQL、免费的 MySQL 与 PostgreSQL 数据库，尽在一处。"
     }
   },
   "terms": {

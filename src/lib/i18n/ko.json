@@ -1540,11 +1540,11 @@
     "skippedToast": "읽지 못한 문장: {{skipped}}"
   },
   "landing": {
-    "badge": "무료 · 오픈소스 ERD 에디터",
+    "badge": "무료 온라인 ERD 툴 · 오픈소스",
     "hero": {
-      "title": "한 장의 ERD가",
-      "titleAccent": "실제 데이터베이스가 됩니다",
-      "description": "설계하고, 함께 다듬고, 바로 구동까지 — 데이터 작업의 모든 단계를 브라우저 하나에서."
+      "title": "브라우저에서 그리는 무료 ERD,",
+      "titleAccent": "그대로 실제 데이터베이스가 됩니다",
+      "description": "설치 없이 브라우저에서 ERD를 그리고, 팀과 실시간으로 함께 다듬고, MySQL·PostgreSQL 데이터베이스까지 바로 만드세요. 기존 DB를 읽어 ERD를 자동으로 그리고, DDL과 마이그레이션 SQL도 만들어 줍니다."
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1552,18 +1552,18 @@
       "free": "무료 제공"
     },
     "steps": {
-      "label": "사용 흐름",
+      "label": "ERD 작성부터 DB 생성까지",
       "draw": {
-        "title": "그리기",
-        "description": "브라우저에서 바로 ERD를 그립니다 — 설치도 설정도 없이."
+        "title": "ERD 그리기",
+        "description": "설치도 설정도 없이 브라우저에서 테이블·컬럼·관계를 그립니다. 기존 DB나 SQL(DDL)에서 불러올 수도 있습니다."
       },
       "refine": {
         "title": "함께 다듬기",
-        "description": "같은 문서를 여럿이 동시에 편집하고, 변경사항은 실시간으로 합쳐집니다."
+        "description": "같은 ERD를 여럿이 동시에 편집합니다. 변경은 실시간으로 합쳐지고, 저장할 때마다 버전이 남습니다."
       },
       "run": {
-        "title": "실행하기",
-        "description": "설계한 모양 그대로 PostgreSQL·MySQL 데이터베이스를 무료로 발급받습니다."
+        "title": "DB로 만들기",
+        "description": "설계한 그대로 DDL을 만들어 MySQL·PostgreSQL에 반영합니다. 개발용 데이터베이스도 무료로 발급받습니다."
       }
     },
     "cta": {
@@ -1574,22 +1574,46 @@
       "goApp": "앱으로 이동"
     },
     "features": {
-      "heading": "주요 기능",
+      "heading": "ERD 설계에 필요한 기능을 한곳에",
       "managed": {
-        "title": "무료 매니지드 데이터베이스",
-        "description": "PostgreSQL·MySQL 개발용 데이터베이스를 계정당 최대 5개까지 무료로 발급합니다. 연결 테스트로 바로 사용할 수 있어요."
+        "title": "무료 MySQL·PostgreSQL 데이터베이스",
+        "description": "개발용 MySQL·PostgreSQL 데이터베이스를 계정당 최대 5개까지 무료로 발급합니다. 그린 ERD를 바로 실제 테이블로 만들어 볼 수 있습니다."
       },
       "editor": {
-        "title": "브라우저 ERD 에디터",
-        "description": "설치·설정 없이 브라우저에서 바로. 까마귀발(Crow's Foot) 표기법으로 테이블과 관계를 그립니다."
+        "title": "온라인 ERD 에디터",
+        "description": "설치 없이 브라우저에서 바로 씁니다. 까마귀발(Crow's Foot) 표기법으로 테이블과 관계를 그리고, 논리 이름과 물리 이름을 함께 관리합니다."
       },
       "collaboration": {
-        "title": "실시간 협업",
-        "description": "같은 문서를 여럿이 동시에 편집 — 접속 현황과 변경사항이 실시간으로 동기화됩니다."
+        "title": "실시간 ERD 협업",
+        "description": "같은 문서를 여럿이 동시에 편집합니다. 상대의 커서와 변경 사항이 실시간으로 보이고, 편집 내용은 자동으로 합쳐집니다."
       },
       "connections": {
-        "title": "데이터베이스 연동",
-        "description": "직접 운영하는 DB의 접속 정보도 저장하고 연결을 테스트할 수 있습니다."
+        "title": "DB에서 ERD 자동 생성",
+        "description": "운영 중인 MySQL·PostgreSQL에 연결하면 테이블과 관계를 읽어 ERD를 자동으로 그립니다(리버스 엔지니어링). 스키마가 바뀌면 문서에 다시 반영합니다."
+      },
+      "sql": {
+        "title": "DDL·마이그레이션 SQL 생성",
+        "description": "ERD에서 CREATE TABLE 스크립트를 만들고, 바뀐 부분만 ALTER 문으로 뽑아 줍니다. SQL(DDL)을 붙여 넣어 ERD로 가져올 수도 있습니다."
+      },
+      "validation": {
+        "title": "ERD 설계 검증",
+        "description": "PK 누락, 이름 중복, 타입이 맞지 않는 FK 같은 설계 문제를 17가지 규칙으로 자동 점검합니다."
+      },
+      "history": {
+        "title": "버전 기록과 비교",
+        "description": "저장할 때마다 버전이 남습니다. 두 버전의 차이를 비교하고 원하는 시점으로 되돌릴 수 있습니다."
+      },
+      "library": {
+        "title": "ERD 예제·템플릿",
+        "description": "커머스, 의료, 교육, 금융 등 실무 주제 ERD 예제 509종을 열어 보고, 템플릿을 복제해 바로 시작합니다."
+      },
+      "share": {
+        "title": "링크 공유와 피드백",
+        "description": "읽기 전용 링크로 ERD를 공유합니다. 로그인 없이 볼 수 있고, 댓글과 좋아요로 의견을 받습니다."
+      },
+      "export": {
+        "title": "이미지·SQL 내보내기",
+        "description": "ERD를 PNG 이미지, SQL 스크립트, 문서 파일(.crown)로 내려받습니다."
       },
       "roles": {
         "title": "워크스페이스·팀 권한",
@@ -1606,7 +1630,7 @@
       "currentVersion": "현재 버전 v{{version}}"
     },
     "gallery": {
-      "heading": "지금 공유되고 있는 문서",
+      "heading": "지금 공유되고 있는 ERD",
       "popular": "가장 인기 있는 문서",
       "recent": "최근 공유되고 있는 문서",
       "popularBadge": "인기",
@@ -1618,8 +1642,8 @@
       "heading": "최근 릴리스"
     },
     "seo": {
-      "title": "Crowfoot — 무료 ERD 에디터 · 설계부터 실제 DB 구동까지",
-      "description": "웹 브라우저에서 ERD를 그리고, 실시간으로 협업하고, 실제 데이터베이스까지 만들어주는 무료 데이터 모델링 도구."
+      "title": "Crowfoot — 무료 온라인 ERD 툴 | 설계부터 DB 생성까지",
+      "description": "설치 없이 브라우저에서 쓰는 무료 ERD 툴. 실시간 협업, DB에서 ERD 자동 생성, DDL·마이그레이션 SQL, 무료 MySQL·PostgreSQL 데이터베이스까지."
     }
   },
   "terms": {

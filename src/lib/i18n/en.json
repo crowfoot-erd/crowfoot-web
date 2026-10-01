@@ -1540,11 +1540,11 @@
     "skippedToast": "Skipped statements: {{skipped}}"
   },
   "landing": {
-    "badge": "Free, open-source ERD editor",
+    "badge": "Free online ERD tool · Open source",
     "hero": {
-      "title": "From one diagram",
-      "titleAccent": "to a live database",
-      "description": "Design it, refine it together, then run it — every step of your data work in one browser tab."
+      "title": "A free ERD tool in your browser,",
+      "titleAccent": "from diagram to a real database",
+      "description": "Draw ER diagrams in your browser with nothing to install, refine them with your team in real time, and create MySQL or PostgreSQL databases right away. Crowfoot can also generate an ERD from an existing database and produce DDL and migration SQL."
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1552,18 +1552,18 @@
       "free": "Free"
     },
     "steps": {
-      "label": "How it works",
+      "label": "From ERD to a running database",
       "draw": {
-        "title": "Draw",
-        "description": "Sketch your ERD right in the browser — no install, no setup."
+        "title": "Draw the ERD",
+        "description": "Create tables, columns and relationships in your browser with no install or setup. You can also import from an existing database or from SQL (DDL)."
       },
       "refine": {
-        "title": "Refine together",
-        "description": "Edit the same document with your team, changes merged in real time."
+        "title": "Refine it together",
+        "description": "Edit the same ERD with several people at once. Changes merge in real time, and every save keeps a version."
       },
       "run": {
-        "title": "Run it",
-        "description": "Get a free PostgreSQL or MySQL database shaped exactly like your design."
+        "title": "Turn it into a database",
+        "description": "Generate DDL from your design and apply it to MySQL or PostgreSQL. Development databases are provided for free."
       }
     },
     "cta": {
@@ -1574,22 +1574,46 @@
       "goApp": "Go to app"
     },
     "features": {
-      "heading": "Features",
+      "heading": "Everything you need for ERD design in one place",
       "managed": {
-        "title": "Free managed databases",
-        "description": "Spin up to 5 free PostgreSQL or MySQL dev databases per account — tested and ready to connect."
+        "title": "Free MySQL and PostgreSQL databases",
+        "description": "Get up to 5 free MySQL or PostgreSQL development databases per account, and turn the ERD you drew into real tables right away."
       },
       "editor": {
-        "title": "Browser ERD editor",
-        "description": "No install, no setup. Draw tables and relationships with Crow's Foot notation right in your browser."
+        "title": "Online ERD editor",
+        "description": "Use it in your browser with nothing to install. Draw tables and relationships in Crow's Foot notation and manage logical and physical names together."
       },
       "collaboration": {
-        "title": "Real-time collaboration",
-        "description": "Edit the same document together — presence and changes sync in real time."
+        "title": "Real-time ERD collaboration",
+        "description": "Several people edit the same document at once. You see each other's cursors and changes live, and edits are merged automatically."
       },
       "connections": {
-        "title": "Bring your own database",
-        "description": "Store connection profiles for databases you already run, and test them in one click."
+        "title": "Generate an ERD from a database",
+        "description": "Connect to a running MySQL or PostgreSQL database and Crowfoot reads its tables and relationships to draw the ERD for you (reverse engineering). When the schema changes, sync it back into the document."
+      },
+      "sql": {
+        "title": "DDL and migration SQL",
+        "description": "Generate CREATE TABLE scripts from your ERD and get only the changed parts as ALTER statements. You can also paste SQL (DDL) to import it as an ERD."
+      },
+      "validation": {
+        "title": "ERD design checks",
+        "description": "Automatically checks 17 rules for design problems such as missing primary keys, duplicate names and foreign keys with mismatched types."
+      },
+      "history": {
+        "title": "Version history and compare",
+        "description": "Every save keeps a version. Compare any two versions and restore the one you want."
+      },
+      "library": {
+        "title": "ERD examples and templates",
+        "description": "Browse 509 real-world ERD examples across commerce, healthcare, education, finance and more, or duplicate a template to get started."
+      },
+      "share": {
+        "title": "Link sharing and feedback",
+        "description": "Share an ERD with a read-only link. Anyone can view it without signing in and leave comments and likes."
+      },
+      "export": {
+        "title": "Image and SQL export",
+        "description": "Download your ERD as a PNG image, an SQL script or a document file (.crown)."
       },
       "roles": {
         "title": "Workspace & team roles",
@@ -1606,7 +1630,7 @@
       "currentVersion": "Current version v{{version}}"
     },
     "gallery": {
-      "heading": "Documents being shared right now",
+      "heading": "ERDs being shared right now",
       "popular": "Most popular documents",
       "recent": "Recently shared documents",
       "popularBadge": "Popular",
@@ -1618,8 +1642,8 @@
       "heading": "Latest releases"
     },
     "seo": {
-      "title": "Crowfoot — Free ERD Editor · From Design to a Running Database",
-      "description": "A free data modeling tool that lets you draw ERDs in your browser, collaborate in real time, and even provision a real database."
+      "title": "Crowfoot — Free Online ERD Tool | Design to Live Database",
+      "description": "Free online ERD tool with nothing to install. Real-time collaboration, ERD from an existing database, DDL and migration SQL, and free MySQL/PostgreSQL databases."
     }
   },
   "terms": {

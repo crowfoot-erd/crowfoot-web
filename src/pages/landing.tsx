@@ -6,7 +6,7 @@
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, Flame, Heart, Layers, ShieldCheck, Users } from 'lucide-react'
+import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, FileCode2, FileDown, Flame, Heart, History, Layers, LibraryBig, ListChecks, Share2, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { DbmsIcon } from '@/components/dbms-icon'
@@ -23,22 +23,32 @@ import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
 import { useSessionStore } from '@/stores/session'
 
-/** 특징 카드 정의 — 핵심(무료 매니지드 DB)이 먼저 온다. 아이콘은 중립 도형만 (lucide v1 브랜드 아이콘 없음) */
+/** 특징 카드 정의 — 핵심(무료 매니지드 DB)이 먼저 온다. 아이콘은 중립 도형만 (lucide v1 브랜드 아이콘 없음).
+ *  카드 하나가 검색 의도 하나에 대응한다(ERD 에디터·협업·리버스·DDL·검증·버전·예제·공유·내보내기) —
+ *  문구는 i18n landing.features.{key} (04-front/storyboard/00-common.md §3.11) */
 const FEATURES = [
   { key: 'managed', icon: Database },
   { key: 'editor', icon: Layers },
   { key: 'collaboration', icon: Users },
   { key: 'connections', icon: Cable },
+  { key: 'sql', icon: FileCode2 },
+  { key: 'validation', icon: ListChecks },
+  { key: 'history', icon: History },
+  { key: 'library', icon: LibraryBig },
+  { key: 'share', icon: Share2 },
+  { key: 'export', icon: FileDown },
   { key: 'roles', icon: ShieldCheck },
   { key: 'opensource', icon: Code2 },
 ] as const
 
 export function LandingPage() {
   const { t } = useTranslation()
-  // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외)
+  // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외).
+  // 프리렌더가 정적 head에 넣는 문구(landing.seo.*)와 같은 값을 쓴다 — 크롤러가 JS 실행 전후로
+  // 서로 다른 제목·설명을 보지 않게 한다(scripts/prerender.mjs)
   usePageMeta({
-    title: `${t('common.appName')} — ${t('landing.badge')}`,
-    description: t('landing.hero.description'),
+    title: t('landing.seo.title'),
+    description: t('landing.seo.description'),
   })
   const status = useSessionStore((state) => state.status)
   // 인증 상태에서도 랜딩 열람 가능 — CTA 행선지만 전환된다
