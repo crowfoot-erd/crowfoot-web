@@ -1,0 +1,251 @@
+/**
+ * 데이터 브라우저 화면 테스트 (09-database-manager/00-data-browser.md §5)
+ *
+ * given: DB 매니저 API를 MSW로 정의(database-handlers — 정렬·조건·페이지를 실제로 적용)
+ * when: 객체를 고르고 정렬·조건·탭을 조작
+ * then: 목록·셀 표기(NULL·잘린 값·이진 값)·요청 반영·권한 안내
+ */
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { HttpResponse, http } from 'msw'
+import { Route } from 'react-router-dom'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import { fail, ok } from '@/api/mocks/handlers'
+import { server } from '@/api/mocks/server'
+import type { RowsQuery } from '@/features/database/api'
+import DatabaseBrowserPage from '@/pages/database-browser'
+import { asAuthenticated, renderWithProviders } from '@/test/test-app'
+
+const PATH = '/workspaces/:workspaceId/connections/:connectionId/data'
+
+function renderBrowser(route = '/workspaces/101/connections/302/data') {
+  return renderWithProviders(<Route path={PATH} element={<DatabaseBrowserPage />} />, { route })
+}
+
+/** 첫 컬럼(id) 값들 — 표의 행 순서 확인용 */
+function idsInTable(): string[] {
+  const table = screen.getByRole('table')
+  return within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => within(row).getAllByRole('cell')[0].textContent ?? '')
+}
+
+beforeEach(() => {
+  asAuthenticated()
+})
+
+describe('데이터 브라우저 — 객체 목록', () => {
+  it('테이블과 뷰를 나눠 보여 주고, 추정 행 수를 붙인다', async () => {
+    renderBrowser()
+
+    // then: 머리에 커넥션 이름·DBMS 표시명·접속 대상
+    expect(await screen.findByRole('heading', { level: 1, name: '개발 MySQL' })).toBeVisible()
+    expect(screen.getByText('MySQL')).toBeVisible()
+    expect(await screen.findByText(/db\.dev\.example\.com:3306 \/ members/)).toBeVisible()
+
+    const list = await screen.findByRole('complementary', { name: '테이블과 뷰' })
+    expect(await within(list).findByRole('heading', { name: '테이블 (3)' })).toBeVisible()
+    expect(within(list).getByRole('heading', { name: '뷰 (1)' })).toBeVisible()
+    expect(within(list).getByRole('button', { name: /^orders/ })).toHaveTextContent('약 128,400')
+    // 아직 고르지 않았다 — 안내 문구
+    expect(screen.getByText('왼쪽에서 테이블이나 뷰를 고르세요')).toBeVisible()
+  })
+
+  it('이름으로 찾는다 — 일치하는 것이 없으면 안내한다', async () => {
+    renderBrowser()
+    const search = await screen.findByLabelText('테이블·뷰 검색')
+    await screen.findByRole('button', { name: /users/ })
+
+    await userEvent.type(search, 'paid')
+    expect(screen.getByRole('button', { name: /paid_orders/ })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /users/ })).not.toBeInTheDocument()
+
+    await userEvent.clear(search)
+    await userEvent.type(search, 'zzz')
+    expect(screen.getByText('일치하는 객체가 없습니다')).toBeVisible()
+  })
+
+  it('접속 실패는 목록 자리에 문구와 다시 시도를 보여 준다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects', () => fail('CONNECTION_UNREACHABLE', 502)),
+    )
+    renderBrowser()
+
+    expect(await screen.findByRole('button', { name: /다시 시도/ })).toBeVisible()
+  })
+})
+
+describe('데이터 브라우저 — 데이터 탭', () => {
+  it('객체를 고르면 행을 보여 준다 — NULL·빈 문자열·잘린 값·이진 값을 구분한다', async () => {
+    renderBrowser()
+    await userEvent.click(await screen.findByRole('button', { name: /^orders/ }))
+
+    const table = await screen.findByRole('table')
+    const rows = within(table).getAllByRole('row')
+    expect(rows).toHaveLength(6) // 머리 1 + 5행
+    // 1행: memo NULL / 2행: memo 빈 문자열(빈 칸) / 3행: 잘린 값 / 4행: 이진 값
+    expect(within(rows[1]).getAllByRole('cell')[2]).toHaveTextContent('NULL')
+    expect(within(rows[2]).getAllByRole('cell')[2]).toBeEmptyDOMElement()
+    expect(within(rows[3]).getAllByRole('cell')[2]).toHaveTextContent('긴 메모의 앞부분… 전체 51,234자')
+    expect(within(rows[4]).getAllByRole('cell')[3]).toHaveTextContent('이진 2,048바이트')
+    // 아래 줄 — 표시 행 수와 추정 행 수(정확한 수는 세기 전)
+    expect(screen.getByText('5행 표시')).toBeVisible()
+    expect(screen.getByText('약 128,400행')).toBeVisible()
+  })
+
+  it('머리글을 누르면 정렬한다 — 오름차순 → 내림차순 → 정렬 없음', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    const header = () => screen.getByRole('button', { name: 'status 기준 정렬' })
+
+    await userEvent.click(header())
+    await waitFor(() => expect(idsInTable()).toEqual(['5', '1', '2', '4', '3'])) // CANCELLED, PAID×3, READY
+    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute('aria-sort', 'ascending')
+
+    await userEvent.click(header())
+    await waitFor(() => expect(idsInTable()).toEqual(['3', '4', '2', '1', '5']))
+    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute('aria-sort', 'descending')
+
+    await userEvent.click(header())
+    await waitFor(() => expect(idsInTable()).toEqual(['1', '2', '3', '4', '5']))
+  })
+
+  it('조건은 [적용]을 눌러야 서버로 간다', async () => {
+    const queries: RowsQuery[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/objects/orders/rows')) void request.clone().json().then((body) => queries.push(body as RowsQuery))
+    })
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+
+    await userEvent.click(screen.getByRole('button', { name: '조건 추가' }))
+    await userEvent.selectOptions(screen.getByLabelText('컬럼'), 'status')
+    await userEvent.type(screen.getByLabelText('값'), 'PAID')
+    // 값을 치는 동안에는 요청이 나가지 않는다
+    expect(queries.filter((query) => query.filters.length > 0)).toHaveLength(0)
+
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(idsInTable()).toEqual(['1', '2', '4']))
+    expect(queries.at(-1)).toMatchObject({ page: 1, filters: [{ column: 'status', op: 'EQ', value: 'PAID' }] })
+
+    // 값이 필요 없는 연산자 — 값 칸이 사라지고 조건만 간다
+    await userEvent.selectOptions(screen.getByLabelText('컬럼'), 'memo')
+    await userEvent.selectOptions(screen.getByLabelText('연산자'), 'IS_NULL')
+    expect(screen.queryByLabelText('값')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(idsInTable()).toEqual(['1']))
+    expect(queries.at(-1)?.filters).toEqual([{ column: 'memo', op: 'IS_NULL' }])
+
+    await userEvent.click(screen.getByRole('button', { name: '초기화' }))
+    await waitFor(() => expect(idsInTable()).toHaveLength(5))
+    server.events.removeAllListeners()
+  })
+
+  it('정확한 수는 눌렀을 때만 센다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    expect(screen.queryByTestId('exact-count')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '정확한 수 세기' }))
+
+    expect(await screen.findByTestId('exact-count')).toHaveTextContent('총 128,431행')
+  })
+
+  it('다음 페이지가 있을 때만 [다음]이 켜진다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', async ({ request }) => {
+        const query = (await request.json()) as RowsQuery
+        return HttpResponse.json(
+          ok({
+            response: {
+              columns: [{ name: 'id', typeName: 'BIGINT', category: 'integer', nullable: false, primaryKey: true }],
+              rows: [[String(query.page)]],
+              page: query.page,
+              size: query.size,
+              hasNext: query.page < 2,
+              truncated: false,
+              elapsedMs: 3,
+            },
+          }),
+        )
+      }),
+    )
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: '다음' }))
+
+    await waitFor(() => expect(idsInTable()).toEqual(['2']))
+    expect(screen.getByText('2쪽')).toBeVisible()
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '이전' })).toBeEnabled()
+  })
+
+  it('제한 시간 초과는 조건을 좁히라고 안내하고, 데이터베이스가 거부한 문구는 그대로 보여 준다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () => fail('QUERY_TIMEOUT', 504)),
+    )
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    expect(await screen.findByText('8초 안에 끝나지 않아 취소했습니다. 조건을 좁혀 보세요.')).toBeVisible()
+
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () =>
+        HttpResponse.json(
+          { header: { isSuccessful: false, resultCode: 'QUERY_FAILED', resultMessage: 'permission denied for table orders' } },
+          { status: 409 },
+        ),
+      ),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /다시 시도/ }))
+    expect(await screen.findByText(/permission denied for table orders/)).toBeVisible()
+  })
+
+  it('편집할 수 없는 객체는 이유를 한 줄로 알린다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () =>
+        HttpResponse.json(ok({ response: { columns: [], rows: [], page: 1, size: 100, hasNext: false, truncated: false, elapsedMs: 1 } })),
+      ),
+    )
+    renderBrowser('/workspaces/101/connections/302/data?object=paid_orders')
+    expect(await screen.findByText('뷰는 편집할 수 없습니다')).toBeVisible()
+    expect(await screen.findByText('행이 없습니다')).toBeVisible()
+  })
+})
+
+describe('데이터 브라우저 — 구조 탭·권한', () => {
+  it('구조 탭은 컬럼·인덱스·외래 키를 읽기 전용으로 보여 준다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await userEvent.click(await screen.findByRole('tab', { name: '구조' }))
+
+    const columns = await screen.findByRole('region', { name: '컬럼' })
+    expect(within(columns).getByText('VARCHAR(20)')).toBeVisible()
+    expect(within(columns).getByText('자동 증가')).toBeVisible()
+    expect(within(columns).getByLabelText('기본 키')).toBeVisible()
+    expect(screen.getByText('idx_orders_status')).toBeVisible()
+    expect(screen.getByText(/\(user_id\) → users \(id\)/)).toBeVisible()
+    expect(screen.getByText(/ERD에서 고친 뒤 마이그레이션 DDL로 반영하세요/)).toBeVisible()
+    // 구조를 고치는 버튼은 없다
+    expect(screen.queryByRole('button', { name: /수정|삭제|추가/ })).not.toBeInTheDocument()
+    // 탭은 주소에 남는다
+    expect(screen.getByRole('tab', { name: '구조' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('편집자 미만은 API를 부르지 않고 권한 안내만 본다', async () => {
+    let called = false
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects', () => {
+        called = true
+        return fail('PERMISSION_DENIED', 403)
+      }),
+    )
+    // 워크스페이스 999는 내 워크스페이스 목록에 없다 — 역할을 알 수 없으니 쓸 수 없다
+    renderBrowser('/workspaces/999/connections/302/data')
+
+    expect(await screen.findByText('데이터를 볼 권한이 없습니다')).toBeVisible()
+    fireEvent.focus(window)
+    expect(called).toBe(false)
+  })
+})

@@ -44,16 +44,20 @@ export class ApiError extends Error {
   readonly errors?: ApiEnvelope['errors']
   /** fetch 자체 실패(네트워크) — 재시도 안내 문구 분기용 */
   readonly isNetworkError: boolean
+  /** 서버가 보낸 resultMessage — 화면 문구는 resultCode로 고르지만(i18n), 데이터베이스가 돌려준 문구처럼
+   *  서버 문구 자체가 정보인 코드에서 쓴다(09-database-manager/00-data-browser.md §3.6·§4) */
+  readonly serverMessage?: string
   /** 요청이 Access 토큰을 담아 보내졌는가 — 토큰 없는 공개 요청의 401은 세션 만료 대상에서 제외된다 */
   readonly hadToken: boolean
 
-  constructor(resultCode: string, status: number, message: string, options?: { errors?: ApiEnvelope['errors']; isNetworkError?: boolean; hadToken?: boolean }) {
+  constructor(resultCode: string, status: number, message: string, options?: { errors?: ApiEnvelope['errors']; isNetworkError?: boolean; serverMessage?: string; hadToken?: boolean }) {
     super(message)
     this.name = 'ApiError'
     this.resultCode = resultCode
     this.status = status
     this.errors = options?.errors
     this.isNetworkError = options?.isNetworkError ?? false
+    this.serverMessage = options?.serverMessage
     this.hadToken = options?.hadToken ?? false
   }
 }
@@ -61,7 +65,11 @@ export class ApiError extends Error {
 /** resultCode → 표시 문구 변환 시 서버 resultMessage는 폐기 (§3.6 — 서버 message 비표시) */
 function toApiError(payload: ApiEnvelope | null, status: number, hadToken: boolean): ApiError {
   const resultCode = payload?.header?.resultCode ?? 'UNKNOWN'
-  return new ApiError(resultCode, status, resultCode, { errors: payload?.errors, hadToken })
+  return new ApiError(resultCode, status, resultCode, {
+    errors: payload?.errors,
+    hadToken,
+    serverMessage: payload?.header?.resultMessage,
+  })
 }
 
 /* ---------- 세션 만료 통지 ---------- */

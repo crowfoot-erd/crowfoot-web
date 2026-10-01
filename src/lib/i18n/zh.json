@@ -104,6 +104,11 @@
       "MODEL_ALREADY_CONNECTED": "此文档已关联连接。",
       "CONNECTION_NOT_FOUND": "未找到连接。",
       "CONNECTION_UNREACHABLE": "无法连接数据库。请检查连接设置。",
+      "OBJECT_NOT_FOUND": "找不到表或视图",
+      "QUERY_TIMEOUT": "超过执行时间上限，已取消",
+      "QUERY_FAILED": "数据库拒绝了查询",
+      "INVALID_VALUE": "值与列类型不匹配",
+      "TOO_MANY_REQUESTS": "请等待正在执行的请求结束后重试",
       "INVALID_DBMS_TYPE": "不支持的 DBMS。",
       "MANAGED_INSTANCE_NOT_FOUND": "未找到实例。",
       "MANAGED_INSTANCE_UNREACHABLE": "无法连接实例。请检查凭据和地址。",
@@ -1774,6 +1779,94 @@
         "title": "还没有帖子",
         "description": "发布说明和反馈会显示在这里。"
       }
+    }
+  },
+  "database": {
+    "title": "数据浏览器",
+    "open": "查看 {{name}} 的数据",
+    "openShort": "查看数据",
+    "close": "关闭窗口",
+    "noPermission": {
+      "title": "没有查看数据的权限",
+      "description": "只有编辑者及以上角色可以使用数据浏览器。"
+    },
+    "objects": {
+      "label": "表和视图",
+      "search": "搜索表或视图",
+      "tables": "表",
+      "views": "视图",
+      "empty": "没有表或视图",
+      "noMatch": "没有匹配的对象",
+      "refresh": "刷新列表",
+      "estimatedRows": "约 {{formatted}}",
+      "select": "请在左侧选择表或视图"
+    },
+    "tabs": {
+      "data": "数据",
+      "structure": "结构"
+    },
+    "data": {
+      "filters": "条件",
+      "addFilter": "添加条件",
+      "apply": "应用",
+      "reset": "重置",
+      "removeFilter": "删除条件",
+      "column": "列",
+      "operator": "运算符",
+      "value": "值",
+      "inPlaceholder": "用逗号分隔",
+      "page": "第 {{page}} 页",
+      "prev": "上一页",
+      "next": "下一页",
+      "rowsShown": "显示 {{count}} 行",
+      "estimated": "约 {{formatted}} 行",
+      "countExact": "精确计数",
+      "counting": "正在计数…",
+      "exactCount": "共 {{formatted}} 行",
+      "elapsed": "{{ms}}ms",
+      "truncated": "响应过大，本页只显示了部分行",
+      "empty": "没有行",
+      "emptyFiltered": "没有符合条件的行",
+      "null": "NULL",
+      "binary": "二进制 {{formatted}} 字节",
+      "truncatedCell": "共 {{formatted}} 个字符",
+      "sortBy": "按 {{column}} 排序",
+      "readOnlyView": "视图不可编辑",
+      "readOnlyNoPk": "没有主键的表不可编辑",
+      "downloadCsv": "下载 CSV",
+      "op": {
+        "EQ": "=",
+        "NEQ": "≠",
+        "LT": "<",
+        "LTE": "≤",
+        "GT": ">",
+        "GTE": "≥",
+        "CONTAINS": "包含",
+        "STARTS_WITH": "开头为",
+        "IN": "其中之一",
+        "IS_NULL": "为 NULL",
+        "IS_NOT_NULL": "不为 NULL"
+      }
+    },
+    "structure": {
+      "columns": "列",
+      "name": "名称",
+      "type": "类型",
+      "nullable": "允许 NULL",
+      "default": "默认值",
+      "comment": "注释",
+      "primaryKey": "主键",
+      "autoIncrement": "自增",
+      "indexes": "索引",
+      "unique": "唯一",
+      "foreignKeys": "外键",
+      "none": "无",
+      "editInErd": "此处不能修改结构。请在 ERD 中修改后通过迁移 DDL 应用。"
+    },
+    "error": {
+      "timeout": "未在 8 秒内完成，已取消。请缩小条件范围。",
+      "tooMany": "请等待正在执行的请求结束后重试。",
+      "objectNotFound": "找不到表或视图，已重新读取列表。"
     }
   }
 }

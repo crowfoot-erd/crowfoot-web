@@ -42,6 +42,8 @@ import { SplashScreen } from '@/components/splash-screen'
 
 // 트래픽 통계는 recharts를 물려와 번들이 크다 — 관리자 통계 화면 전용 청크로 분리한다(03-admin §9)
 const AdminTrafficPage = lazy(() => import('@/pages/admin/traffic'))
+// 데이터 브라우저 — 커넥션을 열 때만 내려받는다(09-database-manager/00-data-browser.md §5.1)
+const DatabaseBrowserPage = lazy(() => import('@/pages/database-browser'))
 import { CommunityBoardPage } from '@/pages/community/board'
 import { CommunityPostDetailPage } from '@/pages/community/post-detail'
 import { CommunityPostFormPage } from '@/pages/community/post-form'
@@ -81,6 +83,16 @@ function buildRoutes(prefix: string) {
         <Route
           path={`${prefix}/workspaces/:workspaceId/models/:modelId/history/:version`}
           element={<ModelVersionViewerPage />}
+        />
+
+        {/* 데이터 브라우저 — 커넥션별 새 창 전체 화면(셸 없음), 데이터베이스 탭·에디터 도구 메뉴로 진입 */}
+        <Route
+          path={`${prefix}/workspaces/:workspaceId/connections/:connectionId/data`}
+          element={
+            <Suspense fallback={<SplashScreen />}>
+              <DatabaseBrowserPage />
+            </Suspense>
+          }
         />
 
         <Route element={<AppLayout />}>

@@ -9,12 +9,12 @@
  * 나머지는 두 메뉴로 묶는다:
  *   버튼: 탐색기·용어 사전·검증·되돌리기·저장·자동 배치·SQL 생성·공유
  *   「내보내기」 메뉴: 이미지(보이는 화면·전체 문서)·문서 파일(.crown)
- *   「도구」 메뉴: 논리명 추론·데이터베이스 연결 또는 DB 동기화·다른 DBMS로 복제·버전 기록
+ *   「도구」 메뉴: 논리명 추론·데이터베이스 연결 또는 DB 동기화(+ 데이터 보기)·다른 DBMS로 복제·버전 기록
  * 메뉴 항목은 다이얼로그를 여는 신호만 보낸다 — 다이얼로그는 메뉴 밖(형제)에 둔다.
  * 메뉴 내용은 닫히면 언마운트되므로, 그 안에 다이얼로그를 두면 열자마자 사라진다.
  */
 import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { DbmsIcon } from '@/components/dbms-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useConnections } from '@/features/connections/hooks'
+import { databaseBrowserPath } from '@/features/database'
 import { ConnectDatabaseDialog } from '@/features/models/components/connect-database-dialog'
 import { ShareDialog } from '@/features/models/components/share-dialog'
 import { modelKeys, useShareFeedback, useToggleShareReaction } from '@/features/models/hooks'
@@ -851,10 +852,21 @@ function SyncMenuItem({
   if (!exists) return null
 
   return (
-    <DropdownMenuItem onSelect={onSelect}>
-      <RefreshCw aria-hidden />
-      {t('model.editor.toolbar.sync')}
-    </DropdownMenuItem>
+    <>
+      <DropdownMenuItem onSelect={onSelect}>
+        <RefreshCw aria-hidden />
+        {t('model.editor.toolbar.sync')}
+      </DropdownMenuItem>
+      {/* 데이터 보기 — 원천 커넥션의 데이터 브라우저를 새 창으로 연다(09-database-manager/00-data-browser.md §5.1) */}
+      <DropdownMenuItem
+        onSelect={() =>
+          window.open(databaseBrowserPath(workspaceId, sourceConnectionId), '_blank', 'noopener,noreferrer')
+        }
+      >
+        <Rows3 aria-hidden />
+        {t('database.openShort')}
+      </DropdownMenuItem>
+    </>
   )
 }
 

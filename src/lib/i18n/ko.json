@@ -104,6 +104,11 @@
       "MODEL_ALREADY_CONNECTED": "이미 커넥션이 연결된 문서입니다.",
       "CONNECTION_NOT_FOUND": "커넥션을 찾을 수 없습니다.",
       "CONNECTION_UNREACHABLE": "데이터베이스에 접속할 수 없습니다. 접속 정보를 확인해 주세요.",
+      "OBJECT_NOT_FOUND": "테이블 또는 뷰를 찾을 수 없습니다",
+      "QUERY_TIMEOUT": "실행 제한 시간을 넘어 취소했습니다",
+      "QUERY_FAILED": "데이터베이스가 조회를 거부했습니다",
+      "INVALID_VALUE": "값이 컬럼 타입에 맞지 않습니다",
+      "TOO_MANY_REQUESTS": "실행 중인 요청이 끝난 뒤 다시 시도하세요",
       "INVALID_DBMS_TYPE": "지원하지 않는 DBMS입니다.",
       "MANAGED_INSTANCE_NOT_FOUND": "인스턴스를 찾을 수 없습니다.",
       "MANAGED_INSTANCE_UNREACHABLE": "인스턴스에 접속할 수 없습니다. 자격·주소를 확인해 주세요.",
@@ -1774,6 +1779,94 @@
         "title": "아직 게시글이 없습니다.",
         "description": "릴리스 소식과 제안·신고가 이곳에 모입니다."
       }
+    }
+  },
+  "database": {
+    "title": "데이터 브라우저",
+    "open": "{{name}} 데이터 보기",
+    "openShort": "데이터 보기",
+    "close": "창 닫기",
+    "noPermission": {
+      "title": "데이터를 볼 권한이 없습니다",
+      "description": "편집자 이상만 데이터 브라우저를 쓸 수 있습니다."
+    },
+    "objects": {
+      "label": "테이블과 뷰",
+      "search": "테이블·뷰 검색",
+      "tables": "테이블",
+      "views": "뷰",
+      "empty": "테이블이나 뷰가 없습니다",
+      "noMatch": "일치하는 객체가 없습니다",
+      "refresh": "목록 새로 고침",
+      "estimatedRows": "약 {{formatted}}",
+      "select": "왼쪽에서 테이블이나 뷰를 고르세요"
+    },
+    "tabs": {
+      "data": "데이터",
+      "structure": "구조"
+    },
+    "data": {
+      "filters": "조건",
+      "addFilter": "조건 추가",
+      "apply": "적용",
+      "reset": "초기화",
+      "removeFilter": "조건 삭제",
+      "column": "컬럼",
+      "operator": "연산자",
+      "value": "값",
+      "inPlaceholder": "쉼표로 구분",
+      "page": "{{page}}쪽",
+      "prev": "이전",
+      "next": "다음",
+      "rowsShown": "{{count}}행 표시",
+      "estimated": "약 {{formatted}}행",
+      "countExact": "정확한 수 세기",
+      "counting": "세는 중…",
+      "exactCount": "총 {{formatted}}행",
+      "elapsed": "{{ms}}ms",
+      "truncated": "응답이 커서 이 페이지의 일부 행만 표시했습니다",
+      "empty": "행이 없습니다",
+      "emptyFiltered": "조건에 맞는 행이 없습니다",
+      "null": "NULL",
+      "binary": "이진 {{formatted}}바이트",
+      "truncatedCell": "전체 {{formatted}}자",
+      "sortBy": "{{column}} 기준 정렬",
+      "readOnlyView": "뷰는 편집할 수 없습니다",
+      "readOnlyNoPk": "기본 키가 없는 테이블은 편집할 수 없습니다",
+      "downloadCsv": "CSV 내려받기",
+      "op": {
+        "EQ": "=",
+        "NEQ": "≠",
+        "LT": "<",
+        "LTE": "≤",
+        "GT": ">",
+        "GTE": "≥",
+        "CONTAINS": "포함",
+        "STARTS_WITH": "시작 글자",
+        "IN": "목록 중 하나",
+        "IS_NULL": "NULL",
+        "IS_NOT_NULL": "NULL 아님"
+      }
+    },
+    "structure": {
+      "columns": "컬럼",
+      "name": "이름",
+      "type": "타입",
+      "nullable": "NULL 허용",
+      "default": "기본값",
+      "comment": "코멘트",
+      "primaryKey": "기본 키",
+      "autoIncrement": "자동 증가",
+      "indexes": "인덱스",
+      "unique": "유니크",
+      "foreignKeys": "외래 키",
+      "none": "없음",
+      "editInErd": "구조는 여기서 고칠 수 없습니다. ERD에서 고친 뒤 마이그레이션 DDL로 반영하세요."
+    },
+    "error": {
+      "timeout": "8초 안에 끝나지 않아 취소했습니다. 조건을 좁혀 보세요.",
+      "tooMany": "실행 중인 요청이 끝난 뒤 다시 시도하세요.",
+      "objectNotFound": "테이블이나 뷰를 찾을 수 없습니다. 목록을 다시 읽었습니다."
     }
   }
 }

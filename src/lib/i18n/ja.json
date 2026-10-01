@@ -104,6 +104,11 @@
       "MODEL_ALREADY_CONNECTED": "このドキュメントには既に接続が紐付いています。",
       "CONNECTION_NOT_FOUND": "接続が見つかりません。",
       "CONNECTION_UNREACHABLE": "データベースに接続できません。接続設定を確認してください。",
+      "OBJECT_NOT_FOUND": "テーブルまたはビューが見つかりません",
+      "QUERY_TIMEOUT": "実行時間の上限を超えたためキャンセルしました",
+      "QUERY_FAILED": "データベースが照会を拒否しました",
+      "INVALID_VALUE": "値がカラムの型に合いません",
+      "TOO_MANY_REQUESTS": "実行中のリクエストが終わってから再試行してください",
       "INVALID_DBMS_TYPE": "サポートされていないDBMSです。",
       "MANAGED_INSTANCE_NOT_FOUND": "インスタンスが見つかりません。",
       "MANAGED_INSTANCE_UNREACHABLE": "インスタンスに接続できません。認証情報とアドレスを確認してください。",
@@ -1774,6 +1779,94 @@
         "title": "投稿はまだありません。",
         "description": "リリースノートとフィードバックがここに表示されます。"
       }
+    }
+  },
+  "database": {
+    "title": "データブラウザ",
+    "open": "{{name}}のデータを見る",
+    "openShort": "データを見る",
+    "close": "ウィンドウを閉じる",
+    "noPermission": {
+      "title": "データを見る権限がありません",
+      "description": "データブラウザを使えるのは編集者以上です。"
+    },
+    "objects": {
+      "label": "テーブルとビュー",
+      "search": "テーブル・ビューを検索",
+      "tables": "テーブル",
+      "views": "ビュー",
+      "empty": "テーブルやビューがありません",
+      "noMatch": "一致するオブジェクトがありません",
+      "refresh": "一覧を再読み込み",
+      "estimatedRows": "約{{formatted}}",
+      "select": "左からテーブルかビューを選んでください"
+    },
+    "tabs": {
+      "data": "データ",
+      "structure": "構造"
+    },
+    "data": {
+      "filters": "条件",
+      "addFilter": "条件を追加",
+      "apply": "適用",
+      "reset": "リセット",
+      "removeFilter": "条件を削除",
+      "column": "カラム",
+      "operator": "演算子",
+      "value": "値",
+      "inPlaceholder": "カンマ区切り",
+      "page": "{{page}}ページ",
+      "prev": "前へ",
+      "next": "次へ",
+      "rowsShown": "{{count}}行を表示",
+      "estimated": "約{{formatted}}行",
+      "countExact": "正確に数える",
+      "counting": "数えています…",
+      "exactCount": "全{{formatted}}行",
+      "elapsed": "{{ms}}ms",
+      "truncated": "レスポンスが大きいため、このページの一部の行だけを表示しました",
+      "empty": "行がありません",
+      "emptyFiltered": "条件に合う行がありません",
+      "null": "NULL",
+      "binary": "バイナリ {{formatted}}バイト",
+      "truncatedCell": "全{{formatted}}文字",
+      "sortBy": "{{column}}で並べ替え",
+      "readOnlyView": "ビューは編集できません",
+      "readOnlyNoPk": "主キーのないテーブルは編集できません",
+      "downloadCsv": "CSVをダウンロード",
+      "op": {
+        "EQ": "=",
+        "NEQ": "≠",
+        "LT": "<",
+        "LTE": "≤",
+        "GT": ">",
+        "GTE": "≥",
+        "CONTAINS": "含む",
+        "STARTS_WITH": "前方一致",
+        "IN": "いずれか",
+        "IS_NULL": "NULL",
+        "IS_NOT_NULL": "NULLでない"
+      }
+    },
+    "structure": {
+      "columns": "カラム",
+      "name": "名前",
+      "type": "型",
+      "nullable": "NULL許可",
+      "default": "デフォルト値",
+      "comment": "コメント",
+      "primaryKey": "主キー",
+      "autoIncrement": "自動採番",
+      "indexes": "インデックス",
+      "unique": "ユニーク",
+      "foreignKeys": "外部キー",
+      "none": "なし",
+      "editInErd": "構造はここでは変更できません。ERDで変更してからマイグレーションDDLで反映してください。"
+    },
+    "error": {
+      "timeout": "8秒以内に終わらなかったためキャンセルしました。条件を絞ってみてください。",
+      "tooMany": "実行中のリクエストが終わってから再試行してください。",
+      "objectNotFound": "テーブルまたはビューが見つかりません。一覧を再読み込みしました。"
     }
   }
 }

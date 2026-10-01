@@ -1,0 +1,64 @@
+/**
+ * 데이터 브라우저 쿼리 훅 (09-database-manager/00-data-browser.md §3.1~3.4).
+ *
+ * 서버는 결과를 캐시하지 않는다. 화면도 오래 붙들지 않는다 — 다시 열면 다시 읽는다(staleTime 0).
+ * 실패는 자동으로 다시 시도하지 않는다: 접속 실패·제한 시간 초과를 되풀이해 대상 DB에 부하를 주지 않기 위해서다.
+ */
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+
+import {
+  countObjectRows,
+  fetchDatabaseObjects,
+  fetchObjectRows,
+  fetchObjectStructure,
+  type RowFilter,
+  type RowsQuery,
+} from '@/features/database/api'
+
+export const databaseKeys = {
+  objects: (workspaceId: string, connectionId: string) =>
+    ['database', workspaceId, connectionId, 'objects'] as const,
+  structure: (workspaceId: string, connectionId: string, objectName: string) =>
+    ['database', workspaceId, connectionId, 'structure', objectName] as const,
+  rows: (workspaceId: string, connectionId: string, objectName: string, query: RowsQuery) =>
+    ['database', workspaceId, connectionId, 'rows', objectName, query] as const,
+}
+
+export function useDatabaseObjects(workspaceId: string, connectionId: string, enabled = true) {
+  return useQuery({
+    queryKey: databaseKeys.objects(workspaceId, connectionId),
+    queryFn: ({ signal }) => fetchDatabaseObjects(workspaceId, connectionId, signal),
+    enabled: enabled && workspaceId.length > 0 && connectionId.length > 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useObjectStructure(workspaceId: string, connectionId: string, objectName: string | null) {
+  return useQuery({
+    queryKey: databaseKeys.structure(workspaceId, connectionId, objectName ?? ''),
+    queryFn: ({ signal }) => fetchObjectStructure(workspaceId, connectionId, objectName ?? '', signal),
+    enabled: objectName !== null,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useObjectRows(workspaceId: string, connectionId: string, objectName: string | null, query: RowsQuery) {
+  return useQuery({
+    queryKey: databaseKeys.rows(workspaceId, connectionId, objectName ?? '', query),
+    queryFn: ({ signal }) => fetchObjectRows(workspaceId, connectionId, objectName ?? '', query, signal),
+    enabled: objectName !== null,
+    retry: false,
+    refetchOnWindowFocus: false,
+    // 정렬·페이지를 바꾸는 동안 앞 결과를 그대로 보여 준다(표가 깜빡이지 않게)
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** 정확한 행 수 — 사용자가 눌렀을 때만 센다(큰 테이블에서 느리다) */
+export function useCountRows(workspaceId: string, connectionId: string, objectName: string) {
+  return useMutation({
+    mutationFn: (filters: RowFilter[]) => countObjectRows(workspaceId, connectionId, objectName, filters),
+  })
+}

@@ -3,6 +3,7 @@
  */
 import { setupServer } from 'msw/node'
 
+import { databaseHandlers } from './database-handlers'
 import { handlers } from './handlers'
 
-export const server = setupServer(...handlers)
+export const server = setupServer(...handlers, ...databaseHandlers)

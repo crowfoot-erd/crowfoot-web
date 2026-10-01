@@ -104,6 +104,11 @@
       "MODEL_ALREADY_CONNECTED": "This document is already connected to a connection.",
       "CONNECTION_NOT_FOUND": "Connection not found.",
       "CONNECTION_UNREACHABLE": "Cannot reach the database. Check the connection settings.",
+      "OBJECT_NOT_FOUND": "Table or view not found",
+      "QUERY_TIMEOUT": "Cancelled because it exceeded the time limit",
+      "QUERY_FAILED": "The database rejected the query",
+      "INVALID_VALUE": "The value does not match the column type",
+      "TOO_MANY_REQUESTS": "Try again after the running requests finish",
       "INVALID_DBMS_TYPE": "Unsupported DBMS.",
       "MANAGED_INSTANCE_NOT_FOUND": "Instance not found.",
       "MANAGED_INSTANCE_UNREACHABLE": "Cannot reach the instance. Check the credentials and address.",
@@ -1774,6 +1779,94 @@
         "title": "No posts yet",
         "description": "Release notes and feedback will appear here."
       }
+    }
+  },
+  "database": {
+    "title": "Data browser",
+    "open": "Browse data of {{name}}",
+    "openShort": "Browse data",
+    "close": "Close window",
+    "noPermission": {
+      "title": "You don't have permission to view data",
+      "description": "Only editors and owners can use the data browser."
+    },
+    "objects": {
+      "label": "Tables and views",
+      "search": "Search tables and views",
+      "tables": "Tables",
+      "views": "Views",
+      "empty": "No tables or views",
+      "noMatch": "No matching objects",
+      "refresh": "Refresh list",
+      "estimatedRows": "~{{formatted}}",
+      "select": "Pick a table or view on the left"
+    },
+    "tabs": {
+      "data": "Data",
+      "structure": "Structure"
+    },
+    "data": {
+      "filters": "Filters",
+      "addFilter": "Add filter",
+      "apply": "Apply",
+      "reset": "Reset",
+      "removeFilter": "Remove filter",
+      "column": "Column",
+      "operator": "Operator",
+      "value": "Value",
+      "inPlaceholder": "Comma-separated",
+      "page": "Page {{page}}",
+      "prev": "Previous",
+      "next": "Next",
+      "rowsShown": "{{count}} rows shown",
+      "estimated": "About {{formatted}} rows",
+      "countExact": "Count exactly",
+      "counting": "Counting…",
+      "exactCount": "{{formatted}} rows in total",
+      "elapsed": "{{ms}} ms",
+      "truncated": "The response was large, so only some rows of this page are shown",
+      "empty": "No rows",
+      "emptyFiltered": "No rows match the filters",
+      "null": "NULL",
+      "binary": "Binary, {{formatted}} bytes",
+      "truncatedCell": "{{formatted}} characters in total",
+      "sortBy": "Sort by {{column}}",
+      "readOnlyView": "Views cannot be edited",
+      "readOnlyNoPk": "Tables without a primary key cannot be edited",
+      "downloadCsv": "Download CSV",
+      "op": {
+        "EQ": "=",
+        "NEQ": "≠",
+        "LT": "<",
+        "LTE": "≤",
+        "GT": ">",
+        "GTE": "≥",
+        "CONTAINS": "contains",
+        "STARTS_WITH": "starts with",
+        "IN": "one of",
+        "IS_NULL": "is NULL",
+        "IS_NOT_NULL": "is not NULL"
+      }
+    },
+    "structure": {
+      "columns": "Columns",
+      "name": "Name",
+      "type": "Type",
+      "nullable": "Nullable",
+      "default": "Default",
+      "comment": "Comment",
+      "primaryKey": "Primary key",
+      "autoIncrement": "Auto increment",
+      "indexes": "Indexes",
+      "unique": "Unique",
+      "foreignKeys": "Foreign keys",
+      "none": "None",
+      "editInErd": "The structure cannot be changed here. Change it in the ERD and apply it with migration DDL."
+    },
+    "error": {
+      "timeout": "Cancelled because it did not finish within 8 seconds. Try narrowing the filters.",
+      "tooMany": "Try again after the running requests finish.",
+      "objectNotFound": "The table or view was not found. The list has been reloaded."
     }
   }
 }

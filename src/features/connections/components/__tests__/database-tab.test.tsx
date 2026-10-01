@@ -8,7 +8,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { fail } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
@@ -262,5 +262,22 @@ describe('데이터베이스 탭', () => {
 
     const retry = await screen.findByRole('button', { name: '다시 시도' })
     expect(retry).toBeVisible()
+  })
+  it('데이터 보기 — 편집자 이상에게만 보이고, 데이터 브라우저를 새 창으로 연다', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    renderDatabaseTab()
+    await screen.findByText('개발 PG')
+
+    await userEvent.click(screen.getByRole('button', { name: '개발 MySQL 데이터 보기' }))
+
+    expect(openSpy).toHaveBeenCalledWith('/workspaces/101/connections/302/data', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
+  })
+
+  it('데이터 보기 — 편집 권한이 없으면 버튼이 없다', async () => {
+    renderDatabaseTab({ canEdit: false })
+    await screen.findByText('개발 PG')
+
+    expect(screen.queryByRole('button', { name: /데이터 보기/ })).not.toBeInTheDocument()
   })
 })

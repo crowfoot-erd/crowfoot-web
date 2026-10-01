@@ -1268,6 +1268,11 @@ describe('EditorShell — 도구 메뉴 항목 노출 조건', () => {
     expect(await screen.findByRole('menuitem', { name: 'DB 동기화' })).toBeVisible()
     // 연결된 문서에는 최초 연결 항목이 없다
     expect(screen.queryByRole('menuitem', { name: '데이터베이스 연결' })).toBeNull()
+    // 연결된 문서에는 데이터 보기도 함께 나온다 — 원천 커넥션의 데이터 브라우저를 새 창으로 연다
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    fireEvent.click(screen.getByRole('menuitem', { name: '데이터 보기' }))
+    expect(openSpy).toHaveBeenCalledWith('/workspaces/101/connections/301/data', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
   })
 
   it('읽기 전용(편집 권한 없음)에서는 DB 동기화를 노출하지 않는다 — 버전 기록만 남는다', async () => {

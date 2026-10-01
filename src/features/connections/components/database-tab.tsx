@@ -3,10 +3,11 @@
  *
  * - 커넥션 목록 — 이름·DBMS·host:port·database·사용자·등록자. 비밀번호는 내려오지 않는다
  * - 등록/편집(Editor 이상)·삭제·접속 테스트(토스트)·"문서로 가져오기"(리버스 다이얼로그)
+ * - "데이터 보기"(Editor 이상) — 데이터 브라우저를 새 창으로 연다(09-database-manager/00-data-browser.md §5.1)
  * - 목록은 멤버 전체가 본다, 변경은 Editor 이상 (§1 권한)
  */
 import { useState } from 'react'
-import { Database, FileDown, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Database, FileDown, Pencil, Plus, Rows3, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -25,6 +26,7 @@ import {
 } from '@/features/connections/hooks'
 import { ConnectionDialog } from '@/features/connections/components/connection-dialog'
 import { ReverseDialog } from '@/features/connections/components/reverse-dialog'
+import { databaseBrowserPath } from '@/features/database'
 import { ManagedSection } from '@/features/managed/components/managed-section'
 import { formatDate } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
@@ -223,6 +225,24 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
                     >
                       <FileDown aria-hidden className="h-4 w-4" />
                     </Button>
+                    {canEdit ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            databaseBrowserPath(workspaceId, connection.connectionId),
+                            '_blank',
+                            'noopener,noreferrer',
+                          )
+                        }
+                        aria-label={t('database.open', { name: connection.name })}
+                        title={t('database.openShort')}
+                      >
+                        <Rows3 aria-hidden className="h-4 w-4" />
+                      </Button>
+                    ) : null}
                     {canEdit ? (
                       <Button
                         type="button"
