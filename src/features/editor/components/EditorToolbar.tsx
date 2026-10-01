@@ -937,7 +937,7 @@ function ImageButton({ modelName }: { modelName: string }) {
   )
 }
 
-/** .crown 문서 파일 내보내기 — 문서 본체(현재 편집 상태)와 메타를 JSON 봉투로 내려받는다(05-editor/00-overview.md §4).
+/** .crown 문서 파일 내보내기 — 문서 본체(현재 편집 상태)와 메타를 JSON 봉투로 내려받는다(05-editor/00-overview.md §5).
  *  마지막 저장 본문이 아니라 클릭 시점 문서를 싣는다 — 파일은 그 순간의 스냅샷이어야 한다. */
 function CrownButton({
   modelName,

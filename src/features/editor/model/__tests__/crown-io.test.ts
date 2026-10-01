@@ -1,5 +1,5 @@
 /**
- * .crown 문서 파일 봉투 — 왕복·검증 (05-editor/00-overview.md §4)
+ * .crown 문서 파일 봉투 — 왕복·검증 (05-editor/00-overview.md §5)
  *
  * content 스키마 검증·레거시 정규화는 content-io를 재사용하므로 여기선 봉투 판별만 확인한다.
  */
