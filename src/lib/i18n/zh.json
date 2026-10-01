@@ -108,6 +108,9 @@
       "QUERY_TIMEOUT": "超过执行时间上限，已取消",
       "QUERY_FAILED": "数据库拒绝了查询",
       "INVALID_VALUE": "值与列类型不匹配",
+      "MULTIPLE_STATEMENTS": "一次只能执行一条语句",
+      "UNSUPPORTED_STATEMENT": "此控制台不执行该语句",
+      "CONFIRMATION_REQUIRED": "执行前需要确认",
       "TOO_MANY_REQUESTS": "请等待正在执行的请求结束后重试",
       "INVALID_DBMS_TYPE": "不支持的 DBMS。",
       "MANAGED_INSTANCE_NOT_FOUND": "未找到实例。",
@@ -1803,7 +1806,29 @@
     },
     "tabs": {
       "data": "数据",
-      "structure": "结构"
+      "structure": "结构",
+      "sql": "SQL"
+    },
+    "sql": {
+      "input": "SQL 输入",
+      "placeholder": "SELECT * FROM …",
+      "run": "执行",
+      "runHint": "Ctrl/Cmd+Enter — 执行光标所在的语句或所选内容",
+      "history": "历史 {{count}}",
+      "historyLabel": "执行历史",
+      "empty": "编写并执行 SQL 后，结果会显示在这里",
+      "failed": "数据库拒绝了该语句",
+      "truncated": "仅显示了前 {{count}} 行",
+      "affected": "已更改 {{formatted}} 行",
+      "done": "已执行",
+      "ddlNotice": "ERD 文档可能已与数据库不一致。请通过数据库同步将变更反映到文档。",
+      "confirm": {
+        "titleWrite": "要执行会更改数据的语句吗？",
+        "titleDdl": "要执行会更改结构的语句吗？",
+        "target": "目标连接: {{name}}",
+        "irreversible": "执行后无法撤销。",
+        "run": "执行"
+      }
     },
     "data": {
       "filters": "条件",

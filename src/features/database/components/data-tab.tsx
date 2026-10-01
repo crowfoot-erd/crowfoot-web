@@ -5,7 +5,7 @@
  * 전체 행 수는 세지 않는다. 다음 페이지 유무만 알고, 정확한 수는 사용자가 눌렀을 때만 센다.
  */
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Loader2, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Loader2, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -13,30 +13,23 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/error-state'
 import {
-  isBinaryCell,
-  isTruncatedCell,
-  type CellValue,
-  type ColumnMeta,
   type DatabaseObject,
   type FilterOp,
   type RowFilter,
   type RowSort,
   type RowsQuery,
 } from '@/features/database/api'
+import { ResultTable, toCsv } from '@/features/database/components/result-table'
 import { databaseErrorMessage } from '@/features/database/errors'
 import { useCountRows, useObjectRows } from '@/features/database/hooks'
 import { downloadTextFile, safeFilename } from '@/lib/download'
 import { formatNumber } from '@/lib/format'
-import { cn } from 'cn'
 
 const PAGE_SIZE = 100
 /** 한 번에 걸 수 있는 조건 수 — 서버 한도와 같다(§2.3) */
 const FILTERS_MAX = 10
 const OPS: FilterOp[] = ['EQ', 'NEQ', 'GT', 'GTE', 'LT', 'LTE', 'CONTAINS', 'STARTS_WITH', 'IN', 'IS_NULL', 'IS_NOT_NULL']
 const VALUELESS: ReadonlySet<FilterOp> = new Set<FilterOp>(['IS_NULL', 'IS_NOT_NULL'])
-const NUMERIC: ReadonlySet<string> = new Set(['integer', 'decimal', 'float'])
-/** 바이트 순서 표시 — 엑셀이 CSV의 한글을 깨뜨리지 않게 파일 맨 앞에 붙인다 */
-const BOM = String.fromCharCode(0xfeff)
 
 /** 편집 중인 조건 한 줄 — 값은 입력 칸의 문자열 그대로 */
 interface FilterDraft {
@@ -61,20 +54,6 @@ function toFilters(drafts: FilterDraft[]): RowFilter[] {
     }
   }
   return filters
-}
-
-function cellText(cell: CellValue): string {
-  if (cell === null) return ''
-  if (isTruncatedCell(cell)) return cell.text
-  if (isBinaryCell(cell)) return `0x${cell.previewHex}`
-  return cell
-}
-
-function toCsv(columns: ColumnMeta[], rows: CellValue[][]): string {
-  const escape = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value)
-  const lines = [columns.map((column) => escape(column.name)).join(',')]
-  for (const row of rows) lines.push(row.map((cell) => escape(cellText(cell))).join(','))
-  return `${BOM}${lines.join('\r\n')}\r\n`
 }
 
 export interface DataTabProps {
@@ -242,47 +221,13 @@ export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
             <ErrorState message={databaseErrorMessage(rows.error)} onRetry={() => void rows.refetch()} />
           </div>
         ) : (
-          <table className={cn('w-max min-w-full border-collapse text-sm', rows.isPlaceholderData && 'opacity-60')}>
-            <thead className="sticky top-0 z-10 bg-muted">
-              <tr>
-                {rows.data.columns.map((column) => {
-                  const direction = sort[0]?.column === column.name ? sort[0].direction : null
-                  return (
-                    <th
-                      key={column.name}
-                      scope="col"
-                      aria-sort={direction === 'ASC' ? 'ascending' : direction === 'DESC' ? 'descending' : 'none'}
-                      className="border-b border-r px-0 py-0 text-left font-medium last:border-r-0"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleSort(column.name)}
-                        title={column.typeName}
-                        aria-label={t('database.data.sortBy', { column: column.name })}
-                        className="flex w-full items-center gap-1 px-2 py-1.5 hover:bg-muted-foreground/10"
-                      >
-                        <span className={cn(column.primaryKey && 'underline decoration-dotted underline-offset-4')}>
-                          {column.name}
-                        </span>
-                        <span className="text-[10px] font-normal text-muted-foreground">{column.typeName}</span>
-                        {direction === 'ASC' ? <ArrowUp aria-hidden className="size-3" /> : null}
-                        {direction === 'DESC' ? <ArrowDown aria-hidden className="size-3" /> : null}
-                      </button>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.data.rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b hover:bg-muted/40">
-                  {row.map((cell, cellIndex) => (
-                    <DataCell key={cellIndex} cell={cell} category={columns[cellIndex]?.category ?? 'other'} />
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ResultTable
+            columns={rows.data.columns}
+            rows={rows.data.rows}
+            sort={sort[0] ?? null}
+            onSort={toggleSort}
+            dimmed={rows.isPlaceholderData}
+          />
         )}
         {rows.data && rows.data.rows.length === 0 && !rows.isError ? (
           <p className="p-6 text-center text-sm text-muted-foreground">
@@ -339,42 +284,5 @@ export function DataTab({ workspaceId, connectionId, object }: DataTabProps) {
         </Button>
       </div>
     </div>
-  )
-}
-
-/** 셀 하나 — NULL·빈 문자열·잘린 값·이진 값을 구분해 보여 준다(§5.2) */
-function DataCell({ cell, category }: { cell: CellValue; category: string }) {
-  const { t } = useTranslation()
-  const base = 'max-w-96 truncate border-r px-2 py-1 align-top last:border-r-0'
-
-  if (cell === null) {
-    return <td className={cn(base, 'text-muted-foreground/60 italic')}>{t('database.data.null')}</td>
-  }
-  if (isBinaryCell(cell)) {
-    return (
-      <td className={cn(base, 'text-muted-foreground')} title={`0x${cell.previewHex}`}>
-        {t('database.data.binary', { formatted: formatNumber(cell.length) })}
-      </td>
-    )
-  }
-  if (isTruncatedCell(cell)) {
-    return (
-      <td className={base} title={t('database.data.truncatedCell', { formatted: formatNumber(cell.length) })}>
-        {cell.text}
-        <span className="ml-1 text-xs text-muted-foreground">
-          … {t('database.data.truncatedCell', { formatted: formatNumber(cell.length) })}
-        </span>
-      </td>
-    )
-  }
-  // 날짜·시각은 ISO 8601로 온다 — 화면에서는 날짜와 시각 사이의 'T'를 공백으로 보여 준다(값 자체는 그대로)
-  const text = category === 'datetime' ? cell.replace(/^(\d{4}-\d{2}-\d{2})T/, '$1 ') : cell
-  return (
-    <td
-      className={cn(base, (NUMERIC.has(category) || category === 'datetime') && 'tabular-nums', NUMERIC.has(category) && 'text-right')}
-      title={cell.length > 40 ? cell : undefined}
-    >
-      {text}
-    </td>
   )
 }

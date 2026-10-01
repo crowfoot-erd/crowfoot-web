@@ -249,3 +249,135 @@ describe('데이터 브라우저 — 구조 탭·권한', () => {
     expect(called).toBe(false)
   })
 })
+
+describe('데이터 브라우저 — SQL 탭', () => {
+  const SQL_ROUTE = '/workspaces/101/connections/302/data?tab=sql'
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('객체를 고르지 않아도 SQL 탭을 쓸 수 있다 — 읽기 문장은 바로 실행하고 결과를 표로 보여 준다', async () => {
+    renderBrowser(SQL_ROUTE)
+    const input = await screen.findByLabelText('SQL 입력')
+    expect(screen.getByRole('button', { name: '실행' })).toBeDisabled()
+
+    await userEvent.type(input, 'SELECT * FROM orders')
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getAllByRole('row')).toHaveLength(3)
+    expect(screen.getByText('2행 표시')).toBeVisible()
+    // 콘솔 결과는 정렬 버튼이 없다(서버에 다시 묻지 않는다)
+    expect(screen.queryByRole('button', { name: 'status 기준 정렬' })).not.toBeInTheDocument()
+  })
+
+  it('문장이 여러 개면 커서가 놓인 문장만 보낸다 — Ctrl+Enter로 실행한다', async () => {
+    const sent: string[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/queries')) void request.clone().json().then((body) => sent.push((body as { sql: string }).sql))
+    })
+    renderBrowser(SQL_ROUTE)
+    const input = (await screen.findByLabelText('SQL 입력')) as HTMLTextAreaElement
+
+    fireEvent.change(input, { target: { value: 'SELECT 1;\nSELECT 2 FROM orders;' } })
+    input.setSelectionRange(3, 3)
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+
+    await screen.findByRole('table')
+    expect(sent).toEqual(['SELECT 1'])
+    server.events.removeAllListeners()
+  })
+
+  it('쓰기 문장은 확인을 거쳐 실행한다 — 취소하면 실행하지 않는다', async () => {
+    const confirmedFlags: boolean[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/queries')) {
+        void request.clone().json().then((body) => confirmedFlags.push((body as { confirmed: boolean }).confirmed))
+      }
+    })
+    renderBrowser(SQL_ROUTE)
+    await userEvent.type(await screen.findByLabelText('SQL 입력'), "UPDATE orders SET status = 'PAID'")
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+
+    // 확인 다이얼로그 — 종류·대상 커넥션·문장·되돌릴 수 없다는 문구
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('데이터를 바꾸는 문장을 실행할까요?')).toBeVisible()
+    expect(within(dialog).getByText('대상 커넥션: 개발 MySQL')).toBeVisible()
+    expect(within(dialog).getByText("UPDATE orders SET status = 'PAID'")).toBeVisible()
+    expect(within(dialog).getByText('실행하면 되돌릴 수 없습니다.')).toBeVisible()
+
+    // 취소 — 확인한 요청은 나가지 않았다
+    await userEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(confirmedFlags).toEqual([false])
+
+    // 다시 실행 → 확인
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '실행' }))
+
+    expect(await screen.findByText('3행이 바뀌었습니다')).toBeVisible()
+    expect(confirmedFlags).toEqual([false, false, true])
+    server.events.removeAllListeners()
+  })
+
+  it('구조 문장이 성공하면 ERD와 달라졌을 수 있다고 알리고 객체 목록을 다시 읽는다', async () => {
+    let objectCalls = 0
+    server.events.on('request:start', ({ request }) => {
+      if (request.url.endsWith('/objects')) objectCalls++
+    })
+    renderBrowser(SQL_ROUTE)
+    await screen.findByRole('button', { name: /^orders/ })
+    const before = objectCalls
+
+    await userEvent.type(await screen.findByLabelText('SQL 입력'), 'CREATE TABLE scratch (id INT)')
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('구조를 바꾸는 문장을 실행할까요?')).toBeVisible()
+    await userEvent.click(within(dialog).getByRole('button', { name: '실행' }))
+
+    expect(await screen.findByText(/DB 동기화로 문서에 반영하세요/)).toBeVisible()
+    await waitFor(() => expect(objectCalls).toBeGreaterThan(before))
+    server.events.removeAllListeners()
+  })
+
+  it('데이터베이스가 거부한 문장은 그 문구를 그대로 보여 준다', async () => {
+    renderBrowser(SQL_ROUTE)
+    await userEvent.type(await screen.findByLabelText('SQL 입력'), 'SELECT * FROM no_such_table')
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('데이터베이스가 문장을 거부했습니다')
+    expect(alert).toHaveTextContent("Table 'members.no_such_table' doesn't exist")
+    expect(alert).toHaveTextContent('SQLSTATE 42S02')
+  })
+
+  it('여러 문장·지원하지 않는 문장은 서버 판정 문구로 안내한다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/queries', () => fail('UNSUPPORTED_STATEMENT', 400)),
+    )
+    renderBrowser(SQL_ROUTE)
+    await userEvent.type(await screen.findByLabelText('SQL 입력'), 'BEGIN')
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('이 콘솔에서는 그 문장을 실행하지 않습니다')
+  })
+
+  it('실행 이력은 이 브라우저에 남고, 고르면 입력 칸에 다시 들어온다', async () => {
+    renderBrowser(SQL_ROUTE)
+    const input = await screen.findByLabelText('SQL 입력')
+    await userEvent.type(input, 'SELECT * FROM orders')
+    await userEvent.click(screen.getByRole('button', { name: '실행' }))
+    await screen.findByRole('table')
+
+    expect(JSON.parse(window.localStorage.getItem('crowfoot.database.sql-history.302') ?? '[]')).toMatchObject([
+      { sql: 'SELECT * FROM orders', ok: true },
+    ])
+    await userEvent.clear(input)
+    await userEvent.click(screen.getByRole('button', { name: '이력 1' }))
+    await userEvent.click(within(screen.getByRole('list', { name: '실행 이력' })).getByRole('button'))
+
+    expect(input).toHaveValue('SELECT * FROM orders')
+  })
+})
+

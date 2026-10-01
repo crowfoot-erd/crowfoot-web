@@ -108,6 +108,9 @@
       "QUERY_TIMEOUT": "実行時間の上限を超えたためキャンセルしました",
       "QUERY_FAILED": "データベースが照会を拒否しました",
       "INVALID_VALUE": "値がカラムの型に合いません",
+      "MULTIPLE_STATEMENTS": "一度に実行できるのは1文だけです",
+      "UNSUPPORTED_STATEMENT": "このコンソールではその文を実行しません",
+      "CONFIRMATION_REQUIRED": "実行前に確認が必要です",
       "TOO_MANY_REQUESTS": "実行中のリクエストが終わってから再試行してください",
       "INVALID_DBMS_TYPE": "サポートされていないDBMSです。",
       "MANAGED_INSTANCE_NOT_FOUND": "インスタンスが見つかりません。",
@@ -1803,7 +1806,29 @@
     },
     "tabs": {
       "data": "データ",
-      "structure": "構造"
+      "structure": "構造",
+      "sql": "SQL"
+    },
+    "sql": {
+      "input": "SQL入力",
+      "placeholder": "SELECT * FROM …",
+      "run": "実行",
+      "runHint": "Ctrl/Cmd+Enter — カーソル位置の文、または選択範囲を実行します",
+      "history": "履歴 {{count}}",
+      "historyLabel": "実行履歴",
+      "empty": "SQLを書いて実行すると、結果がここに表示されます",
+      "failed": "データベースが文を拒否しました",
+      "truncated": "最初の{{count}}行だけを表示しました",
+      "affected": "{{formatted}}行が変更されました",
+      "done": "実行しました",
+      "ddlNotice": "ERDドキュメントと差が生じた可能性があります。DB同期でドキュメントに反映してください。",
+      "confirm": {
+        "titleWrite": "データを変更する文を実行しますか？",
+        "titleDdl": "構造を変更する文を実行しますか？",
+        "target": "対象の接続: {{name}}",
+        "irreversible": "実行すると元に戻せません。",
+        "run": "実行"
+      }
     },
     "data": {
       "filters": "条件",

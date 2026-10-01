@@ -11,6 +11,7 @@ import {
   fetchDatabaseObjects,
   fetchObjectRows,
   fetchObjectStructure,
+  runQuery,
   type RowFilter,
   type RowsQuery,
 } from '@/features/database/api'
@@ -60,5 +61,14 @@ export function useObjectRows(workspaceId: string, connectionId: string, objectN
 export function useCountRows(workspaceId: string, connectionId: string, objectName: string) {
   return useMutation({
     mutationFn: (filters: RowFilter[]) => countObjectRows(workspaceId, connectionId, objectName, filters),
+  })
+}
+
+/** SQL 콘솔 실행 — 자동으로 다시 시도하지 않는다(같은 쓰기 문장이 두 번 실행되면 안 된다) */
+export function useRunQuery(workspaceId: string, connectionId: string) {
+  return useMutation({
+    mutationFn: ({ sql, confirmed }: { sql: string; confirmed: boolean }) =>
+      runQuery(workspaceId, connectionId, sql, confirmed),
+    retry: false,
   })
 }

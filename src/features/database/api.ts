@@ -139,6 +139,27 @@ export function countObjectRows(workspaceId: string, connectionId: string, objec
   )
 }
 
+export type StatementKind = 'READ' | 'WRITE' | 'DDL'
+
+/** SQL 콘솔 실행 결과(§3.6) — 데이터베이스가 문장을 거부해도 200이고 ok가 false다 */
+export interface QueryResult {
+  kind: StatementKind
+  ok: boolean
+  columns: ColumnMeta[] | null
+  rows: CellValue[][] | null
+  rowCount: number | null
+  /** 행 수·응답 크기 한도 때문에 결과를 잘랐는지 */
+  truncated: boolean
+  affectedRows: number | null
+  elapsedMs: number
+  error: { message: string; sqlState: string | null } | null
+}
+
+/** SQL 한 문장 실행 — 쓰기·구조 문장은 confirmed 없이 보내면 CONFIRMATION_REQUIRED(errors[0].code = 종류)로 돌아온다 */
+export function runQuery(workspaceId: string, connectionId: string, sql: string, confirmed: boolean) {
+  return apiPost<QueryResult>(`${base(workspaceId, connectionId)}/queries`, { sql, confirmed })
+}
+
 /** 데이터 브라우저 화면 경로 — 새 창 전체 화면(§5.1). object를 주면 그 객체를 고른 상태로 열린다 */
 export function databaseBrowserPath(workspaceId: string, connectionId: string, objectName?: string): string {
   const path = `/workspaces/${workspaceId}/connections/${connectionId}/data`

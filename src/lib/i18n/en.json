@@ -108,6 +108,9 @@
       "QUERY_TIMEOUT": "Cancelled because it exceeded the time limit",
       "QUERY_FAILED": "The database rejected the query",
       "INVALID_VALUE": "The value does not match the column type",
+      "MULTIPLE_STATEMENTS": "Only one statement can be run at a time",
+      "UNSUPPORTED_STATEMENT": "This console does not run that statement",
+      "CONFIRMATION_REQUIRED": "Confirmation is required before running",
       "TOO_MANY_REQUESTS": "Try again after the running requests finish",
       "INVALID_DBMS_TYPE": "Unsupported DBMS.",
       "MANAGED_INSTANCE_NOT_FOUND": "Instance not found.",
@@ -1803,7 +1806,29 @@
     },
     "tabs": {
       "data": "Data",
-      "structure": "Structure"
+      "structure": "Structure",
+      "sql": "SQL"
+    },
+    "sql": {
+      "input": "SQL input",
+      "placeholder": "SELECT * FROM …",
+      "run": "Run",
+      "runHint": "Ctrl/Cmd+Enter — runs the statement at the cursor, or the selection",
+      "history": "History {{count}}",
+      "historyLabel": "Run history",
+      "empty": "Write SQL and run it to see the result here",
+      "failed": "The database rejected the statement",
+      "truncated": "Only the first {{count}} rows are shown",
+      "affected": "{{formatted}} rows changed",
+      "done": "Done",
+      "ddlNotice": "The ERD document may now differ. Use DB sync to bring the change into the document.",
+      "confirm": {
+        "titleWrite": "Run a statement that changes data?",
+        "titleDdl": "Run a statement that changes the structure?",
+        "target": "Target connection: {{name}}",
+        "irreversible": "This cannot be undone once it runs.",
+        "run": "Run"
+      }
     },
     "data": {
       "filters": "Filters",

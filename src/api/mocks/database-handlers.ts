@@ -4,6 +4,7 @@
  *
  * 기본(성공) 시나리오만 정의한다. 행 조회는 요청 본문의 정렬·조건·페이지를 실제로 적용해
  * 화면이 보낸 요청이 결과에 드러나게 한다(EQ·CONTAINS·IS_NULL만 — 테스트가 쓰는 범위).
+ * SQL 콘솔은 첫 키워드로 종류를 나눠 계약 형태(읽기 결과·확인 요청·영향 행 수·거부)만 흉내 낸다.
  */
 import { HttpResponse, http } from 'msw'
 
@@ -115,5 +116,42 @@ export const databaseHandlers = [
       (body.filters ?? []).every((filter) => matches(row, filter, databaseFixtures.orderColumns)),
     ).length
     return HttpResponse.json(ok({ response: { count: String(128431 - 5 + count), elapsedMs: 310 } }))
+  }),
+
+  http.post(`${BASE}/queries`, async ({ request }) => {
+    const body = (await request.json()) as { sql: string; confirmed?: boolean }
+    const keyword = body.sql.trim().split(/\s+/)[0].toUpperCase()
+    if (body.sql.includes('no_such_table')) {
+      return HttpResponse.json(
+        ok({
+          response: {
+            kind: 'READ', ok: false, columns: null, rows: null, rowCount: null, truncated: false, affectedRows: null,
+            elapsedMs: 4, error: { message: "Table 'members.no_such_table' doesn't exist", sqlState: '42S02' },
+          },
+        }),
+      )
+    }
+    if (keyword === 'SELECT') {
+      return HttpResponse.json(
+        ok({
+          response: {
+            kind: 'READ', ok: true, columns: databaseFixtures.orderColumns, rows: databaseFixtures.orderRows.slice(0, 2),
+            rowCount: 2, truncated: false, affectedRows: null, elapsedMs: 18, error: null,
+          },
+        }),
+      )
+    }
+    const kind = ['INSERT', 'UPDATE', 'DELETE'].includes(keyword) ? 'WRITE' : 'DDL'
+    if (!body.confirmed) {
+      return fail('CONFIRMATION_REQUIRED', 409, [{ field: 'kind', code: kind, message: '' }])
+    }
+    return HttpResponse.json(
+      ok({
+        response: {
+          kind, ok: true, columns: null, rows: null, rowCount: null, truncated: false,
+          affectedRows: kind === 'WRITE' ? 3 : null, elapsedMs: 9, error: null,
+        },
+      }),
+    )
   }),
 ]
