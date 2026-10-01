@@ -35,7 +35,12 @@ if (!Array.isArray(manifest)) {
   throw new Error('prerender-shares: 매니페스트가 배열이 아니다')
 }
 
-const template = readFileSync(`${DIST}/index.html`, 'utf8')
+// dist/index.html은 prerender.mjs가 ko 랜딩으로 덮어쓴 뒤라 랜딩 hreflang 5개가 들어 있다 —
+// 걷어 내지 않으면 공유 페이지가 "영어판은 /en/"이라고 함께 말하게 된다
+const template = readFileSync(`${DIST}/index.html`, 'utf8').replace(
+  /[ \t]*<link\s+rel="alternate"\s+hreflang="[^"]*"\s+href="[^"]*"\s*\/?>\r?\n/g,
+  '',
+)
 for (const entry of manifest) {
   const { token, title, description } = entry
   if (!token || !title) throw new Error(`prerender-shares: 매니페스트 항목에 token·title이 필요하다 — ${JSON.stringify(entry)}`)
@@ -80,6 +85,9 @@ for (const entry of manifest) {
     'canonical+hreflang',
   )
 
+  if ((html.match(/hreflang=/g) ?? []).length !== 5) {
+    throw new Error(`prerender-shares: hreflang 수가 5가 아니다 — /share/${token}`)
+  }
   const out = `${DIST}/share/${token}/index.html`
   mkdirSync(dirname(out), { recursive: true })
   writeFileSync(out, html)

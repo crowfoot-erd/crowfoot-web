@@ -1,9 +1,10 @@
 /**
  * 라우트별 HTML head 문서 제목·메타 관리 (04-front/storyboard/00-common.md §3.11)
  *
- * SPA는 모든 라우트가 같은 index.html을 받는다 — 공개 페이지가 검색 결과·링크 공유 미리보기에서
- * 각자의 제목·설명·canonical을 갖도록 effect에서 head를 덮어쓴다. 언마운트 시 index.html 기본값으로
- * 되돌려(최초 effect 진입 시 캡처) 훅을 쓰지 않는 보호 페이지는 기본 제목을 유지하게 한다.
+ * 정적 HTML이 없는 라우트는 같은 앱 껍데기(app.html — canonical·hreflang 없음)를 받는다 — 공개 페이지가
+ * 검색 결과·링크 공유 미리보기에서 각자의 제목·설명·canonical을 갖도록 effect에서 head를 덮어쓴다.
+ * 언마운트 시 처음 받은 HTML의 값으로 되돌려(최초 effect 진입 시 캡처) 훅을 쓰지 않는 보호 페이지는
+ * 기본 제목을 유지하게 한다. 받은 HTML에 없던 요소(앱 껍데기의 canonical 등)는 되돌릴 때 지운다.
  * StrictMode의 이중 effect(설정→복원→재설정)에도 최종 상태는 항상 설정값이라 안전하다.
  *
  * 언어(§3.11) — 현재 UI 언어를 따라 canonical·og:url에 prefix(/en·/ja·/zh — ko는 없음)를

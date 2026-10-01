@@ -6,9 +6,14 @@
  * 치환하고 hreflang 5개(ko·en·ja·zh·x-default)를 주입한다. SPA 엔트리 그대로라 브라우저에서 열면
  * 하이드레이션되고, 크롤러는 치환된 메타를 읽는다(빌드 게이트: 셀렉터 미발견 시 exit 1).
  *
- * 산출 경로 — nginx try_files($uri → $uri/)가 정적 파일을 먼저 서빙한다:
+ * 산출 경로 — nginx try_files($uri → $uri/index.html)가 정적 파일을 먼저 서빙한다:
  *   dist/index.html(ko 랜딩, 제자리 치환)·dist/{en,ja,zh}/index.html
  *   dist/terms/index.html·dist/{en,ja,zh}/terms/index.html
+ *
+ * 앱 껍데기(dist/app.html) — 정적 HTML이 없는 주소(/share/{token}·/release-notes/{id}·보호 경로·
+ * 없는 주소)에 nginx가 마지막으로 내려 주는 파일이다(nginx/default.conf). 랜딩 전용 값(canonical·
+ * og:url·hreflang·JSON-LD·랜딩 제목)을 뺀 사본이라, 크롤러가 JS 실행 전에 "이 주소의 대표는 홈"이라는
+ * 신호를 받지 않는다. 주소별 제목·canonical은 런타임에 usePageMeta가 넣는다.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -117,11 +122,28 @@ function render(template, lang, page) {
   return html
 }
 
+/** 앱 껍데기 — 랜딩 전용 값을 뺀다. 설명·og:title·og:image는 링크 미리보기 폴백으로 남긴다
+ *  (JS를 실행하지 않는 미리보기 크롤러가 빈 카드를 받지 않게) */
+function renderShell(template) {
+  let html = template
+  html = must(html, /<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(bundles.ko.common.appName)}</title>`, 'shell title')
+  html = must(html, /[ \t]*<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>\r?\n/, '', 'shell canonical')
+  html = must(html, /[ \t]*<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>\r?\n/, '', 'shell og:url')
+  html = must(html, /[ \t]*<script type="application\/ld\+json">[\s\S]*?<\/script>\r?\n/, '', 'shell JSON-LD')
+  if (/rel="canonical"|hreflang=|application\/ld\+json|property="og:url"/.test(html)) {
+    throw new Error('prerender: 앱 껍데기에 랜딩 전용 값이 남았다')
+  }
+  return html
+}
+
 function escapeHtml(value) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
 const template = readFileSync(`${DIST}/index.html`, 'utf8')
+// 앱 껍데기는 치환 전 템플릿에서 만든다 — 아래 루프가 dist/index.html을 ko 랜딩으로 덮어쓰기 전에
+writeFileSync(`${DIST}/app.html`, renderShell(template))
+console.log('prerender: /app.html (앱 껍데기)')
 let produced = 0
 for (const page of PAGES) {
   for (const lang of LANGS) {

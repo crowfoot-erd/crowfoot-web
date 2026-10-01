@@ -14,6 +14,11 @@
  * - 조회 실패·응답 이형은 빌드를 실패시킨다(prerender-shares와 같은 엄격 정책 — 사이트맵이
  *   조용히 빈 채로 배포되는 드리프트를 넘기지 않는다). 비상 우회는 SITEMAP_ALLOW_EMPTY=1.
  * - 마커가 없으면(원본 훼손) 빌드 실패 — 정적 기본행만 배포되는 상태를 허용하지 않는다.
+ *
+ * 언어별 항목 전개(v1.27) — 원본과 공유 행은 ko 주소만 <loc>으로 갖는다. 마지막에 각 <url> 블록을
+ * alternate의 en·ja·zh 주소마다 한 번씩 복제해 <loc>만 바꾼다(alternate 세트·lastmod·priority는 같다).
+ * 사이트맵 hreflang 방식은 언어 버전마다 자기 <url> 항목을 요구하기 때문이다. 원본은 지금처럼
+ * ko 행 1개만 관리한다. alternate가 모두 같은 주소인 공유 문서는 복제되지 않는다.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -82,6 +87,29 @@ function shareRow(row) {
   return `  <url>\n    <loc>${url}</loc>\n${links}\n${lastmod}    <priority>0.8</priority>\n  </url>`
 }
 
+/** 언어별 <url> 항목 전개 — alternate 세트가 5개가 아니거나 전개 후 <loc>이 겹치면 빌드 실패 */
+function expandLanguages(xml) {
+  const seen = new Set()
+  const expanded = xml.replace(/^[ \t]*<url>[\s\S]*?<\/url>/gm, (block) => {
+    const loc = /<loc>([^<]+)<\/loc>/.exec(block)?.[1]
+    if (!loc) throw new Error(`generate-sitemap: <loc> 없는 <url> — ${block.slice(0, 80)}`)
+    const alternates = [...block.matchAll(/hreflang="([^"]+)" href="([^"]+)"/g)].map(([, lang, href]) => ({ lang, href }))
+    if (alternates.map((a) => a.lang).join(',') !== 'ko,en,ja,zh,x-default') {
+      throw new Error(`generate-sitemap: alternate 세트가 ko·en·ja·zh·x-default가 아니다 — ${loc}`)
+    }
+    if (alternates[0].href !== loc) {
+      throw new Error(`generate-sitemap: 원본 <loc>은 ko 주소여야 한다 — ${loc}`)
+    }
+    const locs = [...new Set(alternates.map((a) => a.href))]
+    for (const href of locs) {
+      if (seen.has(href)) throw new Error(`generate-sitemap: <loc> 중복 — ${href}`)
+      seen.add(href)
+    }
+    return locs.map((href) => block.replace(`<loc>${loc}</loc>`, `<loc>${href}</loc>`)).join('\n')
+  })
+  return { xml: expanded, count: seen.size }
+}
+
 const sitemap = readFileSync(DIST_SITEMAP, 'utf8')
 if (!MARKER_RE.test(sitemap)) {
   throw new Error('generate-sitemap: SHARE-SITEMAP 마커 없음 — public/sitemap.xml 확인')
@@ -98,4 +126,6 @@ if (process.env.SITEMAP_ALLOW_EMPTY === '1') {
 }
 
 // 마커 줄을 생성 행으로 교체 — 마커가 사라므로 strip-deploy-comments가 남은 주석(헤더)만 걷는다
-writeFileSync(DIST_SITEMAP, sitemap.replace(MARKER_RE, rows === '' ? '' : `${rows}\n`))
+const expanded = expandLanguages(sitemap.replace(MARKER_RE, rows === '' ? '' : `${rows}\n`))
+writeFileSync(DIST_SITEMAP, expanded.xml)
+console.log(`generate-sitemap: <url> ${expanded.count}건(언어별 항목 포함)`)

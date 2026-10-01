@@ -12,6 +12,9 @@
   ko는 무prefix(/), en/ja/zh는 /en·/ja·/zh prefix다. 프리렌더 산출(랜딩·/terms)과
   usePageMeta canonical이 같은 규칙을 쓴다. 단 /share/{token}은 단일 URL — 언어별
   prefix 없이 5개 alternate 모두 같은 주소를 가리킨다(prerender-shares.mjs와 동일 규칙).
+  언어별 항목(v1.27): 이 원본에는 ko 주소 행만 둔다. 빌드 때 generate-sitemap.mjs가 각 행을
+  alternate의 en·ja·zh 주소마다 복제해 <loc>만 바꾼 행을 덧붙인다 — 여기에 /en·/ja·/zh 행을
+  직접 적지 않는다(중복이면 빌드 실패).
   운영 원칙(docs README 릴리스 표와 동일): 릴리스 노트 게시마다 아래에 <url> 행 1개씩 추가(Alternate 5개 세트 포함), 삭제 금지.
   게시물 id는 community_posts(board=RELEASE_NOTE)의 id다.
 -->
@@ -24,7 +27,7 @@
     <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/" />
     <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/" />
-    <lastmod>2026-09-22</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
