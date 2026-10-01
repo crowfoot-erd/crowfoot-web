@@ -33,8 +33,8 @@ describe('내가 작성한 공유 문서 댓글', () => {
     expect(order).toHaveAttribute('href', '/share/Sh4reT0ken0fM0del501aaaa')
     expect(order).toHaveAttribute('target', '_blank')
     expect(settle).toHaveAttribute('href', '/share/P0pularT0ken0fSettle2c')
-    expect(screen.getByText('postgresql')).toBeVisible()
-    expect(screen.getByText('mysql')).toBeVisible()
+    expect(screen.getByText('PostgreSQL')).toBeVisible() // 코드 원값이 아니라 표시명
+    expect(screen.getByText('MySQL')).toBeVisible()
 
     // then: 댓글 내용 행 — 원댓글은 수정 표시만, 답글(parentCommentId)은 답글 배지
     expect(screen.getByText('복합 UK 위치가 깔끔합니다.')).toBeVisible()

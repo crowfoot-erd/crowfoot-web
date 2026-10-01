@@ -21,6 +21,8 @@ import type { Model, PublicShare } from '@/api/types'
 import { isApiError } from '@/api/client'
 import { LanguageSelect } from '@/components/language-select'
 import { Badge } from '@/components/ui/badge'
+import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { Button } from '@/components/ui/button'
 import { ViewerTabButton } from '@/components/viewer-tab-button'
 import { EditorShell } from '@/features/editor'
@@ -102,8 +104,9 @@ export function ShareViewerPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-base font-semibold">{share.data.modelName}</h1>
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  {share.data.databaseType}
+                <Badge variant="outline" className="gap-1 text-[10px]">
+                  <DbmsIcon databaseType={share.data.databaseType} className="size-3" />
+                  {dbmsLabel(share.data.databaseType)}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px]">{t('shareViewer.badge')}</Badge>
               </div>

@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { ErrorState } from '@/components/error-state'
 import { ViewerTabButton } from '@/components/viewer-tab-button'
 import { formatDateTime } from '@/lib/format'
@@ -75,9 +76,9 @@ export function ModelViewerPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-base font-semibold">{model.data.name}</h1>
-                <Badge variant="outline" className="gap-1 font-mono text-[10px]">
+                <Badge variant="outline" className="gap-1 text-[10px]">
                   <DbmsIcon databaseType={model.data.databaseType} className="size-3" />
-                  {model.data.databaseType}
+                  {dbmsLabel(model.data.databaseType)}
                 </Badge>
                 <span className="shrink-0 text-xs text-muted-foreground">v{savedVersion ?? model.data.version}</span>
               </div>

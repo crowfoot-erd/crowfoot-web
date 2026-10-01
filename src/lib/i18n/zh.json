@@ -123,12 +123,13 @@
   "auth": {
     "login": {
       "title": "登录 Crowfoot",
-      "description": "使用 GitHub 账户绘制 ERD——与团队协作编辑和共享。",
+      "description": "使用 GitHub 或 Google 账户绘制 ERD——与团队协作编辑和共享。",
       "continueWith": "通过 {{provider}} 继续",
       "consent": {
         "prefix": "我已阅读并同意",
         "link": "服务条款",
-        "suffix": "。"
+        "suffix": "。",
+        "required": "同意服务条款后即可登录。"
       },
       "noProviders": {
         "title": "没有可用的登录方式",
@@ -692,7 +693,13 @@
         "description": "创建文档，开始设计 ERD。",
         "cta": "新建 ERD 文档"
       },
-      "open": "打开 {{name}}"
+      "open": "打开 {{name}}",
+      "actions": "{{name}} 的操作",
+      "menu": {
+        "connect": "连接到数据库",
+        "edit": "编辑名称和说明",
+        "delete": "删除"
+      }
     },
     "create": {
       "title": "新建 ERD 文档",
@@ -778,6 +785,8 @@
         "sync": "同步数据库",
         "image": "导出图像",
         "crown": "导出文档文件",
+        "export": "导出",
+        "tools": "工具",
         "share": "共享",
         "history": "版本历史",
         "areaFilter": {
@@ -1544,7 +1553,8 @@
     "hero": {
       "title": "在浏览器中绘制的免费 ERD，",
       "titleAccent": "直接变成真实的数据库",
-      "description": "无需安装，在浏览器中绘制 ER 图，与团队实时协作完善，并立即创建 MySQL、PostgreSQL 数据库。还可以从现有数据库自动生成 ERD，并生成 DDL 和迁移 SQL。"
+      "description": "无需安装，在浏览器中绘制 ER 图，与团队实时协作完善，并立即创建 MySQL、PostgreSQL 数据库。还可以从现有数据库自动生成 ERD，并生成 DDL 和迁移 SQL。",
+      "imageAlt": "Crowfoot ERD 编辑器界面——用 6 张表和关系线绘制的在线商城 ERD 示例"
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",

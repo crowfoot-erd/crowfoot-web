@@ -123,12 +123,13 @@
   "auth": {
     "login": {
       "title": "Crowfootにログイン",
-      "description": "GitHubアカウントでERDを描き、チームで編集して共有しましょう。",
+      "description": "GitHub・GoogleアカウントでERDを描き、チームで編集して共有しましょう。",
       "continueWith": "{{provider}}で続行",
       "consent": {
         "prefix": "「",
         "link": "利用規約",
-        "suffix": "」を読み、同意しました"
+        "suffix": "」を読み、同意しました",
+        "required": "利用規約に同意すると、ログインボタンが有効になります。"
       },
       "noProviders": {
         "title": "利用できるログイン方法がありません",
@@ -692,7 +693,13 @@
         "description": "ドキュメントを作成してERD設計を始めましょう。",
         "cta": "新規ERDドキュメント"
       },
-      "open": "{{name}}を開く"
+      "open": "{{name}}を開く",
+      "actions": "{{name}}の操作",
+      "menu": {
+        "connect": "データベースに接続",
+        "edit": "名前・説明を編集",
+        "delete": "削除"
+      }
     },
     "create": {
       "title": "新規ERDドキュメント",
@@ -778,6 +785,8 @@
         "sync": "DB同期",
         "image": "画像を書き出す",
         "crown": "ドキュメントファイルを書き出す",
+        "export": "書き出し",
+        "tools": "ツール",
         "share": "共有",
         "history": "バージョン履歴",
         "areaFilter": {
@@ -1544,7 +1553,8 @@
     "hero": {
       "title": "ブラウザで描く無料のERD、",
       "titleAccent": "そのまま実際のデータベースに",
-      "description": "インストール不要。ブラウザでER図を描き、チームとリアルタイムで磨き上げ、MySQL・PostgreSQLのデータベースまですぐに作成できます。既存のDBからERDを自動生成し、DDLやマイグレーションSQLも出力します。"
+      "description": "インストール不要。ブラウザでER図を描き、チームとリアルタイムで磨き上げ、MySQL・PostgreSQLのデータベースまですぐに作成できます。既存のDBからERDを自動生成し、DDLやマイグレーションSQLも出力します。",
+      "imageAlt": "Crowfoot ERDエディタの画面 — オンラインストアのERDを6つのテーブルとリレーション線で描いた例"
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",

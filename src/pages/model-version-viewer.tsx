@@ -24,6 +24,8 @@ import { toast } from 'sonner'
 import type { Model } from '@/api/types'
 import { isApiError } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
+import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -193,8 +195,9 @@ export function ModelVersionViewerPage() {
                     {t('model.editor.history.current')}
                   </Badge>
                 ) : null}
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  {model.data.databaseType}
+                <Badge variant="outline" className="gap-1 text-[10px]">
+                  <DbmsIcon databaseType={model.data.databaseType} className="size-3" />
+                  {dbmsLabel(model.data.databaseType)}
                 </Badge>
                 {compareVersion !== null ? (
                   <Badge variant="secondary" data-testid="compare-badge" className="gap-1 text-[10px]">

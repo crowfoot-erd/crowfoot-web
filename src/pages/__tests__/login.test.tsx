@@ -124,12 +124,18 @@ describe('로그인 화면', () => {
     const button = await screen.findByRole('button', { name: /GitHub/ })
     expect(button).toBeDisabled()
     expect(screen.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', '/terms')
+    // 버튼이 왜 꺼져 있는지 안내한다 — 버튼의 설명으로도 이어진다(보조 기술)
+    expect(screen.getByText('이용약관에 동의하면 로그인 버튼이 켜집니다.')).toBeVisible()
+    expect(button).toHaveAccessibleDescription('이용약관에 동의하면 로그인 버튼이 켜집니다.')
+    // 제공자 상징 아이콘 — 중립 아이콘(지구본)이 아니다
+    expect(button.querySelector('svg[data-provider="github"]')).not.toBeNull()
 
     // when: 동의 체크
     await userEvent.click(screen.getByRole('checkbox'))
 
     // then: 버튼 활성 + 동의는 브라우저에 기록
     expect(button).toBeEnabled()
+    expect(screen.queryByText('이용약관에 동의하면 로그인 버튼이 켜집니다.')).not.toBeInTheDocument()
     expect(window.localStorage.getItem(TERMS_CONSENT_STORAGE_KEY)).toBe('agreed')
   })
 

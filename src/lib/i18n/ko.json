@@ -123,12 +123,13 @@
   "auth": {
     "login": {
       "title": "Crowfoot에 로그인",
-      "description": "GitHub 계정으로 ERD를 그리고, 팀과 함께 편집하고 공유하세요.",
+      "description": "GitHub·Google 계정으로 ERD를 그리고, 팀과 함께 편집하고 공유하세요.",
       "continueWith": "{{provider}}로 계속하기",
       "consent": {
         "prefix": "서비스 ",
         "link": "이용약관",
-        "suffix": "을 확인했으며 동의합니다"
+        "suffix": "을 확인했으며 동의합니다",
+        "required": "이용약관에 동의하면 로그인 버튼이 켜집니다."
       },
       "noProviders": {
         "title": "사용 가능한 로그인 방식이 없습니다",
@@ -692,7 +693,13 @@
         "description": "새 문서를 만들어 ERD 설계를 시작해 보세요.",
         "cta": "새 ERD 문서"
       },
-      "open": "{{name}} 문서 열기"
+      "open": "{{name}} 문서 열기",
+      "actions": "{{name}} 문서 작업",
+      "menu": {
+        "connect": "데이터베이스에 연결",
+        "edit": "이름·설명 수정",
+        "delete": "삭제"
+      }
     },
     "create": {
       "title": "새 ERD 문서",
@@ -778,6 +785,8 @@
         "sync": "DB 동기화",
         "image": "이미지 내보내기",
         "crown": "문서 파일 내보내기",
+        "export": "내보내기",
+        "tools": "도구",
         "share": "공유",
         "history": "버전 기록",
         "areaFilter": {
@@ -1544,7 +1553,8 @@
     "hero": {
       "title": "브라우저에서 그리는 무료 ERD,",
       "titleAccent": "그대로 실제 데이터베이스가 됩니다",
-      "description": "설치 없이 브라우저에서 ERD를 그리고, 팀과 실시간으로 함께 다듬고, MySQL·PostgreSQL 데이터베이스까지 바로 만드세요. 기존 DB를 읽어 ERD를 자동으로 그리고, DDL과 마이그레이션 SQL도 만들어 줍니다."
+      "description": "설치 없이 브라우저에서 ERD를 그리고, 팀과 실시간으로 함께 다듬고, MySQL·PostgreSQL 데이터베이스까지 바로 만드세요. 기존 DB를 읽어 ERD를 자동으로 그리고, DDL과 마이그레이션 SQL도 만들어 줍니다.",
+      "imageAlt": "Crowfoot ERD 에디터 화면 — 온라인 쇼핑몰 ERD를 테이블 6개와 관계선으로 그린 예시"
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",

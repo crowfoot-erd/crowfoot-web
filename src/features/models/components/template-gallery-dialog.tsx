@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 
 import type { TemplateSummary } from '@/api/types'
 import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -112,9 +113,9 @@ export function TemplateGalleryDialog({ open, onOpenChange, workspaceId }: Templ
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className="gap-1 font-mono text-[10px]">
+                    <Badge variant="outline" className="gap-1 text-[10px]">
                       <DbmsIcon databaseType={template.databaseType} className="size-3" />
-                      {template.databaseType}
+                      {dbmsLabel(template.databaseType)}
                     </Badge>
                     <span className="text-xs text-muted-foreground">{formatDate(template.updatedAt)}</span>
                   </div>

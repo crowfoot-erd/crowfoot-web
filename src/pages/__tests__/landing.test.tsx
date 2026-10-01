@@ -24,6 +24,10 @@ describe('랜딩 페이지', () => {
   it('게스트 — 히어로·핵심 강조·특징 12종·CTA를 렌더한다', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
+    // 히어로에 제품 화면 — 언어·테마에 맞는 한 장, 대체 문구와 크기(자리 확보)를 갖는다
+    const heroImage = screen.getByRole('img', { name: /Crowfoot ERD 에디터 화면/ })
+    expect(heroImage).toHaveAttribute('src', '/landing/editor-ko-light.webp')
+    expect(heroImage).toHaveAttribute('width', '2045')
     // h1에 검색 핵심어(무료 ERD)가 들어 있다
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('그대로 실제 데이터베이스가 됩니다')

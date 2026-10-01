@@ -4,9 +4,17 @@
  * ReactFlowProvider 안에서 렌더된다(zoom/fitView 접근). undo/redo/dirty는 스토어 셀렉터 구독.
  * 보기 메뉴 — 이름 표시 모드(물리명/논리명/둘 다) 등 뷰 옵션. 편집 권한과 무관하게 항상 사용 가능.
  * 테마 토글 — 에디터·공개 공유 뷰어는 앱 셸(AppLayout) 밖 전체 화면이라 여기서도 노출한다.
+ *
+ * 버튼 구성(05-editor/02-ui.md §1.1) — 한 줄에 다 늘어놓지 않는다. 늘 쓰는 것만 버튼으로 두고
+ * 나머지는 두 메뉴로 묶는다:
+ *   버튼: 탐색기·용어 사전·검증·되돌리기·저장·자동 배치·SQL 생성·공유
+ *   「내보내기」 메뉴: 이미지(보이는 화면·전체 문서)·문서 파일(.crown)
+ *   「도구」 메뉴: 논리명 추론·데이터베이스 연결 또는 DB 동기화·다른 DBMS로 복제·버전 기록
+ * 메뉴 항목은 다이얼로그를 여는 신호만 보낸다 — 다이얼로그는 메뉴 밖(형제)에 둔다.
+ * 메뉴 내용은 닫히면 언마운트되므로, 그 안에 다이얼로그를 두면 열자마자 사라진다.
  */
 import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, Waypoints, ZoomIn, ZoomOut } from 'lucide-react'
+import { BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Save, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -224,27 +232,6 @@ export function EditorToolbar({
       </Button>
 
       <AutoLayoutButton canEdit={canEdit} />
-      {!publicView && canEdit ? (
-        <LogicalNamesButton workspaceId={workspaceId} />
-      ) : null}
-      {/* 데이터베이스 최초 연결(§1.14) — 미연결 문서에만. 연결 성공으로 models 프리픽스가
-          무효화되면 상세가 재조회돼 이 버튼은 사라지고 아래 DB 동기화가 그 자리에 나타난다 */}
-      {!publicView && canEdit && !sourceConnectionId ? (
-        <ConnectDatabaseButton
-          workspaceId={workspaceId}
-          modelId={modelId}
-          modelName={modelName}
-          databaseType={databaseType}
-        />
-      ) : null}
-      {!publicView && canEdit && sourceConnectionId ? (
-        <SyncButton
-          workspaceId={workspaceId}
-          modelName={modelName}
-          sourceConnectionId={sourceConnectionId}
-          canEdit={canEdit}
-        />
-      ) : null}
       {/* SQL 생성 — 읽기 전용·공개 뷰어에서도 쓸 수 있다: 내보내기는 편집이 아니다.
           공개 뷰어는 공유 토큰 경로(§1.10.8)로, 멤버 화면은 워크스페이스 경로(§1.7)로 생성한다 */}
       <DdlButton
@@ -258,17 +245,27 @@ export function EditorToolbar({
       {!publicView && canEdit ? (
         <ShareButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} />
       ) : null}
-      {!publicView && (
-        <VersionHistoryButton workspaceId={workspaceId} modelId={modelId} modelName={modelName} canEdit={canEdit} />
-      )}
-      <ImageButton modelName={modelName} />
-      {/* 문서 좋아요 — 공개 뷰어 헤더 전용(§1.10.6). 내보내기 계열 버튼 다음 자리.
+      {/* 내보내기 메뉴 — 이미지는 어디서나, .crown 문서 파일은 내 계정 문서에만(공개 뷰어에서는 숨긴다) */}
+      <ExportMenu
+        modelName={modelName}
+        crown={!publicView ? { databaseType, modelDescription } : undefined}
+      />
+      {/* 도구 메뉴 — 전부 워크스페이스 API라 공개 뷰어에서는 메뉴째 숨긴다.
+          버전 기록 열람은 멤버 전체, 나머지는 편집 권한이 있을 때만 항목이 보인다 */}
+      {!publicView ? (
+        <ToolsMenu
+          canEdit={canEdit}
+          workspaceId={workspaceId}
+          modelId={modelId}
+          modelName={modelName}
+          modelDescription={modelDescription}
+          databaseType={databaseType}
+          sourceConnectionId={sourceConnectionId}
+        />
+      ) : null}
+      {/* 문서 좋아요 — 공개 뷰어 헤더 전용(§1.10.6). 내보내기 메뉴 다음 자리.
           댓글 탭의 버튼과 같은 쿼리로 정착한다 */}
       {publicView && shareToken ? <ShareLikeButton token={shareToken} /> : null}
-      {/* .crown 문서 파일은 내 계정 문서에만 — 공개 뷰어에서는 숨긴다(이미지·SQL은 공개) */}
-      {!publicView ? (
-        <CrownButton modelName={modelName} databaseType={databaseType} modelDescription={modelDescription} />
-      ) : null}
 
       <div className="flex-1" />
 
@@ -578,127 +575,6 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
   )
 }
 
-/** 논리명 자동 추론 — 코멘트 없는 객체의 논리명(물리명과 같은 것)을 사전으로 채운다
- *  (05-editor/04-dbms-engineering.md §3.2). 이미 있는 논리명은 건드리지 않고,
- *  적용은 undo 1회로 복구된다. 커스텀 사전은 워크스페이스 API라 공개 뷰어에서 숨긴다.
- *  시스템 라벨 해석 언어는 다이얼로그 안에서 고른다(v1.14) — 사전 편집은 용어 사전 패널이 맡는다. */
-/** 데이터베이스 최초 연결(§1.14) — 미연결 문서에 원천 커넥션을 지정한다. ERD 탭 행
- *  액션과 같은 공용 ConnectDatabaseDialog를 쓴다(양쪽 진입점, 공통 구조) */
-function ConnectDatabaseButton({
-  workspaceId,
-  modelId,
-  modelName,
-  databaseType,
-}: {
-  workspaceId: string
-  modelId: string
-  modelName: string
-  databaseType: string
-}) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 gap-1 px-2"
-        onClick={() => setOpen(true)}
-        aria-label={t('model.connect.toolbar')}
-        title={t('model.connect.toolbar')}
-      >
-        <Link2 aria-hidden className="size-3.5" />
-        {t('model.connect.toolbar')}
-      </Button>
-      {open ? (
-        <ConnectDatabaseDialog
-          open
-          onOpenChange={setOpen}
-          workspaceId={workspaceId}
-          model={{ modelId, name: modelName, databaseType }}
-        />
-      ) : null}
-    </>
-  )
-}
-
-function LogicalNamesButton({ workspaceId }: { workspaceId: string }) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 gap-1 px-2"
-        onClick={() => setOpen(true)}
-        aria-label={t('model.editor.toolbar.logicalNames')}
-        title={t('model.editor.toolbar.logicalNames')}
-      >
-        <BookOpenText aria-hidden className="size-3.5" />
-        {t('model.editor.toolbar.logicalNames')}
-      </Button>
-      <LogicalNamesDialog
-        open={open}
-        onOpenChange={setOpen}
-        workspaceId={workspaceId}
-      />
-    </>
-  )
-}
-
-/** DB 동기화 — 원천 커넥션(리버스 생성 시점)의 현재 스키마를 문서에 부분 반영한다
- *  (05-editor/04-dbms-engineering.md §3.3). 색상·위치·메모 등 문서 전용 속성은 유지되고
- *  적용은 되돌리기 1회로 복구된다. 원천 커넥션이 삭제됐으면 원천이 없으니 버튼만 숨긴다. */
-function SyncButton({
-  workspaceId,
-  modelName,
-  sourceConnectionId,
-  canEdit,
-}: {
-  workspaceId: string
-  modelName: string
-  sourceConnectionId: string
-  canEdit: boolean
-}) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const connections = useConnections(workspaceId)
-  const exists = (connections.data?.items ?? []).some(
-    (connection) => connection.connectionId === sourceConnectionId,
-  )
-  if (!exists) return null
-
-  return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 gap-1 px-2"
-        onClick={() => setOpen(true)}
-        aria-label={t('model.editor.toolbar.sync')}
-        title={t('model.editor.toolbar.sync')}
-      >
-        {t('model.editor.toolbar.sync')}
-        <RefreshCw aria-hidden className="size-3.5" />
-      </Button>
-      <SyncDialog
-        open={open}
-        onOpenChange={setOpen}
-        workspaceId={workspaceId}
-        modelName={modelName}
-        sourceConnectionId={sourceConnectionId}
-        canEdit={canEdit}
-      />
-    </>
-  )
-}
-
 /** SQL 스크립트 미리보기 — 문서를 대상 DBMS 방언의 DDL로 내보낸다(05-editor/04-dbms-engineering.md §3.1).
  *  읽기 전용·공개 뷰어에서도 항상 쓸 수 있다 — 내보내기는 편집이 아니다. 공개 뷰어는
  *  shareToken 경로(§1.10.8)로 생성하고, 배포(§1.8 진입)는 편집 권한이 있을 때만 노출된다. */
@@ -841,39 +717,111 @@ function ShareButton({
   )
 }
 
-/** 버전 기록 (08-core/02-model.md §1.11) — 저장마다 남는 스냅샷 목록·메모·조회.
- *  열람은 읽기 전용 뷰어도 가능(메모 편집은 Editor+ — 다이얼로그 안에서 게이트) */
-function VersionHistoryButton({
+/** 「도구」 메뉴 — 가끔 쓰는 문서 작업을 묶는다(05-editor/02-ui.md §1.1).
+ *  · 논리명 추론(§3.2 — 편집 권한) · 데이터베이스 연결(§1.14 — 미연결 문서) 또는 DB 동기화(§3.3 — 연결된 문서)
+ *  · 다른 DBMS로 복제(§3.5 — 편집 권한) · 버전 기록(08-core/02-model.md §1.11 — 멤버 전체)
+ *  항목은 어느 다이얼로그를 열지만 정하고, 다이얼로그는 메뉴 밖에서 렌더한다. */
+type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'convert' | 'history'
+
+function ToolsMenu({
+  canEdit,
   workspaceId,
   modelId,
   modelName,
-  canEdit,
+  modelDescription,
+  databaseType,
+  sourceConnectionId,
 }: {
+  canEdit: boolean
   workspaceId: string
   modelId: string
   modelName: string
-  canEdit: boolean
+  modelDescription: string | null
+  databaseType: string
+  sourceConnectionId: string | null
 }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState<ToolDialog | null>(null)
+  const close = (open: boolean) => {
+    if (!open) setActive(null)
+  }
 
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 gap-1 px-2"
-        onClick={() => setOpen(true)}
-        aria-label={t('model.editor.toolbar.history')}
-        title={t('model.editor.toolbar.history')}
-      >
-        {t('model.editor.toolbar.history')}
-        <History aria-hidden className="size-3.5" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" aria-label={t('model.editor.toolbar.tools')}>
+            <Wrench aria-hidden className="size-3.5" />
+            {t('model.editor.toolbar.tools')}
+            <ChevronDown aria-hidden className="size-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-48">
+          {canEdit ? (
+            <DropdownMenuItem onSelect={() => setActive('logicalNames')}>
+              <BookOpenText aria-hidden />
+              {t('model.editor.toolbar.logicalNames')}
+            </DropdownMenuItem>
+          ) : null}
+          {/* 데이터베이스 최초 연결(§1.14) — 미연결 문서에만. 연결 성공으로 models 프리픽스가
+              무효화되면 상세가 재조회돼 이 항목은 사라지고 DB 동기화가 그 자리에 나타난다 */}
+          {canEdit && !sourceConnectionId ? (
+            <DropdownMenuItem onSelect={() => setActive('connect')}>
+              <Link2 aria-hidden />
+              {t('model.connect.toolbar')}
+            </DropdownMenuItem>
+          ) : null}
+          {canEdit && sourceConnectionId ? (
+            <SyncMenuItem
+              workspaceId={workspaceId}
+              sourceConnectionId={sourceConnectionId}
+              onSelect={() => setActive('sync')}
+            />
+          ) : null}
+          {canEdit ? (
+            <DropdownMenuItem onSelect={() => setActive('convert')}>
+              <CopyPlus aria-hidden />
+              {t('model.editor.toolbar.dbmsConvert')}
+            </DropdownMenuItem>
+          ) : null}
+          {canEdit ? <DropdownMenuSeparator /> : null}
+          <DropdownMenuItem onSelect={() => setActive('history')}>
+            <History aria-hidden />
+            {t('model.editor.toolbar.history')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <LogicalNamesDialog open={active === 'logicalNames'} onOpenChange={close} workspaceId={workspaceId} />
+      {active === 'connect' ? (
+        <ConnectDatabaseDialog
+          open
+          onOpenChange={close}
+          workspaceId={workspaceId}
+          model={{ modelId, name: modelName, databaseType }}
+        />
+      ) : null}
+      {sourceConnectionId ? (
+        <SyncDialog
+          open={active === 'sync'}
+          onOpenChange={close}
+          workspaceId={workspaceId}
+          modelName={modelName}
+          sourceConnectionId={sourceConnectionId}
+          canEdit={canEdit}
+        />
+      ) : null}
+      <ConvertDbmsDialog
+        open={active === 'convert'}
+        onOpenChange={close}
+        workspaceId={workspaceId}
+        modelName={modelName}
+        modelDescription={modelDescription}
+        databaseType={databaseType}
+      />
       <VersionHistoryDialog
-        open={open}
-        onOpenChange={setOpen}
+        open={active === 'history'}
+        onOpenChange={close}
         workspaceId={workspaceId}
         modelId={modelId}
         modelName={modelName}
@@ -883,11 +831,47 @@ function VersionHistoryButton({
   )
 }
 
-/** 이미지 내보내기 — 두 범위를 제공한다(05-editor/02-ui.md §1.1).
+/** DB 동기화 항목 — 원천 커넥션(리버스 생성 시점)의 현재 스키마를 문서에 부분 반영한다
+ *  (05-editor/04-dbms-engineering.md §3.3). 원천 커넥션이 삭제됐으면 원천이 없으니 항목을 숨긴다.
+ *  커넥션 목록은 메뉴를 열 때 조회한다(항목이 메뉴 내용 안에서 마운트된다). */
+function SyncMenuItem({
+  workspaceId,
+  sourceConnectionId,
+  onSelect,
+}: {
+  workspaceId: string
+  sourceConnectionId: string
+  onSelect: () => void
+}) {
+  const { t } = useTranslation()
+  const connections = useConnections(workspaceId)
+  const exists = (connections.data?.items ?? []).some(
+    (connection) => connection.connectionId === sourceConnectionId,
+  )
+  if (!exists) return null
+
+  return (
+    <DropdownMenuItem onSelect={onSelect}>
+      <RefreshCw aria-hidden />
+      {t('model.editor.toolbar.sync')}
+    </DropdownMenuItem>
+  )
+}
+
+/** 「내보내기」 메뉴 — 이미지와 문서 파일을 묶는다(05-editor/02-ui.md §1.1).
+ *  이미지는 두 범위를 제공한다.
  *  · 보이는 화면: 현재 줌·구도 그대로 뷰포트만 찍는다 — 래스터가 작아 큰 문서도 즉시 끝난다
  *  · 전체 문서: 모든 테이블·노트·관계선 + 여백. 넓은 문서는 배율을 낮춰 느려짐을 줄인다
- *  캡처 대상이 없으면(빈 문서) 비활성. 노드는 항상 전부 렌더돼 있어(컬링 없음) 화면 밖 노드도 그대로 찍힌다. */
-function ImageButton({ modelName }: { modelName: string }) {
+ *  캡처 대상이 없으면(빈 문서) 이미지 항목은 비활성. 노드는 항상 전부 렌더돼 있어(컬링 없음) 화면 밖 노드도 그대로 찍힌다.
+ *  .crown 문서 파일(05-editor/00-overview.md §5)은 문서 본체(현재 편집 상태)와 메타를 JSON 봉투로 내려받는다 —
+ *  마지막 저장 본문이 아니라 클릭 시점 문서를 싣는다. crown이 없으면(공개 뷰어) 항목을 숨긴다. */
+function ExportMenu({
+  modelName,
+  crown,
+}: {
+  modelName: string
+  crown?: { databaseType: string; modelDescription: string | null }
+}) {
   const { t } = useTranslation()
   const { getNodes } = useReactFlow()
   const objectCount = useEditorStore(
@@ -898,13 +882,11 @@ function ImageButton({ modelName }: { modelName: string }) {
   const [progress, setProgress] = useState<{ mode: 'viewport' | 'document'; phase: 'prepare' | 'render' | 'save' } | null>(null)
   const running = progress !== null
 
-  const run = async (mode: 'viewport' | 'document') => {
-    // 캡처 대상 DOM — 에디터 화면의 캔버스는 1개뿐이다
+  const runImage = async (mode: 'viewport' | 'document') => {
     const canvasEl = document.querySelector<HTMLElement>('.react-flow')
     if (!canvasEl) return
     setProgress({ mode, phase: 'prepare' })
     try {
-      // 최신 커밋의 페인트가 끝난 뒤 범위를 계산한다
       await waitForPaint()
       const background = resolveCanvasBackground(canvasEl)
       if (mode === 'viewport') {
@@ -932,6 +914,21 @@ function ImageButton({ modelName }: { modelName: string }) {
     }
   }
 
+  const runCrown = () => {
+    if (!crown) return
+    try {
+      const file = buildCrownFile(
+        { name: modelName, description: crown.modelDescription, databaseType: crown.databaseType },
+        useEditorStore.getState().present,
+        new Date().toISOString(),
+      )
+      downloadTextFile(`${safeFilename(modelName)}.crown`, file, 'application/json')
+      toast.success(t('model.editor.crown.exported'))
+    } catch {
+      toast.error(t('model.editor.crown.failed'))
+    }
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -941,26 +938,36 @@ function ImageButton({ modelName }: { modelName: string }) {
             variant="ghost"
             size="sm"
             className="h-7 gap-1 px-2"
-            disabled={objectCount === 0 || running}
-            aria-label={t('model.editor.toolbar.image')}
-            title={t('model.editor.toolbar.image')}
+            disabled={running}
+            aria-label={t('model.editor.toolbar.export')}
           >
-            {t('model.editor.toolbar.image')}
-            {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <ImageDown aria-hidden className="size-3.5" />}
+            {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <FileDown aria-hidden className="size-3.5" />}
+            {t('model.editor.toolbar.export')}
+            <ChevronDown aria-hidden className="size-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => void run('viewport')}>
+        <DropdownMenuContent align="start" className="min-w-48">
+          <DropdownMenuLabel>{t('model.editor.toolbar.image')}</DropdownMenuLabel>
+          <DropdownMenuItem disabled={objectCount === 0} onSelect={() => void runImage('viewport')}>
+            <ImageDown aria-hidden />
             {t('model.editor.image.viewport')}
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void run('document')}>
+          <DropdownMenuItem disabled={objectCount === 0} onSelect={() => void runImage('document')}>
+            <ImageDown aria-hidden />
             {t('model.editor.image.document')}
           </DropdownMenuItem>
+          {crown ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={runCrown}>
+                <FileDown aria-hidden />
+                {t('model.editor.toolbar.crown')}
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
       {progress ? (
-        // 캡처 중 진행 오버레이 — 전체 캡처는 뷰포트를 옮겨 찍으므로 조작 차단은 안전장치이기도 하다.
-        // 진행 바 애니메이션은 transform 기반이라 toPng의 메인 스레드 블로킹에도 멈추지 않는다
         <div
           role="status"
           aria-live="polite"
@@ -979,48 +986,6 @@ function ImageButton({ modelName }: { modelName: string }) {
         </div>
       ) : null}
     </>
-  )
-}
-
-/** .crown 문서 파일 내보내기 — 문서 본체(현재 편집 상태)와 메타를 JSON 봉투로 내려받는다(05-editor/00-overview.md §5).
- *  마지막 저장 본문이 아니라 클릭 시점 문서를 싣는다 — 파일은 그 순간의 스냅샷이어야 한다. */
-function CrownButton({
-  modelName,
-  databaseType,
-  modelDescription,
-}: {
-  modelName: string
-  databaseType: string
-  modelDescription: string | null
-}) {
-  const { t } = useTranslation()
-  const run = () => {
-    try {
-      const file = buildCrownFile(
-        { name: modelName, description: modelDescription, databaseType },
-        useEditorStore.getState().present,
-        new Date().toISOString(),
-      )
-      downloadTextFile(`${safeFilename(modelName)}.crown`, file, 'application/json')
-      toast.success(t('model.editor.crown.exported'))
-    } catch {
-      toast.error(t('model.editor.crown.failed'))
-    }
-  }
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-7 gap-1 px-2"
-      onClick={run}
-      aria-label={t('model.editor.toolbar.crown')}
-      title={t('model.editor.toolbar.crown')}
-    >
-      {t('model.editor.toolbar.crown')}
-      <FileDown aria-hidden className="size-3.5" />
-    </Button>
   )
 }
 

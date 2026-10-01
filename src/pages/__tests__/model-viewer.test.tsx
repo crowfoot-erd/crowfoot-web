@@ -39,7 +39,8 @@ describe('ERD 문서 열기', () => {
 
     // then: fixtures 501 — 이름·DB 종류·버전·생성자
     expect(await screen.findByRole('heading', { name: '주문 서비스 ERD' })).toBeVisible()
-    expect(screen.getByText('postgresql')).toBeVisible()
+    // 헤더 배지 — 코드 원값(postgresql)이 아니라 표시명. 툴바 DBMS 표시기에도 같은 이름이 있어 헤더로 좁힌다
+    expect(within(screen.getByRole('banner')).getByText('PostgreSQL')).toBeVisible()
     expect(screen.getByText('v3')).toBeVisible()
     expect(screen.getByText(/부트스트랩 관리자/)).toBeVisible()
 

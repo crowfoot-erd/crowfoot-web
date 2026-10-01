@@ -137,13 +137,18 @@ export function DashboardPage() {
                 <Card className="h-full transition-colors hover:border-foreground/25">
                   <CardContent className="flex h-full flex-col gap-2 p-4">
                     <p className="truncate font-medium">{workspace.name}</p>
-                    <p className="line-clamp-1 min-h-4 text-xs text-muted-foreground">
-                      {workspace.description ?? t('common.none')}
-                    </p>
+                    {/* 설명이 없으면 자리만 지킨다(카드 높이 맞춤) — "-"를 찍지 않는다 */}
+                    <p className="line-clamp-1 min-h-4 text-xs text-muted-foreground">{workspace.description}</p>
                     <div className="mt-auto flex items-center gap-1">
                       {workspace.isDefault ? (
                         <Badge variant="secondary" className="text-[10px]">
                           {t('shell.defaultBadge')}
+                        </Badge>
+                      ) : null}
+                      {/* 공유받은 워크스페이스 — 이름이 같은 내 워크스페이스와 구분되게 내 역할을 보인다 */}
+                      {workspace.myRole !== 'OWNER' ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          {t(`common.role.${workspace.myRole}`)}
                         </Badge>
                       ) : null}
                       <span className="ml-auto text-xs text-muted-foreground">

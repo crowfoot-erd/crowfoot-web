@@ -123,12 +123,13 @@
   "auth": {
     "login": {
       "title": "Sign in to Crowfoot",
-      "description": "Draw ERDs with your GitHub account — edit and share with your team.",
+      "description": "Draw ERDs with your GitHub or Google account — edit and share with your team.",
       "continueWith": "Continue with {{provider}}",
       "consent": {
         "prefix": "I have read and agree to the ",
         "link": "Terms of Service",
-        "suffix": "."
+        "suffix": ".",
+        "required": "Agree to the Terms of Service to enable sign-in."
       },
       "noProviders": {
         "title": "No sign-in methods available",
@@ -692,7 +693,13 @@
         "description": "Create a document to start designing ERDs.",
         "cta": "New ERD document"
       },
-      "open": "Open {{name}}"
+      "open": "Open {{name}}",
+      "actions": "Actions for {{name}}",
+      "menu": {
+        "connect": "Connect to database",
+        "edit": "Edit name and description",
+        "delete": "Delete"
+      }
     },
     "create": {
       "title": "New ERD document",
@@ -778,6 +785,8 @@
         "sync": "Sync DB",
         "image": "Export image",
         "crown": "Export document file",
+        "export": "Export",
+        "tools": "Tools",
         "share": "Share",
         "history": "Version history",
         "areaFilter": {
@@ -1544,7 +1553,8 @@
     "hero": {
       "title": "A free ERD tool in your browser,",
       "titleAccent": "from diagram to a real database",
-      "description": "Draw ER diagrams in your browser with nothing to install, refine them with your team in real time, and create MySQL or PostgreSQL databases right away. Crowfoot can also generate an ERD from an existing database and produce DDL and migration SQL."
+      "description": "Draw ER diagrams in your browser with nothing to install, refine them with your team in real time, and create MySQL or PostgreSQL databases right away. Crowfoot can also generate an ERD from an existing database and produce DDL and migration SQL.",
+      "imageAlt": "Crowfoot ERD editor — an online store ERD drawn with six tables and relationship lines"
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",

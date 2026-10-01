@@ -45,8 +45,8 @@ describe('ERD 탭', () => {
     // then: fixtures의 문서 2건 — 이름·DB 종류·버전·생성자
     expect(await screen.findByText('주문 서비스 ERD')).toBeVisible()
     expect(screen.getByText('회원 서비스 ERD')).toBeVisible()
-    expect(screen.getByText('postgresql')).toBeVisible()
-    expect(screen.getByText('mysql')).toBeVisible()
+    expect(screen.getByText('PostgreSQL')).toBeVisible() // 코드 원값이 아니라 표시명
+    expect(screen.getByText('MySQL')).toBeVisible()
     expect(screen.getByText('v3')).toBeVisible()
     expect(screen.getByText('v1')).toBeVisible()
     expect(screen.getByText('결제 도메인 1차')).toBeVisible()
@@ -131,8 +131,9 @@ describe('ERD 탭', () => {
     renderErdTab()
     await screen.findByText('주문 서비스 ERD')
 
-    // when: 행 수정 버튼 → 다이얼로그에 기존 값 프리필
-    await userEvent.click(screen.getByRole('button', { name: '주문 서비스 ERD 문서 수정' }))
+    // when: 행 작업 메뉴 → 이름·설명 수정 → 다이얼로그에 기존 값 프리필
+    await userEvent.click(screen.getByRole('button', { name: '주문 서비스 ERD 문서 작업' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: '이름·설명 수정' }))
     const nameInput = await screen.findByLabelText(/^이름$/)
     expect(nameInput).toHaveValue('주문 서비스 ERD')
 
@@ -150,8 +151,9 @@ describe('ERD 탭', () => {
     renderErdTab()
     await screen.findByText('주문 서비스 ERD')
 
-    // when: 행 삭제 버튼 → 확인 다이얼로그 → 확인
-    await userEvent.click(screen.getByRole('button', { name: '주문 서비스 ERD 문서 삭제' }))
+    // when: 행 작업 메뉴 → 삭제 → 확인 다이얼로그 → 확인
+    await userEvent.click(screen.getByRole('button', { name: '주문 서비스 ERD 문서 작업' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: '삭제' }))
     await userEvent.click(await screen.findByRole('button', { name: /^삭제$/ }))
 
     // then: 확인 다이얼로그 닫힘
@@ -164,20 +166,23 @@ describe('ERD 탭', () => {
     renderErdTab({ isOwner: false })
     await screen.findByText('주문 서비스 ERD')
 
-    // then: Editor는 수정만 가능 — 삭제 버튼 없음
-    expect(screen.getByRole('button', { name: '주문 서비스 ERD 문서 수정' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: '주문 서비스 ERD 문서 삭제' })).not.toBeInTheDocument()
+    // then: Editor는 수정만 가능 — 행 작업 메뉴에 삭제가 없다
+    await userEvent.click(screen.getByRole('button', { name: '주문 서비스 ERD 문서 작업' }))
+    expect(await screen.findByRole('menuitem', { name: '이름·설명 수정' })).toBeVisible()
+    expect(screen.queryByRole('menuitem', { name: '삭제' })).not.toBeInTheDocument()
   })
 
   it('shows the connect action only for unconnected documents', async () => {
     renderErdTab()
     await screen.findByText('주문 서비스 ERD')
 
-    // then: 미연결 문서(502 직접 생성)에만 최초 연결 행 액션이 있다 — 연결된 문서(501 리버스)엔 없다
-    expect(screen.getByRole('button', { name: '회원 서비스 ERD 문서를 데이터베이스에 연결' })).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: '주문 서비스 ERD 문서를 데이터베이스에 연결' }),
-    ).not.toBeInTheDocument()
+    // then: 미연결 문서(502 직접 생성)의 행 작업 메뉴에만 최초 연결이 있다 — 연결된 문서(501 리버스)엔 없다
+    await userEvent.click(screen.getByRole('button', { name: '회원 서비스 ERD 문서 작업' }))
+    expect(await screen.findByRole('menuitem', { name: '데이터베이스에 연결' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(screen.getByRole('button', { name: '주문 서비스 ERD 문서 작업' }))
+    expect(await screen.findByRole('menuitem', { name: '이름·설명 수정' })).toBeVisible()
+    expect(screen.queryByRole('menuitem', { name: '데이터베이스에 연결' })).not.toBeInTheDocument()
   })
 
   it('connects a document to a database via the row action', async () => {
@@ -185,7 +190,8 @@ describe('ERD 탭', () => {
     await screen.findByText('주문 서비스 ERD')
 
     // when: 행 연결 버튼 → 공용 다이얼로그 → 같은 DBMS(mysql) 커넥션 기본 선택 → 연결
-    await userEvent.click(screen.getByRole('button', { name: '회원 서비스 ERD 문서를 데이터베이스에 연결' }))
+    await userEvent.click(screen.getByRole('button', { name: '회원 서비스 ERD 문서 작업' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: '데이터베이스에 연결' }))
     const combobox = await screen.findByRole('combobox')
     await waitFor(() => expect(combobox).toHaveTextContent('개발 MySQL'))
     await userEvent.click(screen.getByRole('button', { name: /^연결$/ }))
@@ -201,10 +207,11 @@ describe('ERD 탭', () => {
     renderErdTab({ canCreate: false })
     await screen.findByText('주문 서비스 ERD')
 
-    // then: 뷰어는 메타 변경 계열 진입점이 없다 — 최초 연결도 Editor 이상(1.14)
-    expect(
-      screen.queryByRole('button', { name: '회원 서비스 ERD 문서를 데이터베이스에 연결' }),
-    ).not.toBeInTheDocument()
+    // then: 뷰어는 메타 변경 계열 진입점이 없다 — 최초 연결도 Editor 이상(1.14).
+    // 소유자 권한만 있는 조합이라 메뉴에는 삭제만 남는다
+    await userEvent.click(screen.getByRole('button', { name: '회원 서비스 ERD 문서 작업' }))
+    expect(await screen.findByRole('menuitem', { name: '삭제' })).toBeVisible()
+    expect(screen.queryByRole('menuitem', { name: '데이터베이스에 연결' })).not.toBeInTheDocument()
   })
 
   it('opens the document in a new window from the view action and the name', async () => {

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { useMyShareReactions } from '@/features/models'
@@ -63,7 +64,7 @@ export function MyShareLikesPage() {
                           </Link>
                           <span className="flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
                             <DbmsIcon databaseType={like.databaseType} className="size-3" />
-                            {like.databaseType}
+                            {dbmsLabel(like.databaseType)}
                           </span>
                         </div>
                         {like.description ? (

@@ -32,7 +32,7 @@ describe('내가 좋아요한 공유 문서', () => {
     expect(settle).toHaveAttribute('href', '/share/P0pularT0ken0fSettle2c')
     expect(settle).toHaveAttribute('target', '_blank')
     expect(screen.getByText('일일 정산 집계 파이프라인')).toBeVisible()
-    expect(screen.getByText('mysql')).toBeVisible()
+    expect(screen.getByText('MySQL')).toBeVisible()
 
     // then: 카운터 3종 — 정산(반응 12·댓글 4·조회 3)·주문(반응 9·조회 128·댓글 3)
     expect(screen.getByText('12')).toBeVisible()

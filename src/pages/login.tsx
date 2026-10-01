@@ -4,18 +4,20 @@
  * - providers 공개 API로 버튼 동적 생성 (활성 제공자만)
  * - 클릭 → sessionStorage에 provider·next 저장 → 풀페이지 이동(302, fetch 금지)
  * - 상태: 로딩(스켈레톤 2) / 실패(문구+재시도) / 0건 안내
- * - 이용약관 동의(최초 1회 — 브라우저 기록)까지 버튼 비활성
+ * - 이용약관 동의(최초 1회 — 브라우저 기록)까지 버튼 비활성 — 그동안 버튼 아래에 이유를 안내한다
+ * - 버튼 아이콘은 제공자 상징(ProviderIcon — GitHub·Google, 그 밖은 중립 아이콘)
  * - 이미 인증 상태면 next||/dashboard 로 이동 (앱 홈 — 랜딩은 인증 상태에서도 머무르므로)
  * - 우상단 언어·테마 토글 — 카드 바깥 코너(로그인 버튼 근처 발견성)
  */
 import { useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { Globe, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { ErrorState } from '@/components/error-state'
 import { LanguageSelect } from '@/components/language-select'
 import { Logo } from '@/components/logo'
+import { ProviderIcon } from '@/components/provider-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -25,9 +27,6 @@ import { startOAuthLogin } from '@/features/auth'
 import { consentTerms, hasConsentedTerms } from '@/features/auth'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { useSessionStore } from '@/stores/session'
-
-// lucide v1은 브랜드 아이콘(Github 등)을 제공하지 않는다 — 중립 아이콘 사용
-const PROVIDER_ICONS: Record<string, typeof Globe> = { github: Globe, google: Globe }
 
 export function LoginPage() {
   const { t } = useTranslation()
@@ -99,9 +98,8 @@ export function LoginPage() {
             <ErrorState message={undefined} onRetry={() => void providers.refetch()} />
           </div>
         ) : providers.data && providers.data.items.length > 0 ? (
-          providers.data.items.map((provider) => {
-            const Icon = PROVIDER_ICONS[provider.code] ?? Globe
-            return (
+          <>
+            {providers.data.items.map((provider) => (
               <Button
                 key={provider.code}
                 type="button"
@@ -109,13 +107,20 @@ export function LoginPage() {
                 size="lg"
                 className="w-full"
                 disabled={!agreed}
+                aria-describedby={agreed ? undefined : 'login-consent-required'}
                 onClick={() => handleClickProvider(provider.code)}
               >
-                <Icon aria-hidden />
+                <ProviderIcon provider={provider.code} className="size-4" />
                 {t('auth.login.continueWith', { provider: provider.displayName })}
               </Button>
-            )
-          })
+            ))}
+            {/* 동의 전 — 버튼이 왜 꺼져 있는지 알린다 */}
+            {agreed ? null : (
+              <p id="login-consent-required" className="text-center text-xs text-muted-foreground">
+                {t('auth.login.consent.required')}
+              </p>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed px-6 py-10 text-center">
             <p className="text-sm font-medium">{t('auth.login.noProviders.title')}</p>

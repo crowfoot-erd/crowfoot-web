@@ -9,18 +9,26 @@
  *   연결된 문서는 DB 종류 배지에 링크 표시로 구분한다
  */
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Link2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Ellipsis, Link2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -163,9 +171,9 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                   ) : null}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="gap-1 font-mono text-[10px]">
+                  <Badge variant="outline" className="gap-1 text-[10px]">
                     <DbmsIcon databaseType={model.databaseType} className="size-3" />
-                    {model.databaseType}
+                    {dbmsLabel(model.databaseType)}
                     {/* 원천 커넥션 연결 표시 — 리버스 생성 또는 최초 연결(1.14)된 문서 */}
                     {model.sourceConnectionId ? (
                       <span title={t('model.connect.connected')} className="inline-flex">
@@ -188,41 +196,45 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                     >
                       <Search aria-hidden className="h-4 w-4" />
                     </Button>
-                    {/* 데이터베이스 최초 연결(1.14) — 미연결 문서에만. 연결되면 이 버튼은
-                        DB 동기화(에디터)로 전환된다 */}
-                    {canCreate && model.sourceConnectionId === null ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConnecting(model)}
-                        aria-label={t('model.connect.rowAction', { name: model.name })}
-                      >
-                        <Link2 aria-hidden className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                    {canCreate ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditing(model)}
-                        aria-label={t('model.edit.title', { name: model.name })}
-                      >
-                        <Pencil aria-hidden className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                    {isOwner ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleting(model)}
-                        aria-label={t('model.delete.title', { name: model.name })}
-                      >
-                        <Trash2 aria-hidden className="h-4 w-4" />
-                      </Button>
+                    {/* 그 밖의 행 작업은 메뉴로 묶는다 — 삭제가 다른 아이콘 옆에 늘 떠 있지 않게 하고,
+                        아이콘만으로는 알기 어려운 작업에 글자 이름을 붙인다.
+                        데이터베이스 최초 연결(1.14)은 미연결 문서에만 — 연결되면 DB 동기화(에디터)로 전환된다 */}
+                    {canCreate || isOwner ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t('model.list.actions', { name: model.name })}
+                          >
+                            <Ellipsis aria-hidden className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-44">
+                          {canCreate && model.sourceConnectionId === null ? (
+                            <DropdownMenuItem onSelect={() => setConnecting(model)}>
+                              <Link2 aria-hidden />
+                              {t('model.list.menu.connect')}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {canCreate ? (
+                            <DropdownMenuItem onSelect={() => setEditing(model)}>
+                              <Pencil aria-hidden />
+                              {t('model.list.menu.edit')}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {isOwner ? (
+                            <>
+                              {canCreate ? <DropdownMenuSeparator /> : null}
+                              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(model)}>
+                                <Trash2 aria-hidden />
+                                {t('model.list.menu.delete')}
+                              </DropdownMenuItem>
+                            </>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     ) : null}
                   </div>
                 </TableCell>

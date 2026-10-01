@@ -1250,36 +1250,65 @@ describe('EditorShell — 문서 대상 DBMS 고정', () => {
   })
 })
 
-describe('EditorShell — DB 동기화 버튼 노출 조건', () => {
-  // 원천 연결 있는(리버스 생성) 문서·편집 권한·원천 커넥션 생존 — 세 조건이 모두 있을 때만
-  it('원천 커넥션이 살아 있으면 노출한다 (기본 픽스처 501 — sourceConnectionId 301)', async () => {
+describe('EditorShell — 도구 메뉴 항목 노출 조건', () => {
+  /** 도구 메뉴는 드롭다운 — 열고 항목을 본다 (radix pointerdown 관례) */
+  const openToolsMenu = async () => {
+    const trigger = screen.getByRole('button', { name: '도구' })
+    fireEvent.pointerDown(trigger, { button: 0 })
+    fireEvent.click(trigger)
+    // 버전 기록은 멤버 전체에 보이는 항목 — 메뉴가 열렸다는 기준점
+    await screen.findByRole('menuitem', { name: '버전 기록' })
+  }
+
+  // DB 동기화 — 원천 연결 있는(리버스 생성) 문서·편집 권한·원천 커넥션 생존, 세 조건이 모두 있을 때만
+  it('원천 커넥션이 살아 있으면 DB 동기화를 노출한다 (기본 픽스처 501 — sourceConnectionId 301)', async () => {
     await renderEditor()
-    // 커넥션 목록(301 존재) 로드 후 버튼이 나타난다
-    expect(await screen.findByRole('button', { name: 'DB 동기화' })).toBeVisible()
+    await openToolsMenu()
+    // 커넥션 목록(301 존재) 로드 후 항목이 나타난다
+    expect(await screen.findByRole('menuitem', { name: 'DB 동기화' })).toBeVisible()
+    // 연결된 문서에는 최초 연결 항목이 없다
+    expect(screen.queryByRole('menuitem', { name: '데이터베이스 연결' })).toBeNull()
   })
 
-  it('읽기 전용(편집 권한 없음)에서는 노출하지 않는다', async () => {
+  it('읽기 전용(편집 권한 없음)에서는 DB 동기화를 노출하지 않는다 — 버전 기록만 남는다', async () => {
     await renderEditor(false)
     await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
-    expect(screen.queryByRole('button', { name: 'DB 동기화' })).toBeNull()
+    await openToolsMenu()
+    expect(screen.queryByRole('menuitem', { name: 'DB 동기화' })).toBeNull()
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
   })
 
-  it('원천 연결이 없는(직접 생성) 문서에는 노출하지 않는다', async () => {
+  it('원천 연결이 없는(직접 생성) 문서에는 DB 동기화 대신 데이터베이스 연결을 노출한다', async () => {
     renderWithProviders(<EditorShell model={modelFixture({ sourceConnectionId: null })} canEdit />, { wrapRoutes: false })
     await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
-    expect(screen.queryByRole('button', { name: 'DB 동기화' })).toBeNull()
+    await openToolsMenu()
+    expect(screen.queryByRole('menuitem', { name: 'DB 동기화' })).toBeNull()
+    expect(screen.getByRole('menuitem', { name: '데이터베이스 연결' })).toBeVisible()
   })
 
-  // 논리명 추론 버튼(v1.13) — 커스텀 사전이 워크스페이스 API라 편집 권한이 필요하다
-  it('논리명 추론 버튼은 편집 가능에서 노출한다', async () => {
+  // 논리명 추론(v1.13) — 커스텀 사전이 워크스페이스 API라 편집 권한이 필요하다
+  it('논리명 추론은 편집 가능에서 노출한다', async () => {
     await renderEditor()
-    expect(screen.getByRole('button', { name: '논리명 추론' })).toBeVisible()
+    await openToolsMenu()
+    expect(screen.getByRole('menuitem', { name: '논리명 추론' })).toBeVisible()
+    expect(screen.getByRole('menuitem', { name: '다른 DBMS로 복제' })).toBeVisible()
   })
 
-  it('논리명 추론 버튼은 읽기 전용에서는 노출하지 않는다', async () => {
+  it('논리명 추론은 읽기 전용에서는 노출하지 않는다', async () => {
     await renderEditor(false)
     await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
-    expect(screen.queryByRole('button', { name: '논리명 추론' })).toBeNull()
+    await openToolsMenu()
+    expect(screen.queryByRole('menuitem', { name: '논리명 추론' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: '다른 DBMS로 복제' })).toBeNull()
+  })
+
+  it('항목을 고르면 메뉴가 닫힌 뒤에도 다이얼로그가 떠 있다', async () => {
+    await renderEditor()
+    await openToolsMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: '버전 기록' }))
+    expect(await screen.findByRole('dialog')).toBeVisible()
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '버전 기록' })).toBeNull())
+    expect(screen.getByRole('dialog')).toBeVisible()
   })
 })
 
@@ -1787,9 +1816,9 @@ describe('EditorShell — SQL 생성', () => {
 })
 
 describe('EditorShell — 이미지 내보내기', () => {
-  /** 이미지 버튼은 드롭다운 — 열고 항목을 고른다 (radix pointerdown 관례) */
+  /** 이미지는 내보내기 메뉴 안에 있다 — 열고 항목을 고른다 (radix pointerdown 관례) */
   const openImageMenu = () => {
-    const trigger = screen.getByRole('button', { name: '이미지 내보내기' })
+    const trigger = screen.getByRole('button', { name: '내보내기' })
     fireEvent.pointerDown(trigger, { button: 0 })
     fireEvent.click(trigger)
   }
@@ -1851,7 +1880,11 @@ describe('EditorShell — 이미지 내보내기', () => {
 
   it('캡처 대상(테이블·노트)이 없으면 비활성화', async () => {
     await renderEditor()
-    expect(screen.getByRole('button', { name: '이미지 내보내기' })).toBeDisabled()
+    openImageMenu()
+    // 빈 문서 — 이미지 두 항목은 꺼지고 문서 파일은 그대로 쓸 수 있다
+    expect(screen.getByRole('menuitem', { name: '보이는 화면 PNG' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('menuitem', { name: '전체 문서 PNG' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('menuitem', { name: '문서 파일 내보내기' })).not.toHaveAttribute('aria-disabled')
   })
 
   it('캡처 실패 시 다운로드가 일어나지 않는다', async () => {
@@ -1907,7 +1940,7 @@ describe('EditorShell — 이미지 내보내기', () => {
 })
 
 describe('EditorShell — .crown 문서 파일 내보내기', () => {
-  it('툴바 버튼으로 봉투(JSON)를 {문서명}.crown으로 내려받는다 — 클릭 시점 편집 상태', async () => {
+  it('내보내기 메뉴로 봉투(JSON)를 {문서명}.crown으로 내려받는다 — 클릭 시점 편집 상태', async () => {
     let downloadedText = ''
     // Blob 내용을 캡처 — 봉투가 클릭 시점 문서 스냅샷을 싣는지 확인한다
     const createObjectURL = vi.fn((blob: Blob) => {
@@ -1934,7 +1967,10 @@ describe('EditorShell — .crown 문서 파일 내보내기', () => {
       position: { x: 0, y: 0 },
     } as ErdChange)
 
-    fireEvent.click(screen.getByRole('button', { name: '문서 파일 내보내기' }))
+    const exportTrigger = screen.getByRole('button', { name: '내보내기' })
+    fireEvent.pointerDown(exportTrigger, { button: 0 })
+    fireEvent.click(exportTrigger)
+    fireEvent.click(await screen.findByRole('menuitem', { name: '문서 파일 내보내기' }))
 
     await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1))
     expect(downloadedName).toBe('주문_서비스_ERD.crown')

@@ -10,6 +10,7 @@ import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, FileCode2, FileDown, 
 import { useTranslation } from 'react-i18next'
 
 import { DbmsIcon } from '@/components/dbms-icon'
+import { dbmsLabel } from '@/features/editor/model/dbms'
 import { LanguageSelect } from '@/components/language-select'
 import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -19,6 +20,8 @@ import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
 import { usePageMeta } from '@/hooks/usePageMeta'
+import { currentLanguage } from '@/lib/i18n'
+import { useTheme } from '@/lib/theme'
 import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
 import { useSessionStore } from '@/stores/session'
@@ -43,6 +46,9 @@ const FEATURES = [
 
 export function LandingPage() {
   const { t } = useTranslation()
+  // 히어로 이미지 — 언어·테마에 맞는 한 장만 싣는다(두 장을 깔고 CSS로 숨기면 둘 다 내려받는다)
+  const { theme } = useTheme()
+  const heroImage = `/landing/editor-${currentLanguage()}-${theme}.webp`
   // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외).
   // 프리렌더가 정적 head에 넣는 문구(landing.seo.*)와 같은 값을 쓴다 — 크롤러가 JS 실행 전후로
   // 서로 다른 제목·설명을 보지 않게 한다(scripts/prerender.mjs)
@@ -130,6 +136,18 @@ export function LandingPage() {
               </a>
             </Button>
           </div>
+          {/* 제품 화면 — 에디터 캡처(scripts/capture-landing-hero.mjs 산출, 2045×1221).
+              크기를 적어 두어 이미지가 뜨기 전에도 자리가 잡힌다(레이아웃 밀림 방지) */}
+          <figure className="mt-6 w-full overflow-hidden rounded-xl border bg-muted/30 shadow-lg">
+            <img
+              src={heroImage}
+              alt={t('landing.hero.imageAlt')}
+              width={2045}
+              height={1221}
+              decoding="async"
+              className="block h-auto w-full"
+            />
+          </figure>
         </section>
 
         {/* 3단계 흐름 — 그리기 → 함께 다듬기 → 실행 (히어로 메시지의 전개) */}
@@ -200,7 +218,7 @@ export function LandingPage() {
                           </span>
                           <span className="flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
                             <DbmsIcon databaseType={databaseType} className="size-3" />
-                            {databaseType}
+                            {dbmsLabel(databaseType)}
                           </span>
                         </div>
                         <h3 className="text-base font-semibold">{modelName}</h3>
@@ -254,7 +272,7 @@ export function LandingPage() {
                               </span>
                               <span className="flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
                                 <DbmsIcon databaseType={databaseType} className="size-3" />
-                                {databaseType}
+                                {dbmsLabel(databaseType)}
                               </span>
                             </div>
                             <h3 className="text-base font-semibold">{modelName}</h3>

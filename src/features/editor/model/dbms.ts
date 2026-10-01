@@ -163,6 +163,13 @@ export function templateIdForDatabase(databaseType: string): string {
   return DBMS_TEMPLATES.some((t) => t.id === code) ? code : 'common'
 }
 
+/** database_types 코드(또는 템플릿 id) → 화면 표시명(PostgreSQL·MySQL …).
+ *  문서의 DB 종류를 보여 주는 모든 지점이 이 함수를 쓴다 — 코드 테이블 원값(postgresql)을 그대로 찍지 않는다.
+ *  템플릿이 없는 코드는 원값을 돌려준다(코드 테이블이 템플릿보다 먼저 늘어나도 빈칸이 되지 않게). */
+export function dbmsLabel(databaseType: string): string {
+  return dbmsTemplate(templateIdForDatabase(databaseType)).label ?? databaseType
+}
+
 /** 공용 논리 코드를 DBMS 물리 표기로 — 매핑이 없으면 공용 코드 폴백 */
 export function physicalType(code: string, dbmsId: string): string {
   return dbmsTemplate(dbmsId).types[code] ?? code
