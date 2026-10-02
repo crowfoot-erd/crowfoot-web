@@ -37,6 +37,8 @@ export type RelationshipPatch = Partial<
     | 'fkName'
     | 'onDelete'
     | 'onUpdate'
+    /** 컬럼 매핑 편집 — 자식 쪽 외래 키 컬럼을 바꾼다(05-editor/02-ui.md §4.2) */
+    | 'columnMappings'
   >
 >
 export type NotePatch = Partial<
@@ -395,6 +397,95 @@ function removeRelationshipCascade(doc: EditorDocument, relationshipId: string):
  *  · 부모 기수: 정확히 1(|)이면 FK NOT NULL, 0 또는 1(○|)이면 nullable — 식별 FK는 PK라 항상 NOT NULL
  *  · 유형 전환: 자식 기수가 새 유형에 없는 값이면 기본값으로 보정한다
  *  UK·인덱스 소유 판정은 FK 집합과 정확히 일치하는 경우만 — 사용자가 직접 만들었거나 고친 키는 보존한다. */
+/**
+ * 외래 키 컬럼 교체 — 이전 컬럼에서 관계가 만든 것을 걷고, 새 컬럼에 관계의 규칙을 건다.
+ *  · 걷기: 식별 관계였으면 기본 키에서 뺀다. 이전 외래 키 집합과 정확히 일치하는 UK·인덱스(관계 소유)를 지운다.
+ *    컬럼 자체는 남긴다(일반 컬럼이 된다) — 지우는 일은 호출부가 column/remove로 따로 한다
+ *  · 걸기: 식별 관계면 기본 키에 넣고 NOT NULL, 아니면 부모 기수로 nullable을 정한다.
+ *    비식별 1:1은 UK를, 비식별 1:N은 인덱스를 새 외래 키 집합으로 만든다(이미 있으면 두지 않는다)
+ * 사용자가 직접 만든 키(집합이 다른 UK·인덱스)는 건드리지 않는다.
+ */
+function rekeyForeignKey(
+  doc: EditorDocument,
+  table: ErdTable,
+  prev: ErdRelationship,
+  next: ErdRelationship,
+  databaseType: string,
+): ErdTable {
+  const prevFkIds = prev.columnMappings.map((m) => m.childColumnId)
+  const nextFkIds = next.columnMappings.map((m) => m.childColumnId)
+  const nextSet = new Set(nextFkIds)
+  const released = new Set(prevFkIds.filter((id) => !nextSet.has(id)))
+  const keyOf = (ids: readonly string[]) => [...ids].sort().join('\0')
+  const prevKey = keyOf(prevFkIds)
+  const nextKey = keyOf(nextFkIds)
+  let { columns, primaryKey, uniques, indexes } = table
+
+  /* ---------- 걷기 ---------- */
+  if (prev.identifying && primaryKey) {
+    const remain = primaryKey.columnIds.filter((id) => !released.has(id))
+    primaryKey = remain.length > 0 ? { ...primaryKey, columnIds: remain } : null
+  }
+  uniques = uniques.filter((u) => keyOf(u.columnIds) !== prevKey)
+  indexes = indexes.filter((ix) => keyOf(ix.columns.map((c) => c.columnId)) !== prevKey)
+
+  /* ---------- 걸기 ---------- */
+  if (next.identifying) {
+    const pkIds = new Set(primaryKey?.columnIds ?? [])
+    primaryKey = primaryKey
+      ? { ...primaryKey, columnIds: [...primaryKey.columnIds, ...nextFkIds.filter((id) => !pkIds.has(id))] }
+      : { name: `${table.physicalName}_pk`, columnIds: [...nextFkIds] }
+    // 복합 기본 키에는 자동 증가를 둘 수 없다 — 식별 전환과 같은 규칙
+    const composite = primaryKey.columnIds.length > 1
+    columns = columns.map((c) =>
+      nextSet.has(c.id)
+        ? { ...c, nullable: false, autoIncrement: false }
+        : composite && pkIds.has(c.id) && c.autoIncrement
+          ? { ...c, autoIncrement: false }
+          : c,
+    )
+  } else {
+    const nullable = next.parentMultiplicity === 'ZERO_OR_ONE'
+    const pkNow = new Set(primaryKey?.columnIds ?? [])
+    // 자식의 기본 키이기도 한 컬럼은 NOT NULL을 지킨다
+    columns = columns.map((c) => (nextSet.has(c.id) && !pkNow.has(c.id) ? { ...c, nullable } : c))
+  }
+
+  // 3영역 순서 재확정 — PK → FK → 일반 (stable이라 같은 영역 안 순서는 유지)
+  const pkNow = new Set(primaryKey?.columnIds ?? [])
+  const rank = (id: string) => (pkNow.has(id) ? 0 : nextSet.has(id) ? 1 : 2)
+  columns = [...columns].sort((a, b) => rank(a.id) - rank(b.id))
+
+  const byId = new Map(columns.map((c) => [c.id, c]))
+  const fkColumns = nextFkIds.map((id) => byId.get(id)).filter((c): c is ErdColumn => c !== undefined)
+  const working = { ...table, columns, primaryKey, uniques, indexes }
+  if (
+    fkColumns.length > 0 &&
+    next.type === 'ONE_TO_ONE' &&
+    !next.identifying &&
+    !uniques.some((u) => keyOf(u.columnIds) === nextKey)
+  ) {
+    uniques = [...uniques, { id: newId(), name: defaultKeyName(doc.model, working, 'unique', fkColumns), columnIds: [...nextFkIds] }]
+  }
+  if (
+    fkColumns.length > 0 &&
+    next.type === 'ONE_TO_MANY' &&
+    !next.identifying &&
+    !dbmsAutoIndexesFk(databaseType) &&
+    !indexes.some((ix) => keyOf(ix.columns.map((c) => c.columnId)) === nextKey)
+  ) {
+    indexes = [
+      ...indexes,
+      {
+        id: newId(),
+        name: defaultKeyName(doc.model, working, 'index', fkColumns),
+        columns: nextFkIds.map((columnId) => ({ columnId, order: 'ASC' as const })),
+      },
+    ]
+  }
+  return { ...table, columns, primaryKey, uniques, indexes }
+}
+
 function applyRelationshipPatch(
   doc: EditorDocument,
   change: Extract<ErdChange, { type: 'relationship/patch' }>,
@@ -415,6 +506,16 @@ function applyRelationshipPatch(
       relationships: doc.model.relationships.map((r) => (r.id === next.id ? next : r)),
     },
   }
+  // 컬럼 매핑이 바뀌었다 — 이전 외래 키 컬럼에서 관계의 규칙을 걷어 내고 새 컬럼에 다시 건다.
+  // 유형·식별 여부가 함께 바뀌어도 "이전 관계로 걷고 새 관계로 건다"로 한 번에 처리된다
+  const prevFkIds = prev.columnMappings.map((m) => m.childColumnId)
+  const nextFkIds = next.columnMappings.map((m) => m.childColumnId)
+  if (change.patch.columnMappings && [...prevFkIds].sort().join('\0') !== [...nextFkIds].sort().join('\0')) {
+    return mapTable(merged, next.childTableId, (table) =>
+      rekeyForeignKey(merged, table, prev, next, databaseType),
+    )
+  }
+
   const constraintsChanged =
     prev.identifying !== next.identifying ||
     prev.type !== next.type ||

@@ -1122,7 +1122,15 @@
         "duplicate": "Only one relationship is allowed between two tables: {{parent}} → {{child}}",
         "remove": "Delete relationship",
         "mappingTitle": "Column mappings",
-        "mappingEmpty": "No columns are mapped"
+        "mappingEmpty": "No columns are mapped",
+        "mappingChild": "Child column linked to {{parent}}",
+        "mappingNewColumn": "Create a new column",
+        "mappingAlignType": "The type differs from the parent column — match the parent type",
+        "mappingRemoveReleased": "Delete columns that are no longer used",
+        "mappingProblem": {
+          "DUPLICATE_CHILD_COLUMN": "The same child column cannot be selected twice",
+          "UNKNOWN_COLUMN": "Column not found. Close and reopen the dialog"
+        }
       },
       "tableInfo": {
         "title": "Table info",

@@ -1122,7 +1122,15 @@
         "duplicate": "두 테이블 사이에는 관계가 하나만 있을 수 있습니다: {{parent}} → {{child}}",
         "remove": "관계 삭제",
         "mappingTitle": "컬럼 매핑",
-        "mappingEmpty": "매핑된 컬럼이 없습니다"
+        "mappingEmpty": "매핑된 컬럼이 없습니다",
+        "mappingChild": "{{parent}}에 연결할 자식 컬럼",
+        "mappingNewColumn": "새 컬럼 만들기",
+        "mappingAlignType": "타입이 부모 컬럼과 다릅니다 — 부모 타입에 맞추기",
+        "mappingRemoveReleased": "쓰지 않게 된 컬럼 삭제",
+        "mappingProblem": {
+          "DUPLICATE_CHILD_COLUMN": "같은 자식 컬럼을 두 번 고를 수 없습니다",
+          "UNKNOWN_COLUMN": "컬럼을 찾지 못했습니다. 다이얼로그를 닫고 다시 열어 주세요"
+        }
       },
       "tableInfo": {
         "title": "테이블 정보",

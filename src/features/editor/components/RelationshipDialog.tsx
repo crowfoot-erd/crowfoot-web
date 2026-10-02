@@ -32,7 +32,8 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { buildRelationship } from '@/features/editor/model/relationship'
-import type { RelationshipPatch } from '@/features/editor/model/changes'
+import { NEW_COLUMN, buildRemapChanges, sameColumnType } from '@/features/editor/model/relationship-remap'
+import type { ErdChange, RelationshipPatch } from '@/features/editor/model/changes'
 import { displayLogicalName } from '@/features/editor/model/logical-name'
 import {
   CHILD_MULTIPLICITIES,
@@ -64,6 +65,9 @@ export interface RelationshipDialogProps {
   onConfirmCreate: (payload: { relationship: ErdRelationship; fkColumns: ErdColumn[] }) => void
   /** 편집 확정 — relationship/patch 커밋 재료 */
   onConfirmPatch: (relationshipId: string, patch: RelationshipPatch) => void
+  /** 편집 확정(변경 묶음) — 주면 컬럼 매핑을 고칠 수 있다(§4.2). 묶음에는 새 컬럼 추가·타입 맞추기·
+   *  관계 패치·쓰지 않게 된 컬럼 삭제가 들어 있고, 한 번에 커밋해야 Undo 한 번으로 취소된다 */
+  onConfirmChanges?: (changes: ErdChange[]) => void
   /** 관계 삭제 확정 — 편집 모드 푸터 버튼 (undo 1스택) */
   onRemove?: (relationshipId: string) => void
   /** 같은 부모→자식 관계가 이미 있는지 — 스왑 후에도 중복 생성을 막는다 */
@@ -110,6 +114,7 @@ export function RelationshipDialog({
   relationship,
   onConfirmCreate,
   onConfirmPatch,
+  onConfirmChanges,
   onRemove,
   isDuplicate,
 }: RelationshipDialogProps) {
@@ -133,10 +138,21 @@ export function RelationshipDialog({
     onUpdate: 'NO_ACTION',
   })
 
+  /** 컬럼 매핑 편집 — 부모 컬럼 id → 고른 자식 컬럼 id(또는 NEW_COLUMN). 고르지 않은 줄은 지금 매핑 그대로다 */
+  const [mappingSelection, setMappingSelection] = useState<Record<string, string>>({})
+  /** 부모 타입에 맞출 자식 컬럼 */
+  const [alignIds, setAlignIds] = useState<string[]>([])
+  const [removeReleased, setRemoveReleased] = useState(false)
+  const [mappingError, setMappingError] = useState<string | null>(null)
+
   // 모드 진입마다 초기화 — 생성: 기본값 / 편집: 기존 관계 값
   useEffect(() => {
     if (!open) return
     setSwapped(null)
+    setMappingSelection({})
+    setAlignIds([])
+    setRemoveReleased(false)
+    setMappingError(null)
     if (relationship) {
       setState({
         type: relationship.type,
@@ -165,17 +181,27 @@ export function RelationshipDialog({
   const effectiveChild = swapped ? parent : child
 
   // 편집 모드 매핑 표기 재료 — 관계의 컬럼 매핑을 부모·자식 컬럼 물리명으로 해석한다.
-  // 매핑 재구성(편집)은 후속 Phase고 여기선 읽기 전용 노출이다 — 검증(FK 규칙)도 이 매핑을
-  // 기준으로 돌아가므로 무엇이 연결됐는지 보이는 것이 검증 메시지를 읽는 열쇠가 된다
+  // 검증(FK 규칙)도 이 매핑을 기준으로 돌아가므로 무엇이 연결됐는지 보이는 것이 검증 메시지를 읽는 열쇠가 된다.
+  // onConfirmChanges가 있으면 자식 쪽 컬럼을 고를 수 있다(§4.2) — 고른 컬럼의 타입이 부모와 다르면 알린다
   const mappingRows = useMemo(() => {
     if (!relationship || !effectiveParent || !effectiveChild) return []
     const parentColumn = new Map(effectiveParent.columns.map((column) => [column.id, column] as const))
     const childColumn = new Map(effectiveChild.columns.map((column) => [column.id, column] as const))
-    return relationship.columnMappings.map((mapping) => ({
-      parent: parentColumn.get(mapping.parentColumnId)?.physicalName ?? mapping.parentColumnId,
-      child: childColumn.get(mapping.childColumnId)?.physicalName ?? mapping.childColumnId,
-    }))
-  }, [relationship, effectiveParent, effectiveChild])
+    return relationship.columnMappings.map((mapping) => {
+      const selected = mappingSelection[mapping.parentColumnId] ?? mapping.childColumnId
+      const source = parentColumn.get(mapping.parentColumnId)
+      const target = childColumn.get(selected)
+      return {
+        parentColumnId: mapping.parentColumnId,
+        parent: source?.physicalName ?? mapping.parentColumnId,
+        child: childColumn.get(mapping.childColumnId)?.physicalName ?? mapping.childColumnId,
+        selected,
+        /** 고른 자식 컬럼의 타입이 부모 컬럼과 다른지 */
+        typeMismatch: source !== undefined && target !== undefined && !sameColumnType(source, target),
+      }
+    })
+  }, [relationship, effectiveParent, effectiveChild, mappingSelection])
+  const mappingEditable = Boolean(onConfirmChanges) && !locked
 
   /** 생성 미리보기 — 현재 입력값으로 FK를 만들어 본다 */
   const preview = useMemo(() => {
@@ -225,6 +251,27 @@ export function RelationshipDialog({
         fkName: state.fkName.trim() === '' ? relationship.fkName : state.fkName.trim(),
         onDelete: state.onDelete,
         onUpdate: state.onUpdate,
+      }
+      if (onConfirmChanges && effectiveParent && effectiveChild) {
+        // 스토어 문서에 두 테이블이 있으면 그것으로 계산한다(다른 관계가 쓰는 컬럼을 지우지 않으려면 문서 전체가 필요하다)
+        const present = useEditorStore.getState().present
+        const inStore = present.model.tables.some((table) => table.id === effectiveChild.id)
+        const doc = inStore
+          ? present
+          : { ...present, model: { ...present.model, tables: [effectiveParent, effectiveChild], relationships: [relationship] } }
+        const result = buildRemapChanges(doc, relationship, {
+          selection: mappingSelection,
+          alignTypeColumnIds: alignIds,
+          removeReleased,
+          patch,
+        })
+        if (!result.ok) {
+          setMappingError(t(`model.editor.relationship.mappingProblem.${result.reason}`))
+          return
+        }
+        onConfirmChanges(result.changes)
+        onOpenChange(false)
+        return
       }
       onConfirmPatch(relationship.id, patch)
       onOpenChange(false)
@@ -360,16 +407,55 @@ export function RelationshipDialog({
                 {t('model.editor.relationship.mappingTitle')}
               </p>
               {mappingRows.length > 0 ? (
-                <ul className="max-h-32 overflow-y-auto p-2 text-xs">
+                <ul className="max-h-40 overflow-y-auto p-2 text-xs">
                   {mappingRows.map((row, index) => (
-                    <li key={index} className="flex items-center gap-2 rounded px-1 py-0.5 font-mono">
-                      <span className="truncate">
-                        {effectiveParent.physicalName}.{row.parent}
+                    <li key={index} className="grid gap-1 rounded px-1 py-0.5">
+                      <span className="flex items-center gap-2 font-mono">
+                        <span className="truncate">
+                          {effectiveParent.physicalName}.{row.parent}
+                        </span>
+                        <span aria-hidden className="shrink-0 text-muted-foreground">→</span>
+                        {mappingEditable ? (
+                          <select
+                            value={row.selected}
+                            onChange={(event) => {
+                              setMappingSelection({ ...mappingSelection, [row.parentColumnId]: event.target.value })
+                              setMappingError(null)
+                            }}
+                            aria-label={t('model.editor.relationship.mappingChild', {
+                              parent: `${effectiveParent.physicalName}.${row.parent}`,
+                            })}
+                            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1.5 font-mono text-xs"
+                          >
+                            {effectiveChild.columns.map((column) => (
+                              <option key={column.id} value={column.id}>
+                                {effectiveChild.physicalName}.{column.physicalName}
+                              </option>
+                            ))}
+                            <option value={NEW_COLUMN}>{t('model.editor.relationship.mappingNewColumn')}</option>
+                          </select>
+                        ) : (
+                          <span className="truncate">
+                            {effectiveChild.physicalName}.{row.child}
+                          </span>
+                        )}
                       </span>
-                      <span aria-hidden className="shrink-0 text-muted-foreground">→</span>
-                      <span className="truncate">
-                        {effectiveChild.physicalName}.{row.child}
-                      </span>
+                      {mappingEditable && row.typeMismatch ? (
+                        <label className="flex items-center gap-1.5 pl-1 text-amber-600 dark:text-amber-400">
+                          <input
+                            type="checkbox"
+                            checked={alignIds.includes(row.selected)}
+                            onChange={(event) =>
+                              setAlignIds(
+                                event.target.checked
+                                  ? [...alignIds, row.selected]
+                                  : alignIds.filter((id) => id !== row.selected),
+                              )
+                            }
+                          />
+                          {t('model.editor.relationship.mappingAlignType')}
+                        </label>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -378,6 +464,17 @@ export function RelationshipDialog({
                   {t('model.editor.relationship.mappingEmpty')}
                 </p>
               )}
+              {mappingEditable && mappingRows.some((row) => row.selected !== relationship.columnMappings.find((m) => m.parentColumnId === row.parentColumnId)?.childColumnId) ? (
+                <label className="flex items-center gap-1.5 border-t px-3 py-1.5 text-xs">
+                  <input type="checkbox" checked={removeReleased} onChange={(event) => setRemoveReleased(event.target.checked)} />
+                  {t('model.editor.relationship.mappingRemoveReleased')}
+                </label>
+              ) : null}
+              {mappingError ? (
+                <p role="alert" className="border-t px-3 py-1.5 text-xs text-destructive">
+                  {mappingError}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

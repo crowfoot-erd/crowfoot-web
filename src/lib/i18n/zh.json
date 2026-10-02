@@ -1122,7 +1122,15 @@
         "duplicate": "两张表之间只允许一个关系：{{parent}} → {{child}}",
         "remove": "删除关系",
         "mappingTitle": "列映射",
-        "mappingEmpty": "没有映射的列"
+        "mappingEmpty": "没有映射的列",
+        "mappingChild": "与 {{parent}} 关联的子列",
+        "mappingNewColumn": "创建新列",
+        "mappingAlignType": "类型与父列不同 — 与父列类型保持一致",
+        "mappingRemoveReleased": "删除不再使用的列",
+        "mappingProblem": {
+          "DUPLICATE_CHILD_COLUMN": "不能重复选择同一个子列",
+          "UNKNOWN_COLUMN": "未找到列，请关闭对话框后重新打开"
+        }
       },
       "tableInfo": {
         "title": "表信息",

@@ -1122,7 +1122,15 @@
         "duplicate": "2つのテーブル間に設定できるリレーションは1つです: {{parent}} → {{child}}",
         "remove": "リレーションを削除",
         "mappingTitle": "カラムマッピング",
-        "mappingEmpty": "マッピングされたカラムがありません"
+        "mappingEmpty": "マッピングされたカラムがありません",
+        "mappingChild": "{{parent}}に結び付ける子カラム",
+        "mappingNewColumn": "新しいカラムを作成",
+        "mappingAlignType": "型が親カラムと異なります — 親の型に合わせる",
+        "mappingRemoveReleased": "使われなくなったカラムを削除",
+        "mappingProblem": {
+          "DUPLICATE_CHILD_COLUMN": "同じ子カラムを二度選ぶことはできません",
+          "UNKNOWN_COLUMN": "カラムが見つかりません。ダイアログを閉じて開き直してください"
+        }
       },
       "tableInfo": {
         "title": "テーブル情報",

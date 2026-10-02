@@ -1444,6 +1444,9 @@ export function ErdCanvas({
         onConfirmPatch={(relationshipId, patch) =>
           commit({ type: 'relationship/patch', relationshipId, patch })
         }
+        onConfirmChanges={(changes) => {
+          if (changes.length > 0) commitAll(changes)
+        }}
         onRemove={(relationshipId) => commit({ type: 'relationship/remove', relationshipId })}
         isDuplicate={(parentId, childId) =>
           isDuplicateRelationship(useEditorStore.getState().present.model, parentId, childId)

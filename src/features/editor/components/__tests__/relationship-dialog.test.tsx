@@ -274,6 +274,88 @@ describe('RelationshipDialog — 편집', () => {
     expect(within(mapping).getByText('orders.members_id')).toBeVisible()
   })
 
+  it('자식 쪽 컬럼을 기존 컬럼으로 바꾼다 — 타입이 다르면 알리고, 확인하면 변경 묶음을 넘긴다', () => {
+    const { parent, child, relationship } = relationshipFixture()
+    const memberNo = createColumn({ physicalName: 'member_no', dataType: 'VARCHAR', length: 20 })
+    child.columns.push(memberNo)
+    const onConfirmChanges = vi.fn()
+    const onConfirmPatch = vi.fn()
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={parent}
+        child={child}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={onConfirmPatch}
+        onConfirmChanges={onConfirmChanges}
+      />,
+      { wrapRoutes: false },
+    )
+
+    const select = screen.getByLabelText('members.id에 연결할 자식 컬럼')
+    expect(select).toHaveValue(relationship.columnMappings[0].childColumnId)
+    // 고르기 전에는 삭제 옵션과 타입 경고가 없다
+    expect(screen.queryByLabelText('쓰지 않게 된 컬럼 삭제')).not.toBeInTheDocument()
+
+    fireEvent.change(select, { target: { value: memberNo.id } })
+    fireEvent.click(screen.getByLabelText('타입이 부모 컬럼과 다릅니다 — 부모 타입에 맞추기'))
+    fireEvent.click(screen.getByLabelText('쓰지 않게 된 컬럼 삭제'))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(onConfirmPatch).not.toHaveBeenCalled()
+    const changes = onConfirmChanges.mock.calls[0][0] as { type: string }[]
+    expect(changes.map((change) => change.type)).toEqual(['column/patch', 'relationship/patch', 'column/remove'])
+    expect(changes[1]).toMatchObject({
+      relationshipId: 'rel-1',
+      patch: { columnMappings: [{ parentColumnId: parent.columns[0].id, childColumnId: memberNo.id }] },
+    })
+  })
+
+  it('"새 컬럼 만들기"를 고르면 컬럼 추가가 묶음 맨 앞에 온다 — 매핑을 그대로 두면 패치만 간다', () => {
+    const { parent, child, relationship } = relationshipFixture()
+    const onConfirmChanges = vi.fn()
+    const view = renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={parent}
+        child={child}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+        onConfirmChanges={onConfirmChanges}
+      />,
+      { wrapRoutes: false },
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect((onConfirmChanges.mock.calls[0][0] as { type: string }[]).map((change) => change.type)).toEqual(['relationship/patch'])
+    expect(onConfirmChanges.mock.calls[0][0][0].patch.columnMappings).toBeUndefined()
+    view.unmount()
+
+    renderWithProviders(
+      <RelationshipDialog
+        open
+        onOpenChange={() => {}}
+        parent={parent}
+        child={child}
+        relationship={relationship}
+        onConfirmCreate={vi.fn()}
+        onConfirmPatch={vi.fn()}
+        onConfirmChanges={onConfirmChanges}
+      />,
+      { wrapRoutes: false },
+    )
+    fireEvent.change(screen.getByLabelText('members.id에 연결할 자식 컬럼'), { target: { value: '__new__' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    const changes = onConfirmChanges.mock.calls[1][0] as { type: string; column?: { physicalName: string } }[]
+    expect(changes.map((change) => change.type)).toEqual(['column/add', 'relationship/patch'])
+    // 이름이 겹치면 접미가 붙는다(이미 members_id가 있다)
+    expect(changes[0].column?.physicalName).toBe('members_id_1')
+  })
+
   it('매핑이 비어 있으면 빈 매핑 안내를 보여준다(FK_MAPPING_EMPTY와 마주하는 상태)', () => {
     const { parent, child, relationship } = relationshipFixture()
     relationship.columnMappings = []
