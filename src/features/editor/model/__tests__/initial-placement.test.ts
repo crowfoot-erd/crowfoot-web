@@ -2,6 +2,7 @@
  * 열 때 자동 배치 — 위치 없는 테이블 놓기 (docs 05-editor/02-ui.md Section 18)
  */
 import { describe, expect, it } from 'vitest'
+import { applyChange } from '@/features/editor/model/changes'
 import { parseContent } from '@/features/editor/model/content-io'
 import { placeMissingTables } from '@/features/editor/model/initial-placement'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
@@ -124,5 +125,20 @@ describe('placeMissingTables', () => {
     const doc = content([table('a', 'users'), table('b', 'orders')], [], {})
     placeMissingTables(doc)
     expect(doc.diagram.nodes).toEqual({})
+  })
+})
+
+describe('위치 없는 테이블과 자동 배치', () => {
+  it('node/move는 위치가 없던 테이블에 위치를 만든다 — 도구 모음의 자동 배치가 MCP가 만든 테이블도 옮긴다', () => {
+    const doc = content([table('a', 'users'), table('b', 'orders')], [], { a: { x: 10, y: 20, width: 400, color: 'blue' } })
+    const moved = applyChange(
+      { model: doc.model, diagram: doc.diagram },
+      { type: 'node/move', positions: { a: { x: 100, y: 200 }, b: { x: 700, y: 200 }, gone: { x: 1, y: 1 } } },
+      'mysql',
+    )
+    expect(moved.diagram.nodes).toEqual({
+      a: { x: 100, y: 200, width: 400, color: 'blue' },
+      b: { x: 700, y: 200, width: null, color: 'default' },
+    })
   })
 })

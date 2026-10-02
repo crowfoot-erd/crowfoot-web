@@ -10,6 +10,7 @@ import type { WorkspaceTerm } from '@/api/types'
 import {
   coerceChildMultiplicity,
   type ErdArea,
+  type ErdNodeLayout,
   type ErdRequirement,
   type ErdColumn,
   type ErdContent,
@@ -726,18 +727,20 @@ export function applyChange(doc: EditorDocument, change: ErdChange, databaseType
           requirements: doc.diagram.requirements.filter((requirement) => requirement.id !== change.requirementId),
         },
       }
-    case 'node/move':
-      return {
-        ...doc,
-        diagram: {
-          ...doc.diagram,
-          nodes: Object.fromEntries(
-            Object.entries(doc.diagram.nodes).map(([id, layout]) =>
-              id in change.positions ? [id, { ...layout, ...change.positions[id] }] : [id, layout],
-            ),
-          ),
-        },
+    case 'node/move': {
+      const nodes: Record<string, ErdNodeLayout> = Object.fromEntries(
+        Object.entries(doc.diagram.nodes).map(([id, layout]) =>
+          id in change.positions ? [id, { ...layout, ...change.positions[id] }] : [id, layout],
+        ),
+      )
+      // 위치가 없던 테이블(문서 편집 API가 만든 테이블 — 02-ui.md §18)은 여기서 위치를 얻는다.
+      // 없는 테이블의 id는 무시한다 — 지워진 테이블로 가는 늦은 이동이 노드를 되살리지 않게
+      for (const table of doc.model.tables) {
+        const position = change.positions[table.id]
+        if (position && !(table.id in nodes)) nodes[table.id] = { ...position, width: null, color: 'default' }
       }
+      return { ...doc, diagram: { ...doc.diagram, nodes } }
+    }
     case 'node/resize':
       return {
         ...doc,
