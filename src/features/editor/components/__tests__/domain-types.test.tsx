@@ -290,6 +290,80 @@ describe('컬럼에서 도메인 타입 쓰기', () => {
   })
 })
 
+describe('사전 용어로 컬럼 채우기 (v1.30 — 08-core/01-workspace.md §4.6)', () => {
+  const TERMS = '/api/v1/core/workspaces/101/terms'
+  const term = (name: string, label: string, extra: Record<string, unknown> = {}) => ({
+    termId: name, workspaceId: '101', term: name, label, types: null, domainTypeId: null, updatedAt: '2026-10-02T00:00:00Z', ...extra,
+  })
+  beforeEach(() => {
+    server.use(
+      http.get(TERMS, () =>
+        HttpResponse.json({
+          header: HEADER,
+          responses: [
+            term('user', '회원'),
+            term('email', '이메일'),
+            term('user_email', '회원 이메일', { domainTypeId: '11', types: { postgresql: 'TEXT' } }),
+          ],
+          totalCount: 3,
+        }),
+      ),
+    )
+  })
+
+  it('도메인 타입을 가리키는 용어를 고르면 이름을 채우고 도메인 타입을 연결한 채 적용한다 — types는 쓰지 않는다', async () => {
+    await renderEditor()
+    seedUsers()
+    // 캔버스가 도메인 타입 목록을 읽어 둔 뒤에 고른다(제안은 캐시에서 읽는다)
+    const input = await screen.findByLabelText('컬럼 물리명 — backup_email')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'user_e' } })
+    const listbox = await screen.findByRole('listbox', { name: '워크스페이스 사전 제안' })
+    // 용어 항목에는 타입 표기가 아니라 도메인 타입 이름이 붙는다
+    const termOption = (await within(listbox).findByText('user_email')).closest('li') as HTMLElement
+    await waitFor(() => expect(within(termOption).getByText('이메일')).toBeVisible())
+    expect(within(termOption).queryByText('TEXT')).not.toBeInTheDocument()
+
+    fireEvent.click(termOption)
+
+    await waitFor(() =>
+      expect(column('c-backup')).toMatchObject({
+        physicalName: 'user_email',
+        logicalName: '회원 이메일',
+        dataType: 'VARCHAR',
+        length: 191,
+        nullable: false,
+        domain: { id: '11', name: '이메일', version: 1, overrides: [] },
+      }),
+    )
+    // 한 번의 되돌리기로 이름과 타입이 함께 돌아온다
+    useEditorStore.getState().undo()
+    expect(column('c-backup')).toMatchObject({ physicalName: 'backup_email', dataType: 'TEXT' })
+    expect(column('c-backup').domain ?? null).toBeNull()
+  })
+
+  it('단어를 고르면 조각만 완성하고, 확정하면 추론한 논리명이 채워진다 — 타입은 그대로다', async () => {
+    await renderEditor()
+    seedUsers()
+    const input = await screen.findByLabelText('컬럼 물리명 — backup_email')
+    fireEvent.focus(input)
+    await screen.findByRole('listbox', { name: '워크스페이스 사전 제안' })
+
+    fireEvent.change(input, { target: { value: 'user_em' } })
+    const listbox = await screen.findByRole('listbox', { name: '워크스페이스 사전 제안' })
+    expect(within(listbox).getByTestId('term-preview')).toHaveTextContent('회원 em')
+    // 단어 묶음의 email을 고른다(용어 user_email이 아니라)
+    const options = within(listbox).getAllByRole('option')
+    fireEvent.click(options[options.length - 1])
+    expect(input).toHaveValue('user_email')
+    fireEvent.blur(input)
+
+    await waitFor(() => expect(column('c-backup').physicalName).toBe('user_email'))
+    expect(column('c-backup')).toMatchObject({ logicalName: '회원 이메일', dataType: 'TEXT' })
+    expect(column('c-backup').domain ?? null).toBeNull()
+  })
+})
+
 describe('전파 알림', () => {
   it('맞춘 뒤에 도메인 타입이 바뀐 컬럼이 있으면 띠가 뜬다 — 일부만 골라 전파한다', async () => {
     serverList = [email({ version: 2, length: 255 })]

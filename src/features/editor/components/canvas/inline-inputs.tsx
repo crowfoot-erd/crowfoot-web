@@ -19,6 +19,8 @@ import { cn } from 'cn'
 export interface CommitInputHandle {
   /** 초안 커밋을 건너뛰고 draft를 next로 맞춘 뒤 blur한다 (부모 패치와 이중 커밋 방지) */
   commitExternal: (next: string) => void
+  /** 초안만 next로 바꾸고 편집을 이어 간다(포커스 유지·커밋 없음) — 단어 완성에 쓴다 */
+  replaceDraft: (next: string) => void
 }
 
 interface CommitInputProps {
@@ -80,8 +82,14 @@ export function CommitInput({
         setDraft(next)
         inputRef.current?.blur()
       },
+      replaceDraft: (next: string) => {
+        setDraft(next)
+        onDraftChange?.(next)
+        // 이미 포커스가 있으면 다시 걸지 않는다(다시 걸면 편집 시작으로 처리된다)
+        if (document.activeElement !== inputRef.current) inputRef.current?.focus()
+      },
     }),
-    [],
+    [onDraftChange],
   )
 
   useEffect(() => {

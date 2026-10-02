@@ -40,6 +40,8 @@ import {
   isAutoIncrementType,
   physicalType,
 } from '@/features/editor/model/dbms'
+import type { DomainType } from '@/features/domain-types/api'
+import { applyDomainPatchFor } from '@/features/editor/model/domain-type'
 import type { KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
@@ -260,8 +262,20 @@ function ColumnRow({
 
   const patch = (next: ColumnPatch) => commit({ type: 'column/patch', tableId, columnId: column.id, patch: next })
 
-  /** 사전 용어 제안 선택 — 물리명·논리명·타입을 1커밋으로 채운다(규칙은 termColumnPatch) */
-  const applyTerm = (term: WorkspaceTerm) => patch(termColumnPatch(term, databaseType, dbmsId))
+  /** 사전 용어 제안 선택 — 물리명·논리명·타입을 1커밋으로 채운다(규칙은 termColumnPatch).
+   *  용어가 도메인 타입을 가리키면 타입 표기 대신 도메인 타입을 연결한 채 적용한다(§4.6).
+   *  외래 키 컬럼은 타입이 부모 컬럼을 따르므로 이름만 채운다 */
+  const applyTerm = (term: WorkspaceTerm, domainType?: DomainType) => {
+    if (isFk) {
+      patch({ physicalName: term.term, logicalName: term.label })
+      return
+    }
+    if (domainType) {
+      patch({ physicalName: term.term, logicalName: term.label, ...applyDomainPatchFor(domainType, isPk) })
+      return
+    }
+    patch(termColumnPatch(term, databaseType, dbmsId))
+  }
 
   /** PK 토글 — 1커밋 스택 (켜면 NN 강제·최상단 이동, 끄면 AI 해제 + FK면 FK 영역·아니면 일반 블록 이동) */
   const togglePk = () => {
@@ -350,7 +364,15 @@ function ColumnRow({
             <ColumnTermInput
               className="text-sm font-medium"
               value={column.physicalName}
-              onCommit={(value) => patch({ physicalName: value })}
+              onCommit={(value, inferredLabel) =>
+                patch({
+                  physicalName: value,
+                  // 단어로 완성한 이름 — 논리명이 비었거나 이전 물리명과 같을 때만 추론한 논리명을 채운다
+                  ...(inferredLabel && (column.logicalName === '' || column.logicalName === column.physicalName)
+                    ? { logicalName: inferredLabel }
+                    : {}),
+                })
+              }
               onApplyTerm={applyTerm}
               ariaLabel={`${t('model.editor.table.columnName')} — ${column.physicalName}`}
               disabled={!canEdit}

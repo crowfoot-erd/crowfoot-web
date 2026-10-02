@@ -1122,6 +1122,9 @@
       "table": {
         "addColumn": "添加列",
         "columnName": "列名",
+        "termPreview": "逻辑名",
+        "termGroupTerms": "术语 — 整个名称",
+        "termGroupWords": "单词 — 补全正在输入的部分",
         "termSuggestLabel": "工作区词典建议",
         "physicalName": "表名",
         "dataType": "数据类型",

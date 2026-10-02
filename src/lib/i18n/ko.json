@@ -1122,6 +1122,9 @@
       "table": {
         "addColumn": "컬럼 추가",
         "columnName": "컬럼 물리명",
+        "termPreview": "논리명",
+        "termGroupTerms": "용어 — 이름 전체",
+        "termGroupWords": "단어 — 치고 있는 조각 완성",
         "termSuggestLabel": "워크스페이스 사전 제안",
         "physicalName": "테이블 물리명",
         "dataType": "데이터 타입",

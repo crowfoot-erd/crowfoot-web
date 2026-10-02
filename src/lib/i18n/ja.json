@@ -1122,6 +1122,9 @@
       "table": {
         "addColumn": "カラムを追加",
         "columnName": "カラム名",
+        "termPreview": "論理名",
+        "termGroupTerms": "用語 — 名前全体",
+        "termGroupWords": "単語 — 入力中の部分を補完",
         "termSuggestLabel": "ワークスペース辞書の候補",
         "physicalName": "テーブル名",
         "dataType": "データ型",

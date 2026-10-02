@@ -52,6 +52,18 @@ export function applyDomainPatch(domainType: DomainType, table: ErdTable, column
   return patch
 }
 
+/** 적용(테이블 없이) — 기본 키 여부만 알면 되는 곳(컬럼 행)에서 쓴다. 규칙은 applyDomainPatch와 같다 */
+export function applyDomainPatchFor(domainType: DomainType, isPrimaryKey: boolean): ColumnPatch {
+  const values = domainValues(domainType)
+  const patch: ColumnPatch = {}
+  for (const field of DOMAIN_FIELDS) {
+    if (isPrimaryKey && field === 'nullable') continue
+    Object.assign(patch, { [field]: values[field] })
+  }
+  patch.domain = { id: domainType.domainTypeId, name: domainType.name, version: domainType.version, overrides: [] }
+  return patch
+}
+
 /** 연결 정보 만들기 — 폼에서 고른 값이 도메인 타입과 다른 속성을 overrides로 적는다 */
 export function linkFor(domainType: DomainType, values: DomainValues, fields: readonly DomainField[]): ErdColumnDomain {
   return {

@@ -1122,6 +1122,9 @@
       "table": {
         "addColumn": "Add column",
         "columnName": "Column name",
+        "termPreview": "Logical name",
+        "termGroupTerms": "Terms — whole name",
+        "termGroupWords": "Words — complete the current part",
         "termSuggestLabel": "Workspace dictionary suggestions",
         "physicalName": "Table name",
         "dataType": "Data type",
