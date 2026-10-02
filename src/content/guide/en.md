@@ -757,7 +757,7 @@ Click **{{model.editor.toolbar.share}}** and then **{{model.share.issue}}** to c
 * Choose **{{model.share.period.unlimited}}** or **{{model.share.period.custom}}**. If you set a period, the link does not open outside the start and end date and time.
 * Each link shows its number of views, likes, and comments.
 * Use the copy icon to copy the address and the trash icon to revoke the link. A revoked link stops opening right away.
-* Shared documents also appear in the share gallery on the start page.
+* Shared documents also appear in the share gallery on the start page. Select **{{landing.gallery.more}}** under the gallery to search every shared document by name or description and page through the list.
 
 On the shared page, people can view the ERD, download the SQL script, and leave likes and comments. Only signed-in people can leave a like. People who are not signed in enter a nickname and a password to leave a comment.
 

@@ -1469,6 +1469,31 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
+  // 공유 문서 목록(§1.5.1) — 무인증. 검색(q)·정렬(sort)·페이지. 토큰 경로(:token)보다 먼저 둔다
+  http.get(`${BASE}/api/v1/core/shares/list`, ({ request }) => {
+    const url = new URL(request.url)
+    const q = (url.searchParams.get('q') ?? '').trim().toLowerCase()
+    const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1)
+    const size = Math.min(50, Math.max(1, Number(url.searchParams.get('size') ?? '12') || 12))
+    const matched = fixtures.sharedGallery.responses.filter((item) =>
+      `${item.modelName}\n${item.description ?? ''}`.toLowerCase().includes(q),
+    )
+    if (url.searchParams.get('sort') === 'popular') {
+      matched.sort((a, b) => b.reactionCount - a.reactionCount || b.viewCount - a.viewCount)
+    } else {
+      matched.sort((a, b) => b.sharedAt.localeCompare(a.sharedAt))
+    }
+    return HttpResponse.json(
+      ok({
+        page,
+        size,
+        totalPages: Math.ceil(matched.length / size),
+        responses: matched.slice((page - 1) * size, page * size),
+        totalCount: matched.length,
+      }),
+    )
+  }),
+
   // 공유 문서 공개 조회(§1.10) — 인증 없음. expired 토큰은 410, 그 외 없는 토큰은 404
   http.get(`${BASE}/api/v1/core/shares/:token`, ({ params }) => {
     if (params.token === 'expired0000000000000000') return fail('SHARE_INACTIVE', 410)
@@ -2437,6 +2462,14 @@ export const handlers = [
         totalCount: Math.min(fixtures.recentCommunityPosts.responses.length, limit),
       }),
     )
+  }),
+
+  // 공개 릴리스 노트 전체 — 무인증(공개 목록 화면의 목차). 경로 변수({post-id})보다 먼저 둔다
+  http.get(`${BASE}/api/v1/core/community/release-notes/list`, () => {
+    const releaseNotes = fixtures.communityPosts.responses
+      .filter((post) => post.board === 'RELEASE_NOTE')
+      .map(({ postId, board, title, author, commentCount, createdAt }) => ({ postId, board, title, author, commentCount, createdAt }))
+    return HttpResponse.json(ok({ responses: releaseNotes, totalCount: releaseNotes.length }))
   }),
 
   // 공개 최근 릴리스 노트 — 무인증(랜딩 위젯). RELEASE_NOTE만, DB 단계 필터 계약 반영

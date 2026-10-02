@@ -35,11 +35,15 @@ describe('릴리스 노트 공개 뷰어', () => {
     renderViewer('902')
 
     // then: 제목·배지·본문(마크다운 원문) + 홈 링크 — 인증 없는 공개 API
-    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판')).toBeVisible()
-    expect(screen.getByText('릴리스 노트')).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'v1.4.0 — 커뮤니티 게시판' })).toBeVisible()
+    const main = screen.getByRole('main')
+    expect(within(main).getByRole('heading', { level: 1, name: 'v1.4.0 — 커뮤니티 게시판' })).toBeVisible()
+    expect(within(main).getByText('릴리스 노트')).toBeVisible()
     const viewer = await screen.findByTestId('markdown-viewer')
     expect(viewer).toHaveTextContent('# 개요')
-    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
+    // 머리와 바닥은 랜딩과 같다 — 로고가 시작 페이지로 간다
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: /Crowfoot/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument()
 
     // then: head 메타 — 게시글 제목·canonical·본문 요약(마크다운·표 걷어냄) (00-common §3.11)
     expect(document.title).toBe('v1.4.0 — 커뮤니티 게시판 — Crowfoot')
@@ -51,6 +55,34 @@ describe('릴리스 노트 공개 뷰어', () => {
       'content',
       '개요 이번 릴리스의 주요 변경 사항입니다. 항목 내용 기능 커뮤니티 릴리스 노트는 관리자가 작성합니다',
     )
+  })
+
+  it('위키 꼴 — 왼쪽 목차에 릴리스 노트가 최신순으로 나오고, 지금 보는 노트가 표시된다', async () => {
+    renderViewer('902')
+
+    const toc = await screen.findByRole('navigation', { name: '릴리스 노트' })
+    const links = await within(toc).findAllByRole('link')
+    expect(links.length).toBeGreaterThan(0)
+    const current = links.filter((link) => link.getAttribute('aria-current') === 'page')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveAttribute('href', '/release-notes/902')
+    expect(current[0]).toHaveTextContent('v1.4.0 — 커뮤니티 게시판')
+  })
+
+  it('번호 없이 열면(/release-notes) 가장 최근 노트를 보여 준다', async () => {
+    renderWithProviders(
+      <>
+        <Route path="/release-notes" element={<ReleaseNoteViewerPage />} />
+        <Route path="/release-notes/:postId" element={<ReleaseNoteViewerPage />} />
+      </>,
+      { route: '/release-notes' },
+    )
+
+    const toc = await screen.findByRole('navigation', { name: '릴리스 노트' })
+    const first = (await within(toc).findAllByRole('link'))[0]
+    expect(first).toHaveAttribute('aria-current', 'page')
+    const title = first.querySelector('span')?.textContent ?? ''
+    expect(await within(screen.getByRole('main')).findByRole('heading', { level: 1, name: title })).toBeVisible()
   })
 
   it('게스트 — 없는 post-id는 404 안내와 홈 링크를 보여준다', async () => {
@@ -85,7 +117,7 @@ describe('릴리스 노트 공개 뷰어', () => {
     renderViewer('902') // fixtures — availableLangs ['ko','en']
 
     // then: 기본은 UI 언어(ko) — 전환기는 available 2개 이상일 때만 노출
-    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판')).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'v1.4.0 — 커뮤니티 게시판' })).toBeVisible()
     const group = screen.getByRole('group', { name: '본문 언어' })
     expect(within(group).getByRole('button', { name: '한국어' })).toHaveAttribute('aria-pressed', 'true')
 

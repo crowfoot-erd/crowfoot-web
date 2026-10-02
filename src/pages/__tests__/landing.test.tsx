@@ -21,6 +21,18 @@ describe('랜딩 페이지', () => {
     resetSessionState()
   })
 
+  it('무료 개발용 데이터베이스 구역 — 요점 넷과 접속 정보 모양, 받기 버튼은 게스트를 로그인으로 보낸다', () => {
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+    const section = screen.getByTestId('landing-free-db')
+    expect(within(section).getByRole('heading', { level: 2 })).toHaveTextContent('개발에 쓸 데이터베이스, 그냥 드립니다')
+    expect(within(section).getAllByRole('listitem')).toHaveLength(4)
+    expect(section).toHaveTextContent('계정당 5개까지 무료 — 카드 등록 없음')
+    expect(within(section).getByTestId('landing-free-db-cta')).toHaveAttribute('href', '/login')
+    // 슬라이드 다음에 온다
+    const order = screen.getByTestId('landing-shots').compareDocumentPosition(section)
+    expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('슬라이드 — 5초마다 다음 장으로 넘어가고, 마우스를 올리거나 탭을 고르면 멈춘다', () => {
     vi.useFakeTimers()
     try {
@@ -114,13 +126,20 @@ describe('랜딩 페이지', () => {
     expect(images[2].closest('a')).toHaveAttribute('target', '_blank')
     expect(images[2].closest('a')).not.toHaveAttribute('inert')
     expect(within(track).getByTestId('landing-mcp')).toHaveAttribute('inert')
-    // h1에 검색 핵심어(무료 ERD)가 들어 있다
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('그대로 실제 데이터베이스가 됩니다')
-    // 핵심 강조 — 무료 매니지드 DB 조건
-    expect(screen.getByText('PostgreSQL · MySQL')).toBeInTheDocument()
-    expect(screen.getByText('계정당 최대 5개')).toBeInTheDocument()
-    expect(screen.getByText('무료 제공')).toBeInTheDocument()
+    // 제목 — 다른 ERD 툴과 갈리는 점(실제 DB까지, 무료)을 앞세운다
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('ERD만 그리고 끝나는 툴은 많습니다Crowfoot은 실제 DB까지, 무료로')
+    // 행동 버튼 아래에 무료 조건 한 줄
+    expect(screen.getByTestId('landing-cta-note')).toHaveTextContent('카드 등록 없음')
+    // 제목 아래의 요청 예시 — AI에게 하는 말을 타자 치듯 보여 준다(전체 문장은 접근성 이름으로 준다)
+    expect(screen.getByTestId('landing-hero-prompt')).toHaveAccessibleName(/쇼핑몰 ERD 만들어 줘/)
+    // 다른 ERD 툴과 갈리는 세 가지 — 무료 DB, 내 AI 연결(MCP), 요구사항 추적
+    const edge = screen.getByTestId('landing-edge')
+    expect(within(edge).getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      '무료 DB 발급과 배포',
+      '내 AI가 설계합니다 (MCP)',
+      '요구사항 추적',
+    ])
+    expect(edge).toHaveTextContent('AI를 내장하지 않았습니다')
     // 특징 12종 카드 — 매니지드 DB가 첫 번째
     for (const title of [
       '무료 MySQL·PostgreSQL 데이터베이스',
@@ -143,7 +162,7 @@ describe('랜딩 페이지', () => {
       expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
     }
     // CTA — 로그인 링크와 GitHub 외부 링크
-    expect(screen.getAllByText('무료로 시작하기').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('지금 무료로 시작하기').length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute(
       'href',
       'https://github.com/crowfoot-erd',
@@ -230,6 +249,8 @@ describe('랜딩 페이지', () => {
 
     // then: 릴리스 라벨 + fixture 릴리스 노트(RELEASE_NOTE만) — 인증 없는 공개 API
     expect(await screen.findByRole('heading', { name: '최근 릴리스' })).toBeVisible()
+    // 전체 목록(목차가 있는 공개 화면)으로 가는 링크
+    expect(screen.getByTestId('landing-release-notes-more')).toHaveAttribute('href', '/release-notes')
     const link = screen.getByRole('link', { name: /v1\.4\.0 — 커뮤니티 게시판/ })
     expect(link).toHaveAttribute('href', '/release-notes/902')
     // 새 창 — 랜딩 흐름 유지(갤러리 카드와 같은 규칙)
@@ -267,11 +288,11 @@ describe('랜딩 페이지', () => {
     )
 
     // then: 리다이렉트 없이 랜딩이 렌더된다 — 인증 사용자도 열람 가능
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('ERD만 그리고 끝나는 툴은 많습니다')
     // 히어로 CTA·헤더 버튼 모두 앱(대시보드)으로 — 로그인 유도는 사라진다
     expect(screen.getByRole('link', { name: '앱으로 이동' })).toHaveAttribute('href', '/dashboard')
     expect(screen.getByRole('link', { name: '대시보드' })).toHaveAttribute('href', '/dashboard')
-    expect(screen.queryByRole('link', { name: '무료로 시작하기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '지금 무료로 시작하기' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument()
     // 앱 셸과 같은 사용자 메뉴 — 정보·로그아웃 진입이 헤더에 있다
     expect(await screen.findByRole('button', { name: /부트스트랩 관리자/ })).toBeVisible()

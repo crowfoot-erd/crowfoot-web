@@ -3,7 +3,7 @@
  * 목록은 offset 페이징(20/page — ERD 라이브러리처럼 문서 수백 건 워크스페이스 대응,
  * notifications·admin/users 관례와 같은 page 파라미터).
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   cloneFromTemplate,
@@ -27,6 +27,8 @@ import {
   fetchShareFeedback,
   fetchSharedDocument,
   fetchSharedGallery,
+  fetchSharedList,
+  type SharedListSort,
   fetchTemplates,
   patchModelVersionMemo,
   restoreModelVersion,
@@ -453,6 +455,16 @@ export function useMyShareReactions() {
 }
 
 /** 공유 갤러리 목록 — 게스트(미인증) 랜딩 페이지에서도 그대로 쓴다 (빈 목록이면 섹션을 숨긴다) */
+/** 공유 문서 목록 — 게스트 조회라 retry 없이. 페이지를 넘길 때 앞 페이지를 보여 준 채 불러온다 */
+export function useSharedList(params: { q: string; sort: SharedListSort; page: number }) {
+  return useQuery({
+    queryKey: ['shares', 'list', params.q, params.sort, params.page] as const,
+    queryFn: ({ signal }) => fetchSharedList(params, signal),
+    retry: false,
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useSharedGallery() {
   return useQuery({
     queryKey: modelKeys.gallery,

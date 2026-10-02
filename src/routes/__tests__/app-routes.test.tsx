@@ -45,7 +45,7 @@ describe('언어 prefix 라우팅', () => {
   it('/en 랜딩 — 영어 문구 렌더 + html lang=en + 흔적 저장', async () => {
     renderWithProviders(<AppRoutes />, { route: '/en', wrapRoutes: false })
 
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('A free ERD tool in your browser,')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Plenty of tools stop at the diagram')
     await waitFor(() => expect(document.documentElement.lang).toBe('en'))
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en')
   })
@@ -69,7 +69,7 @@ describe('언어 prefix 라우팅', () => {
   it('무prefix / — ko 랜딩 회귀(기존 경로 불변)', async () => {
     renderWithProviders(<AppRoutes />, { route: '/', wrapRoutes: false })
 
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('ERD만 그리고 끝나는 툴은 많습니다')
     await waitFor(() => expect(document.documentElement.lang).toBe('ko'))
   })
 

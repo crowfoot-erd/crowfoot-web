@@ -24,6 +24,7 @@ import { LandingPage } from '@/pages/landing'
 import { LoginPage } from '@/pages/login'
 import { ShareViewerPage } from '@/pages/share-viewer'
 import { ReleaseNoteViewerPage } from '@/pages/release-note-viewer'
+import { SharedListPage } from '@/pages/shared-list'
 import { TermsPage } from '@/pages/terms'
 import { ModelViewerPage } from '@/pages/model-viewer'
 import { ModelVersionViewerPage } from '@/pages/model-version-viewer'
@@ -81,7 +82,10 @@ function buildRoutes(prefix: string) {
       {/* 공유 문서 공개 뷰어 — 토큰을 아는 누구나 (기간 내) */}
       <Route path={`${prefix}/share/:token`} element={<ShareViewerPage />} />
       {/* 릴리스 노트 공개 뷰어 — 누구나(랜딩 최근 릴리스·docs README 링크의 행선지) */}
+      <Route path={`${prefix}/release-notes`} element={<ReleaseNoteViewerPage />} />
       <Route path={`${prefix}/release-notes/:postId`} element={<ReleaseNoteViewerPage />} />
+      {/* 공유 문서 목록 — 누구나(랜딩 갤러리의 "모두 보기") */}
+      <Route path={`${prefix}/shared`} element={<SharedListPage />} />
 
       {/* 보호 — 앱 셸 4분할 */}
       <Route element={<ProtectedRoute />}>

@@ -5,25 +5,45 @@
  * - 인증 상태에서도 열람 가능(리다이렉트 없음) — CTA는 로그인/앱 진입으로 전환, 헤더에 앱 셸과 같은 사용자 메뉴(정보·로그아웃)
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, ClipboardList, Clock, Code2, Rows3, Sparkles, Database, Eye, FileCode2, FileDown, Flame, Heart, History, Layers, LibraryBig, ListChecks, Share2, ShieldCheck, Users, BookOpenText } from 'lucide-react'
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpenText,
+  Bot,
+  Cable,
+  ClipboardList,
+  Clock,
+  Code2,
+  Database,
+  Eye,
+  FileCode2,
+  FileDown,
+  Flame,
+  Heart,
+  History,
+  Layers,
+  LibraryBig,
+  ListChecks,
+  Rows3,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { DbmsIcon } from '@/components/dbms-icon'
 import { dbmsLabel } from '@/features/editor/model/dbms'
-import { LanguageSelect } from '@/components/language-select'
-import { Logo } from '@/components/logo'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { PublicFooter, PublicHeader, publicPath } from '@/components/public-chrome'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { UserMenu } from '@/layouts/components/user-menu'
 import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { currentLanguage } from '@/lib/i18n'
 import { formatDate } from '@/lib/format'
-import { APP_VERSION } from '@/lib/version'
 import { useSessionStore } from '@/stores/session'
 
 /** 특징 카드 정의 — 핵심(무료 매니지드 DB)이 먼저 온다. 아이콘은 중립 도형만 (lucide v1 브랜드 아이콘 없음).
@@ -33,6 +53,81 @@ import { useSessionStore } from '@/stores/session'
 const LANDING_SHOTS = ['editor-overview', 'editor-requirements', 'workspace-mcp', 'data-tab'] as const
 /** 슬라이드의 장 — 첫 장은 AI 연동(MCP) 소개, 나머지는 제품 화면 */
 const LANDING_SLIDES = ['mcp', ...LANDING_SHOTS] as const
+
+/** 다른 ERD 툴과 갈리는 점 — 히어로 아래 카드 셋 */
+const EDGES = [
+  { key: 'db', icon: Database },
+  { key: 'mcp', icon: Bot },
+  { key: 'trace', icon: ClipboardList },
+] as const
+
+/** 무료 데이터베이스 구역의 요점 */
+const FREE_DB_POINTS = ['free', 'instant', 'deploy', 'browse'] as const
+/** 접속 정보 카드에 보여 주는 보기 값 — 실제 발급 정보의 모양 */
+const FREE_DB_SAMPLE = [
+  ['engine', 'MySQL 8'],
+  ['host', 's4.java21.net'],
+  ['port', '13306'],
+  ['database', 'cf_u1_d1'],
+  ['user', 'cf_u1'],
+  ['password', '••••••••••••'],
+] as const
+
+/** 히어로의 요청 예시 — AI에게 하는 말 */
+const HERO_PROMPTS = ['p1', 'p2', 'p3'] as const
+
+/**
+ * 히어로의 요청 예시 — AI에게 하는 말을 타자 치듯 한 글자씩 보여 주고, 다 치면 잠깐 두었다가 다음 말로 넘어간다.
+ * 움직임을 줄이도록 설정한 사용자에게는 첫 문장을 그대로 보여 준다. 읽는 프로그램에는 전체 문장을 준다
+ */
+function HeroPrompt({ prompts, label, who }: { prompts: string[]; label: string; who: string }) {
+  const [reduced] = useState(
+    () =>
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+  const [index, setIndex] = useState(0)
+  const [length, setLength] = useState(0)
+  const text = prompts[index % prompts.length] ?? ''
+  useEffect(() => {
+    if (reduced) return
+    if (length < text.length) {
+      const timer = window.setTimeout(() => setLength((current) => current + 1), 60)
+      return () => window.clearTimeout(timer)
+    }
+    const timer = window.setTimeout(() => {
+      setIndex((current) => (current + 1) % prompts.length)
+      setLength(0)
+    }, 2200)
+    return () => window.clearTimeout(timer)
+  }, [reduced, length, text.length, prompts.length])
+  return (
+    <div
+      role="img"
+      aria-label={`${label}: ${prompts.join(' / ')}`}
+      data-testid="landing-hero-prompt"
+      className="flex w-full max-w-xl items-center gap-3 rounded-2xl border border-emerald-500/30 bg-card px-5 py-4 text-left shadow-xl shadow-emerald-500/10"
+    >
+      <span
+        aria-hidden
+        className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+      >
+        <Bot className="size-3.5" />
+        {who}
+      </span>
+      <span aria-hidden className="min-w-0 flex-1 truncate font-mono text-sm md:text-base">
+        {reduced ? text : text.slice(0, length)}
+        <span className="ml-0.5 inline-block h-[1.1em] w-[2px] translate-y-[3px] animate-pulse bg-emerald-500" />
+      </span>
+      <kbd
+        aria-hidden
+        className="hidden shrink-0 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline"
+      >
+        Enter ↵
+      </kbd>
+    </div>
+  )
+}
 
 /** 슬라이드가 넘어가는 간격 */
 const SHOT_INTERVAL_MS = 5000
@@ -103,84 +198,78 @@ export function LandingPage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <Logo className="size-6" />
-          {t('common.appName')}
-          <span className="hidden text-sm font-normal text-muted-foreground sm:inline">
-            {t('common.appTagline')}
-          </span>
-        </div>
-        {/* 언어·테마는 행동 버튼 왼쪽 — 인증 상태 — 앱 셸과 같은 사용자 메뉴(정보·로그아웃)를 헤더에 둔다 */}
-        <div className="flex items-center gap-1">
-          {/* 사용 가이드 — 로그인하지 않아도 어떤 기능이 있는지 볼 수 있다(/guide) */}
-          <Button asChild variant="ghost" size="sm">
-            <a href={guideHref} target="_blank" rel="noopener noreferrer" data-testid="landing-guide-link">
-              {t('guide.title')}
-            </a>
-          </Button>
-          <ThemeToggle />
-          <LanguageSelect />
-          {authenticated ? (
-            <>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/dashboard">{t('landing.cta.dashboard')}</Link>
-              </Button>
-              <UserMenu />
-            </>
-          ) : (
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/login">{t('landing.cta.login')}</Link>
-            </Button>
-          )}
-        </div>
-      </header>
+      <PublicHeader />
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-20 px-4 py-16">
-        {/* 히어로 */}
-        <section className="flex flex-col items-center gap-5 text-center">
-          <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-20 break-keep px-4 py-16">
+        {/* 히어로 — 첫 화면에서 눈에 들어오게: 색 번짐 배경, 큰 제목과 색 강조, AI에게 하는 말을 타자 치듯 보여 주는 요청 예시,
+            색을 준 큰 행동 버튼 (2026-10-02 사용자 요청 — 가입해서 써 보고 싶게) */}
+        <section className="relative isolate flex w-full flex-col items-center gap-6 text-center">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-28 left-1/2 -z-10 h-[460px] w-[min(960px,100vw)] -translate-x-1/2 bg-[radial-gradient(closest-side,rgb(16_185_129/0.22),rgb(14_165_233/0.10)_55%,transparent)] blur-2xl"
+          />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            <Sparkles aria-hidden className="size-3.5" />
             {t('landing.badge')}
           </span>
-          <h1 className="max-w-2xl text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 className="max-w-4xl text-balance text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-5xl md:text-6xl">
             {t('landing.hero.title')}
             <br />
-            {/* 강조 라인 — 그라디언트로 후크를 준다 (장식은 CSS로 — 스토리보드 §3.10) */}
-            <span className="bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
+            {/* 강조 줄 — 색 그라디언트로 눈길을 준다 (장식은 CSS로 — 스토리보드 §3.10) */}
+            <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 bg-clip-text text-transparent">
               {t('landing.hero.titleAccent')}
             </span>
           </h1>
-          <p className="max-w-xl text-base text-muted-foreground">{t('landing.hero.description')}</p>
-          {/* 핵심 강조 — 무료 매니지드 DB 조건 */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {(['engines', 'quota', 'free', 'mcp'] as const).map((key) => (
-              <span
-                key={key}
-                className="rounded-full border bg-muted/50 px-3 py-1 text-xs text-muted-foreground"
-              >
-                {t(`landing.highlight.${key}`)}
-              </span>
-            ))}
-          </div>
+          <HeroPrompt
+            prompts={HERO_PROMPTS.map((key) => t(`landing.hero.prompts.${key}`))}
+            label={t('landing.hero.promptLabel')}
+            who={t('landing.hero.promptWho')}
+          />
+          <p className="max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
+            {t('landing.hero.description')}
+          </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg">
-              <Link to={authenticated ? '/dashboard' : '/login'}>
+            <Button
+              asChild
+              size="lg"
+              className="h-12 bg-gradient-to-r from-emerald-600 to-teal-600 px-8 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-500 hover:to-teal-500"
+            >
+              <Link to={authenticated ? '/dashboard' : '/login'} data-testid="landing-cta-start">
                 {authenticated ? t('landing.cta.goApp') : t('landing.cta.start')}
+                <ArrowRight aria-hidden />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="h-12">
               <a href="https://github.com/crowfoot-erd" target="_blank" rel="noreferrer">
                 <Code2 aria-hidden />
                 {t('landing.cta.github')}
               </a>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="h-12">
               <a href={guideHref} target="_blank" rel="noopener noreferrer">
                 <BookOpenText aria-hidden />
                 {t('guide.title')}
               </a>
             </Button>
           </div>
+          {/* 가입 문턱을 낮추는 한 줄 — 무료 조건을 행동 버튼 바로 아래에 둔다 (게스트에게만) */}
+          {!authenticated && (
+            <p className="text-xs text-muted-foreground" data-testid="landing-cta-note">
+              {t('landing.cta.note')}
+            </p>
+          )}
+          {/* 다른 ERD 툴과 갈리는 세 가지 — 실제 DB까지, 내 AI 연결, 요구사항 추적 (2026-10-02 사용자 요청) */}
+          <ul className="mt-4 grid w-full gap-4 text-left md:grid-cols-3" data-testid="landing-edge">
+            {EDGES.map(({ key, icon: Icon }) => (
+              <li key={key} className="rounded-xl border bg-card/70 p-5 shadow-sm backdrop-blur">
+                <span className="mb-3 inline-flex size-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                  <Icon aria-hidden className="size-5" />
+                </span>
+                <h2 className="text-base font-semibold">{t(`landing.edge.${key}.title`)}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t(`landing.edge.${key}.body`)}</p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* 슬라이드 — 히어로 바로 아래. 첫 장이 AI 연동(MCP) 소개다(2026-10-02 사용자 요청 — MCP를 강조하고 화면 슬라이드와 합친다) */}
@@ -297,6 +386,62 @@ export function LandingPage() {
                     </a>
                   )
                 })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 무료 개발용 데이터베이스 — 슬라이드 다음에 크게 알린다(2026-10-02 사용자 요청 — 무료 DB는 큰 장점이다).
+            오른쪽은 발급된 데이터베이스의 접속 정보 모양(값은 보기 예시) */}
+        <section
+          aria-labelledby="landing-free-db"
+          data-testid="landing-free-db"
+          className="w-full overflow-hidden rounded-2xl border bg-gradient-to-br from-sky-500/10 via-background to-emerald-500/10 p-6 text-left md:p-10"
+        >
+          <div className="grid items-center gap-8 md:grid-cols-2">
+            <div className="flex flex-col gap-4">
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white">
+                <Database aria-hidden className="size-3.5" />
+                {t('landing.freeDb.badge')}
+              </span>
+              <h2 id="landing-free-db" className="whitespace-pre-line text-3xl font-bold tracking-tight md:text-4xl">
+                {t('landing.freeDb.heading')}
+              </h2>
+              <p className="text-base text-muted-foreground">{t('landing.freeDb.description')}</p>
+              <ul className="flex flex-col gap-2 text-sm">
+                {FREE_DB_POINTS.map((key) => (
+                  <li key={key} className="flex gap-2">
+                    <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    {t(`landing.freeDb.points.${key}`)}
+                  </li>
+                ))}
+              </ul>
+              <div>
+                <Button asChild size="lg" className="h-11 bg-sky-600 text-white hover:bg-sky-500">
+                  <Link to={authenticated ? '/dashboard' : '/login'} data-testid="landing-free-db-cta">
+                    {t('landing.freeDb.cta')}
+                    <ArrowRight aria-hidden />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+            <div aria-hidden className="rounded-xl border bg-card p-5 font-mono text-xs shadow-xl md:text-sm">
+              <div className="mb-3 flex items-center justify-between font-sans">
+                <span className="text-sm font-semibold">{t('landing.freeDb.cardTitle')}</span>
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                  ● {t('landing.freeDb.cardStatus')}
+                </span>
+              </div>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
+                {FREE_DB_SAMPLE.map(([name, value]) => (
+                  <Fragment key={name}>
+                    <dt className="text-muted-foreground">{name}</dt>
+                    <dd className="truncate">{value}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+              <div className="mt-4 overflow-x-auto whitespace-nowrap rounded-md bg-zinc-950 px-3 py-2 text-zinc-100">
+                <span className="text-zinc-500">$ </span>mysql -h s4.java21.net -P 13306 -u cf_u1 -p
               </div>
             </div>
           </div>
@@ -465,6 +610,17 @@ export function LandingPage() {
                 </div>
               </>
             )}
+            {/* 공유 문서 전체 — 검색과 페이지가 있는 목록 화면으로 간다 */}
+            <p className="mt-6 text-center text-sm">
+              <Link
+                to={publicPath('/shared')}
+                data-testid="landing-gallery-more"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                {t('landing.gallery.more')}
+                <ArrowUpRight aria-hidden className="size-4" />
+              </Link>
+            </p>
           </section>
         )}
 
@@ -496,30 +652,22 @@ export function LandingPage() {
                 </li>
               ))}
             </ul>
+            {/* 릴리스 노트 전체 — 목차가 있는 공개 화면으로 간다 */}
+            <p className="mt-4 text-center text-sm">
+              <Link
+                to={publicPath('/release-notes')}
+                data-testid="landing-release-notes-more"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                {t('landing.releaseNotes.more')}
+                <ArrowUpRight aria-hidden className="size-4" />
+              </Link>
+            </p>
           </section>
         )}
       </main>
 
-      <footer className="border-t">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-3">
-            <span>{t('common.footer')}</span>
-            {/* 현재 버전 — 첫 방문에서도 지금 몇 버전인지 알 수 있게 (v1.17) */}
-            <span data-testid="landing-current-version" className="tabular-nums">
-              {t('landing.footer.currentVersion', { version: APP_VERSION })}
-            </span>
-          </span>
-          <span className="flex items-center gap-3">
-            <a href={guideHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
-              {t('landing.footer.guide')}
-            </a>
-            <Link to="/terms" className="hover:underline">
-              {t('landing.footer.terms')}
-            </Link>
-            <span>{t('landing.footer.opensource')}</span>
-          </span>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   )
 }

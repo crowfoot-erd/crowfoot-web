@@ -1537,7 +1537,23 @@
     "reply": "답글",
     "viewerReadonly": "댓글을 남기려면 댓글 작성(Commenter) 역할 이상이 필요합니다"
   },
+  "shared": {
+    "title": "공유 문서",
+    "description": "Crowfoot에서 공유되고 있는 ERD를 찾아보세요. 누르면 읽기 전용으로 열립니다.",
+    "search": "문서 이름·설명 검색",
+    "sort": {
+      "label": "정렬",
+      "recent": "최근 공유순",
+      "popular": "인기순"
+    },
+    "count": "{{count}}건",
+    "empty": "공유된 문서가 아직 없습니다.",
+    "emptySearch": "\"{{q}}\"에 맞는 문서가 없습니다.",
+    "error": "목록을 불러오지 못했습니다. 잠시 뒤에 다시 시도하세요.",
+    "pages": "페이지"
+  },
   "releaseNoteViewer": {
+    "toc": "릴리스 노트",
     "badge": "릴리스 노트",
     "home": "홈으로",
     "notFound": "릴리스 노트를 찾을 수 없습니다.",
@@ -1676,14 +1692,45 @@
     "skippedToast": "읽지 못한 문장: {{skipped}}"
   },
   "landing": {
+    "edge": {
+      "db": {
+        "title": "무료 DB 발급과 배포",
+        "body": "MySQL·PostgreSQL을 계정당 5개까지 드립니다. ERD를 그대로 배포하고, 바뀐 부분만 다시 반영합니다."
+      },
+      "mcp": {
+        "title": "내 AI가 설계합니다 (MCP)",
+        "body": "AI를 내장하지 않았습니다. 쓰던 Claude·ChatGPT를 연결하면 말로 설계하고 샘플 데이터까지 채웁니다."
+      },
+      "trace": {
+        "title": "요구사항 추적",
+        "body": "요구사항이 어느 테이블이 되었는지, 무엇이 아직 반영되지 않았는지 끝까지 따라갑니다."
+      }
+    },
+    "freeDb": {
+      "badge": "무료 개발용 데이터베이스",
+      "heading": "개발에 쓸 데이터베이스,\n그냥 드립니다",
+      "description": "사이드 프로젝트, 과제, 프로토타입에 쓸 DB를 찾고 있었다면 여기서 끝납니다. 가입하면 MySQL·PostgreSQL 데이터베이스를 바로 발급받아 내 PC와 서버에서 접속할 수 있습니다.",
+      "points": {
+        "free": "계정당 5개까지 무료 — 카드 등록 없음",
+        "instant": "버튼 한 번으로 발급, 접속 정보를 바로 받습니다",
+        "deploy": "ERD를 그대로 배포하고, 바뀐 부분만 다시 반영합니다",
+        "browse": "화면에서 데이터를 조회·편집하고 SQL을 실행합니다"
+      },
+      "cta": "무료 DB 받기",
+      "cardTitle": "발급된 데이터베이스",
+      "cardStatus": "사용 가능"
+    },
     "shots": {"mcp": "AI 연동 (MCP)", "label": "제품 화면", "editor-overview": {"caption": "ERD 에디터", "alt": "Crowfoot ERD 에디터 화면 — 테이블과 관계선으로 그린 온라인 쇼핑몰 ERD"}, "editor-requirements": {"caption": "요구사항 추적", "alt": "요구사항 탭 — 그룹별 요구사항과 연결된 테이블"}, "workspace-mcp": {"caption": "Claude·ChatGPT 연결", "alt": "워크스페이스의 MCP 탭 — 연결 방법과 등록 명령"}, "data-tab": {"caption": "데이터 브라우저", "alt": "데이터 브라우저 — 연결한 데이터베이스의 테이블 데이터"}},
     "mcp": {"badge": "NEW · AI 연동 (MCP)", "title": "말로 설계하세요. Claude와 ChatGPT가 ERD를 그립니다", "description": "Claude Code나 ChatGPT(Codex)에 Crowfoot을 연결하면, 대화로 요구사항을 정리하고 ERD를 만들고 실제 데이터베이스까지 채울 수 있습니다. 결과는 Crowfoot 화면에 그대로 나타나고, 화면에서 고친 것은 AI가 다시 읽습니다.", "points": {"requirements": {"title": "요구사항 정리", "description": "대화에서 나온 요구사항을 문서에 남기고, 어느 테이블이 구현하는지 추적합니다"}, "design": {"title": "ERD 작성과 수정", "description": "워크스페이스의 용어 사전과 도메인 타입에 맞춰 테이블과 관계를 만듭니다"}, "deploy": {"title": "데이터베이스 배포", "description": "무료 DB를 발급받아 배포하고, 바뀐 부분만 다시 반영합니다. 실행 전에 SQL을 먼저 보여 줍니다"}, "sample": {"title": "샘플 데이터", "description": "테이블 구조에 맞는 샘플 데이터를 만들어 실제 데이터베이스에 넣습니다"}}, "cta": "연결 방법 보기", "clients": "Claude Code · ChatGPT(Codex) 지원", "exampleLabel": "AI에게 요청하는 예시", "example": {"ask1": "도서 대여 서비스의 요구사항을 정리해서 ERD로 만들어 줘", "done1": "요구사항 6건 등록 · 테이블 5개, 관계 4개 생성", "ask2": "무료 MySQL을 발급받아 배포해 줘", "done2": "데이터베이스 발급 · DDL 9문장 실행", "ask3": "테이블마다 샘플 데이터 10건씩 넣어 줘", "done3": "5개 테이블에 50행 추가"}},
     "badge": "무료 온라인 ERD 툴 · 오픈소스",
     "hero": {
-      "title": "브라우저에서 그리는 무료 ERD,",
-      "titleAccent": "그대로 실제 데이터베이스가 됩니다",
-      "description": "설치 없이 브라우저에서 ERD를 그리고, 팀과 실시간으로 함께 다듬고, MySQL·PostgreSQL 데이터베이스까지 바로 만드세요. 기존 DB를 읽어 ERD를 자동으로 그리고, DDL과 마이그레이션 SQL도 만들어 줍니다.",
-      "imageAlt": "Crowfoot ERD 에디터 화면 — 온라인 쇼핑몰 ERD를 테이블 6개와 관계선으로 그린 예시"
+      "title": "ERD만 그리고 끝나는 툴은 많습니다",
+      "titleAccent": "Crowfoot은 실제 DB까지, 무료로",
+      "description": "다이어그램에서 멈추지 않습니다. 요구사항 → ERD → 실제 데이터베이스 → 데이터까지, 한 곳에서 무료로.",
+      "imageAlt": "Crowfoot ERD 에디터 화면 — 온라인 쇼핑몰 ERD를 테이블 6개와 관계선으로 그린 예시",
+      "promptLabel": "연결한 AI에게 이렇게 말하면 됩니다",
+      "promptWho": "내 AI에게",
+      "prompts": {"p1": "쇼핑몰 ERD 만들어 줘", "p2": "무료 MySQL에 배포해 줘", "p3": "테이블마다 샘플 데이터 10건씩 넣어 줘"}
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1706,7 +1753,8 @@
       }
     },
     "cta": {
-      "start": "무료로 시작하기",
+      "start": "지금 무료로 시작하기",
+      "note": "가입만 하면 바로 사용 · 무료 데이터베이스 5개까지 · 카드 등록 없음",
       "login": "로그인",
       "dashboard": "대시보드",
       "github": "GitHub",
@@ -1771,6 +1819,7 @@
       "currentVersion": "현재 버전 v{{version}}"
     },
     "gallery": {
+      "more": "공유 문서 모두 보기",
       "heading": "지금 공유되고 있는 ERD",
       "popular": "가장 인기 있는 문서",
       "recent": "최근 공유되고 있는 문서",
@@ -1780,6 +1829,7 @@
       "reactions": "좋아요 {{count}}"
     },
     "releaseNotes": {
+      "more": "릴리스 노트 모두 보기",
       "heading": "최근 릴리스"
     },
     "seo": {

@@ -1537,7 +1537,23 @@
     "reply": "返信",
     "viewerReadonly": "コメントには Commenter 以上の役割が必要です"
   },
+  "shared": {
+    "title": "共有ドキュメント",
+    "description": "Crowfoot で共有されている ERD を探せます。クリックすると読み取り専用で開きます。",
+    "search": "名前・説明で検索",
+    "sort": {
+      "label": "並び順",
+      "recent": "最近の共有順",
+      "popular": "人気順"
+    },
+    "count": "{{count}}件",
+    "empty": "共有されたドキュメントはまだありません。",
+    "emptySearch": "「{{q}}」に一致するドキュメントはありません。",
+    "error": "一覧を読み込めませんでした。しばらくしてからもう一度お試しください。",
+    "pages": "ページ"
+  },
   "releaseNoteViewer": {
+    "toc": "リリースノート",
     "badge": "リリースノート",
     "home": "ホーム",
     "notFound": "リリースノートが見つかりません。",
@@ -1676,14 +1692,45 @@
     "skippedToast": "スキップしたステートメント: {{skipped}}"
   },
   "landing": {
+    "edge": {
+      "db": {
+        "title": "無料 DB の発行とデプロイ",
+        "body": "MySQL・PostgreSQL をアカウントごとに 5 個まで。ERD をそのままデプロイし、変更分だけを再反映します。"
+      },
+      "mcp": {
+        "title": "自分の AI が設計します (MCP)",
+        "body": "AI は内蔵していません。いま使っている Claude・ChatGPT をつなげば、話して設計し、サンプルデータまで入れます。"
+      },
+      "trace": {
+        "title": "要件の追跡",
+        "body": "要件がどのテーブルになったか、まだ反映されていないものは何かを最後まで追います。"
+      }
+    },
+    "freeDb": {
+      "badge": "無料の開発用データベース",
+      "heading": "開発に使うデータベース、\n無料で差し上げます",
+      "description": "個人開発、課題、プロトタイプ用の DB を探していたなら、ここで終わりです。登録すれば MySQL・PostgreSQL データベースをすぐに発行し、自分の PC やサーバーから接続できます。",
+      "points": {
+        "free": "アカウントごとに 5 個まで無料 — カード登録不要",
+        "instant": "ボタンひとつで発行、接続情報をすぐ受け取れます",
+        "deploy": "ERD をそのままデプロイし、変更分だけを再反映します",
+        "browse": "画面でデータを閲覧・編集し、SQL を実行できます"
+      },
+      "cta": "無料 DB を受け取る",
+      "cardTitle": "発行されたデータベース",
+      "cardStatus": "利用可能"
+    },
     "shots": {"mcp": "AI 連携 (MCP)", "label": "製品画面", "editor-overview": {"caption": "ERD エディタ", "alt": "Crowfoot ERD エディタ — テーブルとリレーション線で描いたオンラインストアの ERD"}, "editor-requirements": {"caption": "要件のトレース", "alt": "要件タブ — グループ別の要件とリンクされたテーブル"}, "workspace-mcp": {"caption": "Claude・ChatGPT と接続", "alt": "ワークスペースの MCP タブ — 接続方法と登録コマンド"}, "data-tab": {"caption": "データブラウザ", "alt": "データブラウザ — 接続したデータベースのテーブルデータ"}},
     "mcp": {"badge": "NEW · AI 連携 (MCP)", "title": "話して設計。Claude と ChatGPT が ERD を描きます", "description": "Claude Code や ChatGPT (Codex) に Crowfoot を接続すると、会話で要件を整理し、ERD を作り、実際のデータベースまで埋められます。結果は Crowfoot の画面にそのまま表示され、画面で変更した内容は AI が読み直します。", "points": {"requirements": {"title": "要件の整理", "description": "会話で出た要件をドキュメントに残し、どのテーブルが実装しているかを追跡します"}, "design": {"title": "ERD の作成と編集", "description": "ワークスペースの用語辞書とドメインタイプに合わせてテーブルとリレーションを作ります"}, "deploy": {"title": "データベースへのデプロイ", "description": "無料のデータベースを発行してデプロイし、変更分だけを反映します。実行前に SQL を表示します"}, "sample": {"title": "サンプルデータ", "description": "テーブル構造に合ったサンプルデータを作り、実際のデータベースに入れます"}}, "cta": "接続方法を見る", "clients": "Claude Code・ChatGPT (Codex) に対応", "exampleLabel": "AI への依頼の例", "example": {"ask1": "図書レンタルサービスの要件を整理して ERD にして", "done1": "要件 6 件を登録 · テーブル 5 個、リレーション 4 個を作成", "ask2": "無料の MySQL を発行してデプロイして", "done2": "データベースを発行 · DDL 9 文を実行", "ask3": "テーブルごとにサンプルデータを 10 件ずつ入れて", "done3": "5 個のテーブルに 50 行を追加"}},
     "badge": "無料のオンラインERDツール · オープンソース",
     "hero": {
-      "title": "ブラウザで描く無料のERD、",
-      "titleAccent": "そのまま実際のデータベースに",
-      "description": "インストール不要。ブラウザでER図を描き、チームとリアルタイムで磨き上げ、MySQL・PostgreSQLのデータベースまですぐに作成できます。既存のDBからERDを自動生成し、DDLやマイグレーションSQLも出力します。",
-      "imageAlt": "Crowfoot ERDエディタの画面 — オンラインストアのERDを6つのテーブルとリレーション線で描いた例"
+      "title": "ERD を描いて終わるツールは多い",
+      "titleAccent": "Crowfoot は本物の DB まで、無料で",
+      "description": "図で止まりません。要件 → ERD → 本物のデータベース → データまで、ひとつの場所で、無料で。",
+      "imageAlt": "Crowfoot ERDエディタの画面 — オンラインストアのERDを6つのテーブルとリレーション線で描いた例",
+      "promptLabel": "つないだ AI にこう話すだけ",
+      "promptWho": "あなたの AI へ",
+      "prompts": {"p1": "ショッピングモールの ERD を作って", "p2": "無料の MySQL にデプロイして", "p3": "各テーブルにサンプルデータを 10 件入れて"}
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1706,7 +1753,8 @@
       }
     },
     "cta": {
-      "start": "無料で始める",
+      "start": "今すぐ無料で始める",
+      "note": "登録するだけですぐ使えます · 無料データベース 5 個まで · カード登録不要",
       "login": "ログイン",
       "dashboard": "ダッシュボード",
       "github": "GitHub",
@@ -1771,6 +1819,7 @@
       "currentVersion": "現在のバージョン v{{version}}"
     },
     "gallery": {
+      "more": "共有ドキュメントをすべて見る",
       "heading": "いま共有されているERD",
       "popular": "人気のドキュメント",
       "recent": "最近共有されたドキュメント",
@@ -1780,6 +1829,7 @@
       "reactions": "いいね {{count}}"
     },
     "releaseNotes": {
+      "more": "リリースノートをすべて見る",
       "heading": "最新リリース"
     },
     "seo": {

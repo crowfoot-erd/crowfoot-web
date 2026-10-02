@@ -154,6 +154,20 @@ export function fetchSharedDocument(token: string, signal?: AbortSignal) {
 }
 
 /** 공유 갤러리 목록 — 인증 없이(게이트웨이 화이트리스트), 랜딩 페이지가 현재 공유 중인 문서를 나열 */
+export type SharedListSort = 'recent' | 'popular'
+
+/** 공유 문서 목록(무인증) — 검색과 페이징 (08-core/12-share-feedback.md §1.5.1). 랜딩의 "더보기"가 여는 화면이 쓴다 */
+export function fetchSharedList(
+  params: { q?: string; sort?: SharedListSort; page?: number; size?: number },
+  signal?: AbortSignal,
+) {
+  return apiGetPage<SharedGalleryItem>(
+    '/api/v1/core/shares/list',
+    { q: params.q || undefined, sort: params.sort ?? 'recent', page: params.page ?? 1, size: params.size ?? 12 },
+    signal,
+  )
+}
+
 export function fetchSharedGallery(signal?: AbortSignal) {
   return apiGetList<SharedGalleryItem>('/api/v1/core/shares', undefined, signal)
 }

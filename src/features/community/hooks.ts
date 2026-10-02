@@ -16,6 +16,7 @@ import {
   fetchCommunityPosts,
   fetchPublicReleaseNote,
   fetchPublicReleaseNotes,
+  fetchPublicReleaseNoteList,
   fetchRecentCommunityPosts,
   updateCommunityComment,
   updateCommunityPost,
@@ -73,6 +74,16 @@ export function usePublicReleaseNotes(limit = 3) {
   return useQuery({
     queryKey: communityKeys.releaseNotesRecent(limit),
     queryFn: ({ signal }) => fetchPublicReleaseNotes(limit, signal, lang),
+    retry: false,
+  })
+}
+
+/** 공개 릴리스 노트 전체(공개 목록 화면의 목차) — 게스트 조회라 retry 없이 */
+export function usePublicReleaseNoteList() {
+  const lang = currentLanguage()
+  return useQuery({
+    queryKey: ['community', 'release-notes', 'list', lang] as const,
+    queryFn: ({ signal }) => fetchPublicReleaseNoteList(signal, lang),
     retry: false,
   })
 }

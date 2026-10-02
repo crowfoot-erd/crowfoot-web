@@ -1537,7 +1537,23 @@
     "reply": "Reply",
     "viewerReadonly": "Commenting requires the Commenter role or higher"
   },
+  "shared": {
+    "title": "Shared documents",
+    "description": "Browse the ERDs shared on Crowfoot. Each one opens read-only.",
+    "search": "Search by name or description",
+    "sort": {
+      "label": "Sort",
+      "recent": "Recently shared",
+      "popular": "Popular"
+    },
+    "count": "{{count}} documents",
+    "empty": "No documents have been shared yet.",
+    "emptySearch": "No documents match \"{{q}}\".",
+    "error": "Could not load the list. Try again in a moment.",
+    "pages": "Pages"
+  },
   "releaseNoteViewer": {
+    "toc": "Release notes",
     "badge": "Release note",
     "home": "Home",
     "notFound": "Release note not found.",
@@ -1676,14 +1692,45 @@
     "skippedToast": "Skipped statements: {{skipped}}"
   },
   "landing": {
+    "edge": {
+      "db": {
+        "title": "Free databases, provisioned and deployed",
+        "body": "Up to 5 MySQL or PostgreSQL databases per account. Deploy your ERD as it is, then apply only what changed."
+      },
+      "mcp": {
+        "title": "Your own AI does the design (MCP)",
+        "body": "No AI built in. Connect the Claude or ChatGPT you already use, design by talking, and have it fill in sample data."
+      },
+      "trace": {
+        "title": "Requirement tracing",
+        "body": "See which tables each requirement became, and what has not been reflected yet."
+      }
+    },
+    "freeDb": {
+      "badge": "Free development database",
+      "heading": "A database for your project,\non the house",
+      "description": "If you were looking for a database for a side project, coursework, or a prototype, stop here. Sign up and get a MySQL or PostgreSQL database you can connect to from your own machine and servers.",
+      "points": {
+        "free": "Up to 5 per account, free — no credit card",
+        "instant": "One click to provision, with connection details right away",
+        "deploy": "Deploy your ERD as it is, then apply only what changed",
+        "browse": "Browse and edit data and run SQL in the app"
+      },
+      "cta": "Get a free database",
+      "cardTitle": "Provisioned database",
+      "cardStatus": "Ready"
+    },
     "shots": {"mcp": "AI integration (MCP)", "label": "Product screens", "editor-overview": {"caption": "ERD editor", "alt": "Crowfoot ERD editor — an online store ERD drawn with tables and relationship lines"}, "editor-requirements": {"caption": "Requirement tracing", "alt": "Requirements tab — requirements by group and their linked tables"}, "workspace-mcp": {"caption": "Connect Claude and ChatGPT", "alt": "Workspace MCP tab — how to connect and the registration command"}, "data-tab": {"caption": "Data browser", "alt": "Data browser — table data of a connected database"}},
     "mcp": {"badge": "NEW · AI integration (MCP)", "title": "Design by talking. Claude and ChatGPT draw the ERD", "description": "Connect Crowfoot to Claude Code or ChatGPT (Codex), and you can collect requirements, build ERDs, and fill a real database through conversation. The result appears in Crowfoot as it is, and what you change on screen is read back by the AI.", "points": {"requirements": {"title": "Requirements", "description": "Keeps the requirements from your conversation in the document and traces which tables implement them"}, "design": {"title": "Create and edit ERDs", "description": "Builds tables and relationships that follow your workspace term dictionary and domain types"}, "deploy": {"title": "Deploy to a database", "description": "Issues a free database, deploys, and later applies only what changed. The SQL is shown before it runs"}, "sample": {"title": "Sample data", "description": "Creates sample data that fits your tables and puts it into the real database"}}, "cta": "See how to connect", "clients": "Supports Claude Code and ChatGPT (Codex)", "exampleLabel": "Examples of asking the AI", "example": {"ask1": "Collect the requirements for a book rental service and turn them into an ERD", "done1": "6 requirements registered · 5 tables and 4 relationships created", "ask2": "Issue a free MySQL database and deploy it", "done2": "Database issued · 9 DDL statements run", "ask3": "Put 10 rows of sample data into each table", "done3": "50 rows added to 5 tables"}},
     "badge": "Free online ERD tool · Open source",
     "hero": {
-      "title": "A free ERD tool in your browser,",
-      "titleAccent": "from diagram to a real database",
-      "description": "Draw ER diagrams in your browser with nothing to install, refine them with your team in real time, and create MySQL or PostgreSQL databases right away. Crowfoot can also generate an ERD from an existing database and produce DDL and migration SQL.",
-      "imageAlt": "Crowfoot ERD editor — an online store ERD drawn with six tables and relationship lines"
+      "title": "Plenty of tools stop at the diagram",
+      "titleAccent": "Crowfoot goes all the way to a real database, free",
+      "description": "We don't stop at the diagram. Requirements → ERD → a real database → data, in one place, for free.",
+      "imageAlt": "Crowfoot ERD editor — an online store ERD drawn with six tables and relationship lines",
+      "promptLabel": "Say this to the AI you connected",
+      "promptWho": "To your AI",
+      "prompts": {"p1": "Design an ERD for an online store", "p2": "Deploy it to a free MySQL database", "p3": "Add 10 sample rows to every table"}
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1706,7 +1753,8 @@
       }
     },
     "cta": {
-      "start": "Start for free",
+      "start": "Start free now",
+      "note": "Sign up and use it right away · up to 5 free databases · no credit card",
       "login": "Sign in",
       "dashboard": "Dashboard",
       "github": "GitHub",
@@ -1771,6 +1819,7 @@
       "currentVersion": "Current version v{{version}}"
     },
     "gallery": {
+      "more": "See all shared documents",
       "heading": "ERDs being shared right now",
       "popular": "Most popular documents",
       "recent": "Recently shared documents",
@@ -1780,6 +1829,7 @@
       "reactions": "{{count}} likes"
     },
     "releaseNotes": {
+      "more": "See all release notes",
       "heading": "Latest releases"
     },
     "seo": {

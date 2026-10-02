@@ -1537,7 +1537,23 @@
     "reply": "回复",
     "viewerReadonly": "发表评论需要 评论者(Commenter)及以上角色"
   },
+  "shared": {
+    "title": "共享文档",
+    "description": "浏览在 Crowfoot 上共享的 ERD。点击后以只读方式打开。",
+    "search": "按名称或说明搜索",
+    "sort": {
+      "label": "排序",
+      "recent": "最近共享",
+      "popular": "最受欢迎"
+    },
+    "count": "{{count}} 个",
+    "empty": "还没有共享的文档。",
+    "emptySearch": "没有与“{{q}}”匹配的文档。",
+    "error": "无法加载列表，请稍后重试。",
+    "pages": "分页"
+  },
   "releaseNoteViewer": {
+    "toc": "发布说明",
     "badge": "发布说明",
     "home": "首页",
     "notFound": "未找到发布说明。",
@@ -1676,14 +1692,45 @@
     "skippedToast": "已跳过的语句：{{skipped}}"
   },
   "landing": {
+    "edge": {
+      "db": {
+        "title": "免费数据库的创建与部署",
+        "body": "每个账号最多 5 个 MySQL·PostgreSQL。直接部署 ERD，之后只应用变更的部分。"
+      },
+      "mcp": {
+        "title": "由你自己的 AI 来设计 (MCP)",
+        "body": "没有内置 AI。连接你正在使用的 Claude·ChatGPT，用说的来设计，并填充示例数据。"
+      },
+      "trace": {
+        "title": "需求追踪",
+        "body": "每条需求变成了哪些表、哪些还没有体现，一路跟踪到底。"
+      }
+    },
+    "freeDb": {
+      "badge": "免费的开发用数据库",
+      "heading": "开发要用的数据库，\n直接送你",
+      "description": "如果你正在为个人项目、课程作业或原型寻找数据库，到这里就够了。注册后即可获得 MySQL·PostgreSQL 数据库，并从自己的电脑和服务器连接。",
+      "points": {
+        "free": "每个账号最多 5 个，免费 — 无需绑卡",
+        "instant": "一键创建，立即获得连接信息",
+        "deploy": "直接部署 ERD，之后只应用变更的部分",
+        "browse": "在页面中查看、编辑数据并执行 SQL"
+      },
+      "cta": "领取免费数据库",
+      "cardTitle": "已创建的数据库",
+      "cardStatus": "可用"
+    },
     "shots": {"mcp": "AI 集成 (MCP)", "label": "产品界面", "editor-overview": {"caption": "ERD 编辑器", "alt": "Crowfoot ERD 编辑器 — 用表和关系线绘制的在线商城 ERD"}, "editor-requirements": {"caption": "需求追踪", "alt": "需求标签页 — 按分组显示的需求和链接的表"}, "workspace-mcp": {"caption": "连接 Claude 和 ChatGPT", "alt": "工作区的 MCP 标签页 — 连接方法和注册命令"}, "data-tab": {"caption": "数据浏览器", "alt": "数据浏览器 — 已连接数据库的表数据"}},
     "mcp": {"badge": "NEW · AI 集成 (MCP)", "title": "用对话来设计。Claude 和 ChatGPT 为你绘制 ERD", "description": "把 Crowfoot 连接到 Claude Code 或 ChatGPT (Codex)，就可以通过对话整理需求、创建 ERD，并填充真实的数据库。结果会原样显示在 Crowfoot 中，在界面上修改的内容 AI 会重新读取。", "points": {"requirements": {"title": "整理需求", "description": "把对话中的需求保存在文档里，并追踪由哪些表实现"}, "design": {"title": "创建和修改 ERD", "description": "按照工作区的术语词典和域类型创建表和关系"}, "deploy": {"title": "部署到数据库", "description": "签发免费数据库并部署，之后只应用变更部分。执行前会先显示 SQL"}, "sample": {"title": "示例数据", "description": "生成符合表结构的示例数据，并放入真实数据库"}}, "cta": "查看连接方法", "clients": "支持 Claude Code 和 ChatGPT (Codex)", "exampleLabel": "向 AI 提问的示例", "example": {"ask1": "整理图书借阅服务的需求并做成 ERD", "done1": "已登记 6 条需求 · 已创建 5 个表、4 个关系", "ask2": "签发一个免费的 MySQL 并部署", "done2": "已签发数据库 · 已执行 9 条 DDL", "ask3": "给每个表各添加 10 条示例数据", "done3": "已向 5 个表添加 50 行"}},
     "badge": "免费在线 ERD 工具 · 开源",
     "hero": {
-      "title": "在浏览器中绘制的免费 ERD，",
-      "titleAccent": "直接变成真实的数据库",
-      "description": "无需安装，在浏览器中绘制 ER 图，与团队实时协作完善，并立即创建 MySQL、PostgreSQL 数据库。还可以从现有数据库自动生成 ERD，并生成 DDL 和迁移 SQL。",
-      "imageAlt": "Crowfoot ERD 编辑器界面——用 6 张表和关系线绘制的在线商城 ERD 示例"
+      "title": "只能画 ERD 的工具很多",
+      "titleAccent": "Crowfoot 一路做到真实数据库，而且免费",
+      "description": "不止于画图。需求 → ERD → 真实数据库 → 数据，一站完成，全部免费。",
+      "imageAlt": "Crowfoot ERD 编辑器界面——用 6 张表和关系线绘制的在线商城 ERD 示例",
+      "promptLabel": "只需这样告诉你连接的 AI",
+      "promptWho": "对你的 AI 说",
+      "prompts": {"p1": "帮我设计一个商城 ERD", "p2": "部署到免费的 MySQL", "p3": "给每张表填 10 条示例数据"}
     },
     "highlight": {
       "engines": "PostgreSQL · MySQL",
@@ -1706,7 +1753,8 @@
       }
     },
     "cta": {
-      "start": "免费开始",
+      "start": "立即免费开始",
+      "note": "注册即可使用 · 最多 5 个免费数据库 · 无需绑卡",
       "login": "登录",
       "dashboard": "控制台",
       "github": "GitHub",
@@ -1771,6 +1819,7 @@
       "currentVersion": "当前版本 v{{version}}"
     },
     "gallery": {
+      "more": "查看全部共享文档",
       "heading": "正在分享的 ERD",
       "popular": "最受欢迎的文档",
       "recent": "最近共享的文档",
@@ -1780,6 +1829,7 @@
       "reactions": "点赞 {{count}}"
     },
     "releaseNotes": {
+      "more": "查看全部发布说明",
       "heading": "最新发布"
     },
     "seo": {

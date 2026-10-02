@@ -82,6 +82,11 @@ export function fetchPublicReleaseNotes(limit = 3, signal?: AbortSignal, lang?: 
   )
 }
 
+/** 공개 릴리스 노트 전체 — 공개 목록 화면의 목차(최신순, 본문 없음) */
+export function fetchPublicReleaseNoteList(signal?: AbortSignal, lang?: string) {
+  return apiGetList<CommunityRecentPost>('/api/v1/core/community/release-notes/list', lang ? { lang } : undefined, signal)
+}
+
 /** 공개 릴리스 노트 상세 — RELEASE_NOTE가 아니면 404(존재 은닉) */
 export function fetchPublicReleaseNote(postId: string, signal?: AbortSignal, lang?: string) {
   return apiGet<CommunityPostDetail>(
