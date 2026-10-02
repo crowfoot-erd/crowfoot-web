@@ -290,6 +290,7 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
       if (prev[f] !== next[f]) patch[f] = next[f]
     }
     if (prev.tableIds.join('\0') !== next.tableIds.join('\0')) patch.tableIds = next.tableIds
+    if (JSON.stringify(prev.criteria ?? []) !== JSON.stringify(next.criteria ?? [])) patch.criteria = next.criteria ?? []
     if (Object.keys(patch).length > 0) {
       if (patch.revision === undefined && (patch.title !== undefined || patch.description !== undefined)) patch.revision = next.revision
       changes.push({ type: 'requirement/patch', requirementId: prev.id, patch: patch as RequirementPatch })

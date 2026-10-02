@@ -21,7 +21,7 @@ import {
   pkToggleChanges,
 } from '@/features/editor/model/changes'
 import { emptyContent, parseContent } from '@/features/editor/model/content-io'
-import type { EditorDocument, ErdContent, ErdTable } from '@/features/editor/model/content-schema'
+import { DEFAULT_CHILD_MULTIPLICITY, type EditorDocument, type ErdContent, type ErdTable } from '@/features/editor/model/content-schema'
 import { defaultKeyName } from '@/features/editor/model/keys'
 import { LOGICAL_NAME_SEPARATOR } from '@/features/editor/model/logical-name'
 import { buildRelationship } from '@/features/editor/model/relationship'
@@ -134,7 +134,7 @@ function runWithEditor(fixture: Fixture): EditorDocument {
           type,
           identifying: item.identifying ?? false,
           parentMultiplicity: item.parentMultiplicity ?? 'EXACTLY_ONE',
-          childMultiplicity: item.childMultiplicity ?? (type === 'ONE_TO_ONE' ? 'ZERO_OR_ONE' : 'ZERO_OR_MORE'),
+          childMultiplicity: item.childMultiplicity ?? DEFAULT_CHILD_MULTIPLICITY[type],
           onDelete: item.onDelete as never,
           onUpdate: item.onUpdate as never,
         })

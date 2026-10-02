@@ -949,10 +949,12 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 
 エディタ最下部の **{{shareViewer.tab.requirements}}** タブを押すと、要件の画面が開きます。要件はドキュメントと一緒に保存されます。反映待ちの要件があると、タブにその件数が付きます。
 
-* 要件はグループごとにまとめて表示されます。グループのないものは **{{model.requirements.group.unassigned}}**、ドキュメント全体に当てはまるものは **{{model.requirements.group.document}}** に集まります。
-* 行を押すと、内容とリンクされたテーブルが開きます。テーブル名を押すと、ERD タブに戻ってそのテーブルを表示します。
-* 上の状態ボタンで絞り込みます。最初は **{{model.requirements.state.DROPPED}}** だけが隠れています。
-* パネル下部の **{{model.requirements.untraced.title}}** は、どの要件にもリンクされていないテーブルです。
+* 要件はドメイン(グループ)ごとに整理されます。左の一覧でドメインを選ぶとそのドメインだけが表示され、ドメインごとに反映済みの数と進捗バーが出ます。グループのないものは **{{model.requirements.group.unassigned}}**、ドキュメント全体に当てはまるものは **{{model.requirements.group.document}}** に集まります。
+* ドメイン区画のタイトルを押すと折りたたまれ、**{{model.requirements.domains.showOnCanvas}}** を押すとそのドメインのテーブルを選択して ERD タブで表示します。
+* 行を押すと、内容とリンクされたテーブルが開きます。テーブル名を押すと、ERD タブに戻ってそのテーブルを表示します。開いた行の **{{model.requirements.domains.showOnCanvas}}** は、リンクされたテーブルをすべて選択して 1 画面に収めます。
+* 上の状態ボタンで絞り込みます。最初は **{{model.requirements.state.DROPPED}}** だけが隠れています。検索欄ではコード、タイトル、内容、テーブル名から探します。
+* ドメイン区画の下の **{{model.requirements.untraced.title}}** は、そのドメインのテーブルのうち、どの要件にもリンクされていないテーブルです。
+* **{{model.requirements.export.button}}** で要件仕様を Markdown または CSV ファイルとして受け取れます。
 
 | 状態 | 意味 |
 |---|---|
@@ -969,6 +971,7 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 
 * パネル上部の **{{model.requirements.add}}** か、開いた行の編集ボタンを押します。タイトル、内容、範囲、状態、グループ、リンクするテーブルを決めます。コード(REQ-001)は自動で付きます。
 * 反映待ちの行の **{{model.requirements.markApplied}}** を押すと、反映済みに変わります。
+* **{{model.requirements.criteria.title}}** は、要件が正しく反映されたかを確認する項目です。編集ダイアログで 1 行に 1 つ書き、開いた行でチェックします。
 * 不要になった要件は削除せず、状態を **{{model.requirements.status.dropped}}** に変えます。削除は誤って登録したものにだけ使います。
 * 1つのドキュメントに500件まで登録できます。
 

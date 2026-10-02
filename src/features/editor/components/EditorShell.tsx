@@ -843,7 +843,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 요구사항 탭(화면 맨 아래) — 문서에 속한 내용이라 공개 뷰어도 읽기 전용으로 본다(02-ui.md §17).
           에디터는 감추기만 하고 내리지 않는다 — 자동 저장과 협업 채널이 요구사항 편집에도 그대로 동작한다 */}
-      <RequirementsPanel canEdit={editable} />
+      <RequirementsPanel canEdit={editable} documentName={model.name} />
       <div className={cn('flex min-h-0 flex-1 flex-col', requirementsView && 'hidden')} data-testid="editor-canvas-area">
       <EditorToolbar
         canEdit={editable}

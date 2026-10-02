@@ -253,6 +253,14 @@ export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number]
 export const REQUIREMENT_SCOPES = ['tables', 'document'] as const
 export type RequirementScope = (typeof REQUIREMENT_SCOPES)[number]
 
+/** 수용 기준 한 항목 — 요구사항이 제대로 반영됐는지 확인하는 체크 항목(v1.32) */
+export const requirementCriterionSchema = z.object({
+  id: z.string().min(1),
+  text: z.string(),
+  done: z.boolean().default(false),
+})
+export type ErdRequirementCriterion = z.infer<typeof requirementCriterionSchema>
+
 export const requirementSchema = z.object({
   id: z.string().min(1),
   /** REQ-001 형식 — 문서 안에서 유일하고 한 번 붙으면 바뀌지 않는다 */
@@ -269,6 +277,8 @@ export const requirementSchema = z.object({
   /** ERD가 마지막으로 반영한 개정 번호 — 반영한 적이 없으면 0 */
   appliedRevision: z.number().int().default(0),
   tableIds: z.array(z.string().min(1)).default([]),
+  /** 수용 기준 — 없는 요구사항에는 키를 두지 않는다(문서 편집 API가 만든 본체와 같게) */
+  criteria: z.array(requirementCriterionSchema).optional(),
 })
 export type ErdRequirement = z.infer<typeof requirementSchema>
 

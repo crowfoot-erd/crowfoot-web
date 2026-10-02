@@ -1422,7 +1422,7 @@
         "noTables": "此文档中没有表"
       }
     },
-  "requirements": {"title": "需求", "add": "添加", "filterLabel": "状态筛选", "state": {"APPLIED": "已反映", "PENDING": "待反映", "UNLINKED": "链接断开", "LEFTOVER": "需要清理", "DRAFT": "评审中", "DROPPED": "已排除"}, "stateHint": {"APPLIED": "已确认的需求已反映到 ERD", "PENDING": "已确认，但 ERD 尚未反映最新内容", "UNLINKED": "已标记为已反映，但没有链接的表", "LEFTOVER": "已排除的需求仍链接着表", "DRAFT": "尚未确认的需求", "DROPPED": "不再处理的需求"}, "status": {"draft": "评审中", "confirmed": "已确认", "dropped": "已排除"}, "scope": {"tables": "功能", "document": "通用"}, "group": {"unassigned": "未分类", "document": "通用"}, "empty": "没有需求", "emptyDetail": "可以由 Claude 通过 MCP 登记，也可以自己添加", "emptyFiltered": "没有符合条件的需求", "tableCount": "表 {{count}}", "noDescription": "无内容", "linkedTables": "链接的表", "noTables": "没有链接的表", "markApplied": "标记为已反映", "revision": "修订 {{revision}}", "removeConfirm": "只删除登记错误的条目", "limit": "每个文档最多登记 {{max}} 条需求", "tableInfo": "需求", "untraced": {"title": "没有依据的表", "hint": "未链接到任何需求的表"}, "dialog": {"createTitle": "添加需求", "editTitle": "编辑需求", "title": "标题", "titleRequired": "请输入标题", "description": "内容", "revisionHint": "修改标题或内容后会变为待反映", "scope": "范围", "status": "状态", "area": "领域(分组)", "tables": "要链接的表", "documentHint": "通用需求适用于整个文档，不链接到表"}},
+  "requirements": {"criteria": {"title": "验收标准", "count": "标准 {{done}}/{{total}}", "hint": "每行写一条，用来确认需求是否已正确体现"}, "search": "查找编号、标题、内容、表", "progress": "已体现 {{applied}}/{{total}}", "domains": {"label": "领域", "all": "全部", "noRequirements": "该领域还没有需求", "showOnCanvas": "在画布中查看"}, "export": {"button": "导出", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "需求规格", "columns": {"code": "编号", "domain": "领域", "state": "状态", "title": "标题", "description": "内容", "tables": "表"}}, "title": "需求", "add": "添加", "filterLabel": "状态筛选", "state": {"APPLIED": "已反映", "PENDING": "待反映", "UNLINKED": "链接断开", "LEFTOVER": "需要清理", "DRAFT": "评审中", "DROPPED": "已排除"}, "stateHint": {"APPLIED": "已确认的需求已反映到 ERD", "PENDING": "已确认，但 ERD 尚未反映最新内容", "UNLINKED": "已标记为已反映，但没有链接的表", "LEFTOVER": "已排除的需求仍链接着表", "DRAFT": "尚未确认的需求", "DROPPED": "不再处理的需求"}, "status": {"draft": "评审中", "confirmed": "已确认", "dropped": "已排除"}, "scope": {"tables": "功能", "document": "通用"}, "group": {"unassigned": "未分类", "document": "通用"}, "empty": "没有需求", "emptyDetail": "可以由 Claude 通过 MCP 登记，也可以自己添加", "emptyFiltered": "没有符合条件的需求", "tableCount": "表 {{count}}", "noDescription": "无内容", "linkedTables": "链接的表", "noTables": "没有链接的表", "markApplied": "标记为已反映", "revision": "修订 {{revision}}", "removeConfirm": "只删除登记错误的条目", "limit": "每个文档最多登记 {{max}} 条需求", "tableInfo": "需求", "untraced": {"title": "没有依据的表", "hint": "未链接到任何需求的表"}, "dialog": {"createTitle": "添加需求", "editTitle": "编辑需求", "title": "标题", "titleRequired": "请输入标题", "description": "内容", "revisionHint": "修改标题或内容后会变为待反映", "scope": "范围", "status": "状态", "area": "领域(分组)", "tables": "要链接的表", "documentHint": "通用需求适用于整个文档，不链接到表"}},
   "validation": {
     "toggle": "校验",
     "title": "设计校验",
@@ -1726,7 +1726,7 @@
     "hero": {
       "title": "只能画 ERD 的工具很多",
       "titleAccent": "Crowfoot 一路做到真实数据库，而且免费",
-      "description": "不止于画图。需求 → ERD → 真实数据库 → 数据，一站完成，全部免费。",
+      "description": "好的设计不是靠图来证明，而是靠真正运行的数据库。从需求到 ERD、真实数据库，再到数据 — Crowfoot 把整个过程连成一条流程。全部免费。",
       "imageAlt": "Crowfoot ERD 编辑器界面——用 6 张表和关系线绘制的在线商城 ERD 示例",
       "promptLabel": "只需这样告诉你连接的 AI",
       "promptWho": "对你的 AI 说",

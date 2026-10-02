@@ -10,9 +10,14 @@ import { diffDocuments } from '@/features/editor/model/doc-diff'
 import {
   countRequirementStates,
   groupRequirements,
+  matchesRequirement,
   nextRequirementCode,
+  requirementDomains,
   requirementState,
+  requirementsToCsv,
+  requirementsToMarkdown,
   untracedTableIds,
+  type RequirementExportLabels,
 } from '@/features/editor/model/requirements'
 
 const requirement = (overrides: Partial<ErdRequirement> = {}): ErdRequirement => ({
@@ -100,6 +105,146 @@ describe('코드와 묶음', () => {
     ])
     expect(countRequirementStates(document.diagram.requirements)).toMatchObject({ APPLIED: 1, PENDING: 1, DRAFT: 0 })
     expect(untracedTableIds(document)).toEqual(['t-orders'])
+  })
+})
+
+describe('도메인별 정리', () => {
+  const sample = () =>
+    doc([
+      requirement({ id: 'r1', code: 'REQ-001', areaId: 'a-member', title: '가입', description: '이메일은 중복될 수 없다', status: 'confirmed', appliedRevision: 1, tableIds: ['t-users'] }),
+      requirement({
+        id: 'r2',
+        code: 'REQ-002',
+        areaId: 'a-member',
+        title: '탈퇴',
+        status: 'confirmed',
+        criteria: [
+          { id: 'k1', text: '탈퇴한 회원은 로그인할 수 없다', done: true },
+          { id: 'k2', text: '주문 기록은 남는다', done: false },
+        ],
+      }),
+      requirement({ id: 'r3', code: 'REQ-003', areaId: 'a-member', title: '휴면', status: 'dropped' }),
+      requirement({ id: 'r4', code: 'REQ-004', scope: 'document', title: '생성 시각', status: 'confirmed' }),
+    ])
+
+  it('도메인마다 요구사항, 진행, 근거 없는 테이블을 모은다 — 요구사항이 없는 그룹도 넣는다', () => {
+    const domains = requirementDomains(sample())
+    expect(domains.map((d) => [d.kind, d.name, d.requirements.map((r) => r.code), d.applied, d.total, d.untracedTableIds])).toEqual([
+      // 제외한 요구사항은 다루는 수에서 뺀다
+      ['area', '회원', ['REQ-001', 'REQ-002', 'REQ-003'], 1, 2, []],
+      // 요구사항이 없는 도메인 — 테이블이 근거 없이 남아 있다
+      ['area', '주문', [], 0, 0, ['t-orders']],
+      ['document', '', ['REQ-004'], 1, 1, []],
+    ])
+    expect(domains[0].counts).toMatchObject({ APPLIED: 1, PENDING: 1, DROPPED: 1 })
+    expect(domains[0].color).toBe('blue')
+  })
+
+  it('미분류는 요구사항이나 그룹 밖의 근거 없는 테이블이 있을 때만 나온다', () => {
+    const base = sample()
+    expect(requirementDomains(base).some((d) => d.kind === 'unassigned')).toBe(false)
+
+    const loose = createTable('logs', { id: 't-logs', columns: [createColumn({ id: 'c9', physicalName: 'id' })] })
+    const withLoose: EditorDocument = { ...base, model: { ...base.model, tables: [...base.model.tables, loose] } }
+    const unassigned = requirementDomains(withLoose).find((d) => d.kind === 'unassigned')
+    expect(unassigned).toMatchObject({ requirements: [], untracedTableIds: ['t-logs'] })
+
+    // 요구사항이 하나도 없는 문서에는 도메인만 있고 미분류·공통은 없다
+    expect(requirementDomains(doc()).map((d) => d.kind)).toEqual(['area', 'area'])
+  })
+
+  it('찾기는 코드, 제목, 내용, 테이블 이름을 본다', () => {
+    const [target] = sample().diagram.requirements
+    const names = new Map([['t-users', 'users']])
+    expect(matchesRequirement(target, '', names)).toBe(true)
+    expect(matchesRequirement(target, ' req-001 ', names)).toBe(true)
+    expect(matchesRequirement(target, '가입', names)).toBe(true)
+    expect(matchesRequirement(target, '중복', names)).toBe(true)
+    expect(matchesRequirement(target, 'USERS', names)).toBe(true)
+    expect(matchesRequirement(target, 'orders', names)).toBe(false)
+  })
+
+  const labels: RequirementExportLabels = {
+    heading: '요구사항 명세',
+    unassigned: '미분류',
+    document: '공통',
+    state: { APPLIED: '반영됨', PENDING: '반영 대기', UNLINKED: '연결 끊김', LEFTOVER: '정리 필요', DRAFT: '검토 중', DROPPED: '제외' },
+    progress: (applied, total) => `반영 ${applied}/${total}`,
+    tables: '테이블',
+    untraced: '근거 없는 테이블',
+    columns: { code: '코드', domain: '도메인', state: '상태', title: '제목', description: '내용', tables: '테이블', criteria: '수용 기준' },
+  }
+
+  it('Markdown 명세 — 도메인마다 절, 요구사항마다 상태·내용·테이블', () => {
+    expect(requirementsToMarkdown(sample(), '쇼핑몰', labels)).toBe(
+      [
+        '# 쇼핑몰 — 요구사항 명세',
+        '',
+        '## 회원 (반영 1/2)',
+        '',
+        '### REQ-001 가입 — 반영됨',
+        '',
+        '- 이메일은 중복될 수 없다',
+        '',
+        '테이블: `users`',
+        '',
+        '### REQ-002 탈퇴 — 반영 대기',
+        '',
+        '- [x] 탈퇴한 회원은 로그인할 수 없다',
+        '- [ ] 주문 기록은 남는다',
+        '',
+        '### REQ-003 휴면 — 제외',
+        '',
+        '## 주문 (반영 0/0)',
+        '',
+        '> 근거 없는 테이블: `orders`',
+        '',
+        '## 공통 (반영 1/1)',
+        '',
+        '### REQ-004 생성 시각 — 반영됨',
+        '',
+      ].join('\n'),
+    )
+  })
+
+  it('CSV — 한 행이 요구사항 하나. 쉼표·따옴표·줄바꿈은 따옴표로 감싼다', () => {
+    const csv = requirementsToCsv(
+      doc([requirement({ id: 'r1', code: 'REQ-001', areaId: 'a-order', title: '주문, "빠른" 주문', description: '한 줄\n두 줄', tableIds: ['t-orders', 't-users'] })]),
+      labels,
+    )
+    expect(csv.startsWith('\uFEFF코드,도메인,상태,제목,내용,테이블,수용 기준\r\n')).toBe(true)
+    expect(csv).toContain('REQ-001,주문,검토 중,"주문, ""빠른"" 주문","한 줄\n두 줄",orders users,\r\n')
+  })
+})
+
+describe('수용 기준', () => {
+  const criteria = [{ id: 'k1', text: '이메일 중복을 막는다', done: false }]
+
+  it('없는 요구사항에는 키를 두지 않는다 — 저장하고 다시 열어도 그대로다', () => {
+    const saved = serializeContent({
+      schemaVersion: 1,
+      ...doc([requirement({ id: 'r1' }), requirement({ id: 'r2', code: 'REQ-002', criteria })]),
+    })
+    const [plain, checked] = parseContent(saved).diagram.requirements
+    expect('criteria' in plain).toBe(false)
+    expect(checked.criteria).toEqual(criteria)
+  })
+
+  it('체크를 바꿔도 개정 번호는 오르지 않는다 — 버전 비교에는 criteria 변경으로 나온다', () => {
+    const before = doc([requirement({ id: 'r1', status: 'confirmed', appliedRevision: 1, criteria })])
+    const after = applyChange(before, {
+      type: 'requirement/patch',
+      requirementId: 'r1',
+      patch: { criteria: [{ ...criteria[0], done: true }] },
+    })
+    expect(after.diagram.requirements[0]).toMatchObject({ revision: 1, criteria: [{ id: 'k1', done: true }] })
+    expect(diffDocuments(before, after).items).toEqual([
+      expect.objectContaining({ kind: 'requirement', action: 'update', detail: 'criteria' }),
+    ])
+    // 서버 본문을 따라가는 변경에도 수용 기준이 실린다
+    expect(deriveChanges(before, after)).toEqual([
+      { type: 'requirement/patch', requirementId: 'r1', patch: { criteria: [{ ...criteria[0], done: true }] } },
+    ])
   })
 })
 

@@ -22,12 +22,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { RequirementPatch } from '@/features/editor/model/changes'
+import { newId, type RequirementPatch } from '@/features/editor/model/changes'
 import {
   REQUIREMENT_SCOPES,
   REQUIREMENT_STATUSES,
   type ErdArea,
   type ErdRequirement,
+  type ErdRequirementCriterion,
   type RequirementScope,
   type RequirementStatus,
 } from '@/features/editor/model/content-schema'
@@ -39,6 +40,8 @@ export interface RequirementDraft {
   scope: RequirementScope
   status: RequirementStatus
   tableIds: string[]
+  /** 수용 기준 — 없으면 키를 두지 않는다 */
+  criteria?: ErdRequirementCriterion[]
 }
 
 export interface RequirementDialogProps {
@@ -46,6 +49,8 @@ export interface RequirementDialogProps {
   onOpenChange: (open: boolean) => void
   /** 고칠 요구사항 — null이면 새로 만든다 */
   requirement: ErdRequirement | null
+  /** 새로 만들 때 미리 골라 둘 도메인 — 도메인 구역의 "추가"에서 열면 그 도메인이다 */
+  defaultAreaId?: string | null
   /** 새로 만들 때 붙을 코드 */
   nextCode: string
   areas: readonly ErdArea[]
@@ -55,12 +60,17 @@ export interface RequirementDialogProps {
   onRemove: (requirementId: string) => void
 }
 
+/** 수용 기준의 상한 — 항목 수와 한 항목의 길이 */
+const CRITERIA_LIMIT = 20
+const CRITERION_MAX_LENGTH = 200
+
 const EMPTY: RequirementDraft = { title: '', description: '', areaId: null, scope: 'tables', status: 'draft', tableIds: [] }
 
 export function RequirementDialog({
   open,
   onOpenChange,
   requirement,
+  defaultAreaId = null,
   nextCode,
   areas,
   tables,
@@ -70,6 +80,8 @@ export function RequirementDialog({
 }: RequirementDialogProps) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<RequirementDraft>(EMPTY)
+  /** 수용 기준 — 한 줄에 하나. 저장할 때 항목으로 바꾼다 */
+  const [criteriaText, setCriteriaText] = useState('')
   const [titleError, setTitleError] = useState(false)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
 
@@ -87,8 +99,9 @@ export function RequirementDialog({
             status: requirement.status,
             tableIds: requirement.tableIds,
           }
-        : EMPTY,
+        : { ...EMPTY, areaId: defaultAreaId },
     )
+    setCriteriaText((requirement?.criteria ?? []).map((criterion) => criterion.text).join('\n'))
     setTitleError(false)
     setConfirmingRemove(false)
   }, [open, requirementId])
@@ -111,8 +124,16 @@ export function RequirementDialog({
       areaId: draft.scope === 'document' ? null : draft.areaId,
       tableIds: draft.scope === 'document' ? [] : draft.tableIds,
     }
+    // 수용 기준 — 같은 문구의 항목은 id와 체크를 이어받는다
+    const previous = requirement?.criteria ?? []
+    const criteria: ErdRequirementCriterion[] = criteriaText
+      .split(/\r?\n/)
+      .map((line) => line.trim().replace(/^[-•*·]\s+/, '').slice(0, CRITERION_MAX_LENGTH))
+      .filter((line) => line.length > 0)
+      .slice(0, CRITERIA_LIMIT)
+      .map((text) => previous.find((criterion) => criterion.text === text) ?? { id: newId(), text, done: false })
     if (!requirement) {
-      onCreate(next)
+      onCreate(criteria.length > 0 ? { ...next, criteria } : next)
     } else {
       const patch: RequirementPatch = {}
       if (next.title !== requirement.title) patch.title = next.title
@@ -121,6 +142,7 @@ export function RequirementDialog({
       if (next.scope !== requirement.scope) patch.scope = next.scope
       if (next.status !== requirement.status) patch.status = next.status
       if (next.tableIds.join('\0') !== requirement.tableIds.join('\0')) patch.tableIds = next.tableIds
+      if (JSON.stringify(criteria) !== JSON.stringify(previous)) patch.criteria = criteria
       if (Object.keys(patch).length > 0) onPatch(requirement.id, patch)
     }
     onOpenChange(false)
@@ -169,6 +191,17 @@ export function RequirementDialog({
             {requirement ? (
               <p className="text-[11px] text-muted-foreground">{t('model.requirements.dialog.revisionHint')}</p>
             ) : null}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="requirement-criteria">{t('model.requirements.criteria.title')}</Label>
+            <Textarea
+              id="requirement-criteria"
+              rows={3}
+              value={criteriaText}
+              onChange={(event) => setCriteriaText(event.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">{t('model.requirements.criteria.hint')}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

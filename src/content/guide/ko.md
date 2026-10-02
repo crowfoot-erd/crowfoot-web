@@ -949,10 +949,12 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 
 에디터 맨 아래의 **{{shareViewer.tab.requirements}}** 탭을 누르면 요구사항 화면이 열립니다. 요구사항은 문서에 함께 저장됩니다. 반영 대기인 요구사항이 있으면 탭에 그 수가 붙습니다.
 
-* 요구사항은 그룹별로 묶여 나옵니다. 그룹이 없는 것은 **{{model.requirements.group.unassigned}}**, 문서 전체에 해당하는 것은 **{{model.requirements.group.document}}** 에 모입니다.
-* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블을 보여 줍니다.
-* 위쪽의 상태 버튼으로 골라 봅니다. 처음에는 **{{model.requirements.state.DROPPED}}** 만 숨겨져 있습니다.
-* 패널 아래의 **{{model.requirements.untraced.title}}** 은 어떤 요구사항에도 연결되지 않은 테이블입니다.
+* 요구사항은 도메인(그룹)별로 정리됩니다. 왼쪽 목록에서 도메인을 고르면 그 도메인만 보이고, 도메인마다 반영된 수와 진행 막대가 나옵니다. 그룹이 없는 것은 **{{model.requirements.group.unassigned}}**, 문서 전체에 해당하는 것은 **{{model.requirements.group.document}}** 에 모입니다.
+* 도메인 구역의 제목을 누르면 접히고, **{{model.requirements.domains.showOnCanvas}}** 를 누르면 그 도메인의 테이블을 골라 ERD 탭에서 보여 줍니다.
+* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블을 보여 줍니다. 펼친 행의 **{{model.requirements.domains.showOnCanvas}}** 는 연결된 테이블을 모두 골라 한 화면에 보여 줍니다.
+* 위쪽의 상태 버튼으로 골라 봅니다. 처음에는 **{{model.requirements.state.DROPPED}}** 만 숨겨져 있습니다. 찾기 칸에서는 코드, 제목, 내용, 테이블 이름으로 찾습니다.
+* 도메인 구역 아래의 **{{model.requirements.untraced.title}}** 은 그 도메인의 테이블 가운데 어떤 요구사항에도 연결되지 않은 테이블입니다.
+* **{{model.requirements.export.button}}** 로 요구사항 명세를 Markdown이나 CSV 파일로 받습니다.
 
 | 상태 | 뜻 |
 |---|---|
@@ -969,6 +971,7 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 
 * 패널 위의 **{{model.requirements.add}}** 나 펼친 행의 수정 버튼을 누릅니다. 제목, 내용, 범위, 상태, 그룹, 연결할 테이블을 정합니다. 코드(REQ-001)는 자동으로 붙습니다.
 * 반영 대기인 행의 **{{model.requirements.markApplied}}** 를 누르면 반영됨으로 바뀝니다.
+* **{{model.requirements.criteria.title}}** 은 요구사항이 제대로 반영됐는지 확인할 항목입니다. 수정 창에서 한 줄에 하나씩 적고, 펼친 행에서 체크합니다.
 * 빠진 요구사항은 지우지 않고 상태를 **{{model.requirements.status.dropped}}** 로 바꿉니다. 삭제는 잘못 등록한 것에만 씁니다.
 * 문서 하나에 500개까지 등록합니다.
 

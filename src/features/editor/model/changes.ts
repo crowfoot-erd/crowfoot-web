@@ -49,7 +49,7 @@ export type NotePatch = Partial<
 export type AreaPatch = Partial<Pick<ErdArea, 'name' | 'description' | 'color' | 'tableIds'>>
 /** 요구사항 패치 — code는 바꾸지 않는다. revision은 리듀서가 올린다(제목·내용이 바뀌면) */
 export type RequirementPatch = Partial<
-  Pick<ErdRequirement, 'areaId' | 'scope' | 'title' | 'description' | 'status' | 'revision' | 'appliedRevision' | 'tableIds'>
+  Pick<ErdRequirement, 'areaId' | 'scope' | 'title' | 'description' | 'status' | 'revision' | 'appliedRevision' | 'tableIds' | 'criteria'>
 >
 
 export type ErdChange =

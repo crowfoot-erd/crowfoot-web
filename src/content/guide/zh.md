@@ -949,10 +949,12 @@ Crowfoot 的界面大致分为三种。
 
 点击编辑器最下方的 **{{shareViewer.tab.requirements}}** 标签页，会打开需求界面。需求与文档一起保存。有待反映的需求时，标签页上会显示数量。
 
-* 需求按分组归类显示。没有分组的归入 **{{model.requirements.group.unassigned}}**，适用于整个文档的归入 **{{model.requirements.group.document}}**。
-* 点击行会展开内容和链接的表。点击表名，会回到 ERD 标签页并显示该表。
-* 用上方的状态按钮筛选。最初只隐藏 **{{model.requirements.state.DROPPED}}**。
-* 面板下方的 **{{model.requirements.untraced.title}}** 是未链接到任何需求的表。
+* 需求按领域(分组)整理。在左侧列表中选择领域后只显示该领域，每个领域都会显示已体现的数量和进度条。没有分组的归入 **{{model.requirements.group.unassigned}}**，适用于整个文档的归入 **{{model.requirements.group.document}}**。
+* 点击领域区块的标题可以折叠，点击 **{{model.requirements.domains.showOnCanvas}}** 会选中该领域的表并在 ERD 标签页中显示。
+* 点击行会展开内容和链接的表。点击表名，会回到 ERD 标签页并显示该表。展开行中的 **{{model.requirements.domains.showOnCanvas}}** 会选中所有链接的表并显示在一屏内。
+* 用上方的状态按钮筛选。最初只隐藏 **{{model.requirements.state.DROPPED}}**。查找框会在编号、标题、内容和表名中查找。
+* 领域区块下方的 **{{model.requirements.untraced.title}}** 是该领域中未链接到任何需求的表。
+* 用 **{{model.requirements.export.button}}** 可以把需求规格下载为 Markdown 或 CSV 文件。
 
 | 状态 | 含义 |
 |---|---|
@@ -969,6 +971,7 @@ Crowfoot 的界面大致分为三种。
 
 * 点击面板上方的 **{{model.requirements.add}}** 或展开行中的编辑按钮。设置标题、内容、范围、状态、分组和要链接的表。代码（REQ-001）会自动生成。
 * 点击待反映行的 **{{model.requirements.markApplied}}**，会变为已反映。
+* **{{model.requirements.criteria.title}}** 是用来确认需求是否已正确体现的检查项。在编辑对话框中每行写一条，在展开的行中勾选。
 * 不再需要的需求不要删除，把状态改为 **{{model.requirements.status.dropped}}**。删除只用于登记错误的条目。
 * 每个文档最多登记 500 条。
 

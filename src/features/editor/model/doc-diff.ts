@@ -312,6 +312,7 @@ function diffRequirements(from: ErdRequirement[], to: ErdRequirement[], items: D
     const fields = ['title', 'description', 'status', 'areaId', 'scope', 'appliedRevision'] as const
     const changed: string[] = fields.filter((f) => prev[f] !== next[f])
     if (prev.tableIds.join('\0') !== next.tableIds.join('\0')) changed.push('tableIds')
+    if (JSON.stringify(prev.criteria ?? []) !== JSON.stringify(next.criteria ?? [])) changed.push('criteria')
     if (changed.length > 0) {
       items.push({ kind: 'requirement', action: 'update', table: '', name: next.code, detail: changed.join(', ') })
     }

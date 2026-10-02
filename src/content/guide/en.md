@@ -949,10 +949,12 @@ Start Claude Code or Codex in the folder where you registered, and ask for what 
 
 Click the **{{shareViewer.tab.requirements}}** tab at the bottom of the editor to open the requirements view. Requirements are saved with the document. When some requirements are pending, the tab shows their number.
 
-* Requirements are grouped by group. Those without a group gather under **{{model.requirements.group.unassigned}}**, and those that apply to the whole document under **{{model.requirements.group.document}}**.
-* Click a row to expand its description and linked tables. Click a table name to go back to the ERD tab and show that table.
-* Use the status buttons at the top to filter. At first only **{{model.requirements.state.DROPPED}}** is hidden.
-* **{{model.requirements.untraced.title}}** at the bottom lists the tables that are not linked to any requirement.
+* Requirements are organized by domain (group). Pick a domain in the list on the left to see only that domain; each domain shows how many requirements are applied and a progress bar. Those without a group gather under **{{model.requirements.group.unassigned}}**, and those that apply to the whole document under **{{model.requirements.group.document}}**.
+* Click a domain section's title to collapse it, and **{{model.requirements.domains.showOnCanvas}}** to select that domain's tables and show them in the ERD tab.
+* Click a row to expand its description and linked tables. Click a table name to go back to the ERD tab and show that table. **{{model.requirements.domains.showOnCanvas}}** in an expanded row selects all linked tables and fits them on screen.
+* Use the status buttons at the top to filter. At first only **{{model.requirements.state.DROPPED}}** is hidden. The search box looks in the code, title, description, and table names.
+* **{{model.requirements.untraced.title}}** under a domain section lists that domain's tables that are not linked to any requirement.
+* **{{model.requirements.export.button}}** downloads the requirements specification as a Markdown or CSV file.
 
 | Status | Meaning |
 |---|---|
@@ -969,6 +971,7 @@ Editors and above can add and edit requirements themselves.
 
 * Click **{{model.requirements.add}}** at the top of the panel, or the edit button in an expanded row. Set the title, description, scope, status, group, and tables to link. The code (REQ-001) is assigned automatically.
 * Click **{{model.requirements.markApplied}}** on a pending row to change it to applied.
+* **{{model.requirements.criteria.title}}** are the checks that show a requirement is properly reflected. Write one per line in the edit dialog and tick them in the expanded row.
 * For a requirement that is no longer needed, change its status to **{{model.requirements.status.dropped}}** instead of deleting it. Delete only entries added by mistake.
 * A document can hold up to 500 requirements.
 
