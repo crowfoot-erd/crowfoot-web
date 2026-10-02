@@ -936,6 +936,10 @@
         "systemDictionaryFailed": "Could not load the system dictionary — computing with the workspace dictionary only"
       },
       "termDictionary": {
+        "domainTypeHint": "When a domain type is selected, it decides the type. Using this term on a column links the domain type.",
+        "promote": "Make a domain type",
+        "promoteUnreadable": "This type notation cannot be read as a common type",
+        "domainTypeReused": "Selected the existing domain type \"{{name}}\"",
         "title": "Workspace term dictionary",
         "toggle": "Term dictionary",
         "tabStandard": "Workspace",

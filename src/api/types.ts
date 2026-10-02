@@ -499,6 +499,8 @@ export interface WorkspaceTerm {
   /** DBMS 종류별 데이터 타입 맵(키 = database_types 코드, 예: {mysql: "VARCHAR(100)"}) —
    *  선택(설정 안 하면 null). 표시는 문서의 DB 종류에 맞는 값을 고른다 */
   types: Record<string, string> | null
+  /** 이 용어가 가리키는 도메인 타입 id(08-core/01-workspace.md §4.6) — 타입의 표준. 없으면 null */
+  domainTypeId?: string | null
   updatedAt: string
 }
 

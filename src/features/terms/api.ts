@@ -13,7 +13,7 @@ export function fetchWorkspaceTerms(workspaceId: string, signal?: AbortSignal) {
 /** 등록·수정 upsert — (workspace_id, term) 자연키라 서버가 항상 200을 내린다 */
 export function upsertWorkspaceTerm(
   workspaceId: string,
-  body: { term: string; label: string; types?: Record<string, string> | null },
+  body: { term: string; label: string; types?: Record<string, string> | null; domainTypeId?: string | null },
 ) {
   return apiPost<WorkspaceTerm>(`/api/v1/core/workspaces/${workspaceId}/terms`, body)
 }

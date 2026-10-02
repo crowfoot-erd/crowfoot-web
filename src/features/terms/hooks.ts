@@ -84,7 +84,7 @@ export function useUpsertTerm(workspaceId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (body: { term: string; label: string; types?: Record<string, string> | null }) =>
+    mutationFn: (body: { term: string; label: string; types?: Record<string, string> | null; domainTypeId?: string | null }) =>
       upsertWorkspaceTerm(workspaceId, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: termKeys.list(workspaceId) })

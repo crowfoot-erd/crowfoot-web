@@ -936,6 +936,10 @@
         "systemDictionaryFailed": "시스템 사전을 불러오지 못했습니다 — 워크스페이스 사전만으로 계산합니다"
       },
       "termDictionary": {
+        "domainTypeHint": "도메인 타입을 고르면 타입은 도메인 타입이 정합니다. 컬럼에 이 용어를 쓰면 도메인 타입이 연결됩니다.",
+        "promote": "도메인 타입으로 만들기",
+        "promoteUnreadable": "이 타입 표기는 공용 타입으로 읽을 수 없습니다",
+        "domainTypeReused": "같은 이름의 도메인 타입 \"{{name}}\"을 골랐습니다",
         "title": "워크스페이스 용어 사전",
         "toggle": "용어 사전",
         "tabStandard": "워크스페이스 사전",

@@ -34,6 +34,7 @@ import {
   useSystemTermsPage,
   useWorkspaceTerms,
 } from '@/features/terms/hooks'
+import { useDomainTypes } from '@/features/domain-types/hooks'
 import { errorMessage } from '@/lib/result-code'
 import { TermUpsertDialog } from './TermUpsertDialog'
 
@@ -145,7 +146,7 @@ function StandardTab({
   const [upsert, setUpsert] = useState<{
     open: boolean
     mode: 'create' | 'edit'
-    initial: { term: string; label: string; type: string; types: Record<string, string> | null }
+    initial: { term: string; label: string; type: string; types: Record<string, string> | null; domainTypeId?: string | null }
   }>({ open: false, mode: 'create', initial: { term: '', label: '', type: '', types: null } })
   const openCreate = () =>
     setUpsert({ open: true, mode: 'create', initial: { term: '', label: '', type: '', types: null } })
@@ -158,8 +159,16 @@ function StandardTab({
         label: row.label,
         type: row.types?.[databaseType] ?? '',
         types: row.types ?? null,
+        domainTypeId: row.domainTypeId ?? null,
       },
     })
+
+  // 용어가 가리키는 도메인 타입의 이름 — 행의 타입 접미 자리에 보여 준다(§4.6)
+  const domainTypes = useDomainTypes(workspaceId)
+  const domainNameOf = useMemo(
+    () => new Map((domainTypes.data?.items ?? []).map((item) => [item.domainTypeId, item.name] as const)),
+    [domainTypes.data],
+  )
 
   const q = query.trim().toLowerCase()
   const filtered = q
@@ -254,7 +263,16 @@ function StandardTab({
                 →
               </span>
               <span className="min-w-0 flex-1 truncate">{row.label}</span>
-              {row.types?.[databaseType] ? (
+              {row.domainTypeId && domainNameOf.has(row.domainTypeId) ? (
+                // 도메인 타입을 가리키는 용어 — 타입 표기 대신 도메인 타입 이름
+                <span
+                  className="shrink-0 rounded-sm bg-violet-500/15 px-1 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+                  data-testid={`term-domain-${row.term}`}
+                  title={t('model.editor.domainType.badge', { name: domainNameOf.get(row.domainTypeId) })}
+                >
+                  {domainNameOf.get(row.domainTypeId)}
+                </span>
+              ) : row.types?.[databaseType] ? (
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                   {row.types[databaseType]}
                 </span>

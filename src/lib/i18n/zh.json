@@ -936,6 +936,10 @@
         "systemDictionaryFailed": "无法加载系统词典——将仅使用工作区词典计算"
       },
       "termDictionary": {
+        "domainTypeHint": "选择域类型后，类型由域类型决定。在列上使用此术语时会关联该域类型。",
+        "promote": "创建为域类型",
+        "promoteUnreadable": "此类型写法无法识别为通用类型",
+        "domainTypeReused": "已选择同名的域类型“{{name}}”",
         "title": "工作区术语词典",
         "toggle": "术语词典",
         "tabStandard": "工作区",

@@ -7,7 +7,7 @@
  * (모든 DBMS 칸을 놓지 않는다 — 관리 화면의 시스템 사전만 DBMS별 입력이다). 서버는
  * types 맵을 통째로 치환하므로 제출 시 기존 맵에 문서 종류 키만 갱신해 보낸다.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -33,6 +33,9 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { useCreateDomainType, useDomainTypes } from '@/features/domain-types/hooks'
+import { parsePhysicalType, templateIdForDatabase } from '@/features/editor/model/dbms'
+import { typeLabel } from '@/features/editor/model/domain-type-format'
 import { useUpsertTerm } from '@/features/terms/hooks'
 import { errorMessage } from '@/lib/result-code'
 
@@ -48,7 +51,14 @@ export interface TermUpsertDialogProps {
   /** 다이얼로그 모드 — 프리필 여부로 판별하지 않는다(비표준 등록은 토큰이 실린 채 등록) */
   mode: 'create' | 'edit'
   /** 열릴 때 폼에 실을 초기값 — types는 수정 대행의 기존 DBMS별 맵 전체(병합 보존용) */
-  initial: { term: string; label: string; type: string; types: Record<string, string> | null }
+  initial: {
+    term: string
+    label: string
+    type: string
+    types: Record<string, string> | null
+    /** 가리키는 도메인 타입(§4.6) — 없으면 null */
+    domainTypeId?: string | null
+  }
 }
 
 export function TermUpsertDialog({ open, onOpenChange, workspaceId, databaseType, mode, initial }: TermUpsertDialogProps) {
@@ -56,6 +66,14 @@ export function TermUpsertDialog({ open, onOpenChange, workspaceId, databaseType
   const editing = mode === 'edit'
 
   const upsertMutation = useUpsertTerm(workspaceId)
+  // 도메인 타입 — 용어가 가리킬 타입의 표준(08-core/01-workspace.md §4.6)
+  const dbmsId = templateIdForDatabase(databaseType)
+  const domainTypes = useDomainTypes(open ? workspaceId : null)
+  const createDomainType = useCreateDomainType(workspaceId)
+  const domainItems = domainTypes.data?.items ?? []
+  /** 고른 도메인 타입 id — ''는 쓰지 않음 */
+  const [domainId, setDomainId] = useState('')
+  const selectedDomain = domainItems.find((item) => item.domainTypeId === domainId)
 
   const form = useForm<{ term: string; label: string; type: string }>({
     resolver: zodResolver(
@@ -76,7 +94,45 @@ export function TermUpsertDialog({ open, onOpenChange, workspaceId, databaseType
   useEffect(() => {
     if (!open) return
     form.reset(initial)
+    setDomainId(initial.domainTypeId ?? '')
   }, [open, initial, form])
+
+  const typeDraft = form.watch('type')
+  const labelDraft = form.watch('label')
+  /** 타입 표기를 공용 타입으로 읽은 결과 — 읽지 못하면 "도메인 타입으로 만들기"를 쓸 수 없다 */
+  const parsedType = parsePhysicalType(typeDraft ?? '', dbmsId)
+
+  /** 타입 표기로 도메인 타입을 만들고 이 용어가 그것을 가리키게 한다 — 같은 이름이 이미 있으면 그것을 고른다 */
+  const promoteToDomainType = () => {
+    const name = (labelDraft ?? '').trim()
+    if (!parsedType || name === '') return
+    const existing = domainItems.find((item) => item.name.toLowerCase() === name.toLowerCase())
+    if (existing) {
+      setDomainId(existing.domainTypeId)
+      toast.info(t('model.editor.termDictionary.domainTypeReused', { name: existing.name }))
+      return
+    }
+    createDomainType.mutate(
+      {
+        name,
+        dataType: parsedType.code,
+        length: parsedType.length,
+        precision: parsedType.precision,
+        scale: parsedType.scale,
+        nullable: true,
+        defaultValue: null,
+        description: null,
+      },
+      {
+        onSuccess: (created) => {
+          if (!created) return
+          setDomainId(created.domainTypeId)
+          toast.success(t('model.editor.domainType.created', { name: created.name }))
+        },
+        onError: (error) => toast.error(errorMessage(error)),
+      },
+    )
+  }
 
   const pending = upsertMutation.isPending
 
@@ -96,6 +152,8 @@ export function TermUpsertDialog({ open, onOpenChange, workspaceId, databaseType
         term: values.term.trim(),
         label: values.label.trim(),
         types: Object.keys(merged).length > 0 ? merged : null,
+        // 등록은 항목을 통째로 바꾼다 — 연결을 유지하려면 수정할 때도 보낸다. 쓰지 않음은 null
+        domainTypeId: domainId === '' ? null : domainId,
       },
       {
         onSuccess: () => {
@@ -155,6 +213,29 @@ export function TermUpsertDialog({ open, onOpenChange, workspaceId, databaseType
                 </FormItem>
               )}
             />
+            {/* 도메인 타입 — 타입의 표준. 고르면 타입 칸은 꺼지고 도메인 타입의 타입 표기를 보여 준다(§4.6) */}
+            {domainItems.length > 0 || domainId !== '' ? (
+              <div className="grid gap-1.5">
+                <label htmlFor="term-domain-type" className="text-sm font-medium">
+                  {t('model.editor.domainType.label')}
+                </label>
+                <select
+                  id="term-domain-type"
+                  value={domainId}
+                  onChange={(event) => setDomainId(event.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">{t('model.editor.domainType.none')}</option>
+                  {domainId !== '' && !selectedDomain ? <option value={domainId}>{domainId}</option> : null}
+                  {domainItems.map((item) => (
+                    <option key={item.domainTypeId} value={item.domainTypeId}>
+                      {item.name} — {typeLabel(item, dbmsId)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">{t('model.editor.termDictionary.domainTypeHint')}</p>
+              </div>
+            ) : null}
             {/* 타입(데이터 타입) — 문서의 DB 종류 기준 1칸, 선택. datalist는 제안일 뿐 자유 입력도 된다 */}
             <FormField
               control={form.control}
@@ -163,13 +244,38 @@ export function TermUpsertDialog({ open, onOpenChange, workspaceId, databaseType
                 <FormItem>
                   <FormLabel>{t('model.editor.termDictionary.type')}</FormLabel>
                   <FormControl>
-                    <Input
-                      list="term-type-suggestions"
-                      placeholder={t('model.editor.termDictionary.typePlaceholder')}
-                      className="font-mono text-sm"
-                      {...field}
-                    />
+                    {selectedDomain ? (
+                      // 도메인 타입이 타입을 정한다 — 입력한 타입 표기는 지우지 않고 그대로 둔다(연결을 풀면 다시 쓴다)
+                      <Input
+                        value={typeLabel(selectedDomain, dbmsId)}
+                        disabled
+                        aria-label={t('model.editor.termDictionary.type')}
+                        className="font-mono text-sm"
+                      />
+                    ) : (
+                      <Input
+                        list="term-type-suggestions"
+                        placeholder={t('model.editor.termDictionary.typePlaceholder')}
+                        className="font-mono text-sm"
+                        {...field}
+                      />
+                    )}
                   </FormControl>
+                  {!selectedDomain && (typeDraft ?? '').trim() !== '' ? (
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!parsedType || (labelDraft ?? '').trim() === '' || createDomainType.isPending}
+                        onClick={promoteToDomainType}
+                        title={!parsedType ? t('model.editor.termDictionary.promoteUnreadable') : undefined}
+                      >
+                        {t('model.editor.termDictionary.promote')}
+                      </Button>
+                    </div>
+                  ) : null}
                   <datalist id="term-type-suggestions">
                     {TYPE_SUGGESTIONS.map((suggestion) => (
                       <option key={suggestion} value={suggestion} />

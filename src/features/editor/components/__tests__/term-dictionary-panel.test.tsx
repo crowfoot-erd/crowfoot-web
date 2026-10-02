@@ -50,11 +50,11 @@ const submitDialog = (dialog: HTMLElement) =>
 
 /** POST upsert 스파이 — 요청 본문을 남기고 정상 응답을 돌려준다 */
 function spyUpsert() {
-  const posts: Array<{ term: string; label: string; types: Record<string, string> | null }> = []
+  const posts: Array<{ term: string; label: string; types: Record<string, string> | null; domainTypeId?: string | null }> = []
   server.use(
     http.post(TERMS_URL, async ({ request }) => {
       posts.push(
-        (await request.json()) as { term: string; label: string; types: Record<string, string> | null },
+        (await request.json()) as { term: string; label: string; types: Record<string, string> | null; domainTypeId?: string | null },
       )
       return HttpResponse.json(
         ok({
@@ -72,6 +72,105 @@ function spyUpsert() {
   )
   return posts
 }
+
+const DOMAIN_TYPES_URL = '/api/v1/core/workspaces/101/domain-types'
+const emailDomain = {
+  domainTypeId: '11', workspaceId: '101', name: '이메일', dataType: 'VARCHAR', length: 191, precision: null, scale: null,
+  nullable: false, defaultValue: null, description: null, version: 1, updatedAt: '2026-10-02T00:00:00Z',
+}
+
+describe('TermDictionaryPanel — 용어와 도메인 타입 (08-core/01-workspace.md §4.6)', () => {
+  it('도메인 타입을 고르면 타입 칸이 꺼지고 도메인 타입의 표기를 보여 준다 — domainTypeId를 보낸다', async () => {
+    server.use(http.get(DOMAIN_TYPES_URL, () => HttpResponse.json(ok({ responses: [emailDomain], totalCount: 1 }))))
+    const posts = spyUpsert()
+    renderPanel()
+    await screen.findByTestId('term-row-member')
+
+    fireEvent.click(screen.getByTestId('term-upsert-open'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(termInput(dialog), { target: { value: 'user_email' } })
+    fireEvent.change(labelInput(dialog), { target: { value: '회원 이메일' } })
+    fireEvent.change(await within(dialog).findByLabelText('도메인 타입'), { target: { value: '11' } })
+    expect(within(dialog).getByLabelText('타입')).toBeDisabled()
+    expect(within(dialog).getByLabelText('타입')).toHaveValue('VARCHAR(191)')
+    submitDialog(dialog)
+
+    await waitFor(() => expect(posts).toEqual([{ term: 'user_email', label: '회원 이메일', types: null, domainTypeId: '11' }]))
+  })
+
+  it('도메인 타입이 하나도 없으면 선택 칸이 없다', async () => {
+    renderPanel()
+    await screen.findByTestId('term-row-member')
+    fireEvent.click(screen.getByTestId('term-upsert-open'))
+
+    expect(within(screen.getByRole('dialog')).queryByLabelText('도메인 타입')).not.toBeInTheDocument()
+  })
+
+  it('"도메인 타입으로 만들기"는 타입 표기로 도메인 타입을 만들고 이 용어가 그것을 가리키게 한다', async () => {
+    const created: unknown[] = []
+    let list: (typeof emailDomain)[] = []
+    server.use(
+      http.get(DOMAIN_TYPES_URL, () => HttpResponse.json(ok({ responses: list, totalCount: list.length }))),
+      http.post(DOMAIN_TYPES_URL, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        created.push(body)
+        const domainType = { ...emailDomain, ...body, domainTypeId: '31' } as typeof emailDomain
+        list = [domainType]
+        return HttpResponse.json(ok({ response: domainType }), { status: 201 })
+      }),
+    )
+    const posts = spyUpsert()
+    renderPanel()
+    await screen.findByTestId('term-row-member')
+
+    fireEvent.click(screen.getByTestId('term-upsert-open'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(termInput(dialog), { target: { value: 'amount' } })
+    fireEvent.change(labelInput(dialog), { target: { value: '금액' } })
+    // 읽을 수 없는 표기에서는 꺼져 있다
+    fireEvent.change(typeInput(dialog), { target: { value: 'WHATEVER(1)' } })
+    expect(within(dialog).getByRole('button', { name: '도메인 타입으로 만들기' })).toBeDisabled()
+    fireEvent.change(typeInput(dialog), { target: { value: 'NUMERIC(15,2)' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: '도메인 타입으로 만들기' }))
+
+    await waitFor(() => expect(created).toHaveLength(1))
+    expect(created[0]).toMatchObject({ name: '금액', precision: 15, scale: 2, nullable: true })
+    await waitFor(() => expect(within(dialog).getByLabelText('도메인 타입')).toHaveValue('31'))
+    submitDialog(dialog)
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({ term: 'amount', label: '금액', domainTypeId: '31' })
+  })
+
+  it('도메인 타입을 가리키는 용어의 행은 타입 표기 대신 도메인 타입 이름을 보여 준다 — 수정 창에 연결이 채워진다', async () => {
+    server.use(
+      http.get(DOMAIN_TYPES_URL, () => HttpResponse.json(ok({ responses: [emailDomain], totalCount: 1 }))),
+      http.get(TERMS_URL, () =>
+        HttpResponse.json(
+          ok({
+            responses: [
+              { termId: '1', workspaceId: '101', term: 'user_email', label: '회원 이메일', types: { postgresql: 'VARCHAR(50)' }, domainTypeId: '11', updatedAt: '2026-10-02T00:00:00Z' },
+            ],
+            totalCount: 1,
+          }),
+        ),
+      ),
+    )
+    const posts = spyUpsert()
+    renderPanel()
+
+    expect(await screen.findByTestId('term-domain-user_email')).toHaveTextContent('이메일')
+    expect(within(screen.getByTestId('term-row-user_email')).queryByText('VARCHAR(50)')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('term-row-user_email'))
+    const dialog = screen.getByRole('dialog')
+    await waitFor(() => expect(within(dialog).getByLabelText('도메인 타입')).toHaveValue('11'))
+    // 그대로 저장하면 연결과 기존 타입 표기가 유지된다. "쓰지 않음"으로 바꾸면 연결만 풀린다
+    fireEvent.change(within(dialog).getByLabelText('도메인 타입'), { target: { value: '' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: '등록' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toEqual({ term: 'user_email', label: '회원 이메일', types: { postgresql: 'VARCHAR(50)' }, domainTypeId: null })
+  })
+})
 
 describe('TermDictionaryPanel — 표준 사전 탭', () => {
   it('term→label 목록이 나오고 검색(토큰·라벨)으로 좁혀진다', async () => {
@@ -129,7 +228,7 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     submitDialog(dialog)
 
     await waitFor(() =>
-      expect(posts).toEqual([{ term: 'ordr', label: '주문', types: { postgresql: 'VARCHAR(10)' } }]),
+      expect(posts).toEqual([{ term: 'ordr', label: '주문', types: { postgresql: 'VARCHAR(10)' }, domainTypeId: null }]),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
@@ -146,7 +245,7 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     submitDialog(dialog)
 
     await waitFor(() =>
-      expect(posts).toEqual([{ term: 'ordr', label: '주문', types: null }]),
+      expect(posts).toEqual([{ term: 'ordr', label: '주문', types: null, domainTypeId: null }]),
     )
   })
 
@@ -169,7 +268,7 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     // 서버는 types를 통째로 치환한다 — 다른 종류(mysql) 값은 그대로 실려 보존된다
     await waitFor(() =>
       expect(posts).toEqual([
-        { term: 'user', label: '회원 계정', types: { mysql: 'VARCHAR(60)', postgresql: 'VARCHAR(50)' } },
+        { term: 'user', label: '회원 계정', types: { mysql: 'VARCHAR(60)', postgresql: 'VARCHAR(50)' }, domainTypeId: null },
       ]),
     )
   })
@@ -185,7 +284,7 @@ describe('TermDictionaryPanel — 표준 사전 탭', () => {
     submitDialog(dialog)
 
     await waitFor(() =>
-      expect(posts).toEqual([{ term: 'user', label: '사용자', types: { mysql: 'VARCHAR(60)' } }]),
+      expect(posts).toEqual([{ term: 'user', label: '사용자', types: { mysql: 'VARCHAR(60)' }, domainTypeId: null }]),
     )
   })
 

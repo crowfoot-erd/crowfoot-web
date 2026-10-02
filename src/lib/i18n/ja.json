@@ -936,6 +936,10 @@
         "systemDictionaryFailed": "システム辞書を読み込めませんでした — ワークスペース辞書のみで計算します"
       },
       "termDictionary": {
+        "domainTypeHint": "ドメインタイプを選ぶと、型はドメインタイプが決めます。カラムにこの用語を使うとドメインタイプが連携されます。",
+        "promote": "ドメインタイプにする",
+        "promoteUnreadable": "この型表記は共通の型として読み取れません",
+        "domainTypeReused": "同じ名前のドメインタイプ「{{name}}」を選びました",
         "title": "ワークスペース用語辞書",
         "toggle": "用語辞書",
         "tabStandard": "ワークスペース",
