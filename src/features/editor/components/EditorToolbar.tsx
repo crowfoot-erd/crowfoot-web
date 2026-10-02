@@ -15,7 +15,7 @@
  */
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Shapes, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
+import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CircleHelp, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Shapes, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -311,6 +311,12 @@ export function EditorToolbar({
         title={`${t('model.editor.shortcuts.open')} (Ctrl/Cmd+/)`}
       >
         <Keyboard aria-hidden />
+      </Button>
+      {/* 사용 가이드 — 도구 모음에 따로 둔다(메뉴 안에 넣으면 찾기 어렵다). 새 창으로 연다(공개 문서 /guide) */}
+      <Button asChild variant="ghost" size="icon">
+        <a href="/guide" target="_blank" rel="noopener noreferrer" aria-label={t('guide.title')} title={t('guide.title')}>
+          <CircleHelp aria-hidden />
+        </a>
       </Button>
       <ThemeToggle />
     </div>
@@ -893,12 +899,7 @@ function ToolsMenu({
             <History aria-hidden />
             {t('model.editor.toolbar.history')}
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {/* 사용 가이드 — 새 창으로 연다(공개 문서 /guide) */}
-          <DropdownMenuItem onSelect={() => window.open('/guide', '_blank', 'noopener,noreferrer')}>
-            <BookOpenText aria-hidden />
-            {t('guide.title')}
-          </DropdownMenuItem>
+
         </DropdownMenuContent>
       </DropdownMenu>
 

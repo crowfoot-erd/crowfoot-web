@@ -32,4 +32,21 @@ describe('AppLayout 헤더', () => {
     // 사용자 메뉴(부트스트랩 관리자)도 같은 그룹에 있다
     expect(await screen.findByRole('button', { name: /부트스트랩 관리자/ })).toBeVisible()
   })
+
+  it('상단 메뉴 끝에 사용 가이드 링크가 있다 — 새 창으로 연다', async () => {
+    resetSessionState()
+    asAuthenticated()
+
+    renderWithProviders(
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<div>outlet-stub</div>} />
+      </Route>,
+      { route: '/' },
+    )
+
+    const guide = await screen.findByTestId('shell-guide-link')
+    expect(guide).toHaveTextContent('사용 가이드')
+    expect(guide).toHaveAttribute('href', '/guide')
+    expect(guide).toHaveAttribute('target', '_blank')
+  })
 })

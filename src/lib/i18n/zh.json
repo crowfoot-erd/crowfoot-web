@@ -1696,6 +1696,7 @@
       "goApp": "前往应用"
     },
     "features": {
+      "more": "在使用指南中查看全部功能和用法",
       "heading": "ERD 设计所需的功能尽在一处",
       "managed": {
         "title": "免费的 MySQL、PostgreSQL 数据库",

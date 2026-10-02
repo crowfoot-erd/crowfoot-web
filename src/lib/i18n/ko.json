@@ -1696,6 +1696,7 @@
       "goApp": "앱으로 이동"
     },
     "features": {
+      "more": "모든 기능과 사용법을 사용 가이드에서 자세히 보기",
       "heading": "ERD 설계에 필요한 기능을 한곳에",
       "managed": {
         "title": "무료 MySQL·PostgreSQL 데이터베이스",

@@ -6,7 +6,7 @@
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, FileCode2, FileDown, Flame, Heart, History, Layers, LibraryBig, ListChecks, Share2, ShieldCheck, Users } from 'lucide-react'
+import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, FileCode2, FileDown, Flame, Heart, History, Layers, LibraryBig, ListChecks, Share2, ShieldCheck, Users, BookOpenText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { DbmsIcon } from '@/components/dbms-icon'
@@ -49,6 +49,8 @@ export function LandingPage() {
   // 히어로 이미지 — 언어·테마에 맞는 한 장만 싣는다(두 장을 깔고 CSS로 숨기면 둘 다 내려받는다)
   const { theme } = useTheme()
   const heroImage = `/landing/editor-${currentLanguage()}-${theme}.webp`
+  /** 사용 가이드 — 새 창으로 연다. 지금 언어의 주소로 보낸다(ko는 접두 없음) */
+  const guideHref = currentLanguage() === 'ko' ? '/guide' : `/${currentLanguage()}/guide`
   // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외).
   // 프리렌더가 정적 head에 넣는 문구(landing.seo.*)와 같은 값을 쓴다 — 크롤러가 JS 실행 전후로
   // 서로 다른 제목·설명을 보지 않게 한다(scripts/prerender.mjs)
@@ -80,6 +82,12 @@ export function LandingPage() {
         </div>
         {/* 언어·테마는 행동 버튼 왼쪽 — 인증 상태 — 앱 셸과 같은 사용자 메뉴(정보·로그아웃)를 헤더에 둔다 */}
         <div className="flex items-center gap-1">
+          {/* 사용 가이드 — 로그인하지 않아도 어떤 기능이 있는지 볼 수 있다(/guide) */}
+          <Button asChild variant="ghost" size="sm">
+            <a href={guideHref} target="_blank" rel="noopener noreferrer" data-testid="landing-guide-link">
+              {t('guide.title')}
+            </a>
+          </Button>
           <ThemeToggle />
           <LanguageSelect />
           {authenticated ? (
@@ -135,6 +143,12 @@ export function LandingPage() {
                 {t('landing.cta.github')}
               </a>
             </Button>
+            <Button asChild size="lg" variant="outline">
+              <a href={guideHref} target="_blank" rel="noopener noreferrer">
+                <BookOpenText aria-hidden />
+                {t('guide.title')}
+              </a>
+            </Button>
           </div>
           {/* 제품 화면 — 에디터 캡처(scripts/capture-landing-hero.mjs 산출, 2045×1221).
               크기를 적어 두어 이미지가 뜨기 전에도 자리가 잡힌다(레이아웃 밀림 방지) */}
@@ -183,6 +197,18 @@ export function LandingPage() {
               </Card>
             ))}
           </div>
+          {/* 모든 기능의 자세한 설명은 사용 가이드에 있다 — 화면별 메뉴와 사용법 */}
+          <p className="mt-6 text-center text-sm">
+            <a
+              href={guideHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              {t('landing.features.more')}
+              <ArrowUpRight aria-hidden className="size-4" />
+            </a>
+          </p>
         </section>
 
         {/* 통합 공유 갤러리 — 현재 공유 중인 문서가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김).
@@ -346,9 +372,9 @@ export function LandingPage() {
             </span>
           </span>
           <span className="flex items-center gap-3">
-            <Link to="/guide" className="hover:underline">
+            <a href={guideHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
               {t('landing.footer.guide')}
-            </Link>
+            </a>
             <Link to="/terms" className="hover:underline">
               {t('landing.footer.terms')}
             </Link>

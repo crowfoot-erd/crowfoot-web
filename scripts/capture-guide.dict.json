@@ -1,0 +1,182 @@
+{
+ "ERD 내보내기 포맷 제안": {
+  "en": "Proposal: ERD export formats",
+  "ja": "ERD エクスポート形式の提案",
+  "zh": "建议：ERD 导出格式"
+ },
+ "v1.3.0 — 관리형 데이터베이스": {
+  "en": "v1.3.0 — Managed databases",
+  "ja": "v1.3.0 — マネージドデータベース",
+  "zh": "v1.3.0 — 托管数据库"
+ },
+ "v1.4.0 — 커뮤니티 게시판": {
+  "en": "v1.4.0 — Community boards",
+  "ja": "v1.4.0 — コミュニティ掲示板",
+  "zh": "v1.4.0 — 社区版块"
+ },
+ "개발 MySQL": {
+  "en": "Dev MySQL",
+  "ja": "開発 MySQL",
+  "zh": "开发 MySQL"
+ },
+ "개발 PG": {
+  "en": "Dev PG",
+  "ja": "開発 PG",
+  "zh": "开发 PG"
+ },
+ "개인 ERD": {
+  "en": "Personal ERD",
+  "ja": "個人 ERD",
+  "zh": "个人 ERD"
+ },
+ "검색 인프라팀": {
+  "en": "Search Infra Team",
+  "ja": "検索インフラチーム",
+  "zh": "搜索基础设施组"
+ },
+ "결제 도메인 1차": {
+  "en": "Payment domain, first draft",
+  "ja": "決済ドメイン 第1版",
+  "zh": "支付领域 第一版"
+ },
+ "결제 도메인 ERD": {
+  "en": "Payment domain ERD",
+  "ja": "決済ドメイン ERD",
+  "zh": "支付领域 ERD"
+ },
+ "결제 도메인 구조가 한눈에 들어오네요.": {
+  "en": "The payment domain is easy to follow at a glance.",
+  "ja": "決済ドメインの構造がひと目で分かりますね。",
+  "zh": "支付领域的结构一目了然。"
+ },
+ "결제 플랫폼팀": {
+  "en": "Payments Platform Team",
+  "ja": "決済プラットフォームチーム",
+  "zh": "支付平台组"
+ },
+ "결제팀 공용": {
+  "en": "Payments Team Shared",
+  "ja": "決済チーム共用",
+  "zh": "支付组共用"
+ },
+ "고객 요청": {
+  "en": "Customer request",
+  "ja": "お客様の要望",
+  "zh": "客户要求"
+ },
+ "공유해 주셔서 감사합니다 — 참고했습니다.": {
+  "en": "Thanks for sharing — this helped.",
+  "ja": "共有ありがとうございます。参考になりました。",
+  "zh": "感谢分享，很有参考价值。"
+ },
+ "긴 메모의 앞부분": {
+  "en": "Start of a long memo",
+  "ja": "長いメモの冒頭",
+  "zh": "长备注的开头"
+ },
+ "김철수": {
+  "en": "Chris Park",
+  "ja": "佐藤 健",
+  "zh": "王伟"
+ },
+ "등급 컬럼 추가": {
+  "en": "Add grade column",
+  "ja": "等級カラムを追加",
+  "zh": "添加等级列"
+ },
+ "복합 UK 위치가 깔끔합니다.": {
+  "en": "The composite unique key is neatly placed.",
+  "ja": "複合ユニークキーの配置がきれいです。",
+  "zh": "复合唯一键的位置很整齐。"
+ },
+ "부트스트랩 관리자": {
+  "en": "Bootstrap Admin",
+  "ja": "ブートストラップ管理者",
+  "zh": "初始管理员"
+ },
+ "상품·주문·결제·리뷰 도메인 — 정션 테이블과 복합 UK를 포함": {
+  "en": "Products, orders, payments and reviews — with junction tables and composite unique keys",
+  "ja": "商品・注文・決済・レビュー — 中間テーブルと複合ユニークキーを含む",
+  "zh": "商品、订单、支付、评价 — 含关联表和复合唯一键"
+ },
+ "선물 포장": {
+  "en": "Gift wrap",
+  "ja": "ギフト包装",
+  "zh": "礼品包装"
+ },
+ "쇼핑몰 커머스 ERD": {
+  "en": "E-commerce ERD",
+  "ja": "EC サイト ERD",
+  "zh": "电商 ERD"
+ },
+ "정산 배치 ERD": {
+  "en": "Settlement Batch ERD",
+  "ja": "精算バッチ ERD",
+  "zh": "结算批处理 ERD"
+ },
+ "주문 서비스 ERD": {
+  "en": "Order Service ERD",
+  "ja": "注文サービス ERD",
+  "zh": "订单服务 ERD"
+ },
+ "주문 서비스 오너": {
+  "en": "Order service owner",
+  "ja": "注文サービスオーナー",
+  "zh": "订单服务负责人"
+ },
+ "지나가는 DBA": {
+  "en": "Passing DBA",
+  "ja": "通りすがりの DBA",
+  "zh": "路过的 DBA"
+ },
+ "지나가던 DBA": {
+  "en": "Passing DBA",
+  "ja": "通りすがりの DBA",
+  "zh": "路过的 DBA"
+ },
+ "첫 방문자": {
+  "en": "First visitor",
+  "ja": "最初の訪問者",
+  "zh": "首位访客"
+ },
+ "탈퇴한 사용자": {
+  "en": "Deleted user",
+  "ja": "退会したユーザー",
+  "zh": "已注销用户"
+ },
+ "편집기 버그 신고": {
+  "en": "Editor bug report",
+  "ja": "エディターの不具合報告",
+  "zh": "编辑器问题反馈"
+ },
+ "피드백 감사합니다 — 정산 배치 문서도 공유해 두었습니다.": {
+  "en": "Thanks for the feedback — I shared the settlement batch document too.",
+  "ja": "フィードバックありがとうございます。精算バッチの文書も共有しました。",
+  "zh": "感谢反馈，结算批处理文档也已共享。"
+ },
+ "회원 서비스 ERD": {
+  "en": "Member Service ERD",
+  "ja": "会員サービス ERD",
+  "zh": "会员服务 ERD"
+ },
+ "오너": {
+  "en": "Owner",
+  "ja": "オーナー",
+  "zh": "负责人"
+ },
+ "주문 ID": {
+  "en": "Order ID",
+  "ja": "注文 ID",
+  "zh": "订单 ID"
+ },
+ "메모": {
+  "en": "Memo",
+  "ja": "メモ",
+  "zh": "备注"
+ },
+ "버전 1에서 복원": {
+  "en": "Restored from version 1",
+  "ja": "バージョン 1 から復元",
+  "zh": "从版本 1 恢复"
+ }
+}

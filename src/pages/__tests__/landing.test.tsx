@@ -21,6 +21,20 @@ describe('랜딩 페이지', () => {
     resetSessionState()
   })
 
+  it('사용 가이드 링크 — 헤더·히어로·주요 기능 아래·푸터에 있고 모두 새 창으로 연다', () => {
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+
+    const links = screen.getAllByRole('link', { name: /사용 가이드/ })
+    // 헤더, 히어로 버튼, 주요 기능 아래("…사용 가이드에서 자세히 보기"), 푸터
+    expect(links).toHaveLength(4)
+    for (const link of links) {
+      expect(link).toHaveAttribute('href', '/guide')
+      expect(link).toHaveAttribute('target', '_blank')
+    }
+    expect(screen.getByTestId('landing-guide-link')).toHaveTextContent('사용 가이드')
+    expect(screen.getByRole('link', { name: '모든 기능과 사용법을 사용 가이드에서 자세히 보기' })).toBeVisible()
+  })
+
   it('게스트 — 히어로·핵심 강조·특징 12종·CTA를 렌더한다', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 

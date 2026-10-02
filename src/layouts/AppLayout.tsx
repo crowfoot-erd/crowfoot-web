@@ -60,6 +60,10 @@ export function AppLayout() {
                 {t('shell.nav.admin')}
               </NavLink>
             ) : null}
+            {/* 사용 가이드 — 공개 문서(/guide). 앱 셸 밖의 화면이라 새 창으로 연다 */}
+            <a href="/guide" target="_blank" rel="noopener noreferrer" className={navLinkClass({ isActive: false })} data-testid="shell-guide-link">
+              {t('guide.title')}
+            </a>
           </nav>
 
           <div className="ml-auto flex items-center gap-1">

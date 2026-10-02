@@ -1696,6 +1696,7 @@
       "goApp": "アプリへ移動"
     },
     "features": {
+      "more": "すべての機能と使い方を利用ガイドで詳しく見る",
       "heading": "ERD設計に必要な機能をひとつに",
       "managed": {
         "title": "無料のMySQL・PostgreSQLデータベース",

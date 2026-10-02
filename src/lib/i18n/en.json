@@ -1696,6 +1696,7 @@
       "goApp": "Go to app"
     },
     "features": {
+      "more": "See every feature and how to use it in the user guide",
       "heading": "Everything you need for ERD design in one place",
       "managed": {
         "title": "Free MySQL and PostgreSQL databases",

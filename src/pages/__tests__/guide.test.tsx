@@ -8,7 +8,7 @@ import { Route } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import i18n from '@/lib/i18n'
-import GuidePage, { guideHeadings } from '@/pages/guide'
+import GuidePage, { guideHeadings, resolveLabels } from '@/pages/guide'
 import { renderWithProviders, resetSessionState } from '@/test/test-app'
 
 vi.mock('@/features/community/components/markdown-viewer', () => ({
@@ -34,18 +34,30 @@ describe('사용 가이드', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: '사용 가이드' })).toBeVisible()
     const article = await screen.findByTestId('guide-article')
-    await waitFor(() => expect(within(article).getByRole('heading', { level: 2, name: '1. 시작하기' })).toBeVisible())
+    await waitFor(() => expect(within(article).getByRole('heading', { level: 2, name: '1. 화면 구성 한눈에 보기' })).toBeVisible())
 
     const toc = screen.getByRole('navigation', { name: '목차' })
     expect(within(toc).getAllByRole('button').map((button) => button.textContent)).toEqual([
-      '1. 시작하기',
-      '2. ERD 그리기',
-      '3. 표준 만들기 — 단어, 용어, 도메인 타입',
-      '4. 데이터베이스와 주고받기',
-      '5. 데이터 보기',
-      '6. 함께 쓰기',
-      '7. 점검하기',
-      '8. 자주 묻는 것',
+      '1. 화면 구성 한눈에 보기',
+      '2. 시작하기',
+      '3. 워크스페이스',
+      '4. ERD 문서 만들기',
+      '5. 에디터 화면과 도구 모음',
+      '6. 테이블과 컬럼',
+      '7. 관계',
+      '8. 메모, 그룹, 복사',
+      '9. 표준 — 단어, 용어, 도메인 타입',
+      '10. SQL과 데이터베이스',
+      '11. 데이터 브라우저',
+      '12. 검증',
+      '13. 공유와 댓글',
+      '14. 버전 기록',
+      '15. 함께 편집하기',
+      '16. 팀',
+      '17. 커뮤니티와 알림',
+      '18. 관리자',
+      '19. 단축키',
+      '20. 자주 묻는 것',
     ])
   })
 
@@ -56,37 +68,85 @@ describe('사용 가이드', () => {
     }
     renderGuide()
     const toc = await screen.findByRole('navigation', { name: '목차' })
-    fireEvent.click(await within(toc).findByRole('button', { name: '3. 표준 만들기 — 단어, 용어, 도메인 타입' }))
+    fireEvent.click(await within(toc).findByRole('button', { name: '9. 표준 — 단어, 용어, 도메인 타입' }))
 
-    expect(scrolled).toEqual(['3. 표준 만들기 — 단어, 용어, 도메인 타입'])
+    expect(scrolled).toEqual(['9. 표준 — 단어, 용어, 도메인 타입'])
   })
 
   it('언어를 바꾸면 그 언어의 본문으로 바뀐다', async () => {
     renderGuide()
-    await screen.findByRole('heading', { level: 2, name: '1. 시작하기' })
+    await screen.findByRole('heading', { level: 2, name: '2. 시작하기' })
 
     await i18n.changeLanguage('en')
 
-    expect(await screen.findByRole('heading', { level: 2, name: '1. Getting started' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: '2. Getting started' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 1, name: 'User guide' })).toBeVisible()
+  })
+
+  it('본문의 {{키}}는 화면 문구로 바뀐다 — 버튼 이름이 화면과 같다', async () => {
+    renderGuide()
+    const article = await screen.findByTestId('guide-article')
+    await within(article).findByRole('heading', { level: 2, name: '2. 시작하기' })
+
+    expect(article.textContent).not.toMatch(/\{\{[\w.]+\}\}/)
+    // 도구 메뉴의 항목 이름 — 번역 파일의 값 그대로
+    expect(article.textContent).toContain('논리명 추론')
+    expect(resolveLabels('**{{model.editor.toolbar.tools}}** › {{no.such.key}}', (key) => i18n.t(key))).toBe('**도구** › {{no.such.key}}')
+  })
+
+  it('그림을 누르면 새 창에서 연다', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderGuide()
+    const article = await screen.findByTestId('guide-article')
+    const image = document.createElement('img')
+    image.src = '/guide-assets/ko/dashboard.webp'
+    article.appendChild(image)
+
+    fireEvent.click(image)
+
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('/guide-assets/ko/dashboard.webp'), '_blank', 'noopener,noreferrer')
+    open.mockRestore()
   })
 })
 
 describe('본문 파일', () => {
-  it('네 언어의 본문이 같은 짜임이다 — 절 8개, 이미지 9개, 같은 이미지 파일', async () => {
-    const files = await Promise.all(
-      (['ko', 'en', 'ja', 'zh'] as const).map(async (lang) => {
+  const LANGS = ['ko', 'en', 'ja', 'zh'] as const
+  const load = async () =>
+    Promise.all(
+      LANGS.map(async (lang) => {
         const module = (await import(`@/content/guide/${lang}.md?raw`)) as { default: string }
         return { lang, markdown: module.default }
       }),
     )
-    const images = (markdown: string) =>
-      [...markdown.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1].replace(/editor-(ko|en|ja|zh)-light/, 'editor-LANG-light'))
+  /** 그림 경로 — 언어 폴더만 다르다 */
+  const images = (markdown: string) => [...markdown.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1])
+  const tokens = (markdown: string) => [...new Set([...markdown.matchAll(/\{\{([\w.]+)\}\}/g)].map((match) => match[1]))].sort()
 
-    for (const { markdown } of files) {
-      expect(guideHeadings(markdown)).toHaveLength(8)
-      expect(images(markdown)).toEqual(images(files[0].markdown))
-      expect(images(markdown)).toHaveLength(9)
+  it('네 언어의 본문이 같은 짜임이다 — 절 20개, 같은 소제목 수, 같은 그림', async () => {
+    const files = await load()
+    const subheadings = (markdown: string) => markdown.split('\n').filter((line) => line.startsWith('### ')).length
+    const tableRows = (markdown: string) => markdown.split('\n').filter((line) => line.startsWith('|')).length
+
+    for (const { lang, markdown } of files) {
+      expect(guideHeadings(markdown)).toHaveLength(20)
+      expect(subheadings(markdown)).toBe(subheadings(files[0].markdown))
+      expect(tableRows(markdown)).toBe(tableRows(files[0].markdown))
+      // 그림은 언어별 폴더의 같은 이름 파일이다
+      expect(images(markdown)).toEqual(images(files[0].markdown).map((path) => path.replace('/guide-assets/ko/', `/guide-assets/${lang}/`)))
+      expect(images(markdown).length).toBeGreaterThanOrEqual(60)
+    }
+  })
+
+  it('본문의 {{키}}는 네 언어의 번역 파일에 모두 있다 — 값을 채워야 하는 문구는 쓰지 않는다', async () => {
+    const files = await load()
+
+    for (const { lang, markdown } of files) {
+      expect(tokens(markdown)).toEqual(tokens(files[0].markdown))
+      for (const key of tokens(markdown)) {
+        const label = i18n.getResource(lang, 'translation', key) as unknown
+        expect(typeof label, `${lang} ${key}`).toBe('string')
+        expect(label as string, `${lang} ${key}`).not.toContain('{{')
+      }
     }
   })
 })
