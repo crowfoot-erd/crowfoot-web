@@ -1,4 +1,9 @@
 {
+  "guide": {
+    "title": "사용 가이드",
+    "description": "ERD를 그리고, 표준(단어·용어·도메인 타입)을 세우고, 데이터베이스에 반영하고, 팀과 함께 쓰는 방법을 작업 순서대로 설명합니다.",
+    "contents": "목차"
+  },
   "common": {
     "appName": "Crowfoot",
     "appTagline": "ERD Editor",
@@ -1743,6 +1748,7 @@
     },
     "footer": {
       "opensource": "모든 코드는 GitHub에 공개됩니다",
+      "guide": "사용 가이드",
       "terms": "이용약관",
       "currentVersion": "현재 버전 v{{version}}"
     },

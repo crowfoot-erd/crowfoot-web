@@ -1,4 +1,9 @@
 {
+  "guide": {
+    "title": "User guide",
+    "description": "How to draw ERDs, set standards (words, terms and domain types), apply designs to a database, and work as a team — in the order of real work.",
+    "contents": "Contents"
+  },
   "common": {
     "appName": "Crowfoot",
     "appTagline": "ERD Editor",
@@ -1743,6 +1748,7 @@
     },
     "footer": {
       "opensource": "All code is available on GitHub",
+      "guide": "User guide",
       "terms": "Terms",
       "currentVersion": "Current version v{{version}}"
     },

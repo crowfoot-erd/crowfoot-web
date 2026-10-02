@@ -31,6 +31,16 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://crowfoot.java21.net/guide</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/guide" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/guide" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/guide" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/guide" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/guide" />
+    <lastmod>2026-10-02</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://crowfoot.java21.net/terms</loc>
     <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/terms" />
     <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/terms" />

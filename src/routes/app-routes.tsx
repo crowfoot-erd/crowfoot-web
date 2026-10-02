@@ -44,6 +44,8 @@ import { SplashScreen } from '@/components/splash-screen'
 const AdminTrafficPage = lazy(() => import('@/pages/admin/traffic'))
 // 데이터 브라우저 — 커넥션을 열 때만 내려받는다(09-database-manager/00-data-browser.md §5.1)
 const DatabaseBrowserPage = lazy(() => import('@/pages/database-browser'))
+// 사용 가이드 — 읽을 때만 내려받는다(공개 문서)
+const GuidePage = lazy(() => import('@/pages/guide'))
 import { CommunityBoardPage } from '@/pages/community/board'
 import { CommunityPostDetailPage } from '@/pages/community/post-detail'
 import { CommunityPostFormPage } from '@/pages/community/post-form'
@@ -67,6 +69,15 @@ function buildRoutes(prefix: string) {
       <Route path={`${prefix}/login`} element={<LoginPage />} />
       <Route path={`${prefix}/auth/callback`} element={<AuthCallbackPage />} />
       <Route path={`${prefix}/terms`} element={<TermsPage />} />
+      {/* 사용 가이드 — 누구나(랜딩 푸터·에디터 도구 메뉴의 행선지) */}
+      <Route
+        path={`${prefix}/guide`}
+        element={
+          <Suspense fallback={<SplashScreen />}>
+            <GuidePage />
+          </Suspense>
+        }
+      />
       {/* 공유 문서 공개 뷰어 — 토큰을 아는 누구나 (기간 내) */}
       <Route path={`${prefix}/share/:token`} element={<ShareViewerPage />} />
       {/* 릴리스 노트 공개 뷰어 — 누구나(랜딩 최근 릴리스·docs README 링크의 행선지) */}

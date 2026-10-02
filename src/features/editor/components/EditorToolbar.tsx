@@ -893,6 +893,12 @@ function ToolsMenu({
             <History aria-hidden />
             {t('model.editor.toolbar.history')}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {/* 사용 가이드 — 새 창으로 연다(공개 문서 /guide) */}
+          <DropdownMenuItem onSelect={() => window.open('/guide', '_blank', 'noopener,noreferrer')}>
+            <BookOpenText aria-hidden />
+            {t('guide.title')}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

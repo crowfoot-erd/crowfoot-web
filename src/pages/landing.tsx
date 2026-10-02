@@ -346,6 +346,9 @@ export function LandingPage() {
             </span>
           </span>
           <span className="flex items-center gap-3">
+            <Link to="/guide" className="hover:underline">
+              {t('landing.footer.guide')}
+            </Link>
             <Link to="/terms" className="hover:underline">
               {t('landing.footer.terms')}
             </Link>
