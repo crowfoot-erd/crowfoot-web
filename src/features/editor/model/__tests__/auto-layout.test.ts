@@ -4,7 +4,9 @@ import { applyChange, createColumn, createTable } from '@/features/editor/model/
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { emptyContent } from '@/features/editor/model/content-io'
 import { buildRelationship } from '@/features/editor/model/relationship'
-import { buildLayoutGraph, DEFAULT_LAYOUT_SPACING, layoutHubPositions, layoutTablePositions, orderFkColumns, positionNotes, refineHubAlignment } from '@/features/editor/model/auto-layout'
+import type { ELK } from 'elkjs/lib/elk.bundled.js'
+
+import { buildLayoutGraph, cancelLayout, DEFAULT_LAYOUT_SPACING, LayoutCancelledError, layoutHubPositions, layoutTablePositions, orderFkColumns, positionNotes, refineHubAlignment } from '@/features/editor/model/auto-layout'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 import { relationshipSharedRoutes } from '@/features/editor/components/canvas/edge-route-table'
 
@@ -152,6 +154,94 @@ describe('auto-layout — layoutTablePositions (실 elkjs)', () => {
     let d = doc()
     d = seedTable(d, 'A')
     expect(await layoutTablePositions(d)).toEqual({})
+  })
+})
+
+describe('auto-layout — 방향(좌→우)과 취소', () => {
+  /** 실측 크기(가로로 넓은 테이블) — 좌→우에서 가로 폭이 열 간격에 반영되는지 본다 */
+  const SIZES = { A: { w: 400, h: 120 }, B: { w: 400, h: 120 }, C: { w: 400, h: 120 }, D: { w: 400, h: 120 } }
+
+  it('A→B→C 체인은 부모가 왼쪽 열로 배치된다 — 가로로 겹치지 않는다', async () => {
+    let d = doc()
+    d = seedTable(d, 'A')
+    d = seedTable(d, 'B')
+    d = seedTable(d, 'C')
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'B', 'C')
+
+    const positions = await layoutTablePositions(d, { direction: 'right', sizes: SIZES })
+
+    expect(positions.A.x + SIZES.A.w).toBeLessThanOrEqual(positions.B.x)
+    expect(positions.B.x + SIZES.B.w).toBeLessThanOrEqual(positions.C.x)
+    // 한 줄 체인은 세로로 흩어지지 않는다(같은 높이 테이블이라 y가 같다)
+    expect(new Set([positions.A.y, positions.B.y, positions.C.y]).size).toBe(1)
+  })
+
+  it('한 부모의 자식들은 같은 열에 세로로 쌓인다 — 어떤 두 테이블도 겹치지 않는다', async () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'A', 'C')
+    d = seedRelation(d, 'A', 'D')
+
+    const positions = await layoutTablePositions(d, { direction: 'right', sizes: SIZES })
+
+    expect(new Set([positions.B.x, positions.C.x, positions.D.x]).size).toBe(1)
+    expect(positions.A.x).toBeLessThan(positions.B.x)
+    const ids = ['A', 'B', 'C', 'D'] as const
+    for (const a of ids) {
+      for (const b of ids) {
+        if (a >= b) continue
+        const apart =
+          positions[a].x + SIZES[a].w <= positions[b].x ||
+          positions[b].x + SIZES[b].w <= positions[a].x ||
+          positions[a].y + SIZES[a].h <= positions[b].y ||
+          positions[b].y + SIZES[b].h <= positions[a].y
+        expect(apart, `${a}/${b} 겹침`).toBe(true)
+      }
+    }
+  })
+
+  it('방향을 주지 않으면 종래와 같은 위→아래 결과다', async () => {
+    let d = doc()
+    d = seedTable(d, 'A')
+    d = seedTable(d, 'B')
+    d = seedRelation(d, 'A', 'B')
+
+    expect(await layoutTablePositions(d, { direction: 'down' })).toEqual(await layoutTablePositions(d))
+  })
+
+  it('하이브리드(tree)는 좌→우를 따르고, 허브(ring)는 방향을 무시한다', () => {
+    let d = doc()
+    for (const id of ['A', 'B', 'C', 'D']) d = seedTable(d, id)
+    d = seedRelation(d, 'A', 'B')
+    d = seedRelation(d, 'B', 'C')
+    d = seedRelation(d, 'C', 'D')
+
+    const ring = layoutHubPositions(d, { strategy: 'ring' })
+    expect(layoutHubPositions(d, { strategy: 'ring', direction: 'right' })).toEqual(ring)
+
+    const down = layoutHubPositions(d, { strategy: 'tree', sizes: SIZES })
+    const right = layoutHubPositions(d, { strategy: 'tree', sizes: SIZES, direction: 'right' })
+    expect(Object.keys(right).sort()).toEqual(['A', 'B', 'C', 'D'])
+    expect(right).not.toEqual(down)
+  })
+
+  it('취소하면 LayoutCancelledError로 끝난다 — 끝나지 않는 계산도 풀린다', async () => {
+    let d = doc()
+    d = seedTable(d, 'A')
+    d = seedTable(d, 'B')
+    d = seedRelation(d, 'A', 'B')
+    // 끝나지 않는 계산
+    const stuck = { layout: () => new Promise<never>(() => {}) } as unknown as ELK
+
+    const pending = layoutTablePositions(d, { elk: stuck })
+    await Promise.resolve()
+    cancelLayout()
+
+    await expect(pending).rejects.toBeInstanceOf(LayoutCancelledError)
+    // 진행 중인 계산이 없을 때의 취소는 아무 일도 하지 않는다
+    expect(() => cancelLayout()).not.toThrow()
   })
 })
 

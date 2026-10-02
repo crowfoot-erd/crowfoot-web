@@ -13,8 +13,9 @@
  * 메뉴 항목은 다이얼로그를 여는 신호만 보낸다 — 다이얼로그는 메뉴 밖(형제)에 둔다.
  * 메뉴 내용은 닫히면 언마운트되므로, 그 안에 다이얼로그를 두면 열자마자 사라진다.
  */
-import { useState } from 'react'
-import { BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -42,7 +43,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { downloadDataUrl, downloadTextFile, safeFilename } from '@/lib/download'
-import { layoutHubPositions, layoutTablePositions, orderFkColumns, positionNotes, type AutoLayoutMode, type TableSizes } from '@/features/editor/model/auto-layout'
+import {
+  LayoutCancelledError,
+  cancelLayout,
+  layoutHubPositions,
+  layoutTablePositions,
+  orderFkColumns,
+  positionNotes,
+  type AutoLayoutMode,
+  type LayoutDirection,
+  type TableSizes,
+} from '@/features/editor/model/auto-layout'
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
@@ -453,6 +464,20 @@ const LAYOUT_MODE_META: Record<AutoLayoutMode, { labelKey: string; Icon: typeof 
   hybrid: { labelKey: 'model.editor.toolbar.autoLayoutHybrid', Icon: Orbit },
 }
 
+/** 배치 방향 기억 — 모드와 같은 관례. 기본은 위→아래(종래 동작) */
+const LAYOUT_DIRECTION_KEY = 'crowfoot.editor.layout-direction'
+
+function readLayoutDirection(): LayoutDirection {
+  try {
+    return localStorage.getItem(LAYOUT_DIRECTION_KEY) === 'right' ? 'right' : 'down'
+  } catch {
+    return 'down'
+  }
+}
+
+/** 진행 안내를 띄우기까지의 지연 — 금방 끝나는 배치에서는 깜빡이지 않게 한다 */
+const LAYOUT_PROGRESS_DELAY_MS = 800
+
 function readLayoutMode(): AutoLayoutMode {
   try {
     const raw = localStorage.getItem(LAYOUT_MODE_KEY)
@@ -472,8 +497,24 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
   const tableCount = useEditorStore((s) => s.present.model.tables.length)
   const [running, setRunning] = useState(false)
   const [mode, setMode] = useState<AutoLayoutMode>(readLayoutMode)
+  const [direction, setDirection] = useState<LayoutDirection>(readLayoutDirection)
+  /** 걸린 시간(초) — null이면 진행 안내를 띄우지 않는다(실행 전이거나 아직 지연 시간 안) */
+  const [elapsed, setElapsed] = useState<number | null>(null)
 
-  const run = async (nextMode: AutoLayoutMode) => {
+  useEffect(() => {
+    if (!running) return
+    const startedAt = Date.now()
+    const timer = setInterval(() => {
+      const ms = Date.now() - startedAt
+      if (ms >= LAYOUT_PROGRESS_DELAY_MS) setElapsed(Math.floor(ms / 1000))
+    }, 250)
+    return () => {
+      clearInterval(timer)
+      setElapsed(null)
+    }
+  }, [running])
+
+  const run = async (nextMode: AutoLayoutMode, nextDirection: LayoutDirection = direction) => {
     setRunning(true)
     try {
       // 클릭 시점 문서 스냅샷 — await 사이 편집이 끼어도 node/move는 존재 노드만 갱신해 안전하다
@@ -488,8 +529,12 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       // 이후 파이프라인(FK 정렬·노트·fit)은 공통
       const positions =
         nextMode === 'layered'
-          ? await layoutTablePositions(doc, { sizes })
-          : layoutHubPositions(doc, { sizes, strategy: nextMode === 'hybrid' ? 'tree' : 'ring' })
+          ? await layoutTablePositions(doc, { sizes, direction: nextDirection })
+          : layoutHubPositions(doc, {
+              sizes,
+              strategy: nextMode === 'hybrid' ? 'tree' : 'ring',
+              direction: nextDirection,
+            })
       if (Object.keys(positions).length > 0) {
         // FK 컬럼을 부모 테이블 위치 순으로 정렬한다 — 선 부착 순서가 좌→우로 정렬돼 겹침이 줄고,
         // 노트는 테이블 위에 포개지지 않게 위치를 잡는다. 묶음 커밋이라 Undo 1회
@@ -501,11 +546,24 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
         // ErdCanvas 노드 재빌드 직후 새 좌표 기준으로 뷰를 맞춘다
         setTimeout(() => void fitView({ padding: 0.25, duration: 200 }), 0)
       }
-    } catch {
-      toast.error(t('model.editor.toolbar.autoLayoutFailed'))
+    } catch (error) {
+      // 취소는 실패가 아니다 — 문서는 바뀌지 않았다
+      if (!(error instanceof LayoutCancelledError)) toast.error(t('model.editor.toolbar.autoLayoutFailed'))
     } finally {
       setRunning(false)
     }
+  }
+
+  /** 방향 선택 — 모드 선택과 같이 저장하고 바로 실행한다 */
+  const selectDirection = (value: string) => {
+    const nextDirection: LayoutDirection = value === 'right' ? 'right' : 'down'
+    setDirection(nextDirection)
+    try {
+      localStorage.setItem(LAYOUT_DIRECTION_KEY, nextDirection)
+    } catch {
+      // 저장 실패는 세션 상태로만 동작
+    }
+    void run(mode, nextDirection)
   }
 
   /** 라디오 선택 — 저장과 실행을 함께(모드를 바꾸는 것 자체가 결과 확인이 목적) */
@@ -570,8 +628,37 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
               )
             })}
           </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>{t('model.editor.toolbar.autoLayoutDirection')}</DropdownMenuLabel>
+          {/* 허브(동심원) 모드에는 방향이 없다 */}
+          <DropdownMenuRadioGroup value={direction} onValueChange={selectDirection}>
+            <DropdownMenuRadioItem value="down" disabled={mode === 'hub'}>
+              <ArrowDown aria-hidden className="size-3.5" />
+              {t('model.editor.toolbar.autoLayoutDown')}
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="right" disabled={mode === 'hub'}>
+              <ArrowRight aria-hidden className="size-3.5" />
+              {t('model.editor.toolbar.autoLayoutRight')}
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      {/* 오래 걸리는 배치 — 걸린 시간과 취소. 계산은 워커에서 돌아 화면은 멈추지 않는다 */}
+      {running && elapsed !== null
+        ? createPortal(
+            <div
+              role="status"
+              className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-md"
+            >
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+              {t('model.editor.toolbar.autoLayoutRunning', { seconds: elapsed })}
+              <Button type="button" variant="outline" size="sm" className="h-7" onClick={cancelLayout}>
+                {t('model.editor.toolbar.autoLayoutCancel')}
+              </Button>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

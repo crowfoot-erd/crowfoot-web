@@ -1862,6 +1862,45 @@ describe('EditorShell — 자동 배치(elkjs)', () => {
 
     window.localStorage.removeItem('crowfoot.editor.layout-mode')
   })
+
+  it('v1.29 — 방향을 좌→우로 고르면 부모가 왼쪽 열에 놓이고, 고른 방향을 기억한다', async () => {
+    window.localStorage.removeItem('crowfoot.editor.layout-mode')
+    window.localStorage.removeItem('crowfoot.editor.layout-direction')
+    await seedChain()
+
+    const caret = screen.getByRole('button', { name: '배치 모드' })
+    fireEvent.pointerDown(caret, { button: 0 })
+    fireEvent.click(caret)
+    expect(await screen.findByRole('menuitemradio', { name: '위에서 아래로' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: '왼쪽에서 오른쪽으로' }))
+
+    expect(window.localStorage.getItem('crowfoot.editor.layout-direction')).toBe('right')
+    // 체인 A→B→C — 계층형 좌→우는 A, B, C가 왼쪽에서 오른쪽으로 늘어선다
+    await waitFor(() => {
+      const nodes = useEditorStore.getState().present.diagram.nodes
+      // 배치가 적용됐다(시드 좌표 A y=900에서 달라진다)
+      expect(nodes.A.y).not.toBe(900)
+      expect(nodes.A.x).toBeLessThan(nodes.B.x)
+      expect(nodes.B.x).toBeLessThan(nodes.C.x)
+    })
+    // 되돌리기 한 번으로 배치 전으로 돌아간다
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.diagram.nodes.A.y).toBe(900)
+
+    window.localStorage.removeItem('crowfoot.editor.layout-direction')
+  })
+
+  it('v1.29 — 허브 모드에서는 방향을 고를 수 없다', async () => {
+    window.localStorage.setItem('crowfoot.editor.layout-mode', 'hub')
+    await seedChain()
+
+    const caret = screen.getByRole('button', { name: '배치 모드' })
+    fireEvent.pointerDown(caret, { button: 0 })
+    fireEvent.click(caret)
+    expect(await screen.findByRole('menuitemradio', { name: '왼쪽에서 오른쪽으로' })).toHaveAttribute('data-disabled')
+
+    window.localStorage.removeItem('crowfoot.editor.layout-mode')
+  })
 })
 
 describe('EditorShell — SQL 생성', () => {

@@ -13,6 +13,11 @@
  * 자기 참조 관계는 레벨 제약이 없어 엣지에서 제외한다.
  * 결과는 호출부가 node/move + 노트 note/patch 묶음 커밋으로 반영해 Undo 1스택으로 되돌린다.
  * elkjs는 동적 import로 첫 실행 시에만 로드된다(번들 격리 — elk.bundled.js는 gzip 수백 KB).
+ *
+ * 방향(v1.29): 좌→우 배치는 **가로세로를 맞바꾼 문제**를 위→아래로 풀고 좌표를 다시 맞바꿔 얻는다.
+ * 레이어가 열이 되고, 허브 정렬 다듬기 같은 후처리도 축만 바뀐 같은 규칙으로 동작한다.
+ * 계산(v1.29): 브라우저에서는 elk를 워커에서 돌린다 — 큰 문서에서도 화면이 멈추지 않고 취소할 수 있다.
+ * 워커를 쓸 수 없으면(테스트 환경 등) 종래처럼 같은 스레드에서 계산한다.
  */
 import type { ELK, ElkNode } from 'elkjs/lib/elk.bundled.js'
 
@@ -69,12 +74,95 @@ export const DEFAULT_LAYOUT_SPACING: LayoutSpacing = {
   edgeNode: 44,
 }
 
+/** 배치 방향 — down은 부모가 위(기본), right는 부모가 왼쪽. 허브(ring) 모드에는 방향이 없다 */
+export type LayoutDirection = 'down' | 'right'
+
+/** 취소된 배치 — 호출부가 실패 안내 없이 조용히 끝낸다 */
+export class LayoutCancelledError extends Error {
+  constructor() {
+    super('layout cancelled')
+    this.name = 'LayoutCancelledError'
+  }
+}
+
 /** ELK 인스턴스 지연 싱글턴 — 첫 자동 배치 실행 시에만 청크를 로드한다 */
 let elkPromise: Promise<ELK> | null = null
+/** 워커에서 도는 인스턴스인지 — 취소는 워커를 끝내는 것으로 한다 */
+let elkInWorker = false
+/** 진행 중인 계산을 끊는 함수 — 계산이 없으면 null */
+let abortRunning: (() => void) | null = null
+
+async function createElk(): Promise<ELK> {
+  if (typeof Worker !== 'undefined') {
+    try {
+      const { default: ELKConstructor } = await import('elkjs/lib/elk-api.js')
+      const elk = new ELKConstructor({
+        workerFactory: () => new Worker(new URL('elkjs/lib/elk-worker.min.js', import.meta.url)),
+      })
+      elkInWorker = true
+      return elk
+    } catch {
+      // 워커를 만들지 못했다 — 같은 스레드 계산으로 돌아간다
+    }
+  }
+  elkInWorker = false
+  const { default: ELKConstructor } = await import('elkjs/lib/elk.bundled.js')
+  return new ELKConstructor()
+}
 
 function getElk(): Promise<ELK> {
-  elkPromise ??= import('elkjs/lib/elk.bundled.js').then(({ default: ELKConstructor }) => new ELKConstructor())
+  elkPromise ??= createElk()
   return elkPromise
+}
+
+/**
+ * 진행 중인 배치 계산을 취소한다. 워커를 끝내고 다음 실행 때 새로 만든다.
+ * 같은 스레드 계산은 끊을 수 없다 — 결과만 버린다(계산은 끝까지 돈다).
+ */
+export function cancelLayout(): void {
+  abortRunning?.()
+}
+
+/** elk 계산 한 번 — 취소하면 LayoutCancelledError로 끝난다 */
+async function runElk(elk: ELK, graph: ElkNode, owned: boolean): Promise<ElkNode> {
+  let abort: (() => void) | null = null
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    abort = () => {
+      if (owned && elkInWorker) {
+        elk.terminateWorker()
+        elkPromise = null
+      }
+      reject(new LayoutCancelledError())
+    }
+  })
+  abortRunning = abort
+  try {
+    return await Promise.race([elk.layout(graph), cancelled])
+  } finally {
+    if (abortRunning === abort) abortRunning = null
+  }
+}
+
+/** 모든 테이블의 크기 — 실측이 있으면 실측, 없으면 추정 */
+function resolveSizes(doc: EditorDocument, sizes?: TableSizes): TableSizes {
+  const resolved: TableSizes = {}
+  for (const table of doc.model.tables) {
+    resolved[table.id] = sizeOf(table, doc.diagram.nodes[table.id]?.width ?? null, sizes)
+  }
+  return resolved
+}
+
+/** 가로세로를 맞바꾼 크기 — 좌→우 배치를 위→아래 문제로 바꾼다 */
+function transposeSizes(doc: EditorDocument, sizes?: TableSizes): TableSizes {
+  const transposed: TableSizes = {}
+  for (const [id, size] of Object.entries(resolveSizes(doc, sizes))) transposed[id] = { w: size.h, h: size.w }
+  return transposed
+}
+
+function transposePositions(positions: Record<string, { x: number; y: number }>) {
+  const transposed: Record<string, { x: number; y: number }> = {}
+  for (const [id, position] of Object.entries(positions)) transposed[id] = { x: position.y, y: position.x }
+  return transposed
 }
 
 /** 그룹 컴파운드 노드의 안쪽 여백 — 그룹 상자는 캔버스에 그려지지 않으므로(논리 그룹) 이
@@ -341,11 +429,19 @@ export function buildLayoutGraph(
  */
 export async function layoutTablePositions(
   doc: EditorDocument,
-  options: { elk?: ELK; spacing?: LayoutSpacing; sizes?: TableSizes } = {},
+  options: { elk?: ELK; spacing?: LayoutSpacing; sizes?: TableSizes; direction?: LayoutDirection } = {},
 ): Promise<Record<string, { x: number; y: number }>> {
   if (doc.model.tables.length < 2) return {}
+  if (options.direction === 'right') {
+    const transposed = await layoutTablePositions(doc, {
+      ...options,
+      direction: 'down',
+      sizes: transposeSizes(doc, options.sizes),
+    })
+    return transposePositions(transposed)
+  }
   const elk = options.elk ?? (await getElk())
-  const graph = await elk.layout(buildLayoutGraph(doc, options.spacing, options.sizes))
+  const graph = await runElk(elk, buildLayoutGraph(doc, options.spacing, options.sizes), options.elk === undefined)
   const tableIds = new Set(doc.model.tables.map((table) => table.id))
   const positions: Record<string, { x: number; y: number }> = {}
   const collect = (node: ElkNode, offsetX: number, offsetY: number) => {
@@ -479,9 +575,15 @@ interface HubEntity {
  */
 export function layoutHubPositions(
   doc: EditorDocument,
-  options: { spacing?: LayoutSpacing; sizes?: TableSizes; strategy?: HubLayoutStrategy } = {},
+  options: { spacing?: LayoutSpacing; sizes?: TableSizes; strategy?: HubLayoutStrategy; direction?: LayoutDirection } = {},
 ): Record<string, { x: number; y: number }> {
   if (doc.model.tables.length < 2) return {}
+  // 좌→우는 계층형 블록이 있는 tree(하이브리드)에만 뜻이 있다 — 동심원(ring)은 방향이 없다
+  if (options.direction === 'right' && options.strategy === 'tree') {
+    return transposePositions(
+      layoutHubPositions(doc, { ...options, direction: 'down', sizes: transposeSizes(doc, options.sizes) }),
+    )
+  }
   const spacing = options.spacing ?? DEFAULT_LAYOUT_SPACING
   const strategy = options.strategy ?? 'ring'
   const sizeOfTable = (table: ErdTable) =>
