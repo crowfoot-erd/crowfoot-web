@@ -30,8 +30,8 @@ async function mockLandingApis(page: import('@playwright/test').Page): Promise<v
 
 test.describe('언어 prefix 랜딩 — 실물 라우팅', () => {
   for (const { path, lang, hero } of [
-    { path: '/', lang: 'ko', hero: '브라우저에서 그리는 무료 ERD,' },
-    { path: '/en', lang: 'en', hero: 'A free ERD tool in your browser,' },
+    { path: '/', lang: 'ko', hero: 'ERD만 그리고 끝나는 툴은 많습니다' },
+    { path: '/en', lang: 'en', hero: 'Plenty of tools stop at the diagram' },
     { path: '/ja', lang: 'ja', hero: 'ブラウザで描く無料のERD、' },
     { path: '/zh', lang: 'zh-Hans', hero: '在浏览器中绘制的免费 ERD，' },
   ] as const) {
@@ -56,7 +56,7 @@ test.describe('언어 prefix 랜딩 — 실물 라우팅', () => {
 
     // Vite 디렉터리 인덱스가 /en → /en/ 로 슬래시를 붙인다 — 운영 nginx도 $uri/ 시도가 같은 응답
     await expect(page).toHaveURL(/\/en\/?$/)
-    await expect(page.locator('h1').first()).toContainText('A free ERD tool in your browser,')
+    await expect(page.locator('h1').first()).toContainText('Plenty of tools stop at the diagram')
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   })
 })

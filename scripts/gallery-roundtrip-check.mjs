@@ -55,7 +55,7 @@ await page.route('**/api/v1/auth/refresh-token', (r) =>
 await page.getByRole('button', { name: /검증/ }).click()
 await page.getByRole('menuitem', { name: '로그아웃' }).click()
 await page.waitForURL((u) => u.pathname === '/', { timeout: 15_000 })
-await page.waitForSelector('h1:has-text("브라우저에서 그리는 무료 ERD")', { timeout: 15_000 })
+await page.waitForSelector('h1:has-text("ERD만 그리고 끝나는 툴은 많습니다")', { timeout: 15_000 })
 console.log(`[로그아웃] ${page.url()} 도착 — 랜딩 히어로 렌더 (/login 아님 확인)`)
 
 /* 4) 파비콘 — 로고 기반 재작성 반영 */
