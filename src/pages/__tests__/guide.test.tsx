@@ -8,7 +8,7 @@ import { Route } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import i18n from '@/lib/i18n'
-import GuidePage, { activeHeading, guideHeadings, resolveLabels } from '@/pages/guide'
+import GuidePage, { activeHeading, findMatches, guideHeadings, resolveLabels } from '@/pages/guide'
 import { renderWithProviders, resetSessionState } from '@/test/test-app'
 
 vi.mock('@/features/community/components/markdown-viewer', () => ({
@@ -97,6 +97,52 @@ describe('사용 가이드', () => {
     expect(activeHeading([300, 900], false)).toBe(0)
     expect(activeHeading([-500, 40, 700], false)).toBe(1)
     expect(activeHeading([-900, -300, 400], true)).toBe(2)
+  })
+
+  it('찾기 — 결과 수를 보여 주고 Enter로 다음 결과로 옮기며, 목차에 절마다 찾은 수가 붙는다', async () => {
+    const scrolled: string[] = []
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.textContent ?? '')
+    }
+    renderGuide()
+    const toc = await screen.findByRole('navigation', { name: '목차' })
+    const article = await screen.findByTestId('guide-article')
+    await within(article).findByRole('heading', { level: 2, name: '2. 시작하기' })
+    const input = screen.getByRole('searchbox', { name: '가이드에서 찾기' })
+
+    fireEvent.change(input, { target: { value: '마이그레이션 DDL' } })
+
+    const total = findMatches(article, '마이그레이션 DDL').length
+    expect(total).toBeGreaterThan(3)
+    expect(await screen.findByTestId('guide-search-count')).toHaveTextContent(`1 / ${total}`)
+    // 결과가 있는 절에만 수가 붙고, 합은 전체 결과 수다
+    const badges = within(toc).getAllByTestId('guide-toc-count')
+    expect(badges.reduce((sum, badge) => sum + Number(badge.textContent), 0)).toBe(total)
+    expect(within(within(toc).getByRole('button', { name: /^14\. 버전 기록/ })).getByTestId('guide-toc-count')).toBeVisible()
+    expect(within(within(toc).getByRole('button', { name: /^16\. 팀/ })).queryByTestId('guide-toc-count')).toBeNull()
+
+    // Enter — 다음 결과, Shift+Enter — 이전 결과(끝에서 처음으로 돈다)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(screen.getByTestId('guide-search-count')).toHaveTextContent(`2 / ${total}`)
+    expect(scrolled.at(-1)).toContain('마이그레이션 DDL')
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
+    expect(screen.getByTestId('guide-search-count')).toHaveTextContent(`${total} / ${total}`)
+
+    // 없는 글자 — 결과 없음. Esc — 지운다
+    fireEvent.change(input, { target: { value: '없는글자열zzz' } })
+    expect(await screen.findByTestId('guide-search-count')).toHaveTextContent('결과 없음')
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(input).toHaveValue('')
+    expect(screen.queryByTestId('guide-search-count')).toBeNull()
+  })
+
+  it('찾기는 대소문자를 가리지 않고, 절 번호를 함께 돌려준다', () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<p>Intro sql</p><h2>One</h2><p>SQL and Sql</p><h2>Two</h2><p>none</p><h2>Three sql</h2>'
+
+    expect(findMatches(root, ' SQL ').map((match) => match.section)).toEqual([-1, 0, 0, 2])
+    expect(findMatches(root, '   ')).toEqual([])
   })
 
   it('언어를 바꾸면 그 언어의 본문으로 바뀐다', async () => {

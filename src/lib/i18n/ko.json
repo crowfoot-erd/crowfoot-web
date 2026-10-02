@@ -2,6 +2,7 @@
   "guide": {
     "title": "사용 가이드",
     "description": "ERD를 그리고, 표준(단어·용어·도메인 타입)을 세우고, 데이터베이스에 반영하고, 팀과 함께 쓰는 방법을 작업 순서대로 설명합니다.",
+    "search": {"placeholder": "가이드에서 찾기", "none": "결과 없음", "prev": "이전 결과", "next": "다음 결과", "clear": "찾기 지우기"},
     "contents": "목차"
   },
   "common": {

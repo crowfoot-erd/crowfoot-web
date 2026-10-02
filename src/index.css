@@ -161,3 +161,13 @@
     transform: scaleX(0.95);
   }
 }
+
+/* 사용 가이드의 찾기 결과 표시(CSS Custom Highlight — src/pages/guide.tsx) */
+::highlight(guide-search) {
+  background-color: #fde68a;
+  color: #111827;
+}
+::highlight(guide-search-current) {
+  background-color: #f97316;
+  color: #ffffff;
+}

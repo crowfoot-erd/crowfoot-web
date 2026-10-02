@@ -2,6 +2,7 @@
   "guide": {
     "title": "利用ガイド",
     "description": "ERDを描き、標準(単語・用語・ドメインタイプ)を決め、データベースに反映し、チームで使う方法を作業の順に説明します。",
+    "search": {"placeholder": "ガイド内を検索", "none": "結果なし", "prev": "前の結果", "next": "次の結果", "clear": "検索をクリア"},
     "contents": "目次"
   },
   "common": {

@@ -2,6 +2,7 @@
   "guide": {
     "title": "User guide",
     "description": "How to draw ERDs, set standards (words, terms and domain types), apply designs to a database, and work as a team — in the order of real work.",
+    "search": {"placeholder": "Search the guide", "none": "No results", "prev": "Previous result", "next": "Next result", "clear": "Clear search"},
     "contents": "Contents"
   },
   "common": {

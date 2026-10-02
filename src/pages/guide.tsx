@@ -6,10 +6,13 @@
  * - 본문의 `{{키}}`는 그 언어의 화면 문구(번역 파일)로 바꿔 보여 준다 — 버튼·메뉴 이름이 화면과 어긋나지 않는다
  * - 왼쪽 목차는 본문의 `## ` 제목에서 만든다. 누르면 그 절로 스크롤한다.
  *   본문을 내리면 지금 읽는 절이 목차에서 강조된다
+ * - 위쪽 찾기 칸: 본문에서 글자를 찾아 표시하고(CSS Custom Highlight — 본문 DOM을 고치지 않는다),
+ *   Enter·Shift+Enter로 다음·이전 결과로 옮긴다. 목차에는 절마다 찾은 수가 붙는다
  * - 본문은 릴리스 노트와 같은 MarkdownViewer를 쓴다. 그림은 언어별로 따로 있다(public/guide-assets/{언어}/ —
  *   scripts/capture-guide.test.ts가 만든다). 그림을 누르면 새 창에서 원래 크기로 열린다
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -53,6 +56,53 @@ export function activeHeading(tops: number[], atBottom: boolean): number {
     if (top <= ACTIVE_LINE) index = i
   })
   return index
+}
+
+/** 찾은 곳 하나 — 글자 마디 안의 범위와 그 글자가 속한 절(h2) 번호. 첫 절 앞의 머리글은 -1 */
+export interface GuideMatch {
+  node: Text
+  start: number
+  end: number
+  section: number
+}
+
+/** 한 번에 표시하는 결과의 상한 — 한 글자 검색처럼 결과가 너무 많을 때 화면이 느려지지 않게 한다 */
+const MATCH_LIMIT = 1000
+
+/** 본문에서 글자를 찾는다 — 대소문자를 가리지 않는다. 문서 순서대로 돌려준다 */
+export function findMatches(root: Element, query: string): GuideMatch[] {
+  const needle = query.trim().toLowerCase()
+  if (needle === '') return []
+  const matches: GuideMatch[] = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
+  let section = -1
+  for (let node = walker.nextNode(); node !== null && matches.length < MATCH_LIMIT; node = walker.nextNode()) {
+    if (node instanceof Element) {
+      if (node.tagName === 'H2') section += 1
+      continue
+    }
+    const text = (node.textContent ?? '').toLowerCase()
+    for (let at = text.indexOf(needle); at !== -1 && matches.length < MATCH_LIMIT; at = text.indexOf(needle, at + needle.length)) {
+      matches.push({ node: node as Text, start: at, end: at + needle.length, section })
+    }
+  }
+  return matches
+}
+
+/** 찾은 곳을 본문에 표시한다 — 지원하는 브라우저에서만(없어도 찾기와 이동은 된다) */
+function paintMatches(matches: GuideMatch[], current: number) {
+  if (typeof CSS === 'undefined' || !('highlights' in CSS) || typeof Highlight === 'undefined') return
+  const toRange = (match: GuideMatch) => {
+    const range = new Range()
+    range.setStart(match.node, match.start)
+    range.setEnd(match.node, match.end)
+    return range
+  }
+  CSS.highlights.delete('guide-search')
+  CSS.highlights.delete('guide-search-current')
+  if (matches.length === 0) return
+  CSS.highlights.set('guide-search', new Highlight(...matches.map(toRange)))
+  if (matches[current]) CSS.highlights.set('guide-search-current', new Highlight(toRange(matches[current])))
 }
 
 /** 본문의 `## ` 제목 — 목차로 쓴다 */
@@ -121,14 +171,84 @@ export default function GuidePage() {
     }
   }, [markdown])
 
+  /* ---------- 찾기 ---------- */
+  const [query, setQuery] = useState('')
+  const [matches, setMatches] = useState<GuideMatch[]>([])
+  const [current, setCurrent] = useState(0)
+
+  // 찾을 글자나 본문이 바뀌면 다시 찾는다(본문은 뷰어가 늦게 그리므로 글자를 칠 때의 DOM을 읽는다)
+  useEffect(() => {
+    const article = articleRef.current
+    setMatches(article && markdown !== null ? findMatches(article, query) : [])
+    setCurrent(0)
+  }, [query, markdown])
+
+  useEffect(() => {
+    paintMatches(matches, current)
+    return () => paintMatches([], 0)
+  }, [matches, current])
+
+  /** 다음(+1)·이전(-1) 결과로 옮긴다 — 끝에서 처음으로 돈다 */
+  const step = (delta: number) => {
+    if (matches.length === 0) return
+    const next = (current + delta + matches.length) % matches.length
+    setCurrent(next)
+    matches[next].node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  /** 절마다 찾은 수 — 목차에 붙인다 */
+  const sectionCounts = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const match of matches) counts.set(match.section, (counts.get(match.section) ?? 0) + 1)
+    return counts
+  }, [matches])
+  const searching = query.trim() !== ''
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 text-lg font-semibold hover:opacity-80">
+          <Link to="/" aria-label={t('common.appName')} className="flex shrink-0 items-center gap-2 text-lg font-semibold hover:opacity-80">
             <Logo className="size-6" />
-            {t('common.appName')}
+            {/* 좁은 화면에서는 이름을 숨겨 찾기 칸에 자리를 준다 */}
+            <span className="hidden sm:inline">{t('common.appName')}</span>
           </Link>
+          {/* 찾기 — 본문에서 글자를 찾는다. Enter 다음, Shift+Enter 이전, Esc 지우기 */}
+          <div role="search" className="mx-2 flex min-w-0 max-w-md flex-1 items-center gap-1 rounded-md border bg-background px-2 sm:mx-3">
+            <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  step(event.shiftKey ? -1 : 1)
+                } else if (event.key === 'Escape') {
+                  setQuery('')
+                }
+              }}
+              placeholder={t('guide.search.placeholder')}
+              aria-label={t('guide.search.placeholder')}
+              className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+            />
+            {searching ? (
+              <>
+                <span aria-live="polite" data-testid="guide-search-count" className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {matches.length === 0 ? t('guide.search.none') : `${current + 1} / ${matches.length}`}
+                </span>
+                <button type="button" onClick={() => step(-1)} disabled={matches.length === 0} aria-label={t('guide.search.prev')} title={t('guide.search.prev')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40">
+                  <ChevronUp aria-hidden className="size-4" />
+                </button>
+                <button type="button" onClick={() => step(1)} disabled={matches.length === 0} aria-label={t('guide.search.next')} title={t('guide.search.next')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40">
+                  <ChevronDown aria-hidden className="size-4" />
+                </button>
+                <button type="button" onClick={() => setQuery('')} aria-label={t('guide.search.clear')} title={t('guide.search.clear')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                  <X aria-hidden className="size-4" />
+                </button>
+              </>
+            ) : null}
+          </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <LanguageSelect />
@@ -147,13 +267,20 @@ export default function GuidePage() {
                   onClick={() => scrollTo(index)}
                   aria-current={index === active ? 'location' : undefined}
                   className={cn(
-                    'w-full rounded border-l-2 px-2 py-1 text-left hover:bg-muted hover:text-foreground',
+                    'flex w-full items-start gap-2 rounded border-l-2 px-2 py-1 text-left hover:bg-muted hover:text-foreground',
                     index === active
                       ? 'border-primary bg-muted font-medium text-foreground'
                       : 'border-transparent text-muted-foreground',
+                    // 찾는 중에는 결과가 없는 절을 흐리게 한다
+                    searching && !sectionCounts.has(index) && 'opacity-40',
                   )}
                 >
-                  {heading}
+                  <span className="min-w-0 flex-1">{heading}</span>
+                  {sectionCounts.has(index) ? (
+                    <span data-testid="guide-toc-count" className="mt-0.5 shrink-0 rounded-full bg-primary px-1.5 text-[11px] font-medium leading-5 text-primary-foreground tabular-nums">
+                      {sectionCounts.get(index)}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             ))}
