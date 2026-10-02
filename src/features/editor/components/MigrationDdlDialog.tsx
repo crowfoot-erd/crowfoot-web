@@ -14,6 +14,7 @@ import { AlertTriangle, CheckCircle2, Copy, Download, Loader2, RefreshCw, Rocket
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Dialog,
@@ -76,6 +77,8 @@ export function MigrationDdlDialog({
   const { t } = useTranslation()
   // 반영 확인 다이얼로그 — 파괴적 문장 포함 시 destructive 강조(사용자 요청: 실행 전 경고)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // 삭제 문장(테이블·컬럼 삭제 등)은 따로 켰을 때만 실행한다 — 기본은 추가와 변경만(§1.15)
+  const [includeDestructive, setIncludeDestructive] = useState(false)
   const versionQuery = useVersionMigrationDdl(
     mode.kind === 'version' ? mode.workspaceId : '',
     mode.kind === 'version' ? mode.modelId : '',
@@ -110,7 +113,7 @@ export function MigrationDdlDialog({
   const runApply = () => {
     if (mode.kind !== 'connection') return
     apply.mutate(
-      { modelId: mode.modelId, connectionId: mode.connectionId },
+      { modelId: mode.modelId, connectionId: mode.connectionId, includeDestructive },
       {
         onSuccess: () => {
           setConfirmOpen(false)
@@ -128,6 +131,9 @@ export function MigrationDdlDialog({
       ? t('model.editor.migration.titleVersion', { from: mode.from, to: mode.to })
       : t('model.editor.migration.titleConnection')
   const hasDestructive = result?.warnings.some((warning) => warning.code === DESTRUCTIVE_CODE) ?? false
+  const destructiveStatements = result?.destructiveStatements ?? []
+  /** 실행할 문장 수 — 삭제 문장을 켜지 않았으면 뺀다 */
+  const runCount = (result?.statementCount ?? 0) - (includeDestructive ? 0 : destructiveStatements.length)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,6 +195,30 @@ export function MigrationDdlDialog({
               </div>
             ) : null}
 
+            {mode.kind === 'connection' && destructiveStatements.length > 0 ? (
+              <div
+                data-testid="migration-destructive"
+                className="rounded-md border border-destructive/40 bg-destructive/[0.05] px-3 py-2 text-xs text-foreground"
+              >
+                <label className="flex cursor-pointer items-center gap-2 font-medium">
+                  <Checkbox
+                    data-testid="migration-include-destructive"
+                    checked={includeDestructive}
+                    onCheckedChange={(value) => setIncludeDestructive(value === true)}
+                  />
+                  {t('model.editor.migration.includeDestructive', { count: destructiveStatements.length })}
+                </label>
+                <p className="mt-1 text-muted-foreground">{t('model.editor.migration.destructiveHint')}</p>
+                <ul className="mt-1.5 max-h-28 overflow-auto font-mono">
+                  {destructiveStatements.map((statement, index) => (
+                    <li key={index} className="break-all text-destructive">
+                      {firstLine(statement)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <pre
               data-testid="migration-ddl-script"
               className="max-h-[60vh] overflow-auto whitespace-pre rounded-md bg-muted/50 p-3 font-mono text-xs leading-relaxed"
@@ -222,6 +252,11 @@ export function MigrationDdlDialog({
                 failed: applyResult.failedCount,
               })}
             </p>
+            {(applyResult.skippedDestructive ?? 0) > 0 ? (
+              <p data-testid="migration-skipped" className="text-xs text-muted-foreground">
+                {t('model.editor.migration.skipped', { count: applyResult.skippedDestructive })}
+              </p>
+            ) : null}
             <ul className="max-h-56 overflow-auto rounded-md border">
               {applyResult.statements.map((statement, index) => (
                 <li key={index} className="grid gap-0.5 border-b px-3 py-1.5 text-xs last:border-b-0">
@@ -247,7 +282,7 @@ export function MigrationDdlDialog({
             <Button
               type="button"
               onClick={() => setConfirmOpen(true)}
-              disabled={!result || apply.isPending}
+              disabled={!result || apply.isPending || runCount <= 0}
               data-testid="migration-apply"
             >
               <Rocket aria-hidden className="size-3.5" />
@@ -274,12 +309,17 @@ export function MigrationDdlDialog({
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title={t('model.editor.migration.applyConfirmTitle')}
-          description={t('model.editor.migration.applyConfirmDescription', {
-            count: result?.statementCount ?? 0,
-            connection: connectionName ?? mode.connectionId,
-          })}
+          description={
+            t('model.editor.migration.applyConfirmDescription', {
+              count: runCount,
+              connection: connectionName ?? mode.connectionId,
+            }) +
+            (includeDestructive && destructiveStatements.length > 0
+              ? ` ${t('model.editor.migration.applyConfirmDestructive', { count: destructiveStatements.length })}`
+              : '')
+          }
           confirmLabel={t('model.editor.migration.applyConfirm')}
-          destructive={hasDestructive}
+          destructive={includeDestructive && destructiveStatements.length > 0}
           confirming={apply.isPending}
           onConfirm={runApply}
         />

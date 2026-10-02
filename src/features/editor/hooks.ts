@@ -105,8 +105,15 @@ export function useApplyConnectionMigration(workspaceId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ modelId, connectionId }: { modelId: string; connectionId: string }) =>
-      applyConnectionMigration(workspaceId, modelId, connectionId),
+    mutationFn: ({
+      modelId,
+      connectionId,
+      includeDestructive,
+    }: {
+      modelId: string
+      connectionId: string
+      includeDestructive?: boolean
+    }) => applyConnectionMigration(workspaceId, modelId, connectionId, includeDestructive ?? false),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({
         queryKey: [

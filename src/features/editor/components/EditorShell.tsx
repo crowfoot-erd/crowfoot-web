@@ -35,9 +35,9 @@ import { isApiError } from '@/api/client'
 import type { Model } from '@/api/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Loader2, Users } from 'lucide-react'
+import { Loader2, Users, RefreshCw } from 'lucide-react'
 import { serializeContent } from '@/features/editor/model/content-io'
-import { parseContent } from '@/features/editor/model/content-io'
+import { carryOverFromServer, parseContent } from '@/features/editor/model/content-io'
 import { placeMissingTables } from '@/features/editor/model/initial-placement'
 import { templateIdForDatabase } from '@/features/editor/model/dbms'
 import { copySelection, duplicateSelection, pasteClipboard } from '@/features/editor/model/clipboard-commands'
@@ -64,6 +64,7 @@ import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { TermDictionaryPanel, type TermPanelTab } from './TermDictionaryPanel'
+import { useAppUpdateAvailable } from '@/lib/app-update'
 import { RequirementsPanel } from './RequirementsPanel'
 import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 import { ValidationPanel } from './ValidationPanel'
@@ -279,7 +280,9 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
     // 놓은 결과가 문서 변경이 되어 자동 저장으로 남고, 볼 수만 있는 사람에게는 화면에만 놓인다
     const serverRaw = tryParse(model.content)
     const serverParsed = serverRaw ? placeMissingTables(serverRaw) : null
-    const draftRaw = restore ? tryParse(restore.content) : null
+    // 예전 화면이 남긴 임시본은 그 화면이 모르던 항목(요구사항 등)을 담고 있지 않다 — 서버 값을 이어 붙인다
+    const restoreContent = restore ? carryOverFromServer(restore.content, model.content) : null
+    const draftRaw = restoreContent ? tryParse(restoreContent) : null
     const draftParsed = draftRaw ? placeMissingTables(draftRaw) : null
     const placedOnOpen = canEdit && !draftParsed && serverRaw !== null && serverParsed !== serverRaw
     if (restore && !draftParsed) clearDraft(model.workspaceId, model.modelId) // 깨진 임시본 — 폐기
@@ -289,7 +292,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
       return
     }
     setParseError(false)
-    restoredDraftRef.current = draftParsed ? restore!.content : null
+    restoredDraftRef.current = draftParsed ? restoreContent : null
     // dirty인데 외부에서 버전이 올랐다 → 거부(로컬 보존), 충돌은 저장 시 409로 처리
     useEditorStore
       .getState()
@@ -565,6 +568,11 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
   const handleSave = useCallback(
     (options?: { silent?: boolean }) => {
       if (!editable || saveMutation.isPending) return
+      // 새 버전이 배포된 뒤에는 저장하지 않는다 — 예전 코드가 모르는 항목을 지울 수 있다
+      if (updateAvailableRef.current) {
+        if (!options?.silent) toast.info(t('model.editor.update.saveBlocked'))
+        return
+      }
       const state = useEditorStore.getState()
       if (state.past.length === state.savedDepth) return
 
@@ -691,11 +699,15 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
   // 충돌이 났으면 자동 재시도하지 않는다 — 다시 불러오기로 수화할 때까지 수동만.
   const dirty = useEditorStore(selectDirty)
   const [autosaveBlocked, setAutosaveBlocked] = useState(false)
+  // 새 버전이 배포됐다 — 이 화면(예전 코드)은 저장하지 않는다(02-ui.md §19). 새로고침 뒤에 임시본으로 이어 간다
+  const updateAvailable = useAppUpdateAvailable()
+  const updateAvailableRef = useRef(false)
+  updateAvailableRef.current = updateAvailable
   useEffect(() => {
-    if (!editable || !dirty || autosaveBlocked || saveMutation.isPending || conflictOpen) return
+    if (!editable || !dirty || autosaveBlocked || updateAvailable || saveMutation.isPending || conflictOpen) return
     const timer = setTimeout(() => handleSave({ silent: true }), AUTOSAVE_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [editable, dirty, autosaveBlocked, saveMutation.isPending, conflictOpen, handleSave])
+  }, [editable, dirty, autosaveBlocked, updateAvailable, saveMutation.isPending, conflictOpen, handleSave])
 
   /* ---------- 임시 저장 복원 플러시 ---------- */
 
@@ -740,6 +752,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
         ? JSON.stringify(diffDocuments(savedDocument, present))
         : undefined
       saveDraft(model.workspaceId, model.modelId, { baseVersion, content, savedAt: Date.now() })
+      // 새 버전이 배포된 뒤에는 서버로 보내지 않는다 — 임시본만 남기고, 새로고침한 새 화면이 이어서 저장한다
+      if (updateAvailableRef.current) return
       saveModelContentOnUnload(model.workspaceId, model.modelId, { baseVersion, content, changeSummary })
     }
     window.addEventListener('beforeunload', onBeforeUnload)
@@ -896,7 +910,22 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
           />
         ) : null}
         <div className="relative min-w-0 flex-1">
-          {remoteChangeOpen && !conflictOpen && (
+          {updateAvailable ? (
+            <div
+              data-testid="app-update-banner"
+              role="status"
+              className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-sky-300 bg-sky-100 px-3 py-1.5 text-sm text-sky-900 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-200"
+            >
+              <span className="flex items-center gap-2">
+                <RefreshCw className="size-4 shrink-0" aria-hidden />
+                {editable ? t('model.editor.update.banner') : t('model.editor.update.bannerReadOnly')}
+              </span>
+              <Button type="button" size="sm" variant="outline" className="h-7 shrink-0" onClick={() => window.location.reload()}>
+                {t('model.editor.update.reload')}
+              </Button>
+            </div>
+          ) : null}
+          {remoteChangeOpen && !conflictOpen && !updateAvailable && (
             <div
               data-testid="remote-change-banner"
               className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 border-b border-amber-300 bg-amber-100 px-3 py-1.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"

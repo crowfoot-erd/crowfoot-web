@@ -87,6 +87,8 @@ export interface MigrationDdlResult {
   fromLabel: string
   /** "v3" / "문서" */
   toLabel: string
+  /** 삭제 문장(테이블·컬럼·제약·인덱스 삭제) — 실행은 기본으로 이 문장을 뺀다(§1.15) */
+  destructiveStatements?: string[]
 }
 
 /** 마이그레이션 DDL — 버전 A→B 차이를 ALTER 문으로 (08-core/02-model.md §1.7.1).
@@ -124,10 +126,16 @@ export function fetchConnectionMigrationDdl(
  *  서버가 실행 시점에 introspect→diff를 재계산해 그 문장을 실행한다(클라이언트 SQL
  *  미수용). 한 문장이 실패해도 나머지를 계속 실행해 부분 실패까지 200으로 보고한다
  *  (1.8 배포와 같은 규칙 — 응답 형태도 deploy와 같다). */
-export function applyConnectionMigration(workspaceId: string, modelId: string, connectionId: string) {
+export function applyConnectionMigration(
+  workspaceId: string,
+  modelId: string,
+  connectionId: string,
+  includeDestructive = false,
+) {
   return apiPost<ModelDeployResult>(
     `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/connections/${connectionId}/migration/execute`,
-    undefined,
+    // 삭제 문장은 사용자가 따로 켰을 때만 실행한다 — 기본은 추가와 변경만
+    { includeDestructive },
   )
 }
 
@@ -161,6 +169,8 @@ export interface ModelDeployResult {
   failedCount: number
   statements: ModelDeployStatement[]
   warnings: ModelDdlWarning[]
+  /** 마이그레이션 실행이 건너뛴 삭제 문장의 수 */
+  skippedDestructive?: number
 }
 
 /** 포워드 엔지니어링 배포(§1.8) — DDL을 커넥션 DB에 문장별 실행.

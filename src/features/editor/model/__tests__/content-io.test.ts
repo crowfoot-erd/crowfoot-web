@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { emptyContent, parseContent, serializeContent } from '@/features/editor/model/content-io'
+import { emptyContent, parseContent, serializeContent, carryOverFromServer } from '@/features/editor/model/content-io'
 
 describe('content-io', () => {
   it('빈 문자열·null·undefined는 빈 문서 v1로 정규화한다', () => {
@@ -283,5 +283,29 @@ describe('parseContent — 관계 선택성 boolean 레거시 정규화', () => 
       childMultiplicity: 'TWO_OR_MORE',
     }).model.relationships[0]
     expect(demoted).toMatchObject({ parentMultiplicity: 'EXACTLY_ONE', childMultiplicity: 'ONE_OR_MORE' })
+  })
+
+  describe('carryOverFromServer — 예전 화면이 남긴 임시본', () => {
+    const server = JSON.stringify({
+      schemaVersion: 1,
+      model: { tables: [], relationships: [] },
+      diagram: { nodes: {}, notes: [], areas: [], requirements: [{ id: 'r1', code: 'REQ-001', title: '가입' }], viewport: null },
+    })
+
+    it('임시본의 diagram에 없는 키는 서버 값을 이어 붙인다', () => {
+      const draft = JSON.stringify({ schemaVersion: 1, model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], viewport: null } })
+      const merged = JSON.parse(carryOverFromServer(draft, server)) as { diagram: { requirements: unknown[] } }
+      expect(merged.diagram.requirements).toHaveLength(1)
+    })
+
+    it('키가 있으면 비어 있어도 임시본을 따른다 — 사용자가 지운 것이다', () => {
+      const draft = JSON.stringify({ schemaVersion: 1, model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null } })
+      expect(carryOverFromServer(draft, server)).toBe(draft)
+    })
+
+    it('서버 본체가 없거나 읽을 수 없으면 임시본을 그대로 둔다', () => {
+      expect(carryOverFromServer('{"diagram":{}}', null)).toBe('{"diagram":{}}')
+      expect(carryOverFromServer('not json', server)).toBe('not json')
+    })
   })
 })

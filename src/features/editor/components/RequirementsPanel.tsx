@@ -361,16 +361,20 @@ function RequirementRow({
               </span>
             ) : null}
           </span>
-          <span className={cn('block truncate font-medium', state === 'DROPPED' && 'text-muted-foreground line-through')}>
+          {/* 제목은 자르지 않고 줄을 바꾼다. 접혀 있을 때는 내용의 앞 두 줄을 미리 보여 준다 */}
+          <span className={cn('block break-words font-medium', state === 'DROPPED' && 'text-muted-foreground line-through')}>
             {requirement.title}
           </span>
+          {!expanded && requirement.description ? (
+            <span data-testid="requirement-preview" className="mt-0.5 line-clamp-2 block whitespace-pre-line break-words text-xs text-muted-foreground">
+              {requirement.description}
+            </span>
+          ) : null}
         </span>
       </button>
       {expanded ? (
         <div className="mb-2 ml-6 flex flex-col gap-2 border-l pl-3 text-sm" data-testid="requirement-detail">
-          <p className="whitespace-pre-wrap break-words text-muted-foreground">
-            {requirement.description || t('model.requirements.noDescription')}
-          </p>
+          <RequirementDescription text={requirement.description} emptyLabel={t('model.requirements.noDescription')} />
           {requirement.scope === 'tables' ? (
             requirement.tableIds.length > 0 ? (
               <ul className="flex flex-col" aria-label={t('model.requirements.linkedTables')}>
@@ -413,4 +417,34 @@ function RequirementRow({
       ) : null}
     </li>
   )
+}
+
+/**
+ * 요구사항의 내용 — 줄을 나눠 보여 준다.
+ * 줄바꿈이 있으면 그대로 따르고, "- "나 "• "로 시작하는 줄은 목록으로 그린다.
+ * 줄바꿈 없이 문장이 이어진 글(MCP가 한 줄로 등록한 경우)은 문장마다 줄을 나눈다.
+ */
+function RequirementDescription({ text, emptyLabel }: { text: string; emptyLabel: string }) {
+  const lines = descriptionLines(text)
+  if (lines.length === 0) return <p className="text-muted-foreground">{emptyLabel}</p>
+  if (lines.length === 1) return <p className="whitespace-pre-wrap break-words text-muted-foreground">{lines[0]}</p>
+  return (
+    <ul className="grid list-disc gap-1 pl-5 text-muted-foreground" data-testid="requirement-description-lines">
+      {lines.map((line, index) => (
+        <li key={index} className="break-words">
+          {line}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** 내용을 보여 줄 줄로 나눈다 — 목록 표시를 떼고 빈 줄을 버린다 */
+export function descriptionLines(text: string): string[] {
+  const trimmed = text.trim()
+  if (trimmed.length === 0) return []
+  const byNewline = trimmed.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0)
+  // 문장 끝(마침표·물음표·느낌표) 뒤의 공백에서 나눈다 — 0.5 같은 소수점은 뒤에 공백이 없어 나뉘지 않는다
+  const source = byNewline.length > 1 ? byNewline : trimmed.split(/(?<=[.!?。])\s+/)
+  return source.map((line) => line.trim().replace(/^[-•*·]\s+/, '')).filter((line) => line.length > 0)
 }

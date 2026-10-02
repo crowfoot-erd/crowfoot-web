@@ -117,6 +117,34 @@ export function parseContent(raw: string | null | undefined): ErdContent {
 }
 
 /** 저장 직렬화 — 저장 시에만 호출한다(키 입력마다 stringify하지 않는다 — 성능) */
+/**
+ * 임시 저장본에 서버 본체의 빠진 항목을 이어 붙인다.
+ * 예전 화면이 남긴 임시본에는 그 화면이 모르던 항목(요구사항 등)의 키가 아예 없다. 그대로 복원해 저장하면
+ * 서버의 그 항목이 지워진다. diagram에서 서버에는 있고 임시본에는 없는 키를 서버 값으로 채운다.
+ * 키가 있으면(빈 목록이어도) 임시본을 따른다 — 사용자가 지운 것이다. core의 ContentCarryOver와 같은 규칙이다.
+ */
+export function carryOverFromServer(draftRaw: string, serverRaw: string | null | undefined): string {
+  if (!serverRaw) return draftRaw
+  try {
+    const draft = JSON.parse(draftRaw) as { diagram?: Record<string, unknown> }
+    const server = JSON.parse(serverRaw) as { diagram?: Record<string, unknown> }
+    if (!draft.diagram || !server.diagram || typeof draft.diagram !== 'object' || typeof server.diagram !== 'object') {
+      return draftRaw
+    }
+    let carried = false
+    for (const [key, value] of Object.entries(server.diagram)) {
+      const empty = value === null || (Array.isArray(value) && value.length === 0)
+      if (!(key in draft.diagram) && !empty) {
+        draft.diagram[key] = value
+        carried = true
+      }
+    }
+    return carried ? JSON.stringify(draft) : draftRaw
+  } catch {
+    return draftRaw
+  }
+}
+
 export function serializeContent(content: ErdContent): string {
   return JSON.stringify(content)
 }

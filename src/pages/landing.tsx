@@ -5,8 +5,9 @@
  * - 인증 상태에서도 열람 가능(리다이렉트 없음) — CTA는 로그인/앱 진입으로 전환, 헤더에 앱 셸과 같은 사용자 메뉴(정보·로그아웃)
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Cable, Clock, Code2, Database, Eye, FileCode2, FileDown, Flame, Heart, History, Layers, LibraryBig, ListChecks, Share2, ShieldCheck, Users, BookOpenText } from 'lucide-react'
+import { ArrowUpRight, Cable, ClipboardList, Clock, Code2, Rows3, Sparkles, Database, Eye, FileCode2, FileDown, Flame, Heart, History, Layers, LibraryBig, ListChecks, Share2, ShieldCheck, Users, BookOpenText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { DbmsIcon } from '@/components/dbms-icon'
@@ -21,7 +22,6 @@ import { usePublicReleaseNotes } from '@/features/community/hooks'
 import { useSharedGallery } from '@/features/models/hooks'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { currentLanguage } from '@/lib/i18n'
-import { useTheme } from '@/lib/theme'
 import { formatDate } from '@/lib/format'
 import { APP_VERSION } from '@/lib/version'
 import { useSessionStore } from '@/stores/session'
@@ -29,6 +29,24 @@ import { useSessionStore } from '@/stores/session'
 /** 특징 카드 정의 — 핵심(무료 매니지드 DB)이 먼저 온다. 아이콘은 중립 도형만 (lucide v1 브랜드 아이콘 없음).
  *  카드 하나가 검색 의도 하나에 대응한다(ERD 에디터·협업·리버스·DDL·검증·버전·예제·공유·내보내기) —
  *  문구는 i18n landing.features.{key} (04-front/storyboard/00-common.md §3.11) */
+/** 히어로 아래의 제품 화면 — 사용 가이드 그림의 이름(public/guide-assets/{언어}/) */
+const LANDING_SHOTS = ['editor-overview', 'editor-requirements', 'workspace-mcp', 'data-tab'] as const
+/** 슬라이드의 장 — 첫 장은 AI 연동(MCP) 소개, 나머지는 제품 화면 */
+const LANDING_SLIDES = ['mcp', ...LANDING_SHOTS] as const
+
+/** 슬라이드가 넘어가는 간격 */
+const SHOT_INTERVAL_MS = 5000
+
+/** MCP 구역의 요점 */
+const MCP_POINTS = [
+  { key: 'requirements', icon: ClipboardList },
+  { key: 'design', icon: Layers },
+  { key: 'deploy', icon: Database },
+  { key: 'sample', icon: Rows3 },
+] as const
+/** 대화 예시 — 요청과 결과가 번갈아 온다 */
+const MCP_EXAMPLE = ['ask1', 'done1', 'ask2', 'done2', 'ask3', 'done3'] as const
+
 const FEATURES = [
   { key: 'managed', icon: Database },
   { key: 'editor', icon: Layers },
@@ -47,8 +65,21 @@ const FEATURES = [
 export function LandingPage() {
   const { t } = useTranslation()
   // 히어로 이미지 — 언어·테마에 맞는 한 장만 싣는다(두 장을 깔고 CSS로 숨기면 둘 다 내려받는다)
-  const { theme } = useTheme()
-  const heroImage = `/landing/editor-${currentLanguage()}-${theme}.webp`
+  /** 히어로 아래에서 보여 줄 제품 화면 — 탭으로 고른다 */
+  const [shot, setShot] = useState<(typeof LANDING_SLIDES)[number]>('mcp')
+  // 슬라이드 — 5초마다 다음 장으로 넘어간다. 마우스를 올리면 멈추고, 탭을 직접 고르면 그 뒤로는 넘기지 않는다.
+  // 움직임을 줄이도록 설정한 사용자에게는 넘기지 않는다
+  const [hovering, setHovering] = useState(false)
+  const [picked, setPicked] = useState(false)
+  useEffect(() => {
+    if (hovering || picked) return
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => {
+      setShot((current) => LANDING_SLIDES[(LANDING_SLIDES.indexOf(current) + 1) % LANDING_SLIDES.length])
+    }, SHOT_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [hovering, picked])
+  const shotIndex = LANDING_SLIDES.indexOf(shot)
   /** 사용 가이드 — 새 창으로 연다. 지금 언어의 주소로 보낸다(ko는 접두 없음) */
   const guideHref = currentLanguage() === 'ko' ? '/guide' : `/${currentLanguage()}/guide`
   // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외).
@@ -122,7 +153,7 @@ export function LandingPage() {
           <p className="max-w-xl text-base text-muted-foreground">{t('landing.hero.description')}</p>
           {/* 핵심 강조 — 무료 매니지드 DB 조건 */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {(['engines', 'quota', 'free'] as const).map((key) => (
+            {(['engines', 'quota', 'free', 'mcp'] as const).map((key) => (
               <span
                 key={key}
                 className="rounded-full border bg-muted/50 px-3 py-1 text-xs text-muted-foreground"
@@ -150,18 +181,125 @@ export function LandingPage() {
               </a>
             </Button>
           </div>
-          {/* 제품 화면 — 에디터 캡처(scripts/capture-landing-hero.mjs 산출, 2045×1221).
-              크기를 적어 두어 이미지가 뜨기 전에도 자리가 잡힌다(레이아웃 밀림 방지) */}
-          <figure className="mt-6 w-full overflow-hidden rounded-xl border bg-muted/30 shadow-lg">
-            <img
-              src={heroImage}
-              alt={t('landing.hero.imageAlt')}
-              width={2045}
-              height={1221}
-              decoding="async"
-              className="block h-auto w-full"
-            />
-          </figure>
+        </section>
+
+        {/* 슬라이드 — 히어로 바로 아래. 첫 장이 AI 연동(MCP) 소개다(2026-10-02 사용자 요청 — MCP를 강조하고 화면 슬라이드와 합친다) */}
+        <section className="w-full" aria-label={t('landing.shots.label')}>
+          {/* 제품 화면 — 슬라이드. 화면 한 장을 크게 보여 주고 몇 초마다 다음 화면으로 넘긴다. 위의 탭으로 직접 고른다
+              (2026-10-02 사용자 요청 — 큰 그림 한 장 대신 여러 화면을 롤링. 작게 늘어놓으면 글자가 보이지 않는다).
+              그림은 사용 가이드의 것을 쓴다(언어별). 그림을 누르면 새 창에서 원래 크기로 연다 */}
+          <div
+            className="w-full"
+            data-testid="landing-shots"
+            onMouseEnter={() => setHovering(true)}
+            onMouseLeave={() => setHovering(false)}
+            onFocus={() => setHovering(true)}
+            onBlur={() => setHovering(false)}
+          >
+            <div role="tablist" aria-label={t('landing.shots.label')} className="mb-3 flex flex-wrap items-center justify-center gap-2">
+              {LANDING_SLIDES.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  role="tab"
+                  aria-selected={shot === name}
+                  onClick={() => {
+                    setShot(name)
+                    setPicked(true)
+                  }}
+                  className={
+                    shot === name
+                      ? 'rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground'
+                      : 'rounded-full border px-4 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }
+                >
+                  {name === 'mcp' ? t('landing.shots.mcp') : t(`landing.shots.${name}.caption`)}
+                </button>
+              ))}
+            </div>
+            {/* 슬라이드 트랙 — 첫 장은 AI 연동(MCP) 소개, 그 뒤로 제품 화면 넷. 가로로 이어 놓고 옆으로 민다
+                (끊기지 않게 transform 전환). 보이지 않는 장은 inert로 두어 초점이 가지 않는다 */}
+            <div className="overflow-hidden rounded-2xl border bg-muted/30 shadow-lg">
+              <div
+                data-testid="landing-shots-track"
+                data-index={shotIndex}
+                className="flex transition-transform duration-700 ease-in-out motion-reduce:transition-none"
+                style={{ transform: `translateX(-${shotIndex * 100}%)` }}
+              >
+                {/* 첫 장 — AI와 함께 설계(MCP — v1.31·v1.32). 요청과 결과의 예시를 대화 모양으로 보여 준다 */}
+                <div
+                  data-testid="landing-mcp"
+                  aria-label={t('landing.shots.mcp')}
+                  inert={shotIndex !== 0}
+                  className="w-full shrink-0 bg-gradient-to-br from-primary/10 via-background to-background p-6 text-left md:p-10"
+                >
+                  <div className="grid h-full items-center gap-8 md:grid-cols-2">
+                    <div className="flex flex-col gap-4">
+                      <span className="flex w-fit items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                        <Sparkles aria-hidden className="size-3.5" />
+                        {t('landing.mcp.badge')}
+                      </span>
+                      <h2 className="text-3xl font-bold tracking-tight">
+                        {t('landing.mcp.title')}
+                      </h2>
+                      <p className="text-base text-muted-foreground">{t('landing.mcp.description')}</p>
+                      <ul className="grid gap-2.5">
+                        {MCP_POINTS.map(({ key, icon: Icon }) => (
+                          <li key={key} className="flex items-start gap-2.5 text-sm">
+                            <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                            <span>
+                              <span className="font-medium">{t(`landing.mcp.points.${key}.title`)}</span>
+                              <span className="text-muted-foreground"> — {t(`landing.mcp.points.${key}.description`)}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <Button asChild>
+                          <a href={`${guideHref}#20.1`} target="_blank" rel="noopener noreferrer" data-testid="landing-mcp-guide">
+                            {t('landing.mcp.cta')}
+                            <ArrowUpRight aria-hidden />
+                          </a>
+                        </Button>
+                        <span className="text-xs text-muted-foreground">{t('landing.mcp.clients')}</span>
+                      </div>
+                    </div>
+                    {/* 대화 예시 — 요청(›)과 결과(✓). 실제 화면이 아니라 쓰임새를 보여 주는 글이다 */}
+                    <div className="rounded-xl border bg-zinc-950 p-4 font-mono text-[13px] leading-relaxed text-zinc-100 shadow-lg" aria-label={t('landing.mcp.exampleLabel')}>
+                      {MCP_EXAMPLE.map((key, index) => (
+                        <p key={key} className={index % 2 === 0 ? 'mt-3 first:mt-0' : 'pl-4 text-emerald-400'}>
+                          <span aria-hidden className={index % 2 === 0 ? 'mr-2 text-zinc-500' : 'mr-2'}>
+                            {index % 2 === 0 ? '›' : '✓'}
+                          </span>
+                          {t(`landing.mcp.example.${key}`)}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {LANDING_SHOTS.map((name, index) => {
+                  const src = `/guide-assets/${currentLanguage()}/${name}.webp`
+                  return (
+                    <a
+                      key={name}
+                      href={src}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex w-full shrink-0 items-center bg-background"
+                      inert={index + 1 !== shotIndex}
+                    >
+                      <img
+                        src={src}
+                        alt={t(`landing.shots.${name}.alt`)}
+                        decoding="async"
+                        className="block aspect-[5/3] w-full object-contain"
+                      />
+                    </a>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* 3단계 흐름 — 그리기 → 함께 다듬기 → 실행 (히어로 메시지의 전개) */}

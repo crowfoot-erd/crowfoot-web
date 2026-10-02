@@ -113,7 +113,7 @@ describe('MigrationDdlDialog — 문서↔실제 DB', () => {
     expect(
       screen.getByText(/커넥션 개발 PG의 데이터베이스에 마이그레이션 DDL 1문장을 실행합니다/),
     ).toBeVisible()
-    expect(screen.getByText(/되돌릴 수 없고/)).toBeVisible()
+    expect(screen.getByText(/되돌릴 수 없습니다/)).toBeVisible()
 
     // 취소하면 확인창만 닫힌다 — 실행 요청은 가지 않는다
     fireEvent.click(screen.getByRole('button', { name: '취소' }))
@@ -123,27 +123,99 @@ describe('MigrationDdlDialog — 문서↔실제 DB', () => {
     expect(screen.queryByTestId('migration-apply-result')).not.toBeInTheDocument()
   })
 
-  it('파괴적 문장이 포함되면 확인 버튼이 destructive 톤이다', async () => {
+  /** 추가 1문장과 삭제 2문장이 섞인 계획 */
+  function mixedPlan() {
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models/501/connections/301/migration', () =>
+        okResponse({
+          sql: 'ALTER TABLE users ADD COLUMN grade VARCHAR(10);\n\nALTER TABLE users DROP COLUMN temp_flag;\nDROP TABLE legacy_logs;',
+          warnings: [{ code: 'DESTRUCTIVE', message: '파괴적 연산 2건이 스크립트 마지막 블록에 모여 있습니다' }],
+          statementCount: 3,
+          fromLabel: 'DB',
+          toLabel: '문서',
+          destructiveStatements: ['ALTER TABLE users DROP COLUMN temp_flag;', 'DROP TABLE legacy_logs;'],
+        }),
+      ),
+    )
+  }
+
+  it('삭제 문장은 기본으로 실행하지 않는다 — 추가와 변경만 보내고 건너뛴 수를 알린다', async () => {
+    mixedPlan()
+    let body: Record<string, unknown> | null = null
+    server.use(
+      http.post('/api/v1/core/workspaces/101/models/501/connections/301/migration/execute', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return okResponse({
+          executedCount: 1,
+          failedCount: 0,
+          statements: [{ sql: 'ALTER TABLE users ADD COLUMN grade VARCHAR(10);', ok: true, error: null }],
+          warnings: [],
+          skippedDestructive: 2,
+        })
+      }),
+    )
+    renderDialog(connectionMode)
+
+    // 삭제 문장을 따로 보여 주고, 실행 여부는 꺼져 있다
+    const destructive = await screen.findByTestId('migration-destructive')
+    expect(within(destructive).getByText('DROP TABLE legacy_logs;')).toBeVisible()
+    expect(screen.getByTestId('migration-include-destructive')).toHaveAttribute('aria-checked', 'false')
+
+    fireEvent.click(screen.getByTestId('migration-apply'))
+    // 확인 문구의 문장 수는 삭제 문장을 뺀 수다. 확인 버튼은 위험 표시가 아니다
+    expect(await screen.findByText(/마이그레이션 DDL 1문장을 실행합니다/)).toBeVisible()
+    const confirm = screen.getByRole('button', { name: '반영' })
+    expect(confirm.className).not.toContain('text-destructive')
+    fireEvent.click(confirm)
+
+    await screen.findByTestId('migration-apply-result')
+    expect(body).toEqual({ includeDestructive: false })
+    expect(screen.getByTestId('migration-skipped')).toHaveTextContent('삭제 문장 2건은 실행하지 않았습니다')
+  })
+
+  it('삭제 문장을 켜면 함께 실행한다 — 확인창이 삭제 건수를 밝히고 위험 표시가 된다', async () => {
+    mixedPlan()
+    let body: Record<string, unknown> | null = null
+    server.use(
+      http.post('/api/v1/core/workspaces/101/models/501/connections/301/migration/execute', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return okResponse({ executedCount: 3, failedCount: 0, statements: [], warnings: [], skippedDestructive: 0 })
+      }),
+    )
+    renderDialog(connectionMode)
+
+    fireEvent.click(await screen.findByTestId('migration-include-destructive'))
+    fireEvent.click(screen.getByTestId('migration-apply'))
+
+    expect(await screen.findByText(/마이그레이션 DDL 3문장을 실행합니다/)).toBeVisible()
+    expect(screen.getByText(/삭제 문장 2건이 포함되어 있습니다/)).toBeVisible()
+    const confirm = screen.getByRole('button', { name: '반영' })
+    expect(confirm.className).toContain('text-destructive')
+    fireEvent.click(confirm)
+
+    await screen.findByTestId('migration-apply-result')
+    expect(body).toEqual({ includeDestructive: true })
+  })
+
+  it('삭제 문장뿐이면 켜기 전에는 반영할 수 없다', async () => {
     server.use(
       http.get('/api/v1/core/workspaces/101/models/501/connections/301/migration', () =>
         okResponse({
           sql: 'ALTER TABLE users DROP COLUMN temp_flag;',
-          warnings: [
-            { code: 'DESTRUCTIVE', message: 'DROP 문이 포함되어 있습니다 — 실행 전 대상 환경의 데이터를 확인하세요.' },
-          ],
+          warnings: [{ code: 'DESTRUCTIVE', message: '파괴적 연산 1건' }],
           statementCount: 1,
           fromLabel: 'DB',
           toLabel: '문서',
+          destructiveStatements: ['ALTER TABLE users DROP COLUMN temp_flag;'],
         }),
       ),
     )
     renderDialog(connectionMode)
 
-    await screen.findByTestId('migration-ddl-script')
-    fireEvent.click(screen.getByTestId('migration-apply'))
-
-    const confirm = await screen.findByRole('button', { name: '반영' })
-    expect(confirm.className).toContain('text-destructive')
+    await screen.findByTestId('migration-destructive')
+    expect(screen.getByTestId('migration-apply')).toBeDisabled()
+    fireEvent.click(screen.getByTestId('migration-include-destructive'))
+    expect(screen.getByTestId('migration-apply')).toBeEnabled()
   })
 
   it('확인하면 실행 요청 후 문장별 결과를 표시한다', async () => {

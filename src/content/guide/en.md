@@ -641,7 +641,7 @@ Use this when the document and the real database have drifted apart. Open it wit
 | **{{model.editor.migration.button}}** | Document → database | Turns the differences between the document and the database into ALTER statements. You can run them right away with **{{model.editor.migration.apply}}** |
 
 * When the document is brought in line, properties that exist only in the document, such as table colors, positions, and notes, are kept. A single undo puts everything back.
-* Running migration DDL on a database cannot be undone. A warning appears if any statement drops a column or a table.
+* Running migration DDL on a database cannot be undone. Statements that drop a column or a table are not run by default; only additions and changes are applied. To run them too, turn on **{{model.editor.migration.destructiveToggle}}**. If you link a new document to a database that is already in use, every existing table missing from the document shows up as a deletion, so check carefully.
 
 To connect a document that is not connected, use **{{model.list.menu.connect}}** in the row menu of the document list.
 
@@ -1013,3 +1013,6 @@ Please write it in **{{shell.nav.community}}** › **{{shell.sidebar.communityFe
 
 **Can I undo what Claude changed?**
 Yes. Every change Claude makes is saved as a version, so you can restore an earlier one from the version history.
+
+**What if "A new version has been deployed" appears at the top?**
+Refresh the page. The screen you had open is the old version, so it stops saving. Unsaved edits are restored after the refresh.

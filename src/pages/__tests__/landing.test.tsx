@@ -5,10 +5,10 @@
  * when: 렌더
  * then: 특징 카드·갤러리(인기 박스·템플릿 섹션 부재)·릴리스·CTA 링크 노출, 빈 섹션 숨김과 인증 CTA 규칙 검증
  */
-import { screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { Route } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
@@ -19,6 +19,54 @@ import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/
 describe('랜딩 페이지', () => {
   beforeEach(() => {
     resetSessionState()
+  })
+
+  it('슬라이드 — 5초마다 다음 장으로 넘어가고, 마우스를 올리거나 탭을 고르면 멈춘다', () => {
+    vi.useFakeTimers()
+    try {
+      renderWithProviders(<Route path="/" element={<LandingPage />} />)
+      const shots = screen.getByTestId('landing-shots')
+      const index = () => within(shots).getByTestId('landing-shots-track').getAttribute('data-index')
+      expect(index()).toBe('0')
+
+      act(() => vi.advanceTimersByTime(4900))
+      expect(index()).toBe('0')
+      act(() => vi.advanceTimersByTime(100))
+      expect(index()).toBe('1')
+
+      // 마우스를 올리면 멈추고, 떼면 다시 넘어간다
+      fireEvent.mouseEnter(shots)
+      act(() => vi.advanceTimersByTime(15000))
+      expect(index()).toBe('1')
+      fireEvent.mouseLeave(shots)
+      act(() => vi.advanceTimersByTime(5000))
+      expect(index()).toBe('2')
+
+      // 마지막 장 다음은 첫 장으로 돌아온다
+      act(() => vi.advanceTimersByTime(15000))
+      expect(index()).toBe('0')
+
+      // 탭을 직접 고르면 그 뒤로는 넘기지 않는다
+      fireEvent.click(within(shots).getAllByRole('tab')[4])
+      act(() => vi.advanceTimersByTime(30000))
+      expect(index()).toBe('4')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('AI 연동(MCP) 소개 — 슬라이드의 첫 장. 요점 넷과 대화 예시, 연결 방법은 사용 가이드의 그 소제목으로 새 창에서 연다', async () => {
+    renderWithProviders(<Route path="/" element={<LandingPage />} />)
+    const section = await screen.findByTestId('landing-mcp')
+    expect(within(section).getByRole('heading', { level: 2 })).toHaveTextContent('Claude와 ChatGPT가 ERD를 그립니다')
+    expect(within(section).getAllByRole('listitem')).toHaveLength(4)
+    expect(section).toHaveTextContent('샘플 데이터')
+    expect(section).toHaveTextContent('도서 대여 서비스의 요구사항을 정리해서 ERD로 만들어 줘')
+    const guide = within(section).getByTestId('landing-mcp-guide')
+    expect(guide).toHaveAttribute('href', '/guide#20.1')
+    expect(guide).toHaveAttribute('target', '_blank')
+    // MCP 소개는 슬라이드의 첫 장이다
+    expect(screen.getByTestId('landing-shots-track').firstElementChild).toBe(section)
   })
 
   it('사용 가이드 링크 — 헤더·히어로·주요 기능 아래·푸터에 있고 모두 새 창으로 연다', () => {
@@ -38,10 +86,34 @@ describe('랜딩 페이지', () => {
   it('게스트 — 히어로·핵심 강조·특징 12종·CTA를 렌더한다', () => {
     renderWithProviders(<Route path="/" element={<LandingPage />} />)
 
-    // 히어로에 제품 화면 — 언어·테마에 맞는 한 장, 대체 문구와 크기(자리 확보)를 갖는다
-    const heroImage = screen.getByRole('img', { name: /Crowfoot ERD 에디터 화면/ })
-    expect(heroImage).toHaveAttribute('src', '/landing/editor-ko-light.webp')
-    expect(heroImage).toHaveAttribute('width', '2045')
+    // 히어로 아래의 슬라이드 — 첫 장은 AI 연동(MCP) 소개, 그 뒤로 제품 화면 넷. 탭으로 고른다
+    const shots = screen.getByTestId('landing-shots')
+    const tabs = within(shots).getAllByRole('tab')
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['AI 연동 (MCP)', 'ERD 에디터', '요구사항 추적', 'Claude·ChatGPT 연결', '데이터 브라우저'])
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+    // 화면 넷이 한 줄(트랙)에 이어져 있고, 고른 화면의 자리로 옆으로 민다
+    const track = within(shots).getByTestId('landing-shots-track')
+    const images = track.querySelectorAll('img')
+    expect([...images].map((image) => image.getAttribute('src'))).toEqual([
+      '/guide-assets/ko/editor-overview.webp',
+      '/guide-assets/ko/editor-requirements.webp',
+      '/guide-assets/ko/workspace-mcp.webp',
+      '/guide-assets/ko/data-tab.webp',
+    ])
+    expect(images[0]).toHaveAttribute('alt', expect.stringContaining('Crowfoot ERD 에디터 화면'))
+    expect(track).toHaveAttribute('data-index', '0')
+    expect(track.style.transform).toBe('translateX(-0%)')
+
+    // 첫 장(MCP 소개)이 보이고 다른 장은 초점이 가지 않는다
+    expect(within(track).getByTestId('landing-mcp')).not.toHaveAttribute('inert')
+    expect(images[0].closest('a')).toHaveAttribute('inert')
+
+    fireEvent.click(tabs[3])
+    expect(tabs[3]).toHaveAttribute('aria-selected', 'true')
+    expect(track.style.transform).toBe('translateX(-300%)')
+    expect(images[2].closest('a')).toHaveAttribute('target', '_blank')
+    expect(images[2].closest('a')).not.toHaveAttribute('inert')
+    expect(within(track).getByTestId('landing-mcp')).toHaveAttribute('inert')
     // h1에 검색 핵심어(무료 ERD)가 들어 있다
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('브라우저에서 그리는 무료 ERD,')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('그대로 실제 데이터베이스가 됩니다')

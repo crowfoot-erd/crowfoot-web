@@ -14,6 +14,7 @@ import type { ReactElement } from 'react'
 import type { Model } from '@/api/types'
 import { fail, fixtures, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
+import { useAppUpdateStore } from '@/lib/app-update'
 import { EditorShell } from '@/features/editor'
 import { createArea, createColumn, createTable, type ErdChange } from '@/features/editor/model/changes'
 import type { DocumentDiffSummary } from '@/features/editor/model/doc-diff'
@@ -1134,6 +1135,32 @@ describe('EditorShell — 자동 저장', () => {
       },
       { timeout: 5000 },
     )
+  }, 15000)
+})
+
+describe('EditorShell — 새 버전 안내 (02-ui.md §19)', () => {
+  afterEach(() => useAppUpdateStore.setState({ available: false }))
+
+  it('새 버전이 배포되면 안내를 띄우고 이 화면에서는 저장하지 않는다', async () => {
+    let puts = 0
+    server.use(
+      http.put('/api/v1/core/workspaces/101/models/501/content', () => {
+        puts += 1
+        return HttpResponse.json(ok({ response: { version: 4, updatedAt: '2026-09-18T00:00:00Z' } }))
+      }),
+    )
+    await renderEditor()
+    expect(screen.queryByTestId('app-update-banner')).toBeNull()
+
+    act(() => useAppUpdateStore.setState({ available: true }))
+    expect(await screen.findByTestId('app-update-banner')).toHaveTextContent('새 버전이 배포되었습니다')
+
+    // 편집해도 자동 저장이 나가지 않고, 저장 버튼을 눌러도 보내지 않는다
+    act(() => useEditorStore.getState().commit({ type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } }))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    await new Promise((resolve) => setTimeout(resolve, 2600))
+    expect(puts).toBe(0)
+    expect(useEditorStore.getState().baseVersion).toBe(3)
   }, 15000)
 })
 

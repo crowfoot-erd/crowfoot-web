@@ -5,7 +5,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { RequirementsPanel } from '@/features/editor/components/RequirementsPanel'
+import { RequirementsPanel, descriptionLines } from '@/features/editor/components/RequirementsPanel'
 import { createColumn, createTable } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdRequirement } from '@/features/editor/model/content-schema'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
@@ -215,5 +215,41 @@ describe('RequirementsPanel', () => {
     act(() => useRequirementsPanel.getState().reveal('r5'))
     expect(screen.getByText('선물하기')).toBeInTheDocument()
     expect(screen.getByTestId('requirement-detail')).toBeInTheDocument()
+  })
+
+  it('내용은 줄을 나눠 보여 준다 — 접혀 있으면 미리 보기, 펼치면 줄마다', () => {
+    renderPanel()
+    // 접힌 행에도 내용의 앞부분이 보인다
+    expect(screen.getByTestId('requirement-preview')).toHaveTextContent('이메일은 중복될 수 없다')
+    act(() =>
+      useEditorStore.getState().commit({
+        type: 'requirement/patch',
+        requirementId: 'r1',
+        patch: { description: '이메일은 중복될 수 없다. 가입 시각을 남긴다. 탈퇴한 회원은 30일 뒤에 지운다.' },
+      }),
+    )
+    fireEvent.click(screen.getByText('이메일로 가입한다'))
+    const lines = within(screen.getByTestId('requirement-description-lines')).getAllByRole('listitem')
+    expect(lines.map((line) => line.textContent)).toEqual(['이메일은 중복될 수 없다.', '가입 시각을 남긴다.', '탈퇴한 회원은 30일 뒤에 지운다.'])
+  })
+})
+
+describe('descriptionLines', () => {
+  it('줄바꿈이 있으면 그 줄을 따르고 목록 표시를 뗀다', () => {
+    expect(descriptionLines('- 주문 한 건에 상품을 여러 개 담는다\n- 단가를 남긴다\n\n• 취소는 배송 전까지')).toEqual([
+      '주문 한 건에 상품을 여러 개 담는다',
+      '단가를 남긴다',
+      '취소는 배송 전까지',
+    ])
+  })
+
+  it('한 줄로 이어진 글은 문장마다 나눈다. 소수점은 나누지 않는다', () => {
+    expect(descriptionLines('평점은 1~5점이다. 0.5점 단위로 준다. 리뷰는 구매자만 쓴다')).toEqual([
+      '평점은 1~5점이다.',
+      '0.5점 단위로 준다.',
+      '리뷰는 구매자만 쓴다',
+    ])
+    expect(descriptionLines('  ')).toEqual([])
+    expect(descriptionLines('한 문장')).toEqual(['한 문장'])
   })
 })

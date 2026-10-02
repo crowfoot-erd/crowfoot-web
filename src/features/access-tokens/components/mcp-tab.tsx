@@ -45,7 +45,7 @@ import { cn } from 'cn'
 
 /** 사용 방법의 단계와 예시 요청 — 문구는 번역 파일에 있다 */
 const USAGE_STEPS = ['run', 'check', 'ask', 'open'] as const
-const USAGE_EXAMPLES = ['list', 'create', 'requirement', 'modify', 'ddl', 'deploy', 'sample'] as const
+const USAGE_EXAMPLES = ['list', 'create', 'requirement', 'modify', 'ddl', 'deploy', 'sample', 'migrate'] as const
 
 interface McpTabProps {
   workspaceId: string

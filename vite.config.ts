@@ -1,11 +1,27 @@
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
+
+/** 빌드 식별자 — 배포마다 달라진다. 열려 있는 화면이 새 배포를 알아채는 데 쓴다(src/lib/app-update.ts) */
+const APP_BUILD = process.env.NODE_ENV === 'production' ? String(Date.now()) : 'dev'
+
+/** dist/version.json — 화면이 주기적으로 읽어 자기 빌드 식별자와 견준다 */
+const emitVersionFile = (): Plugin => ({
+  name: 'crowfoot-version-file',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: APP_BUILD }) })
+  },
+})
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), emitVersionFile()],
+  define: {
+    __APP_BUILD__: JSON.stringify(APP_BUILD),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

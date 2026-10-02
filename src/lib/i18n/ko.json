@@ -254,7 +254,7 @@
     }
   },
   "workspace": {
-    "mcp": {"usage": {"title": "사용 방법", "steps": {"run": "명령을 실행한 폴더에서 Claude Code(claude)나 Codex(codex)를 켭니다. 등록은 그 폴더에서만 적용됩니다.", "check": "대화 창에 /mcp 를 입력해 이 워크스페이스가 연결됐는지 확인합니다.", "ask": "하고 싶은 일을 말로 요청합니다. 도구 이름을 몰라도 됩니다.", "open": "AI가 알려 주는 문서 주소를 열어 결과를 봅니다. 요구사항은 에디터 맨 아래의 요구사항 탭에 있습니다."}, "examplesTitle": "이렇게 요청해 보세요", "examples": {"list": "Crowfoot 워크스페이스에 어떤 문서가 있는지 보여 줘", "create": "도서 대여 서비스의 요구사항을 정리해서 MySQL용 새 ERD 문서로 만들어 줘", "requirement": "방금 만든 문서에 연체료 요구사항을 추가하고 테이블에 반영해 줘", "modify": "회원 테이블에 전화번호 컬럼을 추가해 줘. 워크스페이스의 용어 사전을 따라서", "ddl": "이 문서를 검증하고 DDL을 보여 줘", "deploy": "서비스 제공 DB를 하나 발급받아 이 문서를 배포해 줘", "sample": "배포한 데이터베이스에 샘플 데이터를 테이블마다 10건씩 넣어 줘"}, "note": "데이터베이스의 구조를 바꾸는 요청은 MCP 반영을 허용한 커넥션과 서비스 제공 DB에서만 실행됩니다. 실행 전에 SQL을 먼저 보여 줍니다. 모든 폴더에서 쓰려면 등록 명령에 --scope user 를 붙입니다."}, "connectTitle": "연결 방법", "connectHintReady": "명령에 토큰이 들어 있습니다. 복사해서 바로 쓰세요.", "connectHintEmpty": "토큰을 발급하면 토큰이 채워진 명령이 여기에 나옵니다.", "connectToken": "토큰", "copyToken": "토큰 복사", "clientLabel": "클라이언트", "client": {"claude": "Claude Code", "codex": "ChatGPT (Codex)"}, "codexLabel": "Codex 설정 (~/.codex/config.toml)", "codexHint": "이 블록을 ~/.codex/config.toml 파일에 붙여 넣으면 Codex에 이 워크스페이스가 등록됩니다. ChatGPT 웹·모바일 앱의 커넥터는 OAuth가 필요해 이 토큰으로는 연결할 수 없습니다.", "tokenPlaceholder": "<토큰>", "title": "액세스 토큰", "introTitle": "Claude·ChatGPT에서 이 워크스페이스 쓰기", "intro": "토큰을 발급해 Claude Code나 ChatGPT(Codex)에 등록하면 AI가 이 워크스페이스의 ERD를 읽고 고칩니다. 토큰은 발급한 사람의 권한으로 이 워크스페이스에서만 동작합니다.", "readOnlyNotice": "내 역할로 발급한 토큰은 읽기만 할 수 있습니다.", "guideLink": "사용 가이드에서 연결 방법 보기", "issueButton": "토큰 발급", "empty": "발급한 토큰이 없습니다", "emptyDetail": "토큰을 발급해 Claude Code에 등록하세요", "table": {"name": "이름", "prefix": "토큰", "createdBy": "발급한 사람", "createdAt": "발급일", "expiresAt": "만료일", "lastUsedAt": "마지막 사용", "actions": "작업"}, "noExpiry": "무기한", "neverUsed": "사용 전", "expiryDays": "{{days}}일", "revoke": "폐기", "revokeTitle": "토큰 폐기", "revokeDescription": "\"{{name}}\" 토큰을 폐기할까요? 이 토큰으로 연결한 Claude는 더 이상 접근할 수 없습니다.", "revokeSuccess": "토큰을 폐기했습니다", "issueTitle": "토큰 발급", "issueDescription": "한 사람이 {{max}}개까지 발급할 수 있습니다.", "nameLabel": "이름", "namePlaceholder": "예: 내 노트북의 Claude Code", "nameRequired": "이름을 입력하세요", "expiryLabel": "기간", "issueConfirm": "발급", "issuedTitle": "토큰을 발급했습니다", "issuedDescription": "토큰과 등록 방법입니다. MCP 탭에서 언제든 다시 복사할 수 있습니다.", "tokenLabel": "토큰", "commandLabel": "Claude Code 등록 명령", "commandHint": "터미널에서 이 명령을 실행하면 Claude Code에 이 워크스페이스가 등록됩니다. 토큰을 대화에 붙여 넣지 마세요.", "issuedClose": "확인", "copy": "복사", "copied": "복사됨", "copyFailed": "복사하지 못했습니다"},
+    "mcp": {"usage": {"title": "사용 방법", "steps": {"run": "명령을 실행한 폴더에서 Claude Code(claude)나 Codex(codex)를 켭니다. 등록은 그 폴더에서만 적용됩니다.", "check": "대화 창에 /mcp 를 입력해 이 워크스페이스가 연결됐는지 확인합니다.", "ask": "하고 싶은 일을 말로 요청합니다. 도구 이름을 몰라도 됩니다.", "open": "AI가 알려 주는 문서 주소를 열어 결과를 봅니다. 요구사항은 에디터 맨 아래의 요구사항 탭에 있습니다."}, "examplesTitle": "이렇게 요청해 보세요", "examples": {"list": "Crowfoot 워크스페이스에 어떤 문서가 있는지 보여 줘", "create": "도서 대여 서비스의 요구사항을 정리해서 MySQL용 새 ERD 문서로 만들어 줘", "requirement": "방금 만든 문서에 연체료 요구사항을 추가하고 테이블에 반영해 줘", "modify": "회원 테이블에 전화번호 컬럼을 추가해 줘. 워크스페이스의 용어 사전을 따라서", "ddl": "이 문서를 검증하고 DDL을 보여 줘", "deploy": "서비스 제공 DB를 하나 발급받아 이 문서를 배포해 줘", "sample": "배포한 데이터베이스에 샘플 데이터를 테이블마다 10건씩 넣어 줘", "migrate": "문서를 고친 뒤 바뀐 부분만 데이터베이스에 반영해 줘"}, "note": "데이터베이스의 구조를 바꾸는 요청은 MCP 반영을 허용한 커넥션과 서비스 제공 DB에서만 실행됩니다. 실행 전에 SQL을 먼저 보여 주고, 테이블이나 컬럼을 지우는 문장은 따로 승인해야 실행됩니다. 모든 폴더에서 쓰려면 등록 명령에 --scope user 를 붙입니다."}, "connectTitle": "연결 방법", "connectHintReady": "명령에 토큰이 들어 있습니다. 복사해서 바로 쓰세요.", "connectHintEmpty": "토큰을 발급하면 토큰이 채워진 명령이 여기에 나옵니다.", "connectToken": "토큰", "copyToken": "토큰 복사", "clientLabel": "클라이언트", "client": {"claude": "Claude Code", "codex": "ChatGPT (Codex)"}, "codexLabel": "Codex 설정 (~/.codex/config.toml)", "codexHint": "이 블록을 ~/.codex/config.toml 파일에 붙여 넣으면 Codex에 이 워크스페이스가 등록됩니다. ChatGPT 웹·모바일 앱의 커넥터는 OAuth가 필요해 이 토큰으로는 연결할 수 없습니다.", "tokenPlaceholder": "<토큰>", "title": "액세스 토큰", "introTitle": "Claude·ChatGPT에서 이 워크스페이스 쓰기", "intro": "토큰을 발급해 Claude Code나 ChatGPT(Codex)에 등록하면 AI가 이 워크스페이스의 ERD를 읽고 고칩니다. 토큰은 발급한 사람의 권한으로 이 워크스페이스에서만 동작합니다.", "readOnlyNotice": "내 역할로 발급한 토큰은 읽기만 할 수 있습니다.", "guideLink": "사용 가이드에서 연결 방법 보기", "issueButton": "토큰 발급", "empty": "발급한 토큰이 없습니다", "emptyDetail": "토큰을 발급해 Claude Code에 등록하세요", "table": {"name": "이름", "prefix": "토큰", "createdBy": "발급한 사람", "createdAt": "발급일", "expiresAt": "만료일", "lastUsedAt": "마지막 사용", "actions": "작업"}, "noExpiry": "무기한", "neverUsed": "사용 전", "expiryDays": "{{days}}일", "revoke": "폐기", "revokeTitle": "토큰 폐기", "revokeDescription": "\"{{name}}\" 토큰을 폐기할까요? 이 토큰으로 연결한 Claude는 더 이상 접근할 수 없습니다.", "revokeSuccess": "토큰을 폐기했습니다", "issueTitle": "토큰 발급", "issueDescription": "한 사람이 {{max}}개까지 발급할 수 있습니다.", "nameLabel": "이름", "namePlaceholder": "예: 내 노트북의 Claude Code", "nameRequired": "이름을 입력하세요", "expiryLabel": "기간", "issueConfirm": "발급", "issuedTitle": "토큰을 발급했습니다", "issuedDescription": "토큰과 등록 방법입니다. MCP 탭에서 언제든 다시 복사할 수 있습니다.", "tokenLabel": "토큰", "commandLabel": "Claude Code 등록 명령", "commandHint": "터미널에서 이 명령을 실행하면 Claude Code에 이 워크스페이스가 등록됩니다. 토큰을 대화에 붙여 넣지 마세요.", "issuedClose": "확인", "copy": "복사", "copied": "복사됨", "copyFailed": "복사하지 못했습니다"},
     "list": {
       "title": "워크스페이스",
       "myRole": "내 역할",
@@ -1258,6 +1258,7 @@
         "reload": "다시 불러오기",
         "keep": "계속 편집"
       },
+      "update": {"banner": "새 버전이 배포되었습니다. 새로고침한 뒤에 이어서 편집하세요. 저장하지 않은 편집은 새로고침 뒤에 복원됩니다.", "bannerReadOnly": "새 버전이 배포되었습니다. 새로고침하면 새 화면으로 봅니다.", "reload": "새로고침", "saveBlocked": "새 버전이 배포되어 이 화면에서는 저장하지 않습니다. 새로고침하세요."},
       "remoteChange": {
         "banner": "다른 사용자가 문서를 수정했습니다. 지금 저장하면 충돌합니다.",
         "reload": "서버 본문 불러오기",
@@ -1399,7 +1400,7 @@
         "button": "마이그레이션 DDL",
         "apply": "DB에 반영",
         "applyConfirmTitle": "데이터베이스에 반영",
-        "applyConfirmDescription": "커넥션 {{connection}}의 데이터베이스에 마이그레이션 DDL {{count}}문장을 실행합니다. 되돌릴 수 없고, 파괴적 연산이 포함되어 있으면 데이터가 손실될 수 있습니다. 계속하시겠습니까?",
+        "includeDestructive": "삭제 문장 {{count}}건도 실행", "destructiveToggle": "삭제 문장도 실행", "destructiveHint": "켜지 않으면 추가와 변경만 반영하고 삭제 문장은 건너뜁니다. 삭제하면 그 테이블과 컬럼의 데이터가 사라지고 되돌릴 수 없습니다.", "skipped": "삭제 문장 {{count}}건은 실행하지 않았습니다.", "applyConfirmDescription": "커넥션 {{connection}}의 데이터베이스에 마이그레이션 DDL {{count}}문장을 실행합니다. 되돌릴 수 없습니다. 계속하시겠습니까?", "applyConfirmDestructive": "삭제 문장 {{count}}건이 포함되어 있습니다. 해당 테이블과 컬럼의 데이터가 사라집니다.",
         "applyConfirm": "반영",
         "applySuccess": "마이그레이션 DDL을 데이터베이스에 반영했습니다"
       },
@@ -1675,6 +1676,8 @@
     "skippedToast": "읽지 못한 문장: {{skipped}}"
   },
   "landing": {
+    "shots": {"mcp": "AI 연동 (MCP)", "label": "제품 화면", "editor-overview": {"caption": "ERD 에디터", "alt": "Crowfoot ERD 에디터 화면 — 테이블과 관계선으로 그린 온라인 쇼핑몰 ERD"}, "editor-requirements": {"caption": "요구사항 추적", "alt": "요구사항 탭 — 그룹별 요구사항과 연결된 테이블"}, "workspace-mcp": {"caption": "Claude·ChatGPT 연결", "alt": "워크스페이스의 MCP 탭 — 연결 방법과 등록 명령"}, "data-tab": {"caption": "데이터 브라우저", "alt": "데이터 브라우저 — 연결한 데이터베이스의 테이블 데이터"}},
+    "mcp": {"badge": "NEW · AI 연동 (MCP)", "title": "말로 설계하세요. Claude와 ChatGPT가 ERD를 그립니다", "description": "Claude Code나 ChatGPT(Codex)에 Crowfoot을 연결하면, 대화로 요구사항을 정리하고 ERD를 만들고 실제 데이터베이스까지 채울 수 있습니다. 결과는 Crowfoot 화면에 그대로 나타나고, 화면에서 고친 것은 AI가 다시 읽습니다.", "points": {"requirements": {"title": "요구사항 정리", "description": "대화에서 나온 요구사항을 문서에 남기고, 어느 테이블이 구현하는지 추적합니다"}, "design": {"title": "ERD 작성과 수정", "description": "워크스페이스의 용어 사전과 도메인 타입에 맞춰 테이블과 관계를 만듭니다"}, "deploy": {"title": "데이터베이스 배포", "description": "무료 DB를 발급받아 배포하고, 바뀐 부분만 다시 반영합니다. 실행 전에 SQL을 먼저 보여 줍니다"}, "sample": {"title": "샘플 데이터", "description": "테이블 구조에 맞는 샘플 데이터를 만들어 실제 데이터베이스에 넣습니다"}}, "cta": "연결 방법 보기", "clients": "Claude Code · ChatGPT(Codex) 지원", "exampleLabel": "AI에게 요청하는 예시", "example": {"ask1": "도서 대여 서비스의 요구사항을 정리해서 ERD로 만들어 줘", "done1": "요구사항 6건 등록 · 테이블 5개, 관계 4개 생성", "ask2": "무료 MySQL을 발급받아 배포해 줘", "done2": "데이터베이스 발급 · DDL 9문장 실행", "ask3": "테이블마다 샘플 데이터 10건씩 넣어 줘", "done3": "5개 테이블에 50행 추가"}},
     "badge": "무료 온라인 ERD 툴 · 오픈소스",
     "hero": {
       "title": "브라우저에서 그리는 무료 ERD,",
@@ -1685,7 +1688,7 @@
     "highlight": {
       "engines": "PostgreSQL · MySQL",
       "quota": "계정당 최대 5개",
-      "free": "무료 제공"
+      "free": "무료 제공", "mcp": "Claude·ChatGPT 연동(MCP)"
     },
     "steps": {
       "label": "ERD 작성부터 DB 생성까지",
