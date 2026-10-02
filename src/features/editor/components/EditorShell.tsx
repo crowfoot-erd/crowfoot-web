@@ -25,6 +25,7 @@
  * - 단축키는 input/textarea/select 포커스 시 스킵. dirty면 beforeunload 가드.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { cn } from 'cn'
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -64,6 +65,7 @@ import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { TermDictionaryPanel, type TermPanelTab } from './TermDictionaryPanel'
 import { RequirementsPanel } from './RequirementsPanel'
+import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 import { ValidationPanel } from './ValidationPanel'
 import { ValidationHighlightContext } from './canvas/validation-context'
 import { useValidationIssues } from '@/features/editor/model/use-validation'
@@ -600,6 +602,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
       const target = event.target as HTMLElement | null
       // target이 window(포커스 없는 keydown)일 수 있다 — closest는 요소에만 있다
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return
+      // 요구사항 탭에서는 캔버스가 보이지 않는다 — 되돌리기·다시 실행·저장만 받는다(보이지 않는 선택을 지우지 않게)
+      if (useRequirementsPanel.getState().open && !(mod && ['z', 'y', 's'].includes(key))) return
 
       // Esc — 선택 해제(보기 동작이라 읽기 전용도 동작)
       if (key === 'escape') {
@@ -814,9 +818,19 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
 
   // 문서 대상 DBMS — 문서 생성 시점의 모델 메타(코드 테이블)로 고정. 에디터에서 전환하지 않는다
   const dbmsId = templateIdForDatabase(model.databaseType)
+  const requirementsView = useRequirementsPanel((state) => state.open)
+  // 문서를 열 때는 늘 ERD 탭에서 시작한다
+  useEffect(() => {
+    useRequirementsPanel.getState().hide()
+    return () => useRequirementsPanel.getState().hide()
+  }, [model.modelId])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* 요구사항 탭(화면 맨 아래) — 문서에 속한 내용이라 공개 뷰어도 읽기 전용으로 본다(02-ui.md §17).
+          에디터는 감추기만 하고 내리지 않는다 — 자동 저장과 협업 채널이 요구사항 편집에도 그대로 동작한다 */}
+      <RequirementsPanel canEdit={editable} />
+      <div className={cn('flex min-h-0 flex-1 flex-col', requirementsView && 'hidden')} data-testid="editor-canvas-area">
       <EditorToolbar
         canEdit={editable}
         saving={saveMutation.isPending}
@@ -881,8 +895,6 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
             modelId={model.modelId}
           />
         ) : null}
-        {/* 요구사항 패널 — 문서에 속한 내용이라 공개 뷰어와 버전 뷰어도 읽기 전용으로 본다(02-ui.md §17) */}
-        <RequirementsPanel canEdit={editable} />
         <div className="relative min-w-0 flex-1">
           {remoteChangeOpen && !conflictOpen && (
             <div
@@ -971,6 +983,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
           )}
         </div>
       </main>
+      </div>
 
       {/* 그룹 편집 — 캔버스 그룹 생성 직후·익스플로러 폴더 헤더에서 연다. 색·멤버 체크는
           즉시 커밋이라 present에서 실시간으로 읽는다 */}

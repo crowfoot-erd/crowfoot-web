@@ -61,12 +61,13 @@ describe('공유 문서 공개 뷰어', () => {
     //       2026-09-27 2차 보고로 철회 — 댓글 0인데 1로 보이면 댓글이 있는 것처럼 읽힌다)
     const tabs = await screen.findByTestId('share-viewer-tabs')
     const tabButtons = within(tabs).getAllByRole('tab')
-    expect(tabButtons).toHaveLength(2)
+    expect(tabButtons).toHaveLength(3)
+    expect(tabButtons[1]).toHaveTextContent('요구사항')
     expect(tabButtons[0]).toHaveTextContent('ERD')
     expect(tabButtons[0]).toHaveAttribute('aria-selected', 'true')
-    expect(tabButtons[1]).toHaveTextContent('댓글')
-    expect(within(tabButtons[1]).getByText('3')).toBeVisible() // 배지 칩 = 댓글 수(픽스처 3건)
-    expect(tabButtons[1]).toHaveAttribute('aria-selected', 'false')
+    expect(tabButtons[2]).toHaveTextContent('댓글')
+    expect(within(tabButtons[2]).getByText('3')).toBeVisible() // 배지 칩 = 댓글 수(픽스처 3건)
+    expect(tabButtons[2]).toHaveAttribute('aria-selected', 'false')
     // 기본 탭에서는 피드백 섹션이 없다 — 에디터가 화면을 다 쓴다
     expect(screen.queryByTestId('share-feedback-section')).not.toBeInTheDocument()
 
@@ -113,7 +114,7 @@ describe('공유 문서 공개 뷰어', () => {
     renderViewer('Sh4reT0ken0fM0del501aaaa')
 
     // 댓글 탭 선택 — 탭 바 위 영역 전체가 피드백 패널로 교체된다
-    fireEvent.click((await screen.findAllByRole('tab'))[1])
+    fireEvent.click((await screen.findAllByRole('tab'))[2])
 
     expect(await screen.findByTestId('share-feedback-section')).toBeVisible()
     expect(screen.getByTestId('share-reaction-count')).toHaveTextContent('9')
@@ -155,7 +156,7 @@ describe('공유 문서 공개 뷰어', () => {
 
     // 좋아요 1 + 댓글 0 → 배지 0 — 좋아요는 [♥ n] 칩(섹션 헤더·툴바)이 담당한다
     const tabs = await screen.findByTestId('share-viewer-tabs')
-    const commentsTab = within(tabs).getAllByRole('tab')[1]
+    const commentsTab = within(tabs).getAllByRole('tab')[2]
     await within(commentsTab).findByText('0')
 
     // 댓글 탭으로 이동해 비회원 댓글 작성 → 재조회로 배지가 1로 오른다

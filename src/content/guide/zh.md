@@ -51,7 +51,7 @@ Crowfoot 的界面大致分为三种。
 | 工具栏 | 资源管理器、术语词典、校验、撤销、保存、自动布局、生成 SQL、共享、导出、工具、视图、放大和缩小 |
 | 中间 | 画布。放置表、关系线、备注和分组 |
 | 右下角 | 小地图和文档聊天按钮 |
-| 最下方 | **ERD** 标签页和 **{{shareViewer.tab.comments}}** 标签页 |
+| 最下方 | **ERD**、**{{shareViewer.tab.requirements}}**、**{{shareViewer.tab.comments}}** 标签页 |
 
 工具栏上的按钮在第 5 节逐一说明。
 
@@ -222,7 +222,6 @@ Crowfoot 的界面大致分为三种。
 | **{{model.editor.explorer.toggle}}** | 在左侧打开或关闭模型资源管理器（见 5.2 节） |
 | **{{model.editor.termDictionary.toggle}}** | 打开或关闭术语词典和域类型面板（见第 9 节） |
 | **{{model.validation.toggle}}** | 打开或关闭设计校验面板。问题数量以数字显示（见第 12 节） |
-| **{{model.editor.toolbar.requirements}}** | 打开或关闭需求面板。待反映的需求数量以数字显示（见第 20.3 节） |
 | {{model.editor.toolbar.undo}}、{{model.editor.toolbar.redo}} | 把编辑逐步撤销或重做 |
 | **{{model.editor.toolbar.save}}** | 立即保存。编辑后稍等片刻也会自动保存 |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | 自动重新排列表。用旁边的箭头选择方式和方向（见 5.3 节） |
@@ -939,10 +938,10 @@ Crowfoot 的界面大致分为三种。
 
 ![需求面板](/guide-assets/zh/editor-requirements.webp)
 
-点击工具栏的 **{{model.editor.toolbar.requirements}}**，左侧会打开面板。需求与文档一起保存。有待反映的需求时，按钮上会显示数量。
+点击编辑器最下方的 **{{shareViewer.tab.requirements}}** 标签页，会打开需求界面。需求与文档一起保存。有待反映的需求时，标签页上会显示数量。
 
 * 需求按分组归类显示。没有分组的归入 **{{model.requirements.group.unassigned}}**，适用于整个文档的归入 **{{model.requirements.group.document}}**。
-* 点击行会展开内容和链接的表。点击表名，画布会移动到该表。
+* 点击行会展开内容和链接的表。点击表名，会回到 ERD 标签页并显示该表。
 * 用上方的状态按钮筛选。最初只隐藏 **{{model.requirements.state.DROPPED}}**。
 * 面板下方的 **{{model.requirements.untraced.title}}** 是未链接到任何需求的表。
 

@@ -57,13 +57,31 @@ describe('ERD 문서 열기', () => {
     //       (픽스처 댓글 3건 — 좋아요 합산은 2026-09-27 2차 보고로 철회)
     const tabs = screen.getByTestId('model-viewer-tabs')
     const tabButtons = within(tabs).getAllByRole('tab')
-    expect(tabButtons).toHaveLength(2)
+    expect(tabButtons).toHaveLength(3)
+    expect(tabButtons[1]).toHaveTextContent('요구사항')
     expect(tabButtons[0]).toHaveTextContent('ERD')
     expect(tabButtons[0]).toHaveAttribute('aria-selected', 'true')
-    expect(tabButtons[1]).toHaveTextContent('댓글')
-    expect(tabButtons[1]).toHaveAttribute('aria-selected', 'false')
-    await within(tabButtons[1]).findByText('3') // 배지 칩 = 댓글 수
+    expect(tabButtons[2]).toHaveTextContent('댓글')
+    expect(tabButtons[2]).toHaveAttribute('aria-selected', 'false')
+    await within(tabButtons[2]).findByText('3') // 배지 칩 = 댓글 수
     expect(screen.queryByTestId('share-feedback-section')).not.toBeInTheDocument()
+  })
+
+  it('요구사항 탭 — 캔버스를 감추고 요구사항 화면을 보여 준다. ERD 탭으로 돌아오면 에디터가 그대로다', async () => {
+    renderViewer()
+    await screen.findByRole('heading', { name: '주문 서비스 ERD' })
+    const [erdTab, requirementsTab] = await screen.findAllByRole('tab')
+
+    fireEvent.click(requirementsTab)
+    expect(requirementsTab).toHaveAttribute('aria-selected', 'true')
+    expect(erdTab).toHaveAttribute('aria-selected', 'false')
+    expect(await screen.findByTestId('requirements-panel')).toBeInTheDocument()
+    // 에디터는 내리지 않고 감추기만 한다 — 자동 저장과 협업 채널이 이어진다
+    expect(screen.getByTestId('editor-canvas-area')).toHaveClass('hidden')
+
+    fireEvent.click(erdTab)
+    expect(screen.queryByTestId('requirements-panel')).toBeNull()
+    expect(screen.getByTestId('editor-canvas-area')).not.toHaveClass('hidden')
   })
 
   it('switches the document feedback panel in via the comments tab', async () => {
@@ -71,7 +89,7 @@ describe('ERD 문서 열기', () => {
     await screen.findByRole('heading', { name: '주문 서비스 ERD' })
 
     // 댓글 탭 선택 — 탭 바 위 영역이 문서 단위 피드백 패널로 교체된다
-    fireEvent.click((await screen.findAllByRole('tab'))[1])
+    fireEvent.click((await screen.findAllByRole('tab'))[2])
 
     expect(await screen.findByTestId('share-feedback-section')).toBeVisible()
     expect(screen.getByTestId('share-reaction-count')).toHaveTextContent('9')
@@ -95,7 +113,7 @@ describe('ERD 문서 열기', () => {
     renderViewer()
     await screen.findByRole('heading', { name: '주문 서비스 ERD' })
 
-    fireEvent.click((await screen.findAllByRole('tab'))[1])
+    fireEvent.click((await screen.findAllByRole('tab'))[2])
     expect(await screen.findByTestId('share-feedback-section')).toBeVisible()
 
     // 회원 폼(내용만) — 별명·비밀번호 칸은 공개 뷰어의 비회원 전용
@@ -127,7 +145,7 @@ describe('ERD 문서 열기', () => {
     renderViewer()
     await screen.findByRole('heading', { name: '주문 서비스 ERD' })
 
-    fireEvent.click((await screen.findAllByRole('tab'))[1])
+    fireEvent.click((await screen.findAllByRole('tab'))[2])
     expect(await screen.findByTestId('share-feedback-section')).toBeVisible()
     expect(await screen.findByTestId('share-feedback-readonly')).toBeVisible()
     expect(screen.queryByTestId('share-feedback-form')).not.toBeInTheDocument()

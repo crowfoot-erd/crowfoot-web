@@ -51,7 +51,7 @@ Crowfootの画面は大きく3種類あります。
 | ツールバー | エクスプローラー、用語辞書、検証、元に戻す、保存、自動レイアウト、SQL生成、共有、書き出し、ツール、表示、拡大と縮小 |
 | 中央 | キャンバス。テーブル、リレーション線、メモ、グループが置かれます |
 | 右下 | ミニマップとドキュメントチャットのボタン |
-| 最下部 | **ERD** タブと **{{shareViewer.tab.comments}}** タブ |
+| 最下部 | **ERD** タブ、**{{shareViewer.tab.requirements}}** タブ、**{{shareViewer.tab.comments}}** タブ |
 
 ツールバーのボタンは5 節で1つずつ説明します。
 
@@ -222,7 +222,6 @@ Crowfootの画面は大きく3種類あります。
 | **{{model.editor.explorer.toggle}}** | 左側のモデルエクスプローラーを開閉します(5.2 節) |
 | **{{model.editor.termDictionary.toggle}}** | 用語辞書とドメインタイプのパネルを開閉します(9 節) |
 | **{{model.validation.toggle}}** | 設計検証パネルを開閉します。問題の件数が数字で付きます(12 節) |
-| **{{model.editor.toolbar.requirements}}** | 要件パネルを開閉します。反映待ちの要件の件数が数字で付きます(20.3 節) |
 | {{model.editor.toolbar.undo}}、{{model.editor.toolbar.redo}} | 編集を1段階ずつ元に戻し、やり直します |
 | **{{model.editor.toolbar.save}}** | 今すぐ保存します。編集すると、少しあとに自動でも保存されます |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | テーブルを自動で並べ直します。横の矢印で方式と向きを選びます(5.3 節) |
@@ -939,10 +938,10 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 
 ![要件パネル](/guide-assets/ja/editor-requirements.webp)
 
-ツールバーの **{{model.editor.toolbar.requirements}}** を押すと、左にパネルが開きます。要件はドキュメントと一緒に保存されます。反映待ちの要件があると、ボタンにその件数が付きます。
+エディタ最下部の **{{shareViewer.tab.requirements}}** タブを押すと、要件の画面が開きます。要件はドキュメントと一緒に保存されます。反映待ちの要件があると、タブにその件数が付きます。
 
 * 要件はグループごとにまとめて表示されます。グループのないものは **{{model.requirements.group.unassigned}}**、ドキュメント全体に当てはまるものは **{{model.requirements.group.document}}** に集まります。
-* 行を押すと、内容とリンクされたテーブルが開きます。テーブル名を押すと、キャンバスがそのテーブルに移動します。
+* 行を押すと、内容とリンクされたテーブルが開きます。テーブル名を押すと、ERD タブに戻ってそのテーブルを表示します。
 * 上の状態ボタンで絞り込みます。最初は **{{model.requirements.state.DROPPED}}** だけが隠れています。
 * パネル下部の **{{model.requirements.untraced.title}}** は、どの要件にもリンクされていないテーブルです。
 

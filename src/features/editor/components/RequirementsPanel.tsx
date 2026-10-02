@@ -1,5 +1,5 @@
 /**
- * 요구사항 패널 — 에디터 왼쪽 패널 (v1.31, 05-editor/02-ui.md §17)
+ * 요구사항 화면 — 문서 화면 맨 아래의 "요구사항" 탭 (v1.31, 05-editor/02-ui.md §17)
  *
  * 요구사항은 ERD 문서에 속한다(diagram.requirements). Claude가 MCP로 등록한 요구사항을 여기서 보고 고친다.
  * - 도메인(그룹)별 묶음 → 미분류 → 공통 순서. 행은 코드, 제목, 상태 판정 배지, 연결된 테이블 수.
@@ -7,7 +7,7 @@
  * - 행을 펼치면 내용과 연결된 테이블이 나온다. 테이블 이름을 누르면 캔버스가 그 테이블로 간다.
  * - 아래에 "근거 없는 테이블"(어떤 요구사항에도 연결되지 않은 테이블)을 따로 보여 준다.
  * - 편집(Editor 이상)은 다이얼로그에서 한다. 요구사항 변경은 문서 편집이라 되돌리기·자동 저장·협업이 같이 동작한다.
- * - 패널은 열릴 때만 마운트된다(익스플로러·용어 사전·검증과 같은 패턴).
+ * - 탭이 열릴 때만 마운트된다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블로 간다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
@@ -117,16 +117,21 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
       const layout = state.present.diagram.nodes[tableId]
       if (!table || !layout) return
       setSelection([tableId])
+      // ERD 탭으로 돌아간 뒤에 옮긴다 — 감춰져 있는 동안에는 캔버스의 크기를 잴 수 없다
+      useRequirementsPanel.getState().hide()
       const w = tableRenderWidth(layout.width ?? null, 0)
       const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
-      const el = document.querySelector('.react-flow')
-      const size = el
-        ? { width: el.clientWidth, height: el.clientHeight }
-        : { width: window.innerWidth || 1200, height: window.innerHeight || 800 }
-      const zoom = Math.max(rf.getViewport().zoom, FOCUS_MIN_ZOOM)
-      rf.setViewport(viewportCenteredOn({ x: layout.x + w / 2, y: layout.y + h / 2 }, zoom, size, FOCUS_EXTENT), {
-        duration: 200,
-      })
+      setTimeout(() => {
+        const el = document.querySelector('.react-flow')
+        const size =
+          el && el.clientWidth > 0
+            ? { width: el.clientWidth, height: el.clientHeight }
+            : { width: window.innerWidth || 1200, height: window.innerHeight || 800 }
+        const zoom = Math.max(rf.getViewport().zoom, FOCUS_MIN_ZOOM)
+        rf.setViewport(viewportCenteredOn({ x: layout.x + w / 2, y: layout.y + h / 2 }, zoom, size, FOCUS_EXTENT), {
+          duration: 200,
+        })
+      }, 60)
     },
     [rf, setSelection],
   )
@@ -150,13 +155,14 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
   const editing = dialog?.requirementId ? (requirements.find((r) => r.id === dialog.requirementId) ?? null) : null
 
   return (
-    <aside
+    <section
       data-testid="requirements-panel"
       aria-label={t('model.requirements.title')}
-      className="flex h-full w-80 shrink-0 flex-col border-r bg-background"
+      className="min-h-0 flex-1 overflow-y-auto bg-background"
     >
-      <div className="flex items-center justify-between border-b px-2 py-1.5">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+      <div className="mx-auto flex w-full max-w-4xl flex-col px-4 py-4">
+      <div className="flex items-center justify-between border-b px-1 pb-2">
+        <h2 className="flex items-center gap-1.5 text-base font-semibold">
           <ClipboardList aria-hidden className="size-4" />
           {t('model.requirements.title')}
           <span className="text-xs font-normal tabular-nums text-muted-foreground">{requirements.length}</span>
@@ -170,7 +176,7 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
       </div>
 
       {/* 판정 필터 — 칩이 요약이자 토글이다(활성=보임) */}
-      <div className="flex flex-wrap gap-1 border-b px-2 py-1.5" role="group" aria-label={t('model.requirements.filterLabel')}>
+      <div className="flex flex-wrap gap-1 border-b px-1 py-2" role="group" aria-label={t('model.requirements.filterLabel')}>
         {REQUIREMENT_STATES.map((state) => {
           const active = states.has(state)
           return (
@@ -189,7 +195,7 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
                 })
               }
               className={cn(
-                'flex h-6 items-center gap-1 rounded-md border px-1.5 text-xs font-medium tabular-nums',
+                'flex h-7 items-center gap-1 rounded-md border px-2 text-sm font-medium tabular-nums',
                 STATE_CLASS[state],
                 state === 'DROPPED' && 'no-underline',
                 !active && 'opacity-40',
@@ -201,7 +207,7 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
         })}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1.5">
+      <div className="px-1 py-3">
         {requirements.length === 0 ? (
           <div data-testid="requirements-empty" className="flex flex-col items-center gap-2 px-4 py-10 text-center">
             <ClipboardList aria-hidden className="size-6 text-muted-foreground" />
@@ -211,10 +217,10 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
         ) : groups.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">{t('model.requirements.emptyFiltered')}</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-4">
             {groups.map((group) => (
               <li key={group.key} data-testid="requirement-group">
-                <p className="truncate px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                <p className="truncate px-1.5 py-1 text-sm font-semibold text-muted-foreground">
                   {group.kind === 'area' ? group.name : t(`model.requirements.group.${group.kind}`)}
                   <span className="ml-1 font-normal tabular-nums">{group.requirements.length}</span>
                 </p>
@@ -262,7 +268,7 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
                   <button
                     type="button"
                     onClick={() => focusTable(tableId)}
-                    className="w-full truncate rounded-md px-1.5 py-0.5 text-left font-mono text-xs hover:bg-accent/60"
+                    className="w-full truncate rounded-md px-1.5 py-1 text-left font-mono text-sm hover:bg-accent/60"
                   >
                     {tableName.get(tableId) ?? tableId}
                   </button>
@@ -297,7 +303,8 @@ function PanelBody({ canEdit }: RequirementsPanelProps) {
         onPatch={(requirementId, patch) => commit({ type: 'requirement/patch', requirementId, patch })}
         onRemove={(requirementId) => commit({ type: 'requirement/remove', requirementId })}
       />
-    </aside>
+      </div>
+    </section>
   )
 }
 
@@ -332,7 +339,7 @@ function RequirementRow({
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="flex w-full items-start gap-1 rounded-md px-1 py-1 text-left text-xs hover:bg-accent/60"
+        className="flex w-full items-start gap-1.5 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-accent/60"
       >
         {expanded ? (
           <ChevronDown aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
@@ -341,10 +348,10 @@ function RequirementRow({
         )}
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{requirement.code}</span>
+            <span className="shrink-0 font-mono text-xs text-muted-foreground">{requirement.code}</span>
             <span
               data-testid="requirement-state"
-              className={cn('shrink-0 rounded border px-1 text-[10px] font-medium leading-4', STATE_CLASS[state], 'no-underline')}
+              className={cn('shrink-0 rounded border px-1.5 text-xs font-medium leading-5', STATE_CLASS[state], 'no-underline')}
             >
               {t(`model.requirements.state.${state}`)}
             </span>
@@ -360,7 +367,7 @@ function RequirementRow({
         </span>
       </button>
       {expanded ? (
-        <div className="mb-1 ml-5 flex flex-col gap-1.5 border-l pl-2 text-xs" data-testid="requirement-detail">
+        <div className="mb-2 ml-6 flex flex-col gap-2 border-l pl-3 text-sm" data-testid="requirement-detail">
           <p className="whitespace-pre-wrap break-words text-muted-foreground">
             {requirement.description || t('model.requirements.noDescription')}
           </p>

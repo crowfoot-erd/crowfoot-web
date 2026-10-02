@@ -120,6 +120,8 @@ describe('RequirementsPanel', () => {
 
     fireEvent.click(tables[1])
     expect(useEditorStore.getState().selectedIds).toEqual(['t-users'])
+    // 테이블을 보여 주려고 ERD 탭으로 돌아간다
+    expect(useRequirementsPanel.getState().open).toBe(false)
   })
 
   it('반영 대기 행의 "반영함으로 표시"는 appliedRevision을 revision에 맞춘다', () => {

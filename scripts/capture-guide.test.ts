@@ -727,13 +727,13 @@ const EDITOR_SCENES: Scene[] = [
     name: 'editor-requirements',
     run: async (s) => {
       await openEditor(s)
-      await s.page.getByTestId('requirements-toggle').click()
+      await s.page.getByRole('tab', { name: s.t('shareViewer.tab.requirements') }).click()
       const panel = s.page.getByTestId('requirements-panel')
       await panel.waitFor()
       // 반영 대기 항목을 펼친다 — 내용, 연결된 테이블, "반영함으로 표시"가 보인다
       await panel.locator('[data-testid="requirement-row"][data-state="PENDING"] > button').click()
       await s.page.waitForTimeout(500)
-      await s.shot('editor-requirements', { clip: { x: 0, y: 64, width: 1000, height: 640 } })
+      await s.shot('editor-requirements')
       await panel.getByTestId('requirement-edit').click()
       await dialog(s).waitFor()
       await s.page.waitForTimeout(400)

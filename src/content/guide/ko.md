@@ -51,7 +51,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | 도구 모음 | 탐색기, 용어 사전, 검증, 되돌리기, 저장, 자동 배치, SQL 생성, 공유, 내보내기, 도구, 보기, 확대와 축소 |
 | 가운데 | 캔버스. 테이블, 관계선, 메모, 그룹이 놓입니다 |
 | 오른쪽 아래 | 미니맵과 문서 채팅 버튼 |
-| 맨 아래 | **ERD** 탭과 **{{shareViewer.tab.comments}}** 탭 |
+| 맨 아래 | **ERD** 탭, **{{shareViewer.tab.requirements}}** 탭, **{{shareViewer.tab.comments}}** 탭 |
 
 도구 모음의 버튼은 5절에서 하나씩 설명합니다.
 
@@ -222,7 +222,6 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **{{model.editor.explorer.toggle}}** | 왼쪽에 모델 익스플로러를 열고 닫습니다(5.2절) |
 | **{{model.editor.termDictionary.toggle}}** | 용어 사전과 도메인 타입 패널을 열고 닫습니다(9절) |
 | **{{model.validation.toggle}}** | 설계 검증 패널을 열고 닫습니다. 문제 수가 숫자로 붙습니다(12절) |
-| **{{model.editor.toolbar.requirements}}** | 요구사항 패널을 열고 닫습니다. 반영 대기인 요구사항 수가 숫자로 붙습니다(20.3절) |
 | {{model.editor.toolbar.undo}}, {{model.editor.toolbar.redo}} | 편집을 한 단계씩 되돌리고 다시 실행합니다 |
 | **{{model.editor.toolbar.save}}** | 지금 저장합니다. 편집하면 잠시 뒤 자동으로도 저장됩니다 |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | 테이블을 자동으로 다시 놓습니다. 옆의 화살표로 방식과 방향을 고릅니다(5.3절) |
@@ -939,10 +938,10 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 
 ![요구사항 패널](/guide-assets/ko/editor-requirements.webp)
 
-도구 모음의 **{{model.editor.toolbar.requirements}}** 을 누르면 왼쪽에 패널이 열립니다. 요구사항은 문서에 함께 저장됩니다. 반영 대기인 요구사항이 있으면 버튼에 그 수가 붙습니다.
+에디터 맨 아래의 **{{shareViewer.tab.requirements}}** 탭을 누르면 요구사항 화면이 열립니다. 요구사항은 문서에 함께 저장됩니다. 반영 대기인 요구사항이 있으면 탭에 그 수가 붙습니다.
 
 * 요구사항은 그룹별로 묶여 나옵니다. 그룹이 없는 것은 **{{model.requirements.group.unassigned}}**, 문서 전체에 해당하는 것은 **{{model.requirements.group.document}}** 에 모입니다.
-* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 캔버스가 그 테이블로 옮겨 갑니다.
+* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블을 보여 줍니다.
 * 위쪽의 상태 버튼으로 골라 봅니다. 처음에는 **{{model.requirements.state.DROPPED}}** 만 숨겨져 있습니다.
 * 패널 아래의 **{{model.requirements.untraced.title}}** 은 어떤 요구사항에도 연결되지 않은 테이블입니다.
 

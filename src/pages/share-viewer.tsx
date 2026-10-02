@@ -15,7 +15,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Loader2, MessageSquare, Table2 } from 'lucide-react'
+import { ClipboardList, Home, Loader2, MessageSquare, Table2 } from 'lucide-react'
 
 import type { Model, PublicShare } from '@/api/types'
 import { isApiError } from '@/api/client'
@@ -25,6 +25,9 @@ import { DbmsIcon } from '@/components/dbms-icon'
 import { dbmsLabel } from '@/features/editor/model/dbms'
 import { Button } from '@/components/ui/button'
 import { ViewerTabButton } from '@/components/viewer-tab-button'
+import { requirementState } from '@/features/editor/model/requirements'
+import { useEditorStore } from '@/features/editor/store/editor-store'
+import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 import { EditorShell } from '@/features/editor'
 import { useSharedDocument, useShareFeedback } from '@/features/models'
 import { ShareFeedbackSection } from '@/features/models/components/share-feedback-section'
@@ -58,6 +61,12 @@ export function ShareViewerPage() {
   // 탭 배지(총 피드백 수)용 — 섹션과 같은 쿼리 키라 한 번만 fetch된다
   const feedback = useShareFeedback(token)
   const [tab, setTab] = useState<ViewerTab>('erd')
+  const requirementsOpen = useRequirementsPanel((state) => state.open)
+  const showRequirements = useRequirementsPanel((state) => state.show)
+  const hideRequirements = useRequirementsPanel((state) => state.hide)
+  const pendingRequirements = useEditorStore(
+    (state) => state.present.diagram.requirements.filter((requirement) => requirementState(requirement) === 'PENDING').length,
+  )
   // 제목·설명·canonical은 조회 뒤 — 성공 문서는 색인 허용(SEO 정책 v1.18),
   // 대기·오류 화면은 문서 없는 껍데기이므로 계속 noindex로 막는다
   usePageMeta(
@@ -146,14 +155,31 @@ export function ShareViewerPage() {
             className="flex h-12 shrink-0 items-center gap-1 border-t bg-background px-3"
           >
             <ViewerTabButton
-              active={tab === 'erd'}
-              onClick={() => setTab('erd')}
+              active={tab === 'erd' && !requirementsOpen}
+              onClick={() => {
+                setTab('erd')
+                hideRequirements()
+              }}
               icon={<Table2 aria-hidden className="size-4" />}
               label={t('shareViewer.tab.erd')}
             />
+            {/* 요구사항 — 에디터 안의 화면이라 ERD 탭을 유지한 채 연다(자동 저장·협업이 이어진다). 배지는 반영 대기 수 */}
+            <ViewerTabButton
+              active={tab === 'erd' && requirementsOpen}
+              onClick={() => {
+                setTab('erd')
+                showRequirements()
+              }}
+              icon={<ClipboardList aria-hidden className="size-4" />}
+              label={t('shareViewer.tab.requirements')}
+              badge={pendingRequirements > 0 ? pendingRequirements : undefined}
+            />
             <ViewerTabButton
               active={tab === 'comments'}
-              onClick={() => setTab('comments')}
+              onClick={() => {
+                hideRequirements()
+                setTab('comments')
+              }}
               icon={<MessageSquare aria-hidden className="size-4" />}
               label={t('shareViewer.tab.comments')}
               badge={commentCount}

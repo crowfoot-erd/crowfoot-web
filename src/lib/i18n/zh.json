@@ -775,7 +775,6 @@
     },
     "editor": {
       "toolbar": {
-        "requirements": "需求",
         "save": "保存",
         "undo": "撤销",
         "redo": "重做",
@@ -1501,6 +1500,7 @@
     "tab": {
       "label": "视图切换",
       "erd": "ERD",
+      "requirements": "需求",
       "comments": "评论"
     }
   },

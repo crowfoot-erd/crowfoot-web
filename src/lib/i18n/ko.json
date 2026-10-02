@@ -775,7 +775,6 @@
     },
     "editor": {
       "toolbar": {
-        "requirements": "요구사항",
         "save": "저장",
         "undo": "되돌리기",
         "redo": "다시 실행",
@@ -1501,6 +1500,7 @@
     "tab": {
       "label": "화면 전환",
       "erd": "ERD",
+      "requirements": "요구사항",
       "comments": "댓글"
     }
   },

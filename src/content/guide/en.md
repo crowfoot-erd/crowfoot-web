@@ -51,7 +51,7 @@ The left sidebar changes with the item you choose in the top menu.
 | Toolbar | Explorer, term dictionary, validation, undo, save, auto layout, generate SQL, share, export, tools, view, zoom in and out |
 | Center | The canvas. Tables, relationship lines, notes, and groups go here |
 | Bottom right | The minimap and the document chat button |
-| Bottom | The **ERD** tab and the **{{shareViewer.tab.comments}}** tab |
+| Bottom | The **ERD**, **{{shareViewer.tab.requirements}}**, and **{{shareViewer.tab.comments}}** tabs |
 
 Section 5 explains the toolbar buttons one by one.
 
@@ -222,7 +222,6 @@ From left to right.
 | **{{model.editor.explorer.toggle}}** | Opens and closes the Model Explorer on the left (section 5.2) |
 | **{{model.editor.termDictionary.toggle}}** | Opens and closes the term dictionary and domain types panel (section 9) |
 | **{{model.validation.toggle}}** | Opens and closes the design validation panel. A number shows how many issues there are (section 12) |
-| **{{model.editor.toolbar.requirements}}** | Opens and closes the requirements panel. A number shows how many requirements are pending (section 20.3) |
 | {{model.editor.toolbar.undo}}, {{model.editor.toolbar.redo}} | Undo and redo edits one step at a time |
 | **{{model.editor.toolbar.save}}** | Saves now. Edits are also saved automatically after a moment |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | Rearranges the tables automatically. The arrow next to it chooses the mode and direction (section 5.3) |
@@ -939,10 +938,10 @@ Issue a token on the workspace's **{{workspace.detail.tabs.mcp}}** tab. Every me
 
 ![Requirements panel](/guide-assets/en/editor-requirements.webp)
 
-Click **{{model.editor.toolbar.requirements}}** on the toolbar to open the panel on the left. Requirements are saved with the document. When some requirements are pending, the button shows their number.
+Click the **{{shareViewer.tab.requirements}}** tab at the bottom of the editor to open the requirements view. Requirements are saved with the document. When some requirements are pending, the tab shows their number.
 
 * Requirements are grouped by group. Those without a group gather under **{{model.requirements.group.unassigned}}**, and those that apply to the whole document under **{{model.requirements.group.document}}**.
-* Click a row to expand its description and linked tables. Click a table name to move the canvas to that table.
+* Click a row to expand its description and linked tables. Click a table name to go back to the ERD tab and show that table.
 * Use the status buttons at the top to filter. At first only **{{model.requirements.state.DROPPED}}** is hidden.
 * **{{model.requirements.untraced.title}}** at the bottom lists the tables that are not linked to any requirement.
 
