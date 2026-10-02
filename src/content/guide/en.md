@@ -936,6 +936,7 @@ Start Claude Code or Codex in the folder where you registered, and ask for what 
 | Validation and SQL | Gets the design validation result and the SQL script |
 | Import SQL | Creates a new document from a CREATE TABLE script |
 | Apply to a database | Issues a managed database and deploys a document or applies only what changed (section 20.4) |
+| Sample data | Creates sample data that fits the table structure and puts it into the deployed database (section 20.4) |
 
 * Every change Claude makes is saved as a version. If you do not like it, restore an earlier version (section 14).
 * Claude cannot delete documents. Before deleting a table or column, it shows what will be removed.
@@ -978,6 +979,7 @@ For Claude to change the structure of a database, the connection must allow it.
 * Turn on **{{connection.dialog.mcpApply}}** when adding or editing a connection. It is off by default, and connections with it on are marked in the list.
 * Managed databases allow it from the start.
 * Claude shows the SQL first and runs only the plan you confirmed. If the document or the database changed after the plan was shown, it does not run and plans again.
+* Sample data is first inserted and rolled back to check for constraint violations, and only the data you confirmed is actually inserted. It only inserts; it does not update or delete. One request can hold up to 20 tables and 1,000 rows.
 * For a connection that does not allow it, Claude only shows the SQL. Run it yourself from the editor's deploy (section 10.3) or migration DDL (section 14.3).
 
 ## 21. Frequently asked questions

@@ -87,7 +87,7 @@ describe('MCP 탭', () => {
     const usage = await screen.findByTestId('mcp-usage')
     expect(within(usage).getAllByRole('listitem').length).toBeGreaterThanOrEqual(10)
     const examples = within(usage).getAllByTestId('mcp-usage-example')
-    expect(examples).toHaveLength(6)
+    expect(examples).toHaveLength(7)
     await user.click(within(examples[1]).getByTestId('mcp-usage-copy'))
     expect(await navigator.clipboard.readText()).toBe('도서 대여 서비스의 요구사항을 정리해서 MySQL용 새 ERD 문서로 만들어 줘')
   })
