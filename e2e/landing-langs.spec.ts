@@ -32,8 +32,8 @@ test.describe('언어 prefix 랜딩 — 실물 라우팅', () => {
   for (const { path, lang, hero } of [
     { path: '/', lang: 'ko', hero: 'ERD만 그리고 끝나는 툴은 많습니다' },
     { path: '/en', lang: 'en', hero: 'Plenty of tools stop at the diagram' },
-    { path: '/ja', lang: 'ja', hero: 'ブラウザで描く無料のERD、' },
-    { path: '/zh', lang: 'zh-Hans', hero: '在浏览器中绘制的免费 ERD，' },
+    { path: '/ja', lang: 'ja', hero: 'ERD を描いて終わるツールは多い' },
+    { path: '/zh', lang: 'zh-Hans', hero: '只能画 ERD 的工具很多' },
   ] as const) {
     test(`${path || '/(ko)'} 랜딩 — html lang=${lang}, 현지어 히어로`, async ({ page }) => {
       await page.addInitScript(() => window.localStorage.removeItem('crowfoot.lang'))
