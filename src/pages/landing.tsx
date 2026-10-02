@@ -54,6 +54,21 @@ const LANDING_SHOTS = ['editor-overview', 'editor-requirements', 'workspace-mcp'
 /** 슬라이드의 장 — 첫 장은 AI 연동(MCP) 소개, 나머지는 제품 화면 */
 const LANDING_SLIDES = ['mcp', ...LANDING_SHOTS] as const
 
+/* 랜딩의 색 — 히어로의 에메랄드→하늘색을 모든 구역이 같이 쓴다 (2026-10-02 사용자 요청 — 색감과 아이콘 색을 히어로에 맞춘다) */
+/** 강조 글자 — 그라디언트 */
+const ACCENT_TEXT = 'bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 bg-clip-text text-transparent'
+/** 아이콘 칩 — 옅은 에메랄드 바탕 */
+const ICON_CHIP =
+  'inline-flex size-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+/** 주 행동 버튼 */
+const CTA_CLASS =
+  'bg-gradient-to-r from-emerald-600 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-500 hover:to-teal-500'
+/** 구역 제목과 그 아래 색 막대 */
+const SECTION_HEADING = 'mb-8 text-center text-3xl font-extrabold tracking-tight'
+const SECTION_BAR = 'mx-auto mt-3 block h-1 w-12 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500'
+/** "모두 보기" 링크 */
+const MORE_LINK = 'inline-flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-300'
+
 /** 다른 ERD 툴과 갈리는 점 — 히어로 아래 카드 셋 */
 const EDGES = [
   { key: 'db', icon: Database },
@@ -216,7 +231,7 @@ export function LandingPage() {
             {t('landing.hero.title')}
             <br />
             {/* 강조 줄 — 색 그라디언트로 눈길을 준다 (장식은 CSS로 — 스토리보드 §3.10) */}
-            <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 bg-clip-text text-transparent">
+            <span className={ACCENT_TEXT}>
               {t('landing.hero.titleAccent')}
             </span>
           </h1>
@@ -232,7 +247,7 @@ export function LandingPage() {
             <Button
               asChild
               size="lg"
-              className="h-12 bg-gradient-to-r from-emerald-600 to-teal-600 px-8 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-500 hover:to-teal-500"
+              className={`h-12 px-8 text-base ${CTA_CLASS}`}
             >
               <Link to={authenticated ? '/dashboard' : '/login'} data-testid="landing-cta-start">
                 {authenticated ? t('landing.cta.goApp') : t('landing.cta.start')}
@@ -262,7 +277,7 @@ export function LandingPage() {
           <ul className="mt-4 grid w-full gap-4 text-left md:grid-cols-3" data-testid="landing-edge">
             {EDGES.map(({ key, icon: Icon }) => (
               <li key={key} className="rounded-xl border bg-card/70 p-5 shadow-sm backdrop-blur">
-                <span className="mb-3 inline-flex size-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                <span className={`mb-3 ${ICON_CHIP}`}>
                   <Icon aria-hidden className="size-5" />
                 </span>
                 <h2 className="text-base font-semibold">{t(`landing.edge.${key}.title`)}</h2>
@@ -298,8 +313,8 @@ export function LandingPage() {
                   }}
                   className={
                     shot === name
-                      ? 'rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground'
-                      : 'rounded-full border px-4 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm shadow-emerald-500/30'
+                      : 'rounded-full border px-4 py-1.5 text-sm text-muted-foreground hover:border-emerald-500/50 hover:text-foreground'
                   }
                 >
                   {name === 'mcp' ? t('landing.shots.mcp') : t(`landing.shots.${name}.caption`)}
@@ -308,7 +323,7 @@ export function LandingPage() {
             </div>
             {/* 슬라이드 트랙 — 첫 장은 AI 연동(MCP) 소개, 그 뒤로 제품 화면 넷. 가로로 이어 놓고 옆으로 민다
                 (끊기지 않게 transform 전환). 보이지 않는 장은 inert로 두어 초점이 가지 않는다 */}
-            <div className="overflow-hidden rounded-2xl border bg-muted/30 shadow-lg">
+            <div className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/30 shadow-xl shadow-emerald-500/10">
               <div
                 data-testid="landing-shots-track"
                 data-index={shotIndex}
@@ -320,11 +335,11 @@ export function LandingPage() {
                   data-testid="landing-mcp"
                   aria-label={t('landing.shots.mcp')}
                   inert={shotIndex !== 0}
-                  className="w-full shrink-0 bg-gradient-to-br from-primary/10 via-background to-background p-6 text-left md:p-10"
+                  className="w-full shrink-0 bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 p-6 text-left md:p-10"
                 >
                   <div className="grid h-full items-center gap-8 md:grid-cols-2">
                     <div className="flex flex-col gap-4">
-                      <span className="flex w-fit items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                      <span className="flex w-fit items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
                         <Sparkles aria-hidden className="size-3.5" />
                         {t('landing.mcp.badge')}
                       </span>
@@ -335,7 +350,7 @@ export function LandingPage() {
                       <ul className="grid gap-2.5">
                         {MCP_POINTS.map(({ key, icon: Icon }) => (
                           <li key={key} className="flex items-start gap-2.5 text-sm">
-                            <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                            <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                             <span>
                               <span className="font-medium">{t(`landing.mcp.points.${key}.title`)}</span>
                               <span className="text-muted-foreground"> — {t(`landing.mcp.points.${key}.description`)}</span>
@@ -344,7 +359,7 @@ export function LandingPage() {
                         ))}
                       </ul>
                       <div className="flex flex-wrap items-center gap-3 pt-1">
-                        <Button asChild>
+                        <Button asChild className={CTA_CLASS}>
                           <a href={`${guideHref}#20.1`} target="_blank" rel="noopener noreferrer" data-testid="landing-mcp-guide">
                             {t('landing.mcp.cta')}
                             <ArrowUpRight aria-hidden />
@@ -396,11 +411,11 @@ export function LandingPage() {
         <section
           aria-labelledby="landing-free-db"
           data-testid="landing-free-db"
-          className="w-full overflow-hidden rounded-2xl border bg-gradient-to-br from-sky-500/10 via-background to-emerald-500/10 p-6 text-left md:p-10"
+          className="w-full overflow-hidden rounded-2xl border bg-gradient-to-br border-emerald-500/20 from-sky-500/10 via-background to-emerald-500/10 p-6 text-left shadow-xl shadow-emerald-500/10 md:p-10"
         >
           <div className="grid items-center gap-8 md:grid-cols-2">
             <div className="flex flex-col gap-4">
-              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white">
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">
                 <Database aria-hidden className="size-3.5" />
                 {t('landing.freeDb.badge')}
               </span>
@@ -417,7 +432,7 @@ export function LandingPage() {
                 ))}
               </ul>
               <div>
-                <Button asChild size="lg" className="h-11 bg-sky-600 text-white hover:bg-sky-500">
+                <Button asChild size="lg" className={`h-11 ${CTA_CLASS}`}>
                   <Link to={authenticated ? '/dashboard' : '/login'} data-testid="landing-free-db-cta">
                     {t('landing.freeDb.cta')}
                     <ArrowRight aria-hidden />
@@ -450,11 +465,11 @@ export function LandingPage() {
         {/* 3단계 흐름 — 그리기 → 함께 다듬기 → 실행 (히어로 메시지의 전개) */}
         <section aria-label={t('landing.steps.label')} className="grid w-full gap-6 sm:grid-cols-3">
           {(['draw', 'refine', 'run'] as const).map((key, index) => (
-            <div key={key} className="flex flex-col gap-2 border-t pt-4">
-              <span className="text-xs font-semibold tracking-widest text-primary">
+            <div key={key} className="flex flex-col gap-2 border-t-2 border-emerald-500/30 pt-4">
+              <span className={`w-fit text-2xl font-extrabold tracking-tight ${ACCENT_TEXT}`}>
                 {String(index + 1).padStart(2, '0')}
               </span>
-              <h3 className="font-medium">{t(`landing.steps.${key}.title`)}</h3>
+              <h3 className="text-lg font-semibold">{t(`landing.steps.${key}.title`)}</h3>
               <p className="text-sm text-muted-foreground">
                 {t(`landing.steps.${key}.description`)}
               </p>
@@ -464,15 +479,18 @@ export function LandingPage() {
 
         {/* 특징 6종 */}
         <section aria-labelledby="landing-features" className="w-full">
-          <h2 id="landing-features" className="mb-6 text-center text-2xl font-semibold">
+          <h2 id="landing-features" className={SECTION_HEADING}>
             {t('landing.features.heading')}
-          </h2>
+            <span aria-hidden className={SECTION_BAR} />
+</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ key, icon: Icon }) => (
-              <Card key={key}>
+              <Card key={key} className="transition hover:-translate-y-0.5 hover:border-emerald-500/50 hover:shadow-md">
                 <CardContent className="flex flex-col gap-2 p-5">
-                  <Icon aria-hidden className="size-5 text-primary" />
-                  <h3 className="font-medium">{t(`landing.features.${key}.title`)}</h3>
+                  <span className={ICON_CHIP}>
+                    <Icon aria-hidden className="size-5" />
+                  </span>
+                  <h3 className="font-semibold">{t(`landing.features.${key}.title`)}</h3>
                   <p className="text-sm text-muted-foreground">
                     {t(`landing.features.${key}.description`)}
                   </p>
@@ -486,7 +504,7 @@ export function LandingPage() {
               href={guideHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              className={MORE_LINK}
             >
               {t('landing.features.more')}
               <ArrowUpRight aria-hidden className="size-4" />
@@ -500,9 +518,10 @@ export function LandingPage() {
             워크스페이스 템플릿 다이얼로그도 같은 규칙) */}
         {galleryItems.length > 0 && (
           <section aria-labelledby="landing-gallery" className="w-full" data-testid="landing-gallery">
-            <h2 id="landing-gallery" className="mb-6 text-center text-2xl font-semibold">
+            <h2 id="landing-gallery" className={SECTION_HEADING}>
               {t('landing.gallery.heading')}
-            </h2>
+              <span aria-hidden className={SECTION_BAR} />
+</h2>
             {/* 인기 박스 — 서버 POPULAR_LIMIT(3)가 내려준 선두 3건을 다른 꼴로 강조한다 */}
             <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
               {t('landing.gallery.popular')}
@@ -572,10 +591,10 @@ export function LandingPage() {
                         rel="noopener noreferrer"
                         className="group"
                       >
-                        <Card className="h-full transition-colors group-hover:border-primary/50">
+                        <Card className="h-full transition group-hover:-translate-y-0.5 group-hover:border-emerald-500/50 group-hover:shadow-md">
                           <CardContent className="flex h-full flex-col gap-3 p-6">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                              <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                 <Clock aria-hidden className="size-3" />
                                 {t('landing.gallery.recentBadge')}
                               </span>
@@ -615,7 +634,7 @@ export function LandingPage() {
               <Link
                 to={publicPath('/shared')}
                 data-testid="landing-gallery-more"
-                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                className={MORE_LINK}
               >
                 {t('landing.gallery.more')}
                 <ArrowUpRight aria-hidden className="size-4" />
@@ -627,9 +646,10 @@ export function LandingPage() {
         {/* 최근 릴리스 — 문서 하단(갤러리 뒤). 공개 릴리스 노트가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙) */}
         {releaseNoteItems.length > 0 && (
           <section aria-labelledby="landing-release-notes" className="w-full" data-testid="landing-release-notes">
-            <h2 id="landing-release-notes" className="mb-6 text-center text-2xl font-semibold">
+            <h2 id="landing-release-notes" className={SECTION_HEADING}>
               {t('landing.releaseNotes.heading')}
-            </h2>
+              <span aria-hidden className={SECTION_BAR} />
+</h2>
             <ul className="mx-auto flex max-w-2xl flex-col">
               {/* 공개 뷰어는 새 창 — 랜딩 흐름 유지(갤러리 카드와 같은 규칙). 제목 → 날짜, 왼쪽 정렬 */}
               {releaseNoteItems.map(({ postId, title, createdAt }) => (
@@ -638,7 +658,7 @@ export function LandingPage() {
                     to={`/release-notes/${postId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/50"
+                    className="group flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-emerald-500/10"
                   >
                     <span className="font-medium group-hover:underline">{title}</span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -657,7 +677,7 @@ export function LandingPage() {
               <Link
                 to={publicPath('/release-notes')}
                 data-testid="landing-release-notes-more"
-                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                className={MORE_LINK}
               >
                 {t('landing.releaseNotes.more')}
                 <ArrowUpRight aria-hidden className="size-4" />
