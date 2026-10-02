@@ -43,6 +43,10 @@ import { formatDate, formatDateTime } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
 import { cn } from 'cn'
 
+/** 사용 방법의 단계와 예시 요청 — 문구는 번역 파일에 있다 */
+const USAGE_STEPS = ['run', 'check', 'ask', 'open'] as const
+const USAGE_EXAMPLES = ['list', 'create', 'requirement', 'modify', 'ddl', 'deploy'] as const
+
 interface McpTabProps {
   workspaceId: string
   workspaceName: string
@@ -120,6 +124,29 @@ export function McpTab({ workspaceId, workspaceName, myRole }: McpTabProps) {
           </div>
         ) : null}
         <ConnectCommands serverName={serverName} token={picked?.token ?? null} />
+      </section>
+
+      {/* 사용 방법 — 연결한 뒤에 무엇을 하는지. 예시 요청은 복사해서 그대로 붙여 넣는다 */}
+      <section className="rounded-lg border p-4" data-testid="mcp-usage">
+        <h2 className="text-base font-semibold">{t('workspace.mcp.usage.title')}</h2>
+        <ol className="mt-2 grid list-decimal gap-1 pl-5 text-sm text-muted-foreground">
+          {USAGE_STEPS.map((step) => (
+            <li key={step}>{t(`workspace.mcp.usage.steps.${step}`)}</li>
+          ))}
+        </ol>
+        <p className="mt-4 mb-2 text-sm font-medium">{t('workspace.mcp.usage.examplesTitle')}</p>
+        <ul className="grid gap-1.5">
+          {USAGE_EXAMPLES.map((example) => {
+            const text = t(`workspace.mcp.usage.examples.${example}`)
+            return (
+              <li key={example} className="flex items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-1.5 text-sm" data-testid="mcp-usage-example">
+                <span className="min-w-0">{text}</span>
+                <CopyIconButton value={text} label={t('workspace.mcp.copy')} testId="mcp-usage-copy" />
+              </li>
+            )
+          })}
+        </ul>
+        <p className="mt-3 text-xs text-muted-foreground">{t('workspace.mcp.usage.note')}</p>
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -359,7 +386,7 @@ function IssuedTokenDialog({
 }
 
 /** 값 하나를 복사하는 아이콘 버튼 — 토큰 목록의 행에서 쓴다 */
-function CopyIconButton({ value, label }: { value: string; label: string }) {
+function CopyIconButton({ value, label, testId = 'mcp-token-copy' }: { value: string; label: string; testId?: string }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   return (
@@ -370,7 +397,7 @@ function CopyIconButton({ value, label }: { value: string; label: string }) {
       className="size-6"
       aria-label={label}
       title={label}
-      data-testid="mcp-token-copy"
+      data-testid={testId}
       onClick={() => {
         navigator.clipboard.writeText(value).then(
           () => {

@@ -81,6 +81,17 @@ describe('MCP 탭', () => {
     expect(link).toHaveAttribute('target', '_blank')
   })
 
+  it('사용 방법 — 단계와 예시 요청을 보여 주고, 예시는 복사한다', async () => {
+    const user = userEvent.setup()
+    renderTab()
+    const usage = await screen.findByTestId('mcp-usage')
+    expect(within(usage).getAllByRole('listitem').length).toBeGreaterThanOrEqual(10)
+    const examples = within(usage).getAllByTestId('mcp-usage-example')
+    expect(examples).toHaveLength(6)
+    await user.click(within(examples[1]).getByTestId('mcp-usage-copy'))
+    expect(await navigator.clipboard.readText()).toBe('도서 대여 서비스의 요구사항을 정리해서 MySQL용 새 ERD 문서로 만들어 줘')
+  })
+
   it('읽기 역할이면 토큰이 읽기만 할 수 있다고 알린다', async () => {
     renderTab({ myRole: 'VIEWER' })
     expect(await screen.findByTestId('mcp-readonly-notice')).toHaveTextContent('읽기만')

@@ -920,6 +920,14 @@ Issue a token on the workspace's **{{workspace.detail.tabs.mcp}}** tab. Every me
 
 ### 20.2 What you can ask Claude to do
 
+![How to use and example requests](/guide-assets/en/mcp-usage.webp)
+
+Start Claude Code or Codex in the folder where you registered, and ask for what you want in plain words. **{{workspace.mcp.usage.title}}** on the tab lists example requests you can copy.
+
+* Type `/mcp` in the chat to see whether it is connected.
+* The registration applies only to the folder where you ran the command. To use it from every folder, add `--scope user` to the registration command.
+* Example requests: "Collect the requirements for a book rental service and create a new ERD document for MySQL", "Validate this document and show me the DDL".
+
 | Task | Description |
 |---|---|
 | Look around the workspace | Reads the document list, the term dictionary, domain types, and design rules |

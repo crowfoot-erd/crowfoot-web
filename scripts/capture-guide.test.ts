@@ -469,6 +469,17 @@ const APP_SCENES: Scene[] = [
       await s.shot('mcp-issued', { locator: s.page.getByTestId('mcp-issued-dialog') })
     },
   },
+  {
+    name: 'mcp-usage',
+    run: async (s) => {
+      await goto(s, `/workspaces/${WS}?tab=mcp`)
+      const usage = s.page.getByTestId('mcp-usage')
+      await usage.waitFor()
+      await usage.scrollIntoViewIfNeeded()
+      await s.page.waitForTimeout(300)
+      await s.shot('mcp-usage', { locator: usage })
+    },
+  },
   { name: 'workspace-overview', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=overview`); await s.shot('workspace-overview') } },
   { name: 'workspace-settings', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=settings`); await s.shot('workspace-settings') } },
   { name: 'team-detail', run: async (s) => { await goto(s, '/teams/201'); await s.shot('team-detail') } },
