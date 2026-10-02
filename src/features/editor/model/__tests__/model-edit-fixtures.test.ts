@@ -1,6 +1,6 @@
 /**
  * 규칙 일치 시험 — 문서 편집 API(MCP)가 만드는 본체와 에디터가 만드는 본체가 같은지 본다
- * (docs 08-core/17-model-edit.md Section 7)
+ * (docs 08-core/17-model-edit.md Section 6)
  *
  * 자료의 원천은 docs 리포의 assets/model-edit-fixtures/ 이고 이 폴더(model-edit-fixtures/)는 사본이다.
  * 사본이 원천과 같은지는 core의 ModelEditFixtureTest가 본다(세 리포가 나란히 있는 로컬에서).
