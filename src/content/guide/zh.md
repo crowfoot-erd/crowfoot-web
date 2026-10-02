@@ -910,14 +910,14 @@ Crowfoot 的界面大致分为三种。
 
 * 点击 **{{workspace.mcp.issueButton}}**，设置名称和期限。每人在每个工作区最多可签发五个。
 * 签发后会显示令牌和 **{{workspace.mcp.commandLabel}}**。复制命令并在终端运行，即可完成连接。
-* 令牌只在此时显示。如果丢失，请吊销后重新签发。
+* 令牌和命令可以随时在标签页重新复制。列表中令牌旁的复制按钮只复制令牌。完整令牌只对签发者本人显示，其他成员的令牌即使是所有者也只能看到开头部分。
 
 ![已签发的令牌和注册命令](/guide-assets/zh/mcp-issued.webp)
 
 * 令牌以签发者的权限运行，且只在该工作区有效。{{common.role.VIEWER}} 或 {{common.role.COMMENTER}} 签发的令牌只能读取。
 * 不要把令牌粘贴到与 Claude 的对话中。注册命令在终端运行。
 * 列表中的垃圾桶图标是吊销。吊销后，用该令牌连接的 Claude 立即无法访问。所有者也可以吊销其他成员的令牌。
-* 目前可用于能够设置请求头的客户端（Claude Code）。
+* 可用于 Claude Code 和 ChatGPT (Codex)。在标签页的 **{{workspace.mcp.connectTitle}}** 中选择客户端，即可查看并复制注册方法。不支持 ChatGPT 网页版和移动应用的连接器。
 
 ### 20.2 可以交给 Claude 的事
 

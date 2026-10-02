@@ -740,6 +740,7 @@ export const fixtures = {
         tokenId: '901',
         name: '내 노트북의 Claude Code',
         tokenPrefix: 'cfw_a1B2c3D4',
+        token: 'cfw_a1B2c3D4-this-is-a-mock-token-for-the-guide',
         createdBy: { userId: '2', name: '부트스트랩 관리자' },
         expiresAt: '2026-12-30T00:00:00Z',
         lastUsedAt: '2026-10-01T09:30:00Z',

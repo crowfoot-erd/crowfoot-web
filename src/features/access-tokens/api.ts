@@ -52,6 +52,23 @@ export function mcpServerName(workspaceName: string, workspaceId: string): strin
   return slug.length > 0 ? `crowfoot-${slug}` : `crowfoot-${workspaceId}`
 }
 
+/** 등록 방법을 보여 주는 클라이언트 — Claude Code와 ChatGPT의 Codex. 둘 다 요청 헤더로 토큰을 보낼 수 있다 */
+export const MCP_CLIENTS = ['claude', 'codex'] as const
+export type McpClient = (typeof MCP_CLIENTS)[number]
+
+/**
+ * Codex(ChatGPT) 설정 — ~/.codex/config.toml에 붙여 넣는 블록 (docs 10-mcp/00-mcp-server.md Section 8).
+ * ChatGPT 웹·모바일 앱의 커넥터는 OAuth를 전제로 해서 이 토큰으로는 붙지 못한다.
+ */
+export function codexMcpConfig(serverName: string, token: string): string {
+  return [`[mcp_servers.${serverName}]`, `url = "${mcpServerUrl()}"`, `http_headers = { "Authorization" = "Bearer ${token}" }`].join('\n')
+}
+
+/** 클라이언트별 등록 문구 */
+export function mcpRegistration(client: McpClient, serverName: string, token: string): string {
+  return client === 'claude' ? claudeMcpAddCommand(serverName, token) : codexMcpConfig(serverName, token)
+}
+
 /** Claude Code 등록 명령 (docs 10-mcp/00-mcp-server.md Section 8) */
 export function claudeMcpAddCommand(serverName: string, token: string): string {
   return `claude mcp add --transport http ${serverName} ${mcpServerUrl()} --header "Authorization: Bearer ${token}"`

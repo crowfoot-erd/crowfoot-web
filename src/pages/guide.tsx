@@ -105,6 +105,17 @@ function paintMatches(matches: GuideMatch[], current: number) {
   if (matches[current]) CSS.highlights.set('guide-search-current', new Highlight(toRange(matches[current])))
 }
 
+/**
+ * 주소의 해시(#20, #20.1)가 가리키는 제목 — 절(h2)과 소제목(h3)의 번호로 찾는다.
+ * 번호는 네 언어가 같으므로 언어가 달라도 같은 자리로 간다.
+ */
+export function findHeadingByNumber(root: ParentNode, hash: string): Element | null {
+  const number = decodeURIComponent(hash.replace(/^#/, ''))
+  if (!/^\d+(\.\d+)?$/.test(number)) return null
+  const prefix = number.includes('.') ? `${number} ` : `${number}. `
+  return [...root.querySelectorAll('h2, h3')].find((heading) => (heading.textContent ?? '').startsWith(prefix)) ?? null
+}
+
 /** 본문의 `## ` 제목 — 목차로 쓴다 */
 export function guideHeadings(markdown: string): string[] {
   return markdown
@@ -144,6 +155,19 @@ export default function GuidePage() {
 
   /** 지금 읽는 절 — 화면 위쪽 기준선을 지난 마지막 h2 */
   const [active, setActive] = useState(0)
+
+  // 해시가 붙은 주소(/guide#20.1)로 들어오면 그 제목으로 옮긴다. 본문은 늦게 그려지므로 나타날 때까지 잠깐 기다린다
+  useEffect(() => {
+    if (markdown === null || window.location.hash.length < 2) return
+    let tries = 0
+    const timer = window.setInterval(() => {
+      tries += 1
+      const heading = articleRef.current ? findHeadingByNumber(articleRef.current, window.location.hash) : null
+      if (heading) heading.scrollIntoView({ block: 'start' })
+      if (heading || tries >= 40) window.clearInterval(timer)
+    }, 50)
+    return () => window.clearInterval(timer)
+  }, [markdown])
 
   /** 목차 — 본문에서 n번째 h2를 찾아 그 자리로 옮긴다(뷰어가 제목에 id를 붙이지 않는다) */
   const scrollTo = (index: number) => {
@@ -294,7 +318,7 @@ export default function GuidePage() {
             ref={articleRef}
             data-testid="guide-article"
             // 절(h2)과 소제목(h3) 위에 여백을 넉넉히 둔다 — 뷰어 기본값은 앞 문단에 바짝 붙는다(뷰어 스타일보다 우선하게 !)
-            className="[&_h2]:scroll-mt-20 [&_h2]:mt-16! [&_h2]:mb-5! [&_h2:first-of-type]:mt-8! [&_h3]:mt-10! [&_h3]:mb-3! [&_img]:my-3! [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_img]:border"
+            className="[&_h2]:scroll-mt-20 [&_h3]:scroll-mt-20 [&_h2]:mt-16! [&_h2]:mb-5! [&_h2:first-of-type]:mt-8! [&_h3]:mt-10! [&_h3]:mb-3! [&_img]:my-3! [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_img]:border"
             onClick={(event) => {
               const target = event.target
               if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')

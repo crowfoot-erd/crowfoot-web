@@ -910,14 +910,14 @@ Issue a token on the workspace's **{{workspace.detail.tabs.mcp}}** tab. Every me
 
 * Click **{{workspace.mcp.issueButton}}** and set a name and a lifetime. Each person can issue up to five tokens per workspace.
 * After issuing, the token and the **{{workspace.mcp.commandLabel}}** are shown. Copy the command and run it in a terminal to finish connecting.
-* The token is shown only at this moment. If you lose it, revoke it and issue a new one.
+* You can copy the token and the command again from the tab at any time. The copy button next to a token in the list copies only the token. The full token is shown only to the person who issued it; even the owner sees just the beginning of other members' tokens.
 
 ![Issued token and registration command](/guide-assets/en/mcp-issued.webp)
 
 * A token works only in that workspace, with the permissions of the person who issued it. A token issued by a {{common.role.VIEWER}} or {{common.role.COMMENTER}} is read-only.
 * Do not paste the token into a conversation with Claude. Run the registration command in a terminal.
 * The trash icon in the list revokes a token. Claude sessions connected with it lose access at once. The owner can revoke other members' tokens too.
-* For now this works with clients that can set request headers (Claude Code).
+* It works with Claude Code and ChatGPT (Codex). Pick a client under **{{workspace.mcp.connectTitle}}** on the tab to see and copy how to register. Connectors in the ChatGPT web and mobile apps are not supported.
 
 ### 20.2 What you can ask Claude to do
 

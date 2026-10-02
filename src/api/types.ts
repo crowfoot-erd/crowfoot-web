@@ -485,7 +485,7 @@ export interface DbConnection {
   createdAt: string
 }
 
-/** 워크스페이스 액세스 토큰 (08-core/18-access-token.md) — token(원문)은 발급 응답에만 실린다 */
+/** 워크스페이스 액세스 토큰 (08-core/18-access-token.md) — token(원문)은 발급한 본인에게만 실린다 */
 export interface WorkspaceAccessToken {
   tokenId: string
   name: string
@@ -496,6 +496,7 @@ export interface WorkspaceAccessToken {
   expiresAt?: string | null
   lastUsedAt?: string | null
   createdAt: string
+  /** 원문 — 발급 응답과, 발급한 본인이 보는 목록에 있다. 남의 토큰과 예전 토큰에는 없다 */
   token?: string
 }
 

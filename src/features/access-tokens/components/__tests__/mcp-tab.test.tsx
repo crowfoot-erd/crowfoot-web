@@ -37,12 +37,56 @@ describe('MCP 탭', () => {
     expect(screen.queryByTestId('mcp-readonly-notice')).toBeNull()
   })
 
+  it('연결 방법 — 내가 발급한 토큰이 명령에 들어 있다. 클라이언트를 바꿔 볼 수 있다', async () => {
+    const user = userEvent.setup()
+    renderTab()
+    await screen.findAllByTestId('mcp-token-row')
+    const connect = screen.getByTestId('mcp-connect')
+    const mine = 'cfw_a1B2c3D4-this-is-a-mock-token-for-the-guide'
+    expect(within(connect).getByTestId('mcp-command')).toHaveTextContent(
+      `claude mcp add --transport http crowfoot-payments-team https://crowfoot-mcp.java21.net/mcp --header "Authorization: Bearer ${mine}"`,
+    )
+    expect(within(connect).getByTestId('mcp-connect-hint')).toHaveTextContent('복사해서 바로 쓰세요')
+    await user.click(within(connect).getByTestId('mcp-client-codex'))
+    expect(within(connect).getByTestId('mcp-command')).toHaveTextContent('url = "https://crowfoot-mcp.java21.net/mcp"')
+    expect(within(connect).getByTestId('mcp-command')).toHaveTextContent(`"Authorization" = "Bearer ${mine}"`)
+  })
+
+  it('연결 방법 — 볼 수 있는 토큰이 없으면 자리 표시를 넣고 발급을 안내한다', async () => {
+    server.use(
+      http.get('/api/v1/core/workspaces/101/access-tokens', () =>
+        HttpResponse.json({ header: { isSuccessful: true, resultCode: 'OK', resultMessage: 'OK' }, totalCount: 0, responses: [] }),
+      ),
+    )
+    renderTab()
+    await screen.findByText('발급한 토큰이 없습니다')
+    const connect = screen.getByTestId('mcp-connect')
+    expect(within(connect).getByTestId('mcp-command')).toHaveTextContent('Bearer <토큰>"')
+    expect(within(connect).getByTestId('mcp-connect-hint')).toHaveTextContent('토큰을 발급하면')
+  })
+
+  it('목록의 복사 버튼 — 내 토큰에만 있고 토큰 원문을 복사한다', async () => {
+    const user = userEvent.setup()
+    renderTab()
+    const rows = await screen.findAllByTestId('mcp-token-row')
+    expect(within(rows[1]).queryByTestId('mcp-token-copy')).toBeNull()
+    await user.click(within(rows[0]).getByTestId('mcp-token-copy'))
+    expect(await navigator.clipboard.readText()).toBe('cfw_a1B2c3D4-this-is-a-mock-token-for-the-guide')
+  })
+
+  it('사용 가이드 링크는 연결하기 소제목으로 간다(새 창)', async () => {
+    renderTab()
+    const link = await screen.findByTestId('mcp-guide-link')
+    expect(link).toHaveAttribute('href', '/guide#20.1')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
   it('읽기 역할이면 토큰이 읽기만 할 수 있다고 알린다', async () => {
     renderTab({ myRole: 'VIEWER' })
     expect(await screen.findByTestId('mcp-readonly-notice')).toHaveTextContent('읽기만')
   })
 
-  it('발급 — 이름은 필수이고, 기간을 날 수로 보낸다. 원문과 등록 명령은 발급 직후에만 보인다', async () => {
+  it('발급 — 이름은 필수이고, 기간을 날 수로 보낸다. 발급하면 토큰과 등록 명령을 보여 준다', async () => {
     let captured: Record<string, unknown> | null = null
     server.events.on('request:start', ({ request }) => {
       if (request.method === 'POST' && new URL(request.url).pathname.endsWith('/access-tokens')) {
@@ -65,13 +109,16 @@ describe('MCP 탭', () => {
     await waitFor(() => expect(captured).toEqual({ name: '새 토큰', expiresInDays: 30 }))
     const token = 'cfw_Zm9vYmFyLXRoaXMtaXMtYS1tb2NrLXRva2VuLXZhbHVl'
     expect(within(issued).getByTestId('mcp-issued-token')).toHaveTextContent(token)
-    expect(within(issued).getByTestId('mcp-issued-command')).toHaveTextContent(
+    expect(within(issued).getByTestId('mcp-command')).toHaveTextContent(
       `claude mcp add --transport http crowfoot-payments-team https://crowfoot-mcp.java21.net/mcp --header "Authorization: Bearer ${token}"`,
     )
+    // ChatGPT(Codex)를 고르면 설정 파일에 붙여 넣을 블록이 나온다 — 토큰이 채워져 있다
+    await user.click(within(issued).getByTestId('mcp-client-codex'))
+    expect(within(issued).getByTestId('mcp-command')).toHaveTextContent('[mcp_servers.crowfoot-payments-team]')
+    expect(within(issued).getByTestId('mcp-command')).toHaveTextContent(`http_headers = { "Authorization" = "Bearer ${token}" }`)
 
-    await user.click(within(issued).getByRole('button', { name: '복사했습니다' }))
+    await user.click(within(issued).getByRole('button', { name: '확인' }))
     await waitFor(() => expect(screen.queryByTestId('mcp-issued-dialog')).toBeNull())
-    expect(screen.queryByText(token)).toBeNull()
   })
 
   it('무기한을 고르면 기간을 보내지 않는다', async () => {

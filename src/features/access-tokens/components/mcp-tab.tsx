@@ -2,11 +2,11 @@
  * 워크스페이스 MCP 탭 — 액세스 토큰 목록·발급·폐기 (04-front/02-workspace.md §9)
  *
  * - 멤버 전체에게 보인다. Owner는 워크스페이스의 모든 토큰을, 그 밖의 멤버는 자기 토큰만 본다(서버가 거른다).
- * - 발급 직후에만 토큰 원문과 Claude Code 등록 명령을 보여 준다. 다시 볼 수 없다.
+ * - 토큰 원문은 발급한 본인에게만 보인다. 연결 방법의 명령에 채워 넣고, 목록의 행에서 복사한다.
+ *   남의 토큰(Owner가 볼 때)과 예전 토큰은 앞부분만 보인다.
  * - 토큰은 발급한 사람의 권한으로 이 워크스페이스에서만 동작한다. 읽기 역할이면 읽기만 할 수 있다고 알린다.
  */
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Check, Copy, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -32,9 +32,12 @@ import type { WorkspaceAccessToken, WorkspaceRole } from '@/api/types'
 import {
   ACCESS_TOKEN_LIMIT,
   EXPIRY_OPTIONS,
-  claudeMcpAddCommand,
+  MCP_CLIENTS,
+  mcpRegistration,
   mcpServerName,
+  type McpClient,
 } from '@/features/access-tokens/api'
+import { currentLanguage } from '@/lib/i18n'
 import { useAccessTokens, useIssueAccessToken, useRevokeAccessToken } from '@/features/access-tokens/hooks'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
@@ -55,6 +58,12 @@ export function McpTab({ workspaceId, workspaceName, myRole }: McpTabProps) {
   const [revokeTarget, setRevokeTarget] = useState<WorkspaceAccessToken | null>(null)
 
   const items = tokens.data?.items ?? []
+  /** 원문을 볼 수 있는 토큰 — 내가 발급한 것. 연결 방법의 명령에 채워 넣는다 */
+  const revealable = items.filter((token) => typeof token.token === 'string' && token.token.length > 0)
+  const [pickedId, setPickedId] = useState<string | null>(null)
+  const picked = revealable.find((token) => token.tokenId === pickedId) ?? revealable[0] ?? null
+  const serverName = mcpServerName(workspaceName, workspaceId)
+  const guidePath = currentLanguage() === 'ko' ? '/guide' : `/${currentLanguage()}/guide`
   const readOnlyRole = myRole === 'VIEWER' || myRole === 'COMMENTER'
 
   const handleRevoke = () => {
@@ -80,11 +89,38 @@ export function McpTab({ workspaceId, workspaceName, myRole }: McpTabProps) {
         <AlertDescription>
           <p>{t('workspace.mcp.intro')}</p>
           {readOnlyRole ? <p data-testid="mcp-readonly-notice">{t('workspace.mcp.readOnlyNotice')}</p> : null}
-          <Link to="/guide#mcp" target="_blank" rel="noreferrer" className="underline underline-offset-3">
+          {/* 사용 가이드의 "연결하기" 소제목으로 바로 간다(새 창, 지금 언어의 주소) */}
+          <a href={`${guidePath}#20.1`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-3" data-testid="mcp-guide-link">
             {t('workspace.mcp.guideLink')}
-          </Link>
+          </a>
         </AlertDescription>
       </Alert>
+
+      {/* 연결 방법 — 늘 보인다. 내가 발급한 토큰이 있으면 명령에 채워 넣고, 없으면 자리 표시로 보여 준다 */}
+      <section className="rounded-lg border p-4" data-testid="mcp-connect">
+        <h2 className="text-base font-semibold">{t('workspace.mcp.connectTitle')}</h2>
+        <p className="mt-1 mb-3 text-sm text-muted-foreground" data-testid="mcp-connect-hint">
+          {picked ? t('workspace.mcp.connectHintReady') : t('workspace.mcp.connectHintEmpty')}
+        </p>
+        {revealable.length > 1 ? (
+          <div className="mb-3 flex items-center gap-2">
+            <Label htmlFor="mcp-connect-token">{t('workspace.mcp.connectToken')}</Label>
+            <select
+              id="mcp-connect-token"
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              value={picked?.tokenId ?? ''}
+              onChange={(event) => setPickedId(event.target.value)}
+            >
+              {revealable.map((token) => (
+                <option key={token.tokenId} value={token.tokenId}>
+                  {token.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        <ConnectCommands serverName={serverName} token={picked?.token ?? null} />
+      </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold">
@@ -126,7 +162,12 @@ export function McpTab({ workspaceId, workspaceName, myRole }: McpTabProps) {
               {items.map((token) => (
                 <TableRow key={token.tokenId} data-testid="mcp-token-row">
                   <TableCell className="font-medium">{token.name}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{token.tokenPrefix}…</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      {token.tokenPrefix}…
+                      {token.token ? <CopyIconButton value={token.token} label={t('workspace.mcp.copyToken')} /> : null}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{token.createdBy?.name ?? '-'}</TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(token.createdAt)}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -164,11 +205,7 @@ export function McpTab({ workspaceId, workspaceName, myRole }: McpTabProps) {
         }}
       />
 
-      <IssuedTokenDialog
-        token={issued}
-        serverName={mcpServerName(workspaceName, workspaceId)}
-        onClose={() => setIssued(null)}
-      />
+      <IssuedTokenDialog token={issued} serverName={serverName} onClose={() => setIssued(null)} />
 
       <ConfirmDialog
         open={revokeTarget !== null}
@@ -309,12 +346,7 @@ function IssuedTokenDialog({
         </DialogHeader>
         <div className="grid gap-4">
           <CopyBlock label={t('workspace.mcp.tokenLabel')} value={raw} testId="mcp-issued-token" />
-          <CopyBlock
-            label={t('workspace.mcp.commandLabel')}
-            value={claudeMcpAddCommand(serverName, raw)}
-            testId="mcp-issued-command"
-          />
-          <p className="text-xs text-muted-foreground">{t('workspace.mcp.commandHint')}</p>
+          <ConnectCommands serverName={serverName} token={raw} />
         </div>
         <DialogFooter>
           <Button type="button" onClick={onClose}>
@@ -323,6 +355,73 @@ function IssuedTokenDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** 값 하나를 복사하는 아이콘 버튼 — 토큰 목록의 행에서 쓴다 */
+function CopyIconButton({ value, label }: { value: string; label: string }) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="size-6"
+      aria-label={label}
+      title={label}
+      data-testid="mcp-token-copy"
+      onClick={() => {
+        navigator.clipboard.writeText(value).then(
+          () => {
+            setCopied(true)
+            toast.success(t('workspace.mcp.copied'))
+            setTimeout(() => setCopied(false), 2000)
+          },
+          () => toast.error(t('workspace.mcp.copyFailed')),
+        )
+      }}
+    >
+      {copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}
+    </Button>
+  )
+}
+
+/**
+ * 클라이언트별 등록 방법 — Claude Code는 터미널 명령, ChatGPT(Codex)는 설정 파일에 붙여 넣는 블록.
+ * token이 null이면 자리 표시(<토큰>)를 넣어 보여 준다.
+ */
+function ConnectCommands({ serverName, token }: { serverName: string; token: string | null }) {
+  const { t } = useTranslation()
+  const [client, setClient] = useState<McpClient>('claude')
+  return (
+    <div className="grid gap-2">
+      <div className="flex w-fit rounded-md border p-0.5" role="group" aria-label={t('workspace.mcp.clientLabel')}>
+        {MCP_CLIENTS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            data-testid={`mcp-client-${option}`}
+            aria-pressed={client === option}
+            onClick={() => setClient(option)}
+            className={cn(
+              'h-7 rounded-sm px-3 text-xs font-medium',
+              client === option ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-accent/60',
+            )}
+          >
+            {t(`workspace.mcp.client.${option}`)}
+          </button>
+        ))}
+      </div>
+      <CopyBlock
+        label={client === 'claude' ? t('workspace.mcp.commandLabel') : t('workspace.mcp.codexLabel')}
+        value={mcpRegistration(client, serverName, token ?? t('workspace.mcp.tokenPlaceholder'))}
+        testId="mcp-command"
+      />
+      <p className="text-xs text-muted-foreground">
+        {client === 'claude' ? t('workspace.mcp.commandHint') : t('workspace.mcp.codexHint')}
+      </p>
+    </div>
   )
 }
 

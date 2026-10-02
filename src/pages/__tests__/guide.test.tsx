@@ -8,7 +8,7 @@ import { Route } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import i18n from '@/lib/i18n'
-import GuidePage, { activeHeading, findMatches, guideHeadings, resolveLabels } from '@/pages/guide'
+import GuidePage, { findHeadingByNumber, activeHeading, findMatches, guideHeadings, resolveLabels } from '@/pages/guide'
 import { renderWithProviders, resetSessionState } from '@/test/test-app'
 
 vi.mock('@/features/community/components/markdown-viewer', () => ({
@@ -91,6 +91,16 @@ describe('사용 가이드', () => {
     await waitFor(() => expect(within(toc).getByRole('button', { name: '3. 워크스페이스' })).toHaveAttribute('aria-current', 'location'))
     expect(within(toc).getAllByRole('button').filter((button) => button.hasAttribute('aria-current'))).toHaveLength(1)
     height.mockRestore()
+  })
+
+  it('주소의 해시(#20.1)가 가리키는 제목을 번호로 찾는다', () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<h2>2. 시작하기</h2><h3>2.1 로그인</h3><h2>20. Claude와 함께 설계하기 (MCP)</h2><h3>20.1 연결하기</h3><h3>20.10 열째</h3>'
+    expect(findHeadingByNumber(root, '#20.1')?.textContent).toBe('20.1 연결하기')
+    expect(findHeadingByNumber(root, '#20')?.textContent).toBe('20. Claude와 함께 설계하기 (MCP)')
+    expect(findHeadingByNumber(root, '#2')?.textContent).toBe('2. 시작하기')
+    expect(findHeadingByNumber(root, '#99')).toBeNull()
+    expect(findHeadingByNumber(root, '#mcp')).toBeNull()
   })
 
   it('지금 읽는 절 — 기준선을 지난 마지막 제목, 맨 아래에서는 마지막 절', () => {
