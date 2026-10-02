@@ -8,7 +8,7 @@ import { Route } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import i18n from '@/lib/i18n'
-import GuidePage, { guideHeadings, resolveLabels } from '@/pages/guide'
+import GuidePage, { activeHeading, guideHeadings, resolveLabels } from '@/pages/guide'
 import { renderWithProviders, resetSessionState } from '@/test/test-app'
 
 vi.mock('@/features/community/components/markdown-viewer', () => ({
@@ -73,6 +73,32 @@ describe('사용 가이드', () => {
     expect(scrolled).toEqual(['9. 표준 — 단어, 용어, 도메인 타입'])
   })
 
+  it('본문을 내리면 지금 읽는 절이 목차에서 강조된다', async () => {
+    // jsdom은 문서 높이가 0이라 늘 맨 아래로 본다 — 높이를 준다
+    const height = vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(5000)
+    renderGuide()
+    const toc = await screen.findByRole('navigation', { name: '목차' })
+    const article = await screen.findByTestId('guide-article')
+    await within(article).findByRole('heading', { level: 2, name: '2. 시작하기' })
+
+    // 셋째 절의 제목까지 기준선 위로 올라간 상태
+    article.querySelectorAll('h2').forEach((heading, index) => {
+      heading.getBoundingClientRect = () => ({ top: index <= 2 ? -10 : 500 }) as DOMRect
+    })
+    fireEvent.scroll(window)
+
+    await waitFor(() => expect(within(toc).getByRole('button', { name: '3. 워크스페이스' })).toHaveAttribute('aria-current', 'location'))
+    expect(within(toc).getAllByRole('button').filter((button) => button.hasAttribute('aria-current'))).toHaveLength(1)
+    height.mockRestore()
+  })
+
+  it('지금 읽는 절 — 기준선을 지난 마지막 제목, 맨 아래에서는 마지막 절', () => {
+    expect(activeHeading([], false)).toBe(0)
+    expect(activeHeading([300, 900], false)).toBe(0)
+    expect(activeHeading([-500, 40, 700], false)).toBe(1)
+    expect(activeHeading([-900, -300, 400], true)).toBe(2)
+  })
+
   it('언어를 바꾸면 그 언어의 본문으로 바뀐다', async () => {
     renderGuide()
     await screen.findByRole('heading', { level: 2, name: '2. 시작하기' })
@@ -92,6 +118,8 @@ describe('사용 가이드', () => {
     // 도구 메뉴의 항목 이름 — 번역 파일의 값 그대로
     expect(article.textContent).toContain('논리명 추론')
     expect(resolveLabels('**{{model.editor.toolbar.tools}}** › {{no.such.key}}', (key) => i18n.t(key))).toBe('**도구** › {{no.such.key}}')
+    // 문구 안의 세로줄은 표의 칸을 나누지 않게 이스케이프한다
+    expect(resolveLabels('| {{model.editor.relationship.multiplicity_ONE_OR_MORE}} |', (key) => i18n.t(key))).toBe('| 하나 이상 (\\|<) |')
   })
 
   it('그림을 누르면 새 창에서 연다', async () => {
