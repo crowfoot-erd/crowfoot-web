@@ -431,6 +431,7 @@ Creating a relationship adds a new foreign key column. If you want to use an exi
 * Double-click a note to edit its text. Drag the band at the top to move it.
 * In the note edit dialog, set the title, color, and **{{model.editor.note.linkedTable}}**. Dropping a note onto a table also sets its linked table.
 * A note with a linked table is placed near that table by auto layout.
+* To delete a note, right-click it and choose **{{model.editor.contextMenu.removeNote}}**.
 
 ### 8.2 Groups
 
@@ -442,6 +443,7 @@ Groups collect tables by topic. A table in a group has a band in the group color
 * Add and remove tables with **{{model.editor.contextMenu.addToGroup}}** and **{{model.editor.contextMenu.removeFromGroup}}**.
 * In **{{model.editor.contextMenu.editGroup}}**, edit the name, description, color, and member tables.
 * You can show a single group from the **{{model.editor.toolbar.view}}** menu or the explorer.
+* While viewing a single group, choose **{{model.editor.contextMenu.exitGroupView}}** from the right-click menu to return to the whole document.
 
 ### 8.3 The right-click menu of a table
 

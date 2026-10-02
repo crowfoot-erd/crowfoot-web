@@ -165,6 +165,54 @@ describe('본문 파일', () => {
     }
   })
 
+  /**
+   * 화면의 메뉴·버튼이 늘면 가이드도 따라가야 한다. 아래 묶음의 번역 키는 메뉴 항목, 탭, 도구 모음 버튼,
+   * 검증 규칙, 단축키다. 여기에 키를 더했는데 가이드 본문이 그 키를 쓰지 않으면 이 테스트가 실패한다.
+   * 고치는 법: 네 언어의 본문에 그 항목의 설명을 더한다(docs `00-environment/user-guide.md`).
+   * 메뉴 항목이 아닌 키(제목, 진행 문구, 툴팁)만 아래 예외에 이유와 함께 적는다.
+   */
+  it('메뉴·도구 모음·탭·검증 규칙·단축키의 문구는 모두 가이드에 나온다', async () => {
+    const COVERED = [
+      'shell.nav.',
+      'shell.sidebar.',
+      'workspace.detail.tabs.',
+      'model.list.menu.',
+      'model.editor.toolbar.',
+      'model.editor.contextMenu.',
+      'database.tabs.',
+      'model.validation.rules.',
+      'model.editor.shortcuts.row.',
+    ]
+    const EXEMPT: Record<string, string> = {
+      'shell.sidebar.adminTitle': '사이드바 제목 — 메뉴 항목이 아니다',
+      'shell.sidebar.teamsTitle': '사이드바 제목 — 메뉴 항목이 아니다',
+      'shell.sidebar.communityTitle': '사이드바 제목 — 메뉴 항목이 아니다',
+      'shell.sidebar.noTeams': '빈 목록 안내',
+      'shell.sidebar.backToWorkspaces': '되돌아가기 링크 — 기능이 아니다',
+      'model.editor.toolbar.zoomIn': '본문은 "− 숫자 +"로 묶어 설명한다',
+      'model.editor.toolbar.zoomOut': '본문은 "− 숫자 +"로 묶어 설명한다',
+      'model.editor.toolbar.dbmsLocked': 'DBMS 배지의 툴팁',
+      'model.editor.toolbar.autoLayout': '방식 이름(계층형 등)으로 설명한다',
+      'model.editor.toolbar.autoLayoutMode': '화살표 버튼의 접근성 이름',
+      'model.editor.toolbar.autoLayoutDirection': '메뉴 안의 묶음 제목',
+      'model.editor.toolbar.autoLayoutRunning': '진행 문구(값을 채우는 문구)',
+      'model.editor.toolbar.autoLayoutFailed': '실패 안내',
+      'model.editor.toolbar.image': '메뉴 안의 묶음 제목',
+    }
+    const collect = (node: unknown, path: string, out: string[]): string[] => {
+      if (typeof node === 'string') out.push(path)
+      else if (node && typeof node === 'object') for (const [key, value] of Object.entries(node)) collect(value, path ? `${path}.${key}` : key, out)
+      return out
+    }
+    const keys = collect(i18n.getResourceBundle('ko', 'translation'), '', []).filter((key) => COVERED.some((prefix) => key.startsWith(prefix)))
+    const [{ markdown }] = await load()
+    const used = new Set(tokens(markdown))
+
+    expect(keys.filter((key) => !used.has(key) && !(key in EXEMPT))).toEqual([])
+    // 예외 목록에 죽은 키가 남지 않게 한다
+    expect(Object.keys(EXEMPT).filter((key) => !keys.includes(key) || used.has(key))).toEqual([])
+  })
+
   it('본문의 {{키}}는 네 언어의 번역 파일에 모두 있다 — 값을 채워야 하는 문구는 쓰지 않는다', async () => {
     const files = await load()
 

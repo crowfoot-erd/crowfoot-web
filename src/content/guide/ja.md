@@ -431,6 +431,7 @@ Crowfootの画面は大きく3種類あります。
 * メモをダブルクリックすると内容を編集できます。上の帯をドラッグすると動きます。
 * メモの編集ウィンドウで、タイトル、色、**{{model.editor.note.linkedTable}}** を決めます。メモをテーブルの上にドラッグ＆ドロップしても関連テーブルが決まります。
 * 関連テーブルのあるメモは、自動レイアウトのときにそのテーブルの近くに置かれます。
+* メモを削除するには、メモの右クリックメニューで **{{model.editor.contextMenu.removeNote}}** を選びます。
 
 ### 8.2 グループ
 
@@ -442,6 +443,7 @@ Crowfootの画面は大きく3種類あります。
 * **{{model.editor.contextMenu.addToGroup}}**、**{{model.editor.contextMenu.removeFromGroup}}** で出し入れします。
 * **{{model.editor.contextMenu.editGroup}}** で、名前、説明、色、メンバーのテーブルを編集します。
 * **{{model.editor.toolbar.view}}** メニューまたはエクスプローラーで、グループを1つだけ選んで表示できます。
+* グループを 1 つだけ表示しているときは、右クリックメニューの **{{model.editor.contextMenu.exitGroupView}}** でドキュメント全体に戻ります。
 
 ### 8.3 テーブルの右クリックメニュー
 

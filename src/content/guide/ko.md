@@ -431,6 +431,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 * 메모를 두 번 누르면 내용을 고칩니다. 위쪽 띠를 끌면 움직입니다.
 * 메모 편집 창에서 제목, 색, **{{model.editor.note.linkedTable}}** 을 정합니다. 메모를 테이블 위로 끌어다 놓아도 연관 테이블이 정해집니다.
 * 연관 테이블이 있는 메모는 자동 배치 때 그 테이블 가까이에 놓입니다.
+* 메모의 우클릭 메뉴에서 **{{model.editor.contextMenu.removeNote}}** 로 지웁니다.
 
 ### 8.2 그룹
 
@@ -442,6 +443,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 * **{{model.editor.contextMenu.addToGroup}}**, **{{model.editor.contextMenu.removeFromGroup}}** 로 넣고 뺍니다.
 * **{{model.editor.contextMenu.editGroup}}** 에서 이름, 설명, 강조색, 멤버 테이블을 고칩니다.
 * **{{model.editor.toolbar.view}}** 메뉴나 탐색기에서 그룹 하나만 골라 볼 수 있습니다.
+* 그룹 하나만 보는 중에는 우클릭 메뉴의 **{{model.editor.contextMenu.exitGroupView}}** 로 전체 문서로 돌아옵니다.
 
 ### 8.3 테이블의 우클릭 메뉴
 

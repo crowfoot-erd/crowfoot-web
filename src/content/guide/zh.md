@@ -431,6 +431,7 @@ Crowfoot 的界面大致分为三种。
 * 双击备注可以修改内容。拖动上方的色带可以移动。
 * 在编辑备注窗口中设置标题、颜色和 **{{model.editor.note.linkedTable}}**。把备注拖放到表上也可以设置关联表。
 * 有关联表的备注在自动布局时会放在该表附近。
+* 要删除备注，请在备注的右键菜单中选择 **{{model.editor.contextMenu.removeNote}}**。
 
 ### 8.2 分组
 
@@ -442,6 +443,7 @@ Crowfoot 的界面大致分为三种。
 * 用 **{{model.editor.contextMenu.addToGroup}}**、**{{model.editor.contextMenu.removeFromGroup}}** 加入或移出。
 * 在 **{{model.editor.contextMenu.editGroup}}** 中修改名称、说明、颜色和成员表。
 * 可以在 **{{model.editor.toolbar.view}}** 菜单或资源管理器中只查看某一个分组。
+* 只查看一个分组时，在右键菜单中选择 **{{model.editor.contextMenu.exitGroupView}}** 可回到整个文档。
 
 ### 8.3 表的右键菜单
 
