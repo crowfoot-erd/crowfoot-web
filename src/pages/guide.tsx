@@ -166,7 +166,8 @@ export default function GuidePage() {
           <article
             ref={articleRef}
             data-testid="guide-article"
-            className="[&_h2]:scroll-mt-20 [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_img]:border"
+            // 절(h2)과 소제목(h3) 위에 여백을 넉넉히 둔다 — 뷰어 기본값은 앞 문단에 바짝 붙는다(뷰어 스타일보다 우선하게 !)
+            className="[&_h2]:scroll-mt-20 [&_h2]:mt-16! [&_h2]:mb-5! [&_h2:first-of-type]:mt-8! [&_h3]:mt-10! [&_h3]:mb-3! [&_img]:my-3! [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_img]:border"
             onClick={(event) => {
               const target = event.target
               if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')
