@@ -849,6 +849,8 @@
         "nullableNo": "NOT NULL",
         "columnCount": "{{count}} 个列",
         "termCount": "{{count}} 个术语",
+        "standard": "词典标准: {{name}}",
+        "standardApply": "应用",
         "usageNote": "列数以当前打开的文档为准，无法得知其他文档是否使用。",
         "actions": "操作",
         "edit": "编辑 {{name}}",

@@ -849,6 +849,8 @@
         "nullableNo": "NOT NULL",
         "columnCount": "{{count}} columns",
         "termCount": "{{count}} terms",
+        "standard": "Dictionary standard: {{name}}",
+        "standardApply": "Apply",
         "usageNote": "Counts cover the document that is open now. Usage in other documents is unknown.",
         "actions": "Actions",
         "edit": "Edit {{name}}",

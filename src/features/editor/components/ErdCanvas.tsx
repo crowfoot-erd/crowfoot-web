@@ -60,6 +60,7 @@ import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
 import { databaseBrowserPath } from '@/features/database'
 import { useDomainTypes } from '@/features/domain-types/hooks'
+import { useWorkspaceTerms } from '@/features/terms/hooks'
 import { DomainSyncBanner } from '@/features/editor/components/DomainSyncBanner'
 import { hasClipboard } from '@/features/editor/model/clipboard'
 import { copySelection, duplicateSelection, pasteClipboard } from '@/features/editor/model/clipboard-commands'
@@ -1064,6 +1065,8 @@ export function ErdCanvas({
   )
   // 워크스페이스 도메인 타입 — 편집할 수 있는 문서에서만 읽는다(공개 뷰어·읽기 전용은 컬럼에 적힌 이름만 본다)
   const domainTypes = useDomainTypes(canEdit ? workspaceId : null)
+  // 워크스페이스 사전 — 컬럼 정보 창의 "사전 표준" 안내에 쓴다(컬럼 이름 제안과 같은 캐시)
+  const workspaceTerms = useWorkspaceTerms(canEdit && workspaceId ? workspaceId : '')
 
   /** 대상 컬럼 소속 테이블의 PK 컬럼 수 — 복합 PK에서는 AI를 제공하지 않는다 */
   const infoColumnPkCount = useMemo(
@@ -1419,6 +1422,7 @@ export function ErdCanvas({
         dbmsId={dbmsId}
         domainTypes={domainTypes.data?.items}
         isFk={infoColumnIsFk}
+        terms={workspaceTerms.data?.items}
         onConfirm={({ pk, patch }) => {
           if (!infoColumnRef) return
           const { tableId, columnId } = infoColumnRef

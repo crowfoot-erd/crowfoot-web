@@ -44,6 +44,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import type { ColumnPatch } from '@/features/editor/model/changes'
 import { splitLogicalName } from '@/features/editor/model/logical-name'
+import type { WorkspaceTerm } from '@/api/types'
 import type { DomainType } from '@/features/domain-types/api'
 import { DOMAIN_FIELDS, type DomainField } from '@/features/editor/model/changes'
 import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
@@ -74,6 +75,8 @@ export interface ColumnInfoDialogProps {
   domainTypes?: readonly DomainType[]
   /** 외래 키 컬럼인지 — 외래 키 컬럼에는 도메인 타입을 적용할 수 없다(타입이 부모 컬럼을 따른다) */
   isFk?: boolean
+  /** 워크스페이스 사전 — 물리명이 용어와 같고 그 용어가 도메인 타입을 가리키면 "사전 표준"으로 안내한다(§16) */
+  terms?: readonly WorkspaceTerm[]
   onConfirm: (values: ColumnInfoSubmit) => void
 }
 
@@ -112,6 +115,7 @@ export function ColumnInfoDialog({
   dbmsId,
   domainTypes,
   isFk = false,
+  terms,
   onConfirm,
 }: ColumnInfoDialogProps) {
   const { t } = useTranslation()
@@ -194,6 +198,17 @@ export function ColumnInfoDialog({
   /** 기본 키 컬럼은 nullable을 따르지 않는다 */
   const domainFields = DOMAIN_FIELDS.filter((field) => !(watched.pk && field === 'nullable'))
   const differing = selectedDomain ? differingFields(formDomainValues(), selectedDomain, domainFields) : []
+
+  /** 사전 표준 — 물리명이 사전의 용어와 같고(대소문자 무시) 그 용어가 가리키는 도메인 타입.
+   *  지금 고른 도메인 타입이 그것이면 안내하지 않는다 */
+  const standardDomain = (() => {
+    if (isFk || !terms || !domainTypes) return undefined
+    const name = (watched.physicalName ?? '').trim().toLowerCase()
+    if (name === '') return undefined
+    const term = terms.find((candidate) => candidate.term.toLowerCase() === name && candidate.domainTypeId)
+    const domainType = term ? domainTypes.find((candidate) => candidate.domainTypeId === term.domainTypeId) : undefined
+    return domainType && domainType.domainTypeId !== domainId ? domainType : undefined
+  })()
 
   /** 도메인 타입의 값을 폼에 넣는다 — fields를 주면 그 속성만 */
   const fillFromDomain = (domainType: DomainType, fields: readonly DomainField[] = domainFields) => {
@@ -335,6 +350,25 @@ export function ColumnInfoDialog({
             {/* 도메인 타입 — 고르면 타입·길이·NULL 허용·기본값이 그 값으로 채워진다(§11.1) */}
             {domainTypes !== undefined && (domainTypes.length > 0 || domainId !== '') ? (
               <div className="grid gap-1.5 rounded-md border p-2">
+                {standardDomain ? (
+                  // 사전이 이 이름의 도메인 타입을 정해 두었다 — 한 번에 맞춘다
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-violet-600 dark:text-violet-400" data-testid="domain-standard">
+                    <span>{t('model.editor.domainType.standard', { name: standardDomain.name })}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      disabled={locked}
+                      onClick={() => {
+                        setDomainId(standardDomain.domainTypeId)
+                        fillFromDomain(standardDomain)
+                      }}
+                    >
+                      {t('model.editor.domainType.standardApply')}
+                    </Button>
+                  </div>
+                ) : null}
                 <label className="grid gap-1 text-sm font-medium">
                   {t('model.editor.domainType.label')}
                   <select

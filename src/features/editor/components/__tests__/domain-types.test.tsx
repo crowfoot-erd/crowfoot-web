@@ -384,6 +384,37 @@ describe('사전 용어로 컬럼 채우기 (v1.30 — 08-core/01-workspace.md �
     expect(column('c-backup').domain ?? null).toBeNull()
   })
 
+  it('컬럼 정보 창 — 이름이 사전의 용어와 같으면 "사전 표준"을 안내하고 [적용]으로 그 도메인 타입을 고른다', async () => {
+    await renderEditor()
+    seedUsers()
+    // 이름을 사전의 용어(user_email — 도메인 타입 이메일)와 같게 바꾼다
+    useEditorStore.getState().commit({ type: 'column/patch', tableId: 't-users', columnId: 'c-backup', patch: { physicalName: 'User_Email' } })
+
+    fireEvent.doubleClick(await screen.findByLabelText('컬럼 물리명 — User_Email'))
+    const dialog = (await screen.findByText('컬럼 정보')).closest('[role="dialog"]') as HTMLElement
+    const hint = await within(dialog).findByTestId('domain-standard')
+    expect(hint).toHaveTextContent('사전 표준: 이메일')
+
+    fireEvent.click(within(hint).getByRole('button', { name: '적용' }))
+    expect(within(dialog).getByLabelText('도메인 타입')).toHaveValue('11')
+    expect(within(dialog).getByLabelText('길이')).toHaveValue(191)
+    // 표준을 골랐으니 안내는 사라진다
+    expect(within(dialog).queryByTestId('domain-standard')).not.toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(column('c-backup')).toMatchObject({ dataType: 'VARCHAR', length: 191, domain: { id: '11', overrides: [] } }))
+  })
+
+  it('컬럼 정보 창 — 이름이 사전에 없거나 단어뿐이면 안내하지 않는다', async () => {
+    await renderEditor()
+    seedUsers()
+
+    fireEvent.doubleClick(await screen.findByLabelText('컬럼 물리명 — email'))
+    const dialog = (await screen.findByText('컬럼 정보')).closest('[role="dialog"]') as HTMLElement
+    await within(dialog).findByLabelText('도메인 타입')
+    expect(within(dialog).queryByTestId('domain-standard')).not.toBeInTheDocument()
+  })
+
   it('단어를 고르면 조각만 완성하고, 확정하면 추론한 논리명이 채워진다 — 타입은 그대로다', async () => {
     await renderEditor()
     seedUsers()

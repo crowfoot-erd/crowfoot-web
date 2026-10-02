@@ -849,6 +849,8 @@
         "nullableNo": "NOT NULL",
         "columnCount": "カラム {{count}}",
         "termCount": "用語 {{count}}",
+        "standard": "辞書の標準: {{name}}",
+        "standardApply": "適用",
         "usageNote": "カラム数は今開いているドキュメントが基準です。他のドキュメントでの使用は分かりません。",
         "actions": "操作",
         "edit": "{{name}}を編集",
