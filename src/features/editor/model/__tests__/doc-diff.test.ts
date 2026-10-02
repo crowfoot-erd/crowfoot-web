@@ -89,7 +89,7 @@ function makeDoc(
     diagram: {
       nodes: init.nodes ?? {},
       notes: init.notes ?? [],
-      areas: init.areas ?? [],
+      areas: init.areas ?? [], requirements: [],
       viewport: init.viewport ?? null,
     },
   }

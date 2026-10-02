@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { McpTab } from '@/features/access-tokens'
 import { Textarea } from '@/components/ui/textarea'
 import { ErrorState } from '@/components/error-state'
 import { NotFoundContent } from '@/components/not-found-content'
@@ -39,9 +40,9 @@ import { formatDate } from '@/lib/format'
 import { setLastWorkspaceId } from '@/lib/last-workspace'
 import { errorMessage } from '@/lib/result-code'
 
-type TabValue = 'erd' | 'database' | 'overview' | 'members' | 'settings'
+type TabValue = 'erd' | 'database' | 'overview' | 'members' | 'mcp' | 'settings'
 
-const TAB_VALUES: TabValue[] = ['erd', 'database', 'overview', 'members', 'settings']
+const TAB_VALUES: TabValue[] = ['erd', 'database', 'overview', 'members', 'mcp', 'settings']
 
 /* ---------- 개요 정의표 ---------- */
 
@@ -300,6 +301,7 @@ export function WorkspaceDetailPage() {
           <TabsTrigger value="database">{t('workspace.detail.tabs.database')}</TabsTrigger>
           <TabsTrigger value="overview">{t('workspace.detail.tabs.overview')}</TabsTrigger>
           <TabsTrigger value="members">{t('workspace.detail.tabs.members')}</TabsTrigger>
+          <TabsTrigger value="mcp">{t('workspace.detail.tabs.mcp')}</TabsTrigger>
           {isOwner ? (
             <TabsTrigger value="settings">{t('workspace.detail.tabs.settings')}</TabsTrigger>
           ) : null}
@@ -317,6 +319,7 @@ export function WorkspaceDetailPage() {
       {activeTab === 'members' ? (
         <MembersTab workspaceId={workspaceId} workspaceName={data.name} isOwner={isOwner} />
       ) : null}
+      {activeTab === 'mcp' ? <McpTab workspaceId={workspaceId} workspaceName={data.name} myRole={myRole} /> : null}
       {activeTab === 'settings' && isOwner ? (
         <SettingsTab workspace={data} workspaceId={workspaceId} />
       ) : null}

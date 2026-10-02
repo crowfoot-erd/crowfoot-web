@@ -178,5 +178,15 @@
   "en": "Restored from version 1",
   "ja": "バージョン 1 から復元",
   "zh": "从版本 1 恢复"
+ },
+ "내 노트북의 Claude Code": {
+  "en": "Claude Code on my laptop",
+  "ja": "自分のノートPCのClaude Code",
+  "zh": "我笔记本上的 Claude Code"
+ },
+ "사무실 데스크톱": {
+  "en": "Office desktop",
+  "ja": "オフィスのデスクトップ",
+  "zh": "办公室台式机"
  }
 }

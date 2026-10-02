@@ -86,7 +86,39 @@ function terms(lang: Lang) {
   ]
 }
 
-/** 예시 문서 — 온라인 쇼핑몰(테이블 6·관계 6·그룹 3·메모 1). 도메인 타입을 쓰는 컬럼이 있다 */
+/** 예시 요구사항 — [제목, 내용]. 도메인(그룹)별 기능 요구사항 넷과 공통 요구사항 하나 */
+const REQUIREMENTS: Record<Lang, [string, string][]> = {
+  ko: [
+    ['이메일로 가입하고 로그인한다', '이메일은 중복될 수 없다. 가입한 시각을 남긴다.'],
+    ['상품을 장바구니 없이 바로 주문한다', '주문 한 건에 상품을 여러 개 담는다. 주문할 때의 단가를 남긴다.'],
+    ['주문을 여러 수단으로 나누어 결제한다', '한 주문에 결제가 여러 건 붙는다. 결제마다 수단과 금액을 남긴다.'],
+    ['구매한 상품에 리뷰를 남긴다', '평점은 1~5점이다.'],
+    ['모든 테이블에 생성 시각을 둔다', '감사와 정렬에 쓴다.'],
+  ],
+  en: [
+    ['Sign up and sign in with email', 'Emails must be unique. Keep the sign-up time.'],
+    ['Order products directly without a cart', 'One order holds several products. Keep the unit price at order time.'],
+    ['Split an order across payment methods', 'One order has several payments. Each keeps its method and amount.'],
+    ['Leave a review on a purchased product', 'Ratings range from 1 to 5.'],
+    ['Every table keeps its creation time', 'Used for auditing and sorting.'],
+  ],
+  ja: [
+    ['メールで登録してログインする', 'メールは重複できない。登録日時を残す。'],
+    ['カートなしで商品を直接注文する', '1件の注文に複数の商品を入れる。注文時の単価を残す。'],
+    ['注文を複数の手段に分けて決済する', '1件の注文に複数の決済が付く。決済ごとに手段と金額を残す。'],
+    ['購入した商品にレビューを残す', '評価は1〜5点。'],
+    ['すべてのテーブルに作成日時を置く', '監査と並べ替えに使う。'],
+  ],
+  zh: [
+    ['用邮箱注册并登录', '邮箱不能重复。保留注册时间。'],
+    ['不经购物车直接下单', '一笔订单包含多个商品。保留下单时的单价。'],
+    ['一笔订单用多种方式支付', '一笔订单有多笔支付。每笔保留方式和金额。'],
+    ['对已购商品留下评价', '评分为 1 到 5 分。'],
+    ['所有表都保留创建时间', '用于审计和排序。'],
+  ],
+}
+
+/** 예시 문서 — 온라인 쇼핑몰(테이블 6·관계 6·그룹 3·메모 1·요구사항 5). 도메인 타입을 쓰는 컬럼이 있다 */
 function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean } = {}): EditorDocument {
   const n = NAMES[lang]
   const col = (table: string, name: string, dataType: string, extra: Partial<Parameters<typeof createColumn>[0] & object> = {}) =>
@@ -135,6 +167,27 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
     { type: 'area/create', area: createArea(n.member, { id: 'a_member', color: 'blue', tableIds: ['t_users'] }) },
     { type: 'area/create', area: createArea(n.order, { id: 'a_order', color: 'orange', tableIds: ['t_orders', 't_order_items', 't_payments'] }) },
     { type: 'area/create', area: createArea(n.catalog, { id: 'a_catalog', color: 'green', tableIds: ['t_products', 't_reviews'] }) },
+  ])
+  // 요구사항 — 반영됨 셋, 반영 대기 하나(내용이 바뀐 뒤 아직 반영하지 않았다), 공통 하나
+  const requirement = (index: number, extra: { areaId?: string | null; scope?: 'tables' | 'document'; revision?: number; appliedRevision?: number; tableIds?: string[] }) => ({
+    id: `req_${index + 1}`,
+    code: `REQ-00${index + 1}`,
+    areaId: null,
+    scope: 'tables' as const,
+    title: REQUIREMENTS[lang][index][0],
+    description: REQUIREMENTS[lang][index][1],
+    status: 'confirmed' as const,
+    revision: 1,
+    appliedRevision: 1,
+    tableIds: [] as string[],
+    ...extra,
+  })
+  doc = applyChanges(doc, [
+    { type: 'requirement/create', requirement: requirement(0, { areaId: 'a_member', tableIds: ['t_users'] }) },
+    { type: 'requirement/create', requirement: requirement(1, { areaId: 'a_order', tableIds: ['t_orders', 't_order_items', 't_products'] }) },
+    { type: 'requirement/create', requirement: requirement(2, { areaId: 'a_order', revision: 2, appliedRevision: 1, tableIds: ['t_payments'] }) },
+    { type: 'requirement/create', requirement: requirement(3, { areaId: 'a_catalog', tableIds: ['t_reviews'] }) },
+    { type: 'requirement/create', requirement: requirement(4, { scope: 'document' }) },
   ])
   // 메모 장면 — 결제 테이블에 붙인 메모. 화면을 메모 쪽으로 옮겨 둔다
   if (options.note) {
@@ -400,6 +453,22 @@ const APP_SCENES: Scene[] = [
       await s.shot('member-add', { locator: dialog(s) })
     },
   },
+  { name: 'workspace-mcp', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=mcp`); await s.page.getByTestId('mcp-token-row').first().waitFor(); await s.shot('workspace-mcp') } },
+  {
+    name: 'mcp-issue',
+    run: async (s) => {
+      await goto(s, `/workspaces/${WS}?tab=mcp`)
+      await s.page.getByTestId('mcp-issue-button').click()
+      await dialog(s).waitFor()
+      await dialog(s).locator('#mcp-token-name').fill('Claude Code')
+      await s.page.waitForTimeout(300)
+      await s.shot('mcp-issue', { locator: dialog(s) })
+      await dialog(s).getByRole('button', { name: s.t('workspace.mcp.issueConfirm'), exact: true }).click()
+      await s.page.getByTestId('mcp-issued-dialog').waitFor()
+      await s.page.waitForTimeout(400)
+      await s.shot('mcp-issued', { locator: s.page.getByTestId('mcp-issued-dialog') })
+    },
+  },
   { name: 'workspace-overview', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=overview`); await s.shot('workspace-overview') } },
   { name: 'workspace-settings', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=settings`); await s.shot('workspace-settings') } },
   { name: 'team-detail', run: async (s) => { await goto(s, '/teams/201'); await s.shot('team-detail') } },
@@ -652,6 +721,23 @@ const EDITOR_SCENES: Scene[] = [
       await dialog(s).getByRole('button', { name: s.t('model.editor.deploy.button'), exact: true }).click()
       await s.page.waitForTimeout(900)
       await s.shot('editor-deploy', { locator: dialog(s) })
+    },
+  },
+  {
+    name: 'editor-requirements',
+    run: async (s) => {
+      await openEditor(s)
+      await s.page.getByTestId('requirements-toggle').click()
+      const panel = s.page.getByTestId('requirements-panel')
+      await panel.waitFor()
+      // 반영 대기 항목을 펼친다 — 내용, 연결된 테이블, "반영함으로 표시"가 보인다
+      await panel.locator('[data-testid="requirement-row"][data-state="PENDING"] > button').click()
+      await s.page.waitForTimeout(500)
+      await s.shot('editor-requirements', { clip: { x: 0, y: 64, width: 1000, height: 640 } })
+      await panel.getByTestId('requirement-edit').click()
+      await dialog(s).waitFor()
+      await s.page.waitForTimeout(400)
+      await s.shot('editor-requirement-dialog', { locator: dialog(s) })
     },
   },
   {

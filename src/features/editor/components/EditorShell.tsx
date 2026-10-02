@@ -35,7 +35,9 @@ import type { Model } from '@/api/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Loader2, Users } from 'lucide-react'
-import { parseContent, serializeContent } from '@/features/editor/model/content-io'
+import { serializeContent } from '@/features/editor/model/content-io'
+import { parseContent } from '@/features/editor/model/content-io'
+import { placeMissingTables } from '@/features/editor/model/initial-placement'
 import { templateIdForDatabase } from '@/features/editor/model/dbms'
 import { copySelection, duplicateSelection, pasteClipboard } from '@/features/editor/model/clipboard-commands'
 import type { ErdChange } from '@/features/editor/model/changes'
@@ -61,6 +63,7 @@ import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { TermDictionaryPanel, type TermPanelTab } from './TermDictionaryPanel'
+import { RequirementsPanel } from './RequirementsPanel'
 import { ValidationPanel } from './ValidationPanel'
 import { ValidationHighlightContext } from './canvas/validation-context'
 import { useValidationIssues } from '@/features/editor/model/use-validation'
@@ -70,6 +73,9 @@ import type { ValidationLevel } from '@/features/editor/model/validation'
 const AUTOSAVE_DELAY_MS = 2000
 
 /** 모델 익스플로러 열림 기억 — 브라우저 단위(줌·팬 기억 viewport-memory와 같은 관례, 문서 무관) */
+/** 본체를 읽어 캔버스에 올릴 모양으로 — 위치 없는 테이블(MCP가 만든 것)을 놓는다 (05-editor/02-ui.md §18) */
+const parseForCanvas = (raw: string | null | undefined) => placeMissingTables(parseContent(raw))
+
 const EXPLORER_OPEN_KEY = 'crowfoot.editor.explorer-open'
 
 function readExplorerOpen(): boolean {
@@ -267,8 +273,13 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
     }
     // 서버 본문은 요약 diff의 기준점(savedDocument)으로도 쓴다 — 임시본을 화면에 띄우는
     // 복원 경로에서도 마지막 저장본은 서버 것이므로. 파싱 실패는 로드 실패와 같게 취급한다
-    const serverParsed = tryParse(model.content)
-    const draftParsed = restore ? tryParse(restore.content) : null
+    // 위치 없는 테이블(MCP가 만든 것)은 여기서 놓는다(02-ui.md §18). 편집할 수 있는 사람이 열었으면
+    // 놓은 결과가 문서 변경이 되어 자동 저장으로 남고, 볼 수만 있는 사람에게는 화면에만 놓인다
+    const serverRaw = tryParse(model.content)
+    const serverParsed = serverRaw ? placeMissingTables(serverRaw) : null
+    const draftRaw = restore ? tryParse(restore.content) : null
+    const draftParsed = draftRaw ? placeMissingTables(draftRaw) : null
+    const placedOnOpen = canEdit && !draftParsed && serverRaw !== null && serverParsed !== serverRaw
     if (restore && !draftParsed) clearDraft(model.workspaceId, model.modelId) // 깨진 임시본 — 폐기
     const parsed = draftParsed ?? serverParsed
     if (!parsed) {
@@ -285,9 +296,12 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
         baseVersion: model.version,
         databaseType: model.databaseType,
         document: { model: parsed.model, diagram: parsed.diagram },
-        savedDocument: serverParsed
-          ? { model: serverParsed.model, diagram: serverParsed.diagram }
-          : undefined,
+        savedDocument: placedOnOpen
+          ? { model: serverRaw.model, diagram: serverRaw.diagram }
+          : serverParsed
+            ? { model: serverParsed.model, diagram: serverParsed.diagram }
+            : undefined,
+        unsaved: placedOnOpen,
       })
   }, [model.modelId, model.version, model.content, model.workspaceId, canEdit])
 
@@ -460,7 +474,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
         setConflictOpen(true)
         return
       }
-      const parsed = parseContent(fresh.content)
+      const parsed = parseForCanvas(fresh.content)
       const serverDocument: EditorDocument = { model: parsed.model, diagram: parsed.diagram }
       const state = useEditorStore.getState()
       if (diffDocuments(serverDocument, state.present).items.length === 0) {
@@ -742,7 +756,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
       if (fresh) {
         // 서버 본문으로 되돌리는 길이다 — 로컬 dirty와 임시본 모두 폐기 대상
         clearDraft(model.workspaceId, model.modelId)
-        const parsed = parseContent(fresh.content)
+        const parsed = parseForCanvas(fresh.content)
         useEditorStore.getState().hydrate(
           {
             modelId: fresh.modelId,
@@ -867,6 +881,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
             modelId={model.modelId}
           />
         ) : null}
+        {/* 요구사항 패널 — 문서에 속한 내용이라 공개 뷰어와 버전 뷰어도 읽기 전용으로 본다(02-ui.md §17) */}
+        <RequirementsPanel canEdit={editable} />
         <div className="relative min-w-0 flex-1">
           {remoteChangeOpen && !conflictOpen && (
             <div

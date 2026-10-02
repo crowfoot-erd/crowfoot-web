@@ -40,7 +40,7 @@ function notifyLocalChanges(changes: ErdChange[]): void {
 
 const emptyDocument: EditorDocument = {
   model: { tables: [], relationships: [] },
-  diagram: { nodes: {}, notes: [], areas: [], viewport: null },
+  diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null },
 }
 
 /** present가 바뀐 뒤 선택 정리 — 문서에서 사라진 객체 id(테이블·메모·관계)는 선택에서 뺀다.
@@ -67,6 +67,9 @@ export interface EditorHydrateInput {
    *  임시 저장 복원 때만 다르다: document=임시본, savedDocument=서버 본문 — 플러시 저장의
    *  요약이 임시본의 변경분만 말하도록. */
   savedDocument?: EditorDocument
+  /** 불러온 문서가 저장본과 이미 다르다 — 열 때 자동 배치로 위치를 채운 경우(05-editor/02-ui.md §18).
+   *  되돌리기 기록 없이 dirty로 시작해 자동 저장이 위치를 남긴다 */
+  unsaved?: boolean
 }
 
 interface EditorState {
@@ -130,7 +133,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       present: input.document,
       past: [],
       future: [],
-      savedDepth: 0,
+      // unsaved면 저장 지점이 기록 밖(-1)이다 — past가 비어 있어도 dirty이고, 저장하면 0으로 돌아온다
+      savedDepth: input.unsaved ? -1 : 0,
       savedDocument: input.savedDocument ?? input.document,
       selectedIds: [],
     })

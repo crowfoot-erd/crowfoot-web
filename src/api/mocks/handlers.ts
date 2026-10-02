@@ -74,7 +74,7 @@ function buildSyncPair() {
           linkedTableId: docUsers.id,
         },
       ],
-      areas: [],
+      areas: [], requirements: [],
       viewport: null,
     },
   })
@@ -122,7 +122,7 @@ function buildSyncPair() {
   const schemaContent = serializeContent({
     schemaVersion: 1,
     model: { tables: [dbUsers, dbOrders, dbProducts], relationships: [dbRel.relationship] },
-    diagram: { nodes: {}, notes: [], areas: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null },
   })
 
   return {
@@ -730,6 +730,27 @@ export const fixtures = {
         relationshipCount: 9,
         shareToken: null,
         updatedAt: '2026-09-25T00:00:00Z',
+      },
+    ],
+  },
+  accessTokens: {
+    totalCount: 2,
+    responses: [
+      {
+        tokenId: '901',
+        name: '내 노트북의 Claude Code',
+        tokenPrefix: 'cfw_a1B2c3D4',
+        createdBy: { userId: '2', name: '부트스트랩 관리자' },
+        expiresAt: '2026-12-30T00:00:00Z',
+        lastUsedAt: '2026-10-01T09:30:00Z',
+        createdAt: '2026-10-01T00:00:00Z',
+      },
+      {
+        tokenId: '902',
+        name: '사무실 데스크톱',
+        tokenPrefix: 'cfw_e5F6g7H8',
+        createdBy: { userId: '9', name: '김철수' },
+        createdAt: '2026-09-20T00:00:00Z',
       },
     ],
   },
@@ -1904,6 +1925,32 @@ export const handlers = [
   // 커넥션 목록 — 비밀번호는 내려오지 않는다
   http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/connections`, () =>
     HttpResponse.json(ok(fixtures.connections)),
+  ),
+
+  // 워크스페이스 액세스 토큰(v1.31, 08-core/18-access-token.md) — 목록·발급·폐기. 원문은 발급 응답에만 있다
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/access-tokens`, () =>
+    HttpResponse.json(ok(fixtures.accessTokens)),
+  ),
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/access-tokens`, async ({ request }) => {
+    const body = (await request.json()) as { name?: string; expiresInDays?: number }
+    if (!body.name) return fail('INVALID_REQUEST', 400)
+    return HttpResponse.json(
+      ok({
+        response: {
+          tokenId: '903',
+          name: body.name,
+          tokenPrefix: 'cfw_Zm9vYmFy',
+          createdBy: { userId: '2', name: '부트스트랩 관리자' },
+          ...(body.expiresInDays ? { expiresAt: '2026-12-31T00:00:00Z' } : {}),
+          createdAt: '2026-10-02T00:00:00Z',
+          token: 'cfw_Zm9vYmFyLXRoaXMtaXMtYS1tb2NrLXRva2VuLXZhbHVl',
+        },
+      }),
+      { status: 201 },
+    )
+  }),
+  http.delete(`${BASE}/api/v1/core/workspaces/:workspaceId/access-tokens/:tokenId`, () =>
+    new HttpResponse(null, { status: 204 }),
   ),
 
   // 커넥션 등록 — 응답에 비밀번호 없음

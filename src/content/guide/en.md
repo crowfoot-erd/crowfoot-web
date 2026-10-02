@@ -108,7 +108,7 @@ Click **{{shell.sidebar.newWorkspace}}** in the sidebar and enter a name. The pe
 
 ### 3.2 The tabs of a workspace
 
-When you open a workspace, there are five tabs below its name.
+When you open a workspace, there are six tabs below its name.
 
 | Tab | Contents |
 |---|---|
@@ -116,6 +116,7 @@ When you open a workspace, there are five tabs below its name.
 | **{{workspace.detail.tabs.database}}** | Service-provided databases and database connections |
 | **{{workspace.detail.tabs.overview}}** | Name, description, creator, number of members, creation date |
 | **{{workspace.detail.tabs.members}}** | Members and their roles |
+| **{{workspace.detail.tabs.mcp}}** | Issue and revoke the tokens that connect an MCP client such as Claude (section 20) |
 | **{{workspace.detail.tabs.settings}}** | Edit the name and description, delete the workspace. Shown only to the owner |
 
 ### 3.3 The ERD tab — the document list
@@ -221,6 +222,7 @@ From left to right.
 | **{{model.editor.explorer.toggle}}** | Opens and closes the Model Explorer on the left (section 5.2) |
 | **{{model.editor.termDictionary.toggle}}** | Opens and closes the term dictionary and domain types panel (section 9) |
 | **{{model.validation.toggle}}** | Opens and closes the design validation panel. A number shows how many issues there are (section 12) |
+| **{{model.editor.toolbar.requirements}}** | Opens and closes the requirements panel. A number shows how many requirements are pending (section 20.3) |
 | {{model.editor.toolbar.undo}}, {{model.editor.toolbar.redo}} | Undo and redo edits one step at a time |
 | **{{model.editor.toolbar.save}}** | Saves now. Edits are also saved automatically after a moment |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | Rearranges the tables automatically. The arrow next to it chooses the mode and direction (section 5.3) |
@@ -361,7 +363,7 @@ Type names are shown the way the DBMS writes them. For example, the date and tim
 
 ![Table info](/guide-assets/en/editor-table-info.webp)
 
-Click the ⓘ on a table, or choose **{{model.editor.contextMenu.tableInfo}}** from the right-click menu. Set the physical name, logical name, description, and color. For a table in a group, the group color takes priority.
+Click the ⓘ on a table, or choose **{{model.editor.contextMenu.tableInfo}}** from the right-click menu. Set the physical name, logical name, description, and color. For a table in a group, the group color takes priority. A table linked to requirements lists them here, and clicking one opens it in the requirements panel (section 20.3).
 
 ### 6.5 Unique keys and indexes
 
@@ -603,6 +605,7 @@ The **{{workspace.detail.tabs.database}}** tab of a workspace has two parts.
 * Each row of the list has buttons to test the connection, import from the DB into a document, browse data, edit, and delete.
 * When a connection test succeeds, the time it took is shown as well.
 * Deleting a connection does not delete the documents created from it.
+* **{{connection.dialog.mcpApply}}** is the switch that lets Claude change the structure of this database over MCP. It is off by default (section 20.4).
 
 ### 10.2 Generating SQL
 
@@ -893,7 +896,84 @@ In the editor, press `Ctrl/Cmd+/` or click the keyboard icon on the toolbar to o
 
 While the cursor is in a text field, no shortcut works except the one for help. Without edit permission, the shortcuts for editing, moving, and deleting do not work.
 
-## 20. Frequently asked questions
+## 20. Designing with Claude (MCP)
+
+Connect an MCP client such as Claude Code to a workspace, and you can collect requirements and build and edit ERDs through conversation. What Claude creates appears in Crowfoot as it is, and what you change on screen is read back by Claude.
+
+### 20.1 Connecting
+
+![MCP tab](/guide-assets/en/workspace-mcp.webp)
+
+Issue a token on the workspace's **{{workspace.detail.tabs.mcp}}** tab. Every member sees this tab.
+
+![Issuing a token](/guide-assets/en/mcp-issue.webp)
+
+* Click **{{workspace.mcp.issueButton}}** and set a name and a lifetime. Each person can issue up to five tokens per workspace.
+* After issuing, the token and the **{{workspace.mcp.commandLabel}}** are shown. Copy the command and run it in a terminal to finish connecting.
+* The token is shown only at this moment. If you lose it, revoke it and issue a new one.
+
+![Issued token and registration command](/guide-assets/en/mcp-issued.webp)
+
+* A token works only in that workspace, with the permissions of the person who issued it. A token issued by a {{common.role.VIEWER}} or {{common.role.COMMENTER}} is read-only.
+* Do not paste the token into a conversation with Claude. Run the registration command in a terminal.
+* The trash icon in the list revokes a token. Claude sessions connected with it lose access at once. The owner can revoke other members' tokens too.
+* For now this works with clients that can set request headers (Claude Code).
+
+### 20.2 What you can ask Claude to do
+
+| Task | Description |
+|---|---|
+| Look around the workspace | Reads the document list, the term dictionary, domain types, and design rules |
+| Collect requirements | Registers and edits the requirements that come up in conversation (section 20.3) |
+| Create and edit ERDs | Creates and edits tables, columns, keys, indexes, relationships, and groups, following the workspace's terms and domain types |
+| Validation and SQL | Gets the design validation result and the SQL script |
+| Import SQL | Creates a new document from a CREATE TABLE script |
+| Apply to a database | Issues a managed database and deploys a document or applies only what changed (section 20.4) |
+
+* Every change Claude makes is saved as a version. If you do not like it, restore an earlier version (section 14).
+* Claude cannot delete documents. Before deleting a table or column, it shows what will be removed.
+* Tables Claude creates are placed automatically when the document is opened. Tables and notes you already arranged are not moved.
+* If Claude edits a document while you have the editor open, the screen loads the new content. If you have unsaved edits, a notice appears first.
+
+### 20.3 Requirements panel
+
+![Requirements panel](/guide-assets/en/editor-requirements.webp)
+
+Click **{{model.editor.toolbar.requirements}}** on the toolbar to open the panel on the left. Requirements are saved with the document. When some requirements are pending, the button shows their number.
+
+* Requirements are grouped by group. Those without a group gather under **{{model.requirements.group.unassigned}}**, and those that apply to the whole document under **{{model.requirements.group.document}}**.
+* Click a row to expand its description and linked tables. Click a table name to move the canvas to that table.
+* Use the status buttons at the top to filter. At first only **{{model.requirements.state.DROPPED}}** is hidden.
+* **{{model.requirements.untraced.title}}** at the bottom lists the tables that are not linked to any requirement.
+
+| Status | Meaning |
+|---|---|
+| **{{model.requirements.state.APPLIED}}** | The confirmed requirement is reflected in the ERD |
+| **{{model.requirements.state.PENDING}}** | Confirmed, but the ERD does not reflect the latest text yet. Editing the title or description leads to this status |
+| **{{model.requirements.state.UNLINKED}}** | Marked as applied, but no table is linked |
+| **{{model.requirements.state.LEFTOVER}}** | A dropped requirement still has tables linked |
+| **{{model.requirements.state.DRAFT}}** | Not confirmed yet |
+| **{{model.requirements.state.DROPPED}}** | No longer in scope |
+
+![Editing a requirement](/guide-assets/en/editor-requirement-dialog.webp)
+
+Editors and above can add and edit requirements themselves.
+
+* Click **{{model.requirements.add}}** at the top of the panel, or the edit button in an expanded row. Set the title, description, scope, status, group, and tables to link. The code (REQ-001) is assigned automatically.
+* Click **{{model.requirements.markApplied}}** on a pending row to change it to applied.
+* For a requirement that is no longer needed, change its status to **{{model.requirements.status.dropped}}** instead of deleting it. Delete only entries added by mistake.
+* A document can hold up to 500 requirements.
+
+### 20.4 Applying to a database
+
+For Claude to change the structure of a database, the connection must allow it.
+
+* Turn on **{{connection.dialog.mcpApply}}** when adding or editing a connection. It is off by default, and connections with it on are marked in the list.
+* Managed databases allow it from the start.
+* Claude shows the SQL first and runs only the plan you confirmed. If the document or the database changed after the plan was shown, it does not run and plans again.
+* For a connection that does not allow it, Claude only shows the SQL. Run it yourself from the editor's deploy (section 10.3) or migration DDL (section 14.3).
+
+## 21. Frequently asked questions
 
 **Can I change the database type of a document?**
 No. Create a new document of another type with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}**.
@@ -921,3 +1001,6 @@ No. To edit together, add them as a workspace member and give them the Editor ro
 
 **Where do I write what I would like improved?**
 Please write it in **{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}**.
+
+**Can I undo what Claude changed?**
+Yes. Every change Claude makes is saved as a version, so you can restore an earlier one from the version history.

@@ -24,6 +24,8 @@ export interface CreateConnectionInput {
   schemaName?: string | null
   username: string
   password: string
+  /** MCP 반영 허용 — 생략하면 꺼짐 */
+  mcpApplyAllowed?: boolean
 }
 
 export function createConnection(workspaceId: string, body: CreateConnectionInput) {

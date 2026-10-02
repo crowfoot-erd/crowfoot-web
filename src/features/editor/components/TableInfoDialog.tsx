@@ -9,7 +9,7 @@
  * 편집 중이면 확정·색 변경이 막히고 보유자 안내가 뜬다.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -44,6 +44,8 @@ import {
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
 import { useEditLock } from '@/features/editor/collab-locks'
+import { useEditorStore } from '@/features/editor/store/editor-store'
+import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 
 export interface TableInfoDialogProps {
   open: boolean
@@ -71,6 +73,18 @@ type TableInfoForm = {
 
 export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, groupNames, onColorChange, onCommit, isDuplicateName }: TableInfoDialogProps) {
   const { t } = useTranslation()
+  const tableId = table?.id ?? null
+  const allRequirements = useEditorStore((state) => state.present.diagram.requirements)
+  const requirements = useMemo(
+    () =>
+      tableId === null
+        ? []
+        : allRequirements
+            .filter((requirement) => requirement.tableIds.includes(tableId))
+            .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),
+    [allRequirements, tableId],
+  )
+  const revealRequirement = useRequirementsPanel((state) => state.reveal)
   // 다이얼로그 수명 락 — 남이 잡았으면(반환값) 확정·색 변경을 막는다
   const foreignLock = useEditLock('table', table?.id ?? null, open)
   const locked = foreignLock !== null
@@ -170,6 +184,29 @@ export function TableInfoDialog({ open, onOpenChange, table, color, groupColor, 
                 </FormItem>
               )}
             />
+            {/* 연결된 요구사항(v1.31 §17) — 코드와 제목. 누르면 요구사항 패널의 그 항목으로 간다 */}
+            {requirements.length > 0 ? (
+              <FormItem>
+                <FormLabel>{t('model.requirements.tableInfo')}</FormLabel>
+                <ul className="flex flex-col" data-testid="table-requirements">
+                  {requirements.map((requirement) => (
+                    <li key={requirement.id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-md px-1.5 py-0.5 text-left text-xs hover:bg-accent/60"
+                        onClick={() => {
+                          revealRequirement(requirement.id)
+                          onOpenChange(false)
+                        }}
+                      >
+                        <span className="shrink-0 font-mono text-muted-foreground">{requirement.code}</span>
+                        <span className="min-w-0 truncate">{requirement.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </FormItem>
+            ) : null}
             {/* 소속 그룹 — 문서 순서 그대로. 첫 그룹 색이 렌더를 고정한다는 안내와 함께 */}
             <FormItem>
               <FormLabel>{t('model.editor.tableInfo.groupLabel')}</FormLabel>

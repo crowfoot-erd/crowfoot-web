@@ -21,7 +21,7 @@ import type {
   ErdTable,
   EditorDocument,
 } from '@/features/editor/model/content-schema'
-import type { ColumnPatch, ErdChange, TablePatch } from '@/features/editor/model/changes'
+import type { ColumnPatch, ErdChange, RequirementPatch, TablePatch } from '@/features/editor/model/changes'
 
 /* ---------- (객체, 속성) 키 ---------- */
 
@@ -34,6 +34,7 @@ export type TargetKind =
   | 'relationship'
   | 'note'
   | 'area'
+  | 'requirement'
   | 'node'
 
 export interface ChangeTargetKey {
@@ -88,6 +89,12 @@ export function changeTargetKeys(change: ErdChange): ChangeTargetKey[] {
       return [{ kind: 'area', id: change.areaId, field: '*' }]
     case 'area/patch':
       return Object.keys(change.patch).map((field) => ({ kind: 'area' as const, id: change.areaId, field }))
+    case 'requirement/create':
+      return [{ kind: 'requirement', id: change.requirement.id, field: '*' }]
+    case 'requirement/remove':
+      return [{ kind: 'requirement', id: change.requirementId, field: '*' }]
+    case 'requirement/patch':
+      return Object.keys(change.patch).map((field) => ({ kind: 'requirement' as const, id: change.requirementId, field }))
     case 'node/move':
       return Object.entries(change.positions).flatMap(([tableId, pos]) =>
         (['x', 'y'] as const)
@@ -150,6 +157,9 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
   }
   for (const a of from.diagram.areas) {
     if (!to.diagram.areas.some((x) => x.id === a.id)) changes.push({ type: 'area/remove', areaId: a.id })
+  }
+  for (const r of from.diagram.requirements) {
+    if (!to.diagram.requirements.some((x) => x.id === r.id)) changes.push({ type: 'requirement/remove', requirementId: r.id })
   }
 
   /* 패치·이동 — 공통 객체끼리 필드 diff */
@@ -271,6 +281,20 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
       changes.push({ type: 'area/patch', areaId: prev.id, patch: patch as Partial<ErdArea> })
     }
   }
+  // 요구사항 — revision도 함께 옮긴다(리듀서가 스스로 올리지 않게 — 서버 본문을 그대로 따라간다)
+  for (const prev of from.diagram.requirements) {
+    const next = to.diagram.requirements.find((r) => r.id === prev.id)
+    if (!next) continue
+    const patch: Record<string, unknown> = {}
+    for (const f of ['areaId', 'scope', 'title', 'description', 'status', 'revision', 'appliedRevision'] as const) {
+      if (prev[f] !== next[f]) patch[f] = next[f]
+    }
+    if (prev.tableIds.join('\0') !== next.tableIds.join('\0')) patch.tableIds = next.tableIds
+    if (Object.keys(patch).length > 0) {
+      if (patch.revision === undefined && (patch.title !== undefined || patch.description !== undefined)) patch.revision = next.revision
+      changes.push({ type: 'requirement/patch', requirementId: prev.id, patch: patch as RequirementPatch })
+    }
+  }
 
   /* 생성 — 테이블(컬럼 포함) → 컬럼(기존 테이블에 추가) → 관계(FK 컬럼 뒤) → 노트·영역 */
   for (const next of to.model.tables) {
@@ -298,6 +322,9 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
   }
   for (const next of to.diagram.areas) {
     if (!from.diagram.areas.some((a) => a.id === next.id)) changes.push({ type: 'area/create', area: next })
+  }
+  for (const next of to.diagram.requirements) {
+    if (!from.diagram.requirements.some((r) => r.id === next.id)) changes.push({ type: 'requirement/create', requirement: next })
   }
 
   /* 컬럼 순서 이동 패스 — 생성(add)이 꼬리에 붙인 뒤 to 순서로 맞춘다. working 배열로 적용을
@@ -376,6 +403,10 @@ function presentValueOf(doc: EditorDocument, key: ChangeTargetKey): unknown {
       const area = doc.diagram.areas.find((a) => a.id === key.id)
       return area ? (area as unknown as Record<string, unknown>)[key.field] : undefined
     }
+    case 'requirement': {
+      const requirement = doc.diagram.requirements.find((r) => r.id === key.id)
+      return requirement ? (requirement as unknown as Record<string, unknown>)[key.field] : undefined
+    }
     case 'node':
       return (doc.diagram.nodes[key.id] as unknown as Record<string, unknown> | undefined)?.[key.field]
   }
@@ -395,6 +426,8 @@ function remoteValueOf(change: ErdChange, key: ChangeTargetKey): unknown {
       return change.noteId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
     case 'area/patch':
       return change.areaId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+    case 'requirement/patch':
+      return change.requirementId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
     case 'node/move':
       return change.positions[key.id]?.[key.field as 'x' | 'y']
     case 'node/resize':
@@ -518,6 +551,11 @@ export function conflictRestores(conflicts: LwwConflict[], present: EditorDocume
     if (kind === 'area') {
       if (!present.diagram.areas.some((a) => a.id === id)) continue
       restores.push({ type: 'area/patch', areaId: id, patch: { [field]: presentValueOf(present, conflict.target) } as Partial<ErdArea> })
+      continue
+    }
+    if (kind === 'requirement') {
+      if (!present.diagram.requirements.some((r) => r.id === id)) continue
+      restores.push({ type: 'requirement/patch', requirementId: id, patch: { [field]: presentValueOf(present, conflict.target) } as RequirementPatch })
     }
   }
   return coalesceChanges(restores)
@@ -538,6 +576,8 @@ function mergeKeyOf(change: ErdChange): string | null {
       return `note/patch:${change.noteId}`
     case 'area/patch':
       return `area/patch:${change.areaId}`
+    case 'requirement/patch':
+      return `requirement/patch:${change.requirementId}`
     case 'node/resize':
       return `node/resize:${change.tableId}`
     case 'node/color':
@@ -563,6 +603,8 @@ function objectKeyOf(change: ErdChange): string | null {
       return `note:${change.noteId}`
     case 'area/patch':
       return `area:${change.areaId}`
+    case 'requirement/patch':
+      return `requirement:${change.requirementId}`
     case 'node/resize':
     case 'node/color':
       return `node:${change.tableId}`
@@ -597,6 +639,10 @@ function structuralKeyOf(change: ErdChange): string | null {
       return `area:${change.area.id}`
     case 'area/remove':
       return `area:${change.areaId}`
+    case 'requirement/create':
+      return `requirement:${change.requirement.id}`
+    case 'requirement/remove':
+      return `requirement:${change.requirementId}`
     default:
       return null
   }
@@ -690,6 +736,10 @@ export function describeTarget(doc: EditorDocument, key: ChangeTargetKey): strin
     case 'area': {
       const area = doc.diagram.areas.find((a) => a.id === key.id)
       return area?.name || key.id
+    }
+    case 'requirement': {
+      const requirement = doc.diagram.requirements.find((r) => r.id === key.id)
+      return requirement?.code || key.id
     }
   }
 }

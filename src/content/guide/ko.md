@@ -108,7 +108,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ### 3.2 워크스페이스의 탭
 
-워크스페이스를 열면 이름 아래에 탭이 다섯 개 있습니다.
+워크스페이스를 열면 이름 아래에 탭이 여섯 개 있습니다.
 
 | 탭 | 내용 |
 |---|---|
@@ -116,6 +116,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **{{workspace.detail.tabs.database}}** | 서비스 제공 DB와 데이터베이스 커넥션 |
 | **{{workspace.detail.tabs.overview}}** | 이름, 설명, 생성자, 멤버 수, 생성일 |
 | **{{workspace.detail.tabs.members}}** | 멤버와 역할 |
+| **{{workspace.detail.tabs.mcp}}** | Claude 같은 MCP 클라이언트를 연결하는 토큰을 발급하고 폐기합니다(20절) |
 | **{{workspace.detail.tabs.settings}}** | 이름과 설명 수정, 워크스페이스 삭제. 소유자에게만 보입니다 |
 
 ### 3.3 ERD 탭 — 문서 목록
@@ -221,6 +222,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **{{model.editor.explorer.toggle}}** | 왼쪽에 모델 익스플로러를 열고 닫습니다(5.2절) |
 | **{{model.editor.termDictionary.toggle}}** | 용어 사전과 도메인 타입 패널을 열고 닫습니다(9절) |
 | **{{model.validation.toggle}}** | 설계 검증 패널을 열고 닫습니다. 문제 수가 숫자로 붙습니다(12절) |
+| **{{model.editor.toolbar.requirements}}** | 요구사항 패널을 열고 닫습니다. 반영 대기인 요구사항 수가 숫자로 붙습니다(20.3절) |
 | {{model.editor.toolbar.undo}}, {{model.editor.toolbar.redo}} | 편집을 한 단계씩 되돌리고 다시 실행합니다 |
 | **{{model.editor.toolbar.save}}** | 지금 저장합니다. 편집하면 잠시 뒤 자동으로도 저장됩니다 |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | 테이블을 자동으로 다시 놓습니다. 옆의 화살표로 방식과 방향을 고릅니다(5.3절) |
@@ -361,7 +363,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![테이블 정보](/guide-assets/ko/editor-table-info.webp)
 
-테이블의 ⓘ 를 누르거나 우클릭 메뉴에서 **{{model.editor.contextMenu.tableInfo}}** 를 고릅니다. 물리명, 논리명, 설명, 색상을 정합니다. 그룹에 속한 테이블은 그룹 색이 우선합니다.
+테이블의 ⓘ 를 누르거나 우클릭 메뉴에서 **{{model.editor.contextMenu.tableInfo}}** 를 고릅니다. 물리명, 논리명, 설명, 색상을 정합니다. 그룹에 속한 테이블은 그룹 색이 우선합니다. 요구사항에 연결된 테이블에는 그 요구사항이 함께 나오고, 누르면 요구사항 패널에서 그 항목이 열립니다(20.3절).
 
 ### 6.5 유니크 키와 인덱스
 
@@ -603,6 +605,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 * 목록의 행마다 접속 테스트, DB에서 문서로 가져오기, 데이터 보기, 편집, 삭제 버튼이 있습니다.
 * 접속 테스트가 성공하면 걸린 시간이 함께 나옵니다.
 * 커넥션을 지워도 그 커넥션으로 만든 문서는 남습니다.
+* **{{connection.dialog.mcpApply}}** 는 Claude가 MCP로 이 데이터베이스의 구조를 바꾸도록 허용하는 스위치입니다. 기본은 꺼져 있습니다(20.4절).
 
 ### 10.2 SQL 생성
 
@@ -893,7 +896,84 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 글자를 적는 칸에 커서가 있을 때는 도움말을 뺀 단축키가 동작하지 않습니다. 편집 권한이 없으면 편집, 이동, 삭제 단축키가 동작하지 않습니다.
 
-## 20. 자주 묻는 것
+## 20. Claude와 함께 설계하기 (MCP)
+
+Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대화로 요구사항을 정리하고 ERD를 만들고 고칠 수 있습니다. Claude가 만든 것은 Crowfoot 화면에 그대로 나타나고, 화면에서 고친 것은 Claude가 다시 읽습니다.
+
+### 20.1 연결하기
+
+![MCP 탭](/guide-assets/ko/workspace-mcp.webp)
+
+워크스페이스의 **{{workspace.detail.tabs.mcp}}** 탭에서 토큰을 발급합니다. 이 탭은 멤버 모두에게 보입니다.
+
+![토큰 발급](/guide-assets/ko/mcp-issue.webp)
+
+* **{{workspace.mcp.issueButton}}** 을 누르고 이름과 기간을 정합니다. 한 사람이 워크스페이스마다 다섯 개까지 발급합니다.
+* 발급하면 토큰과 **{{workspace.mcp.commandLabel}}** 이 나옵니다. 명령을 복사해 터미널에서 실행하면 연결이 끝납니다.
+* 토큰은 이때만 보입니다. 잃어버리면 폐기하고 새로 발급합니다.
+
+![발급한 토큰과 등록 명령](/guide-assets/ko/mcp-issued.webp)
+
+* 토큰은 발급한 사람의 권한으로 그 워크스페이스에서만 동작합니다. {{common.role.VIEWER}} 나 {{common.role.COMMENTER}} 가 발급한 토큰은 읽기만 합니다.
+* 토큰을 Claude와의 대화에 붙여 넣지 않습니다. 등록 명령은 터미널에서 실행합니다.
+* 목록의 휴지통 아이콘은 폐기입니다. 폐기하면 그 토큰으로 연결한 Claude는 바로 접근하지 못합니다. 소유자는 다른 멤버의 토큰도 폐기합니다.
+* 지금은 요청 헤더를 설정할 수 있는 클라이언트(Claude Code)에서 쓸 수 있습니다.
+
+### 20.2 Claude에게 맡길 수 있는 일
+
+| 하는 일 | 설명 |
+|---|---|
+| 워크스페이스 살펴보기 | 문서 목록, 용어 사전, 도메인 타입, 설계 규칙을 읽습니다 |
+| 요구사항 정리 | 대화에서 나온 요구사항을 문서에 등록하고 고칩니다(20.3절) |
+| ERD 만들기와 고치기 | 테이블, 컬럼, 키, 인덱스, 관계, 그룹을 만들고 고칩니다. 워크스페이스의 용어와 도메인 타입을 따릅니다 |
+| 검증과 SQL | 설계 검증 결과와 SQL 스크립트를 받아 봅니다 |
+| SQL 가져오기 | CREATE TABLE 스크립트로 새 문서를 만듭니다 |
+| 데이터베이스 반영 | 서비스 제공 DB를 발급하고 문서를 배포하거나 바뀐 부분만 반영합니다(20.4절) |
+
+* Claude가 고칠 때마다 버전이 남습니다. 마음에 들지 않으면 예전 버전으로 되돌립니다(14절).
+* Claude는 문서를 지우지 못합니다. 테이블이나 컬럼을 지울 때는 무엇이 지워지는지 먼저 보여 줍니다.
+* Claude가 만든 테이블은 문서를 열 때 자동으로 자리를 잡습니다. 이미 배치해 둔 테이블과 메모는 옮기지 않습니다.
+* 에디터를 열어 둔 동안 Claude가 문서를 고치면 화면이 새 내용을 불러옵니다. 저장하지 않은 편집이 있으면 알림이 먼저 뜹니다.
+
+### 20.3 요구사항 패널
+
+![요구사항 패널](/guide-assets/ko/editor-requirements.webp)
+
+도구 모음의 **{{model.editor.toolbar.requirements}}** 을 누르면 왼쪽에 패널이 열립니다. 요구사항은 문서에 함께 저장됩니다. 반영 대기인 요구사항이 있으면 버튼에 그 수가 붙습니다.
+
+* 요구사항은 그룹별로 묶여 나옵니다. 그룹이 없는 것은 **{{model.requirements.group.unassigned}}**, 문서 전체에 해당하는 것은 **{{model.requirements.group.document}}** 에 모입니다.
+* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 캔버스가 그 테이블로 옮겨 갑니다.
+* 위쪽의 상태 버튼으로 골라 봅니다. 처음에는 **{{model.requirements.state.DROPPED}}** 만 숨겨져 있습니다.
+* 패널 아래의 **{{model.requirements.untraced.title}}** 은 어떤 요구사항에도 연결되지 않은 테이블입니다.
+
+| 상태 | 뜻 |
+|---|---|
+| **{{model.requirements.state.APPLIED}}** | 확정한 요구사항이 ERD에 반영되어 있습니다 |
+| **{{model.requirements.state.PENDING}}** | 확정했지만 ERD가 최신 내용을 아직 반영하지 않았습니다. 제목이나 내용을 고치면 이 상태가 됩니다 |
+| **{{model.requirements.state.UNLINKED}}** | 반영했다고 표시했는데 연결된 테이블이 없습니다 |
+| **{{model.requirements.state.LEFTOVER}}** | 제외한 요구사항에 테이블이 아직 연결되어 있습니다 |
+| **{{model.requirements.state.DRAFT}}** | 아직 확정하지 않았습니다 |
+| **{{model.requirements.state.DROPPED}}** | 더 이상 다루지 않습니다 |
+
+![요구사항 수정](/guide-assets/ko/editor-requirement-dialog.webp)
+
+편집자 이상은 요구사항을 직접 추가하고 고칩니다.
+
+* 패널 위의 **{{model.requirements.add}}** 나 펼친 행의 수정 버튼을 누릅니다. 제목, 내용, 범위, 상태, 그룹, 연결할 테이블을 정합니다. 코드(REQ-001)는 자동으로 붙습니다.
+* 반영 대기인 행의 **{{model.requirements.markApplied}}** 를 누르면 반영됨으로 바뀝니다.
+* 빠진 요구사항은 지우지 않고 상태를 **{{model.requirements.status.dropped}}** 로 바꿉니다. 삭제는 잘못 등록한 것에만 씁니다.
+* 문서 하나에 500개까지 등록합니다.
+
+### 20.4 데이터베이스에 반영하기
+
+Claude가 데이터베이스의 구조를 바꾸려면 그 커넥션에서 허용해야 합니다.
+
+* 커넥션을 추가하거나 편집할 때 **{{connection.dialog.mcpApply}}** 를 켭니다. 기본은 꺼져 있고, 켠 커넥션에는 목록에 표시가 붙습니다.
+* 서비스 제공 DB는 처음부터 허용되어 있습니다.
+* Claude는 실행할 SQL을 먼저 보여 주고, 확인한 계획만 실행합니다. 계획을 본 뒤에 문서나 데이터베이스가 바뀌었으면 실행하지 않고 계획을 다시 세웁니다.
+* 허용하지 않은 커넥션에는 Claude가 실행할 SQL까지만 보여 줍니다. 실행은 에디터의 배포(10.3절)나 마이그레이션 DDL(14.3절)에서 직접 합니다.
+
+## 21. 자주 묻는 것
 
 **문서의 데이터베이스 종류를 바꿀 수 있나요?**
 바꿀 수 없습니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** 로 다른 종류의 새 문서를 만듭니다.
@@ -921,3 +1001,6 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 **고쳤으면 하는 점은 어디에 적나요?**
 **{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}** 에 적어 주세요.
+
+**Claude가 고친 것을 되돌릴 수 있나요?**
+되돌릴 수 있습니다. Claude가 고칠 때마다 버전이 남으므로 버전 기록에서 예전 버전으로 되돌립니다.

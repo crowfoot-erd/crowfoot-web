@@ -10,6 +10,7 @@ import type { WorkspaceTerm } from '@/api/types'
 import {
   coerceChildMultiplicity,
   type ErdArea,
+  type ErdRequirement,
   type ErdColumn,
   type ErdContent,
   type ErdIndex,
@@ -45,6 +46,10 @@ export type NotePatch = Partial<
   Pick<ErdNote, 'x' | 'y' | 'width' | 'height' | 'text' | 'title' | 'color' | 'linkedTableId'>
 >
 export type AreaPatch = Partial<Pick<ErdArea, 'name' | 'description' | 'color' | 'tableIds'>>
+/** 요구사항 패치 — code는 바꾸지 않는다. revision은 리듀서가 올린다(제목·내용이 바뀌면) */
+export type RequirementPatch = Partial<
+  Pick<ErdRequirement, 'areaId' | 'scope' | 'title' | 'description' | 'status' | 'revision' | 'appliedRevision' | 'tableIds'>
+>
 
 export type ErdChange =
   | { type: 'table/create'; table: ErdTable; position: { x: number; y: number } }
@@ -66,6 +71,9 @@ export type ErdChange =
   | { type: 'area/create'; area: ErdArea }
   | { type: 'area/patch'; areaId: string; patch: AreaPatch }
   | { type: 'area/remove'; areaId: string }
+  | { type: 'requirement/create'; requirement: ErdRequirement }
+  | { type: 'requirement/patch'; requirementId: string; patch: RequirementPatch }
+  | { type: 'requirement/remove'; requirementId: string }
   | { type: 'node/move'; positions: Record<string, { x: number; y: number }> }
   | { type: 'node/resize'; tableId: string; width: number | null }
   | { type: 'node/color'; tableId: string; color: TableColorValue }
@@ -312,6 +320,12 @@ function removeTableCascade(doc: EditorDocument, tableId: string): EditorDocumen
         area.tableIds.includes(tableId)
           ? { ...area, tableIds: area.tableIds.filter((id) => id !== tableId) }
           : area,
+      ),
+      // 요구사항의 연결도 같은 방식으로 정리한다 — 요구사항은 남고 그 테이블만 빠진다
+      requirements: doc.diagram.requirements.map((requirement) =>
+        requirement.tableIds.includes(tableId)
+          ? { ...requirement, tableIds: requirement.tableIds.filter((id) => id !== tableId) }
+          : requirement,
       ),
     },
   }
@@ -674,10 +688,43 @@ export function applyChange(doc: EditorDocument, change: ErdChange, databaseType
         },
       }
     case 'area/remove':
-      // 영역 삭제는 멤버 테이블을 건드리지 않는다 — 묶음 표시만 사라진다
+      // 영역 삭제는 멤버 테이블을 건드리지 않는다 — 묶음 표시만 사라진다.
+      // 그 영역을 도메인으로 가리키던 요구사항은 미분류가 된다
       return {
         ...doc,
-        diagram: { ...doc.diagram, areas: doc.diagram.areas.filter((area) => area.id !== change.areaId) },
+        diagram: {
+          ...doc.diagram,
+          areas: doc.diagram.areas.filter((area) => area.id !== change.areaId),
+          requirements: doc.diagram.requirements.map((requirement) =>
+            requirement.areaId === change.areaId ? { ...requirement, areaId: null } : requirement,
+          ),
+        },
+      }
+    case 'requirement/create':
+      return { ...doc, diagram: { ...doc.diagram, requirements: [...doc.diagram.requirements, change.requirement] } }
+    case 'requirement/patch':
+      return {
+        ...doc,
+        diagram: {
+          ...doc.diagram,
+          requirements: doc.diagram.requirements.map((requirement) => {
+            if (requirement.id !== change.requirementId) return requirement
+            const next = { ...requirement, ...change.patch }
+            // 제목이나 내용이 바뀌면 개정 번호가 오른다 — 그 요구사항은 반영 대기가 된다.
+            // 패치가 revision을 직접 실었으면(서버 본문을 따라가는 병합) 그 값을 쓴다
+            if (change.patch.revision !== undefined) return next
+            const contentChanged = next.title !== requirement.title || next.description !== requirement.description
+            return contentChanged ? { ...next, revision: requirement.revision + 1 } : next
+          }),
+        },
+      }
+    case 'requirement/remove':
+      return {
+        ...doc,
+        diagram: {
+          ...doc.diagram,
+          requirements: doc.diagram.requirements.filter((requirement) => requirement.id !== change.requirementId),
+        },
       }
     case 'node/move':
       return {

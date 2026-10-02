@@ -57,7 +57,8 @@ describe('사용 가이드', () => {
       '17. 커뮤니티와 알림',
       '18. 관리자',
       '19. 단축키',
-      '20. 자주 묻는 것',
+      '20. Claude와 함께 설계하기 (MCP)',
+      '21. 자주 묻는 것',
     ])
   })
 
@@ -196,13 +197,13 @@ describe('본문 파일', () => {
   const images = (markdown: string) => [...markdown.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1])
   const tokens = (markdown: string) => [...new Set([...markdown.matchAll(/\{\{([\w.]+)\}\}/g)].map((match) => match[1]))].sort()
 
-  it('네 언어의 본문이 같은 짜임이다 — 절 20개, 같은 소제목 수, 같은 그림', async () => {
+  it('네 언어의 본문이 같은 짜임이다 — 절 21개, 같은 소제목 수, 같은 그림', async () => {
     const files = await load()
     const subheadings = (markdown: string) => markdown.split('\n').filter((line) => line.startsWith('### ')).length
     const tableRows = (markdown: string) => markdown.split('\n').filter((line) => line.startsWith('|')).length
 
     for (const { lang, markdown } of files) {
-      expect(guideHeadings(markdown)).toHaveLength(20)
+      expect(guideHeadings(markdown)).toHaveLength(21)
       expect(subheadings(markdown)).toBe(subheadings(files[0].markdown))
       expect(tableRows(markdown)).toBe(tableRows(files[0].markdown))
       // 그림은 언어별 폴더의 같은 이름 파일이다

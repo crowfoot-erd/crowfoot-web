@@ -147,7 +147,7 @@ function remoteContent() {
   return serializeContent({
     schemaVersion: 1,
     model: { tables: [table], relationships: [] },
-    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], viewport: null },
+    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], viewport: null },
   })
 }
 
@@ -2572,7 +2572,7 @@ describe('EditorShell — 검증 패널(v1.20, 05-validation §4.1)', () => {
     return serializeContent({
       schemaVersion: 1,
       model: { tables: [table], relationships: [] },
-      diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], viewport: null },
+      diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], viewport: null },
     })
   }
 

@@ -16,7 +16,7 @@ function docWithArea(areaOverrides: Partial<ReturnType<typeof createArea>> = {})
   const area = createArea('회원', { id: 'A1', tableIds: ['T-USERS'], ...areaOverrides })
   return {
     model: { tables: [table, other], relationships: [] },
-    diagram: { nodes: {}, notes: [], areas: [area], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [area], requirements: [], viewport: null },
   }
 }
 

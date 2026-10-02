@@ -109,6 +109,8 @@
       "SQL_IMPORT_NO_TABLES": "CREATE TABLE 문을 찾을 수 없습니다.",
       "MODEL_ALREADY_CONNECTED": "이미 커넥션이 연결된 문서입니다.",
       "CONNECTION_NOT_FOUND": "커넥션을 찾을 수 없습니다.",
+      "ACCESS_TOKEN_NOT_FOUND": "토큰을 찾을 수 없습니다.",
+      "ACCESS_TOKEN_LIMIT_EXCEEDED": "토큰은 한 사람이 워크스페이스당 5개까지 발급할 수 있습니다.",
       "CONNECTION_UNREACHABLE": "데이터베이스에 접속할 수 없습니다. 접속 정보를 확인해 주세요.",
       "OBJECT_NOT_FOUND": "테이블 또는 뷰를 찾을 수 없습니다",
       "QUERY_TIMEOUT": "실행 제한 시간을 넘어 취소했습니다",
@@ -252,6 +254,7 @@
     }
   },
   "workspace": {
+    "mcp": {"title": "액세스 토큰", "introTitle": "Claude에서 이 워크스페이스 쓰기", "intro": "토큰을 발급해 Claude Code에 등록하면 Claude가 이 워크스페이스의 ERD를 읽고 고칩니다. 토큰은 발급한 사람의 권한으로 이 워크스페이스에서만 동작합니다.", "readOnlyNotice": "내 역할로 발급한 토큰은 읽기만 할 수 있습니다.", "guideLink": "사용 가이드에서 연결 방법 보기", "issueButton": "토큰 발급", "empty": "발급한 토큰이 없습니다", "emptyDetail": "토큰을 발급해 Claude Code에 등록하세요", "table": {"name": "이름", "prefix": "토큰", "createdBy": "발급한 사람", "createdAt": "발급일", "expiresAt": "만료일", "lastUsedAt": "마지막 사용", "actions": "작업"}, "noExpiry": "무기한", "neverUsed": "사용 전", "expiryDays": "{{days}}일", "revoke": "폐기", "revokeTitle": "토큰 폐기", "revokeDescription": "\"{{name}}\" 토큰을 폐기할까요? 이 토큰으로 연결한 Claude는 더 이상 접근할 수 없습니다.", "revokeSuccess": "토큰을 폐기했습니다", "issueTitle": "토큰 발급", "issueDescription": "한 사람이 {{max}}개까지 발급할 수 있습니다.", "nameLabel": "이름", "namePlaceholder": "예: 내 노트북의 Claude Code", "nameRequired": "이름을 입력하세요", "expiryLabel": "기간", "issueConfirm": "발급", "issuedTitle": "토큰을 발급했습니다", "issuedDescription": "토큰은 지금만 볼 수 있습니다. 창을 닫으면 다시 볼 수 없으니 복사해 두세요.", "tokenLabel": "토큰", "commandLabel": "Claude Code 등록 명령", "commandHint": "터미널에서 이 명령을 실행하면 Claude Code에 이 워크스페이스가 등록됩니다. 토큰을 대화에 붙여 넣지 마세요.", "issuedClose": "복사했습니다", "copy": "복사", "copied": "복사됨", "copyFailed": "복사하지 못했습니다"},
     "list": {
       "title": "워크스페이스",
       "myRole": "내 역할",
@@ -275,6 +278,7 @@
     },
     "detail": {
       "tabs": {
+        "mcp": "MCP",
         "erd": "ERD",
         "overview": "개요",
         "members": "멤버",
@@ -771,6 +775,7 @@
     },
     "editor": {
       "toolbar": {
+        "requirements": "요구사항",
         "save": "저장",
         "undo": "되돌리기",
         "redo": "다시 실행",
@@ -1090,7 +1095,8 @@
           "relationship": "관계",
           "note": "메모",
           "node": "노드",
-          "area": "그룹"
+          "area": "그룹",
+          "requirement": "요구사항"
         },
         "action": {
           "add": "추가",
@@ -1416,6 +1422,7 @@
         "noTables": "문서에 테이블이 없습니다"
       }
     },
+  "requirements": {"title": "요구사항", "add": "추가", "filterLabel": "상태 필터", "state": {"APPLIED": "반영됨", "PENDING": "반영 대기", "UNLINKED": "연결 끊김", "LEFTOVER": "정리 필요", "DRAFT": "검토 중", "DROPPED": "제외"}, "stateHint": {"APPLIED": "확정된 요구사항이 ERD에 반영되어 있습니다", "PENDING": "확정됐지만 ERD가 최신 내용을 아직 반영하지 않았습니다", "UNLINKED": "반영했다고 표시했지만 연결된 테이블이 없습니다", "LEFTOVER": "제외한 요구사항에 테이블이 아직 연결되어 있습니다", "DRAFT": "아직 확정하지 않은 요구사항입니다", "DROPPED": "더 이상 다루지 않는 요구사항입니다"}, "status": {"draft": "검토 중", "confirmed": "확정", "dropped": "제외"}, "scope": {"tables": "기능", "document": "공통"}, "group": {"unassigned": "미분류", "document": "공통"}, "empty": "요구사항이 없습니다", "emptyDetail": "Claude가 MCP로 등록하거나 직접 추가할 수 있습니다", "emptyFiltered": "조건에 맞는 요구사항이 없습니다", "tableCount": "테이블 {{count}}", "noDescription": "내용 없음", "linkedTables": "연결된 테이블", "noTables": "연결된 테이블이 없습니다", "markApplied": "반영함으로 표시", "revision": "개정 {{revision}}", "removeConfirm": "잘못 등록한 항목만 삭제하세요", "limit": "요구사항은 문서당 {{max}}개까지 등록할 수 있습니다", "tableInfo": "요구사항", "untraced": {"title": "근거 없는 테이블", "hint": "어떤 요구사항에도 연결되지 않은 테이블입니다"}, "dialog": {"createTitle": "요구사항 추가", "editTitle": "요구사항 수정", "title": "제목", "titleRequired": "제목을 입력하세요", "description": "내용", "revisionHint": "제목이나 내용을 고치면 반영 대기가 됩니다", "scope": "범위", "status": "상태", "area": "도메인(그룹)", "tables": "연결할 테이블", "documentHint": "공통 요구사항은 문서 전체에 적용되며 테이블에 연결하지 않습니다"}},
   "validation": {
     "toggle": "검증",
     "title": "설계 검증",
@@ -1538,6 +1545,9 @@
   },
   "connection": {
     "list": {
+      "mcpAllowed": "MCP 반영 허용",
+      "mcpManaged": "MCP 반영 가능",
+      "mcpManagedHint": "매니지드 데이터베이스는 MCP 반영이 늘 허용됩니다.",
       "description": "리버스 엔지니어링·배포에 쓸 데이터베이스 접속 정보를 관리합니다. 비밀번호는 암호화되어 저장됩니다.",
       "newConnection": "커넥션 추가",
       "columns": {
@@ -1555,6 +1565,9 @@
       }
     },
     "dialog": {
+      "mcpApply": "MCP 반영 허용",
+      "mcpApplyHint": "켜면 Claude가 MCP로 이 데이터베이스에 ERD를 반영할 수 있습니다.",
+      "mcpApplyWarning": "Claude가 MCP로 이 데이터베이스의 구조를 바꿀 수 있습니다.",
       "createTitle": "커넥션 추가",
       "editTitle": "커넥션 편집",
       "notice": "비밀번호는 암호화되어 저장되며, 등록 후 접속 테스트로 확인할 수 있습니다.",

@@ -13,7 +13,7 @@ describe('content-io', () => {
     const parsed = parseContent('{"tables":[],"relationships":[]}')
     expect(parsed.schemaVersion).toBe(1)
     expect(parsed.model).toEqual({ tables: [], relationships: [] })
-    expect(parsed.diagram).toEqual({ nodes: {}, notes: [], areas: [], viewport: null })
+    expect(parsed.diagram).toEqual({ nodes: {}, notes: [], areas: [], requirements: [], viewport: null })
   })
 
   it('v1 문서는 round-trip으로 동일하게 복원된다', () => {
@@ -65,6 +65,7 @@ describe('content-io', () => {
         nodes: { t1: { x: 120, y: 80, width: null, color: 'default' } },
         notes: [],
         areas: [], // v1.13 주제 영역 — 수화 결과와 round-trip이 동일한 문서가 되도록 픽스처에 명시
+        requirements: [], // v1.31 요구사항 — 위와 같은 이유
         viewport: null,
       },
     }

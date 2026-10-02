@@ -242,6 +242,36 @@ export const areaSchema = z.object({
 })
 export type ErdArea = z.infer<typeof areaSchema>
 
+/**
+ * 요구사항 — ERD 문서에 속한다(v1.31, docs 08-core/17-model-edit.md Section 2).
+ * 그룹과 같은 자리(diagram), 같은 참조 방식이다 — tableIds와 areaId는 소프트 참조라 테이블·그룹을 지우면 정리된다.
+ * 도메인은 기존 그룹(areaId)이다. 저장하는 값은 status·revision·appliedRevision·tableIds뿐이고
+ * 반영됨·반영 대기 같은 판정은 읽을 때 계산한다(requirements.ts).
+ */
+export const REQUIREMENT_STATUSES = ['draft', 'confirmed', 'dropped'] as const
+export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number]
+export const REQUIREMENT_SCOPES = ['tables', 'document'] as const
+export type RequirementScope = (typeof REQUIREMENT_SCOPES)[number]
+
+export const requirementSchema = z.object({
+  id: z.string().min(1),
+  /** REQ-001 형식 — 문서 안에서 유일하고 한 번 붙으면 바뀌지 않는다 */
+  code: z.string().min(1),
+  /** 소속 도메인(그룹) — null은 미분류 */
+  areaId: z.string().nullable().default(null),
+  /** tables = 기능 요구사항(테이블에 연결), document = 문서 전체에 적용되는 공통 요구사항 */
+  scope: z.enum(REQUIREMENT_SCOPES).default('tables'),
+  title: z.string(),
+  description: z.string().default(''),
+  status: z.enum(REQUIREMENT_STATUSES).default('draft'),
+  /** 개정 번호 — 제목이나 내용이 바뀌면 1 오른다 */
+  revision: z.number().int().default(1),
+  /** ERD가 마지막으로 반영한 개정 번호 — 반영한 적이 없으면 0 */
+  appliedRevision: z.number().int().default(0),
+  tableIds: z.array(z.string().min(1)).default([]),
+})
+export type ErdRequirement = z.infer<typeof requirementSchema>
+
 export const modelDataSchema = z.object({
   tables: z.array(tableSchema),
   relationships: z.array(relationshipSchema),
@@ -254,6 +284,8 @@ export const diagramDataSchema = z.object({
   notes: z.array(noteSchema),
   /** 주제 영역 목록 — v1.13 추가. 이전 문서는 빈 배열로 정규화된다 */
   areas: z.array(areaSchema).default([]),
+  // 요구사항 — 없는 문서(v1.31 이전)는 빈 배열로 연다. 이 키를 스키마가 알아야 에디터 저장 때 지워지지 않는다
+  requirements: z.array(requirementSchema).default([]),
   viewport: viewportSchema.nullable(),
 })
 export type ErdDiagramData = z.infer<typeof diagramDataSchema>

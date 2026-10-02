@@ -109,6 +109,8 @@
       "SQL_IMPORT_NO_TABLES": "SQLスクリプト内にCREATE TABLE文が見つかりません。",
       "MODEL_ALREADY_CONNECTED": "このドキュメントには既に接続が紐付いています。",
       "CONNECTION_NOT_FOUND": "接続が見つかりません。",
+      "ACCESS_TOKEN_NOT_FOUND": "トークンが見つかりません。",
+      "ACCESS_TOKEN_LIMIT_EXCEEDED": "トークンは1人につきワークスペースごとに5個まで発行できます。",
       "CONNECTION_UNREACHABLE": "データベースに接続できません。接続設定を確認してください。",
       "OBJECT_NOT_FOUND": "テーブルまたはビューが見つかりません",
       "QUERY_TIMEOUT": "実行時間の上限を超えたためキャンセルしました",
@@ -252,6 +254,7 @@
     }
   },
   "workspace": {
+    "mcp": {"title": "アクセストークン", "introTitle": "Claudeからこのワークスペースを使う", "intro": "トークンを発行してClaude Codeに登録すると、Claudeがこのワークスペースの ERD を読み書きします。トークンは発行した人の権限で、このワークスペースでのみ動作します。", "readOnlyNotice": "自分のロールで発行したトークンは読み取りのみ可能です。", "guideLink": "利用ガイドで接続方法を見る", "issueButton": "トークンを発行", "empty": "発行したトークンがありません", "emptyDetail": "トークンを発行してClaude Codeに登録してください", "table": {"name": "名前", "prefix": "トークン", "createdBy": "発行者", "createdAt": "発行日", "expiresAt": "有効期限", "lastUsedAt": "最終使用", "actions": "操作"}, "noExpiry": "無期限", "neverUsed": "未使用", "expiryDays": "{{days}}日", "revoke": "破棄", "revokeTitle": "トークンの破棄", "revokeDescription": "「{{name}}」トークンを破棄しますか？このトークンで接続したClaudeはアクセスできなくなります。", "revokeSuccess": "トークンを破棄しました", "issueTitle": "トークンの発行", "issueDescription": "1人につき{{max}}個まで発行できます。", "nameLabel": "名前", "namePlaceholder": "例: 自分のノートPCのClaude Code", "nameRequired": "名前を入力してください", "expiryLabel": "期間", "issueConfirm": "発行", "issuedTitle": "トークンを発行しました", "issuedDescription": "トークンは今だけ表示されます。ウィンドウを閉じると再表示できないので、コピーしておいてください。", "tokenLabel": "トークン", "commandLabel": "Claude Code 登録コマンド", "commandHint": "ターミナルでこのコマンドを実行すると、Claude Codeにこのワークスペースが登録されます。トークンを会話に貼り付けないでください。", "issuedClose": "コピーしました", "copy": "コピー", "copied": "コピー済み", "copyFailed": "コピーできませんでした"},
     "list": {
       "title": "ワークスペース",
       "myRole": "自分のロール",
@@ -275,6 +278,7 @@
     },
     "detail": {
       "tabs": {
+        "mcp": "MCP",
         "erd": "ERD",
         "overview": "概要",
         "members": "メンバー",
@@ -771,6 +775,7 @@
     },
     "editor": {
       "toolbar": {
+        "requirements": "要件",
         "save": "保存",
         "undo": "元に戻す",
         "redo": "やり直し",
@@ -1090,7 +1095,8 @@
           "relationship": "リレーション",
           "note": "メモ",
           "node": "ノード",
-          "area": "グループ"
+          "area": "グループ",
+          "requirement": "要件"
         },
         "action": {
           "add": "追加",
@@ -1416,6 +1422,7 @@
         "noTables": "このドキュメントにテーブルがありません"
       }
     },
+  "requirements": {"title": "要件", "add": "追加", "filterLabel": "状態フィルター", "state": {"APPLIED": "反映済み", "PENDING": "反映待ち", "UNLINKED": "リンク切れ", "LEFTOVER": "要整理", "DRAFT": "検討中", "DROPPED": "除外"}, "stateHint": {"APPLIED": "確定した要件がERDに反映されています", "PENDING": "確定しましたが、ERDが最新の内容をまだ反映していません", "UNLINKED": "反映済みと表示しましたが、リンクされたテーブルがありません", "LEFTOVER": "除外した要件にテーブルがまだリンクされています", "DRAFT": "まだ確定していない要件です", "DROPPED": "対象外になった要件です"}, "status": {"draft": "検討中", "confirmed": "確定", "dropped": "除外"}, "scope": {"tables": "機能", "document": "共通"}, "group": {"unassigned": "未分類", "document": "共通"}, "empty": "要件がありません", "emptyDetail": "ClaudeがMCPで登録するか、自分で追加できます", "emptyFiltered": "条件に合う要件がありません", "tableCount": "テーブル {{count}}", "noDescription": "内容なし", "linkedTables": "リンクされたテーブル", "noTables": "リンクされたテーブルがありません", "markApplied": "反映済みにする", "revision": "改訂 {{revision}}", "removeConfirm": "誤って登録した項目だけを削除してください", "limit": "要件はドキュメントごとに{{max}}件まで登録できます", "tableInfo": "要件", "untraced": {"title": "根拠のないテーブル", "hint": "どの要件にもリンクされていないテーブルです"}, "dialog": {"createTitle": "要件を追加", "editTitle": "要件を編集", "title": "タイトル", "titleRequired": "タイトルを入力してください", "description": "内容", "revisionHint": "タイトルや内容を変更すると反映待ちになります", "scope": "範囲", "status": "状態", "area": "ドメイン(グループ)", "tables": "リンクするテーブル", "documentHint": "共通要件はドキュメント全体に適用され、テーブルにはリンクしません"}},
   "validation": {
     "toggle": "検証",
     "title": "設計検証",
@@ -1538,6 +1545,9 @@
   },
   "connection": {
     "list": {
+      "mcpAllowed": "MCP反映許可",
+      "mcpManaged": "MCP反映可能",
+      "mcpManagedHint": "マネージドデータベースはMCP反映が常に許可されます。",
       "description": "リバースエンジニアリングとデプロイで使用するデータベースの認証情報を管理します。パスワードは暗号化して保存されます。",
       "newConnection": "接続を追加",
       "columns": {
@@ -1555,6 +1565,9 @@
       }
     },
     "dialog": {
+      "mcpApply": "MCP反映を許可",
+      "mcpApplyHint": "オンにすると、ClaudeがMCPでこのデータベースにERDを反映できます。",
+      "mcpApplyWarning": "ClaudeがMCPでこのデータベースの構造を変更できます。",
       "createTitle": "接続を追加",
       "editTitle": "接続を編集",
       "notice": "パスワードは暗号化して保存されます。保存後に接続テストを行ってください。",

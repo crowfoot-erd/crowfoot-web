@@ -90,6 +90,7 @@ function changeToRow(
   columns: Map<string, { column: ErdColumn; table: ErdTable }>,
   notesById: Map<string, { title: string; text: string }>,
   areasById: Map<string, { name: string }>,
+  requirementsById: Map<string, { code: string }>,
   relationshipsById: Map<string, { fkName: string; childTableId: string }>,
 ): Omit<ResolveRow, 'change' | 'conflict'> {
   const tableName = (id: string): string => tablesById.get(id)?.physicalName ?? id
@@ -158,6 +159,12 @@ function changeToRow(
       return { ...base, kind: 'area', action: 'remove', table: '', name: areasById.get(change.areaId)?.name ?? change.areaId }
     case 'area/patch':
       return { ...base, kind: 'area', action: 'update', table: '', name: areasById.get(change.areaId)?.name ?? change.areaId, detail: keys(change.patch as Record<string, unknown>) }
+    case 'requirement/create':
+      return { ...base, kind: 'requirement', action: 'add', table: '', name: change.requirement.code, detail: change.requirement.title }
+    case 'requirement/remove':
+      return { ...base, kind: 'requirement', action: 'remove', table: '', name: requirementsById.get(change.requirementId)?.code ?? change.requirementId }
+    case 'requirement/patch':
+      return { ...base, kind: 'requirement', action: 'update', table: '', name: requirementsById.get(change.requirementId)?.code ?? change.requirementId, detail: keys(change.patch as Record<string, unknown>) }
     case 'node/move': {
       const ids = Object.keys(change.positions)
       const label = ids.map((id) => tableName(id)).join(', ')
@@ -196,12 +203,13 @@ export function ConflictResolverDialog({
     }
     const notesById = new Map(mine.diagram.notes.map((note) => [note.id, note]))
     const areasById = new Map(mine.diagram.areas.map((area) => [area.id, area]))
+    const requirementsById = new Map(mine.diagram.requirements.map((requirement) => [requirement.id, requirement]))
     const relationshipsById = new Map(mine.model.relationships.map((rel) => [rel.id, rel]))
 
     // 서버 변경 = 내 문서 → 서버 본문. 내 편집과의 겹침은 서버 본문 기준 dirty로 잰다
     const myKeys = dirtyTargetKeys(record.serverDocument, mine)
     const rows: ResolveRow[] = deriveChanges(mine, record.serverDocument).map((change) => ({
-      ...changeToRow(change, tablesById, columns, notesById, areasById, relationshipsById),
+      ...changeToRow(change, tablesById, columns, notesById, areasById, requirementsById, relationshipsById),
       change,
       conflict: overlapsMine(change, myKeys),
     }))

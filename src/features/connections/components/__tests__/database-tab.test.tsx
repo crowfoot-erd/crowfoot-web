@@ -226,6 +226,63 @@ describe('데이터베이스 탭', () => {
     expect(captured!.schemaName).toBeNull()
   })
 
+  it('MCP 반영 허용 — 기본은 꺼짐이고, 켜면 경고를 보여 주고 등록 요청에 실린다', async () => {
+    let captured: Record<string, unknown> | null = null
+    server.use(
+      http.post('/api/v1/core/workspaces/101/connections', async ({ request }) => {
+        captured = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(
+          ok({
+            response: {
+              connectionId: '904', name: 'MCP 대상', dbmsType: 'mysql',
+              host: 'db.dev.example.com', port: 3306, databaseName: 'orders',
+              username: 'app', createdAt: '2026-10-02T00:00:00Z', mcpApplyAllowed: true,
+              createdBy: { userId: '2', name: '테스터' },
+            },
+          }),
+        )
+      }),
+    )
+    const user = userEvent.setup()
+    renderDatabaseTab()
+
+    await user.click(await screen.findByRole('button', { name: '커넥션 추가' }))
+    const toggle = await screen.findByTestId('connection-mcp-apply')
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    await user.click(toggle)
+    expect(screen.getByText('Claude가 MCP로 이 데이터베이스의 구조를 바꿀 수 있습니다.')).toBeInTheDocument()
+
+    await user.type(await screen.findByLabelText(/^이름/), 'MCP 대상')
+    await user.type(screen.getByLabelText(/^호스트/), 'db.dev.example.com')
+    await user.type(screen.getByLabelText(/데이터베이스$/), 'orders')
+    await user.type(screen.getByLabelText(/사용자/), 'app')
+    await user.type(screen.getByLabelText(/비밀번호/), 'secret')
+    await user.click(screen.getByRole('button', { name: '생성' }))
+
+    await waitFor(() => expect(captured).not.toBeNull())
+    expect(captured!.mcpApplyAllowed).toBe(true)
+  })
+
+  it('MCP 반영 배지 — 허용한 커넥션과 매니지드 커넥션에 붙는다', async () => {
+    server.use(
+      http.get('/api/v1/core/workspaces/101/connections', () =>
+        HttpResponse.json(
+          ok({
+            totalCount: 3,
+            responses: [
+              { connectionId: '1', workspaceId: '101', name: '허용', dbmsType: 'mysql', host: 'h', port: 3306, databaseName: 'a', username: 'u', createdBy: null, createdAt: '2026-10-01T00:00:00Z', mcpApplyAllowed: true },
+              { connectionId: '2', workspaceId: '101', name: '매니지드', dbmsType: 'mysql', host: 'h', port: 3306, databaseName: 'b', username: 'u', createdBy: null, createdAt: '2026-10-01T00:00:00Z', managed: true },
+              { connectionId: '3', workspaceId: '101', name: '꺼짐', dbmsType: 'mysql', host: 'h', port: 3306, databaseName: 'c', username: 'u', createdBy: null, createdAt: '2026-10-01T00:00:00Z' },
+            ],
+          }),
+        ),
+      ),
+    )
+    renderDatabaseTab()
+    await screen.findByText('꺼짐')
+    expect(screen.getAllByTestId('connection-mcp-badge').map((badge) => badge.textContent)).toEqual(['MCP 반영 허용', 'MCP 반영 가능'])
+  })
+
   it('커넥션 삭제 — 확인 다이얼로그를 거쳐 204 처리', async () => {
     const user = userEvent.setup()
     renderDatabaseTab()

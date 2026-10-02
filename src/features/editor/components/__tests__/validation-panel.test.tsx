@@ -65,7 +65,7 @@ function issueDoc(): EditorDocument {
         't-orders': { x: 400, y: 0, width: null, color: 'default' },
       },
       notes: [],
-      areas: [],
+      areas: [], requirements: [],
       viewport: null,
     },
   }

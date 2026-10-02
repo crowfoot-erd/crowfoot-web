@@ -26,7 +26,7 @@ function baseDoc(): EditorDocument {
     diagram: {
       nodes: { T1: { x: 10, y: 20, width: null, color: 'default' } },
       notes: [],
-      areas: [],
+      areas: [], requirements: [],
       viewport: null,
     },
   }

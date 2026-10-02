@@ -109,6 +109,8 @@
       "SQL_IMPORT_NO_TABLES": "SQL 脚本中未找到 CREATE TABLE 语句。",
       "MODEL_ALREADY_CONNECTED": "此文档已关联连接。",
       "CONNECTION_NOT_FOUND": "未找到连接。",
+      "ACCESS_TOKEN_NOT_FOUND": "找不到令牌。",
+      "ACCESS_TOKEN_LIMIT_EXCEEDED": "每人在每个工作区最多可签发 5 个令牌。",
       "CONNECTION_UNREACHABLE": "无法连接数据库。请检查连接设置。",
       "OBJECT_NOT_FOUND": "找不到表或视图",
       "QUERY_TIMEOUT": "超过执行时间上限，已取消",
@@ -252,6 +254,7 @@
     }
   },
   "workspace": {
+    "mcp": {"title": "访问令牌", "introTitle": "在 Claude 中使用此工作区", "intro": "签发令牌并注册到 Claude Code 后，Claude 可以读取和修改此工作区的 ERD。令牌以签发者的权限运行，且只在此工作区有效。", "readOnlyNotice": "以我的角色签发的令牌只能读取。", "guideLink": "在使用指南中查看连接方法", "issueButton": "签发令牌", "empty": "没有已签发的令牌", "emptyDetail": "签发令牌并注册到 Claude Code", "table": {"name": "名称", "prefix": "令牌", "createdBy": "签发者", "createdAt": "签发日期", "expiresAt": "到期日期", "lastUsedAt": "最后使用", "actions": "操作"}, "noExpiry": "无期限", "neverUsed": "未使用", "expiryDays": "{{days}} 天", "revoke": "吊销", "revokeTitle": "吊销令牌", "revokeDescription": "要吊销令牌“{{name}}”吗？用它连接的 Claude 将无法再访问。", "revokeSuccess": "已吊销令牌", "issueTitle": "签发令牌", "issueDescription": "每人最多可签发 {{max}} 个。", "nameLabel": "名称", "namePlaceholder": "例如：我笔记本上的 Claude Code", "nameRequired": "请输入名称", "expiryLabel": "期限", "issueConfirm": "签发", "issuedTitle": "已签发令牌", "issuedDescription": "令牌只在此时显示。关闭窗口后无法再次查看，请先复制。", "tokenLabel": "令牌", "commandLabel": "Claude Code 注册命令", "commandHint": "在终端运行此命令，即可把此工作区注册到 Claude Code。不要把令牌粘贴到对话中。", "issuedClose": "已复制", "copy": "复制", "copied": "已复制", "copyFailed": "复制失败"},
     "list": {
       "title": "工作区",
       "myRole": "我的角色",
@@ -275,6 +278,7 @@
     },
     "detail": {
       "tabs": {
+        "mcp": "MCP",
         "erd": "ERD",
         "overview": "概览",
         "members": "成员",
@@ -771,6 +775,7 @@
     },
     "editor": {
       "toolbar": {
+        "requirements": "需求",
         "save": "保存",
         "undo": "撤销",
         "redo": "重做",
@@ -1090,7 +1095,8 @@
           "relationship": "关系",
           "note": "备注",
           "node": "节点",
-          "area": "分组"
+          "area": "分组",
+          "requirement": "需求"
         },
         "action": {
           "add": "新增",
@@ -1416,6 +1422,7 @@
         "noTables": "此文档中没有表"
       }
     },
+  "requirements": {"title": "需求", "add": "添加", "filterLabel": "状态筛选", "state": {"APPLIED": "已反映", "PENDING": "待反映", "UNLINKED": "链接断开", "LEFTOVER": "需要清理", "DRAFT": "评审中", "DROPPED": "已排除"}, "stateHint": {"APPLIED": "已确认的需求已反映到 ERD", "PENDING": "已确认，但 ERD 尚未反映最新内容", "UNLINKED": "已标记为已反映，但没有链接的表", "LEFTOVER": "已排除的需求仍链接着表", "DRAFT": "尚未确认的需求", "DROPPED": "不再处理的需求"}, "status": {"draft": "评审中", "confirmed": "已确认", "dropped": "已排除"}, "scope": {"tables": "功能", "document": "通用"}, "group": {"unassigned": "未分类", "document": "通用"}, "empty": "没有需求", "emptyDetail": "可以由 Claude 通过 MCP 登记，也可以自己添加", "emptyFiltered": "没有符合条件的需求", "tableCount": "表 {{count}}", "noDescription": "无内容", "linkedTables": "链接的表", "noTables": "没有链接的表", "markApplied": "标记为已反映", "revision": "修订 {{revision}}", "removeConfirm": "只删除登记错误的条目", "limit": "每个文档最多登记 {{max}} 条需求", "tableInfo": "需求", "untraced": {"title": "没有依据的表", "hint": "未链接到任何需求的表"}, "dialog": {"createTitle": "添加需求", "editTitle": "编辑需求", "title": "标题", "titleRequired": "请输入标题", "description": "内容", "revisionHint": "修改标题或内容后会变为待反映", "scope": "范围", "status": "状态", "area": "领域(分组)", "tables": "要链接的表", "documentHint": "通用需求适用于整个文档，不链接到表"}},
   "validation": {
     "toggle": "校验",
     "title": "设计校验",
@@ -1538,6 +1545,9 @@
   },
   "connection": {
     "list": {
+      "mcpAllowed": "允许 MCP 应用",
+      "mcpManaged": "可用 MCP 应用",
+      "mcpManagedHint": "托管数据库始终允许 MCP 应用。",
       "description": "管理用于逆向工程和部署的数据库凭据。密码会加密存储。",
       "newConnection": "添加连接",
       "columns": {
@@ -1555,6 +1565,9 @@
       }
     },
     "dialog": {
+      "mcpApply": "允许 MCP 应用",
+      "mcpApplyHint": "开启后，Claude 可以通过 MCP 把 ERD 应用到此数据库。",
+      "mcpApplyWarning": "Claude 可以通过 MCP 更改此数据库的结构。",
       "createTitle": "添加连接",
       "editTitle": "编辑连接",
       "notice": "密码会加密存储。保存后请测试连接。",

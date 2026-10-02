@@ -109,6 +109,8 @@
       "SQL_IMPORT_NO_TABLES": "No CREATE TABLE statements found in the SQL script.",
       "MODEL_ALREADY_CONNECTED": "This document is already connected to a connection.",
       "CONNECTION_NOT_FOUND": "Connection not found.",
+      "ACCESS_TOKEN_NOT_FOUND": "Token not found.",
+      "ACCESS_TOKEN_LIMIT_EXCEEDED": "Each person can issue up to 5 tokens per workspace.",
       "CONNECTION_UNREACHABLE": "Cannot reach the database. Check the connection settings.",
       "OBJECT_NOT_FOUND": "Table or view not found",
       "QUERY_TIMEOUT": "Cancelled because it exceeded the time limit",
@@ -252,6 +254,7 @@
     }
   },
   "workspace": {
+    "mcp": {"title": "Access tokens", "introTitle": "Use this workspace from Claude", "intro": "Issue a token and register it in Claude Code so Claude can read and edit the ERDs in this workspace. A token works only in this workspace, with the permissions of the person who issued it.", "readOnlyNotice": "A token issued with your role is read-only.", "guideLink": "See how to connect in the user guide", "issueButton": "Issue token", "empty": "No tokens issued", "emptyDetail": "Issue a token and register it in Claude Code", "table": {"name": "Name", "prefix": "Token", "createdBy": "Issued by", "createdAt": "Issued", "expiresAt": "Expires", "lastUsedAt": "Last used", "actions": "Actions"}, "noExpiry": "No expiry", "neverUsed": "Never used", "expiryDays": "{{days}} days", "revoke": "Revoke", "revokeTitle": "Revoke token", "revokeDescription": "Revoke the token \"{{name}}\"? Claude sessions connected with it lose access.", "revokeSuccess": "Token revoked", "issueTitle": "Issue token", "issueDescription": "Each person can issue up to {{max}} tokens.", "nameLabel": "Name", "namePlaceholder": "e.g. Claude Code on my laptop", "nameRequired": "Enter a name", "expiryLabel": "Lifetime", "issueConfirm": "Issue", "issuedTitle": "Token issued", "issuedDescription": "The token is shown only now. Copy it before closing this window; it cannot be shown again.", "tokenLabel": "Token", "commandLabel": "Claude Code registration command", "commandHint": "Run this command in a terminal to register this workspace in Claude Code. Do not paste the token into a conversation.", "issuedClose": "I copied it", "copy": "Copy", "copied": "Copied", "copyFailed": "Could not copy"},
     "list": {
       "title": "Workspaces",
       "myRole": "My role",
@@ -275,6 +278,7 @@
     },
     "detail": {
       "tabs": {
+        "mcp": "MCP",
         "erd": "ERD",
         "overview": "Overview",
         "members": "Members",
@@ -771,6 +775,7 @@
     },
     "editor": {
       "toolbar": {
+        "requirements": "Requirements",
         "save": "Save",
         "undo": "Undo",
         "redo": "Redo",
@@ -1090,7 +1095,8 @@
           "relationship": "Relationship",
           "note": "Note",
           "node": "Node",
-          "area": "Group"
+          "area": "Group",
+          "requirement": "Requirement"
         },
         "action": {
           "add": "added",
@@ -1416,6 +1422,7 @@
         "noTables": "No tables in this document"
       }
     },
+  "requirements": {"title": "Requirements", "add": "Add", "filterLabel": "Status filter", "state": {"APPLIED": "Applied", "PENDING": "Pending", "UNLINKED": "Unlinked", "LEFTOVER": "Needs cleanup", "DRAFT": "In review", "DROPPED": "Dropped"}, "stateHint": {"APPLIED": "The confirmed requirement is reflected in the ERD", "PENDING": "Confirmed, but the ERD does not reflect the latest text yet", "UNLINKED": "Marked as applied, but no table is linked", "LEFTOVER": "A dropped requirement still has tables linked", "DRAFT": "Not confirmed yet", "DROPPED": "No longer in scope"}, "status": {"draft": "In review", "confirmed": "Confirmed", "dropped": "Dropped"}, "scope": {"tables": "Feature", "document": "Common"}, "group": {"unassigned": "Unassigned", "document": "Common"}, "empty": "No requirements", "emptyDetail": "Claude can register them over MCP, or you can add them yourself", "emptyFiltered": "No requirements match the filter", "tableCount": "{{count}} tables", "noDescription": "No description", "linkedTables": "Linked tables", "noTables": "No linked tables", "markApplied": "Mark as applied", "revision": "Revision {{revision}}", "removeConfirm": "Delete only entries added by mistake", "limit": "A document can hold up to {{max}} requirements", "tableInfo": "Requirements", "untraced": {"title": "Tables without a requirement", "hint": "Tables not linked to any requirement"}, "dialog": {"createTitle": "Add requirement", "editTitle": "Edit requirement", "title": "Title", "titleRequired": "Enter a title", "description": "Description", "revisionHint": "Changing the title or description sets the requirement to pending", "scope": "Scope", "status": "Status", "area": "Domain (group)", "tables": "Tables to link", "documentHint": "A common requirement applies to the whole document and is not linked to tables"}},
   "validation": {
     "toggle": "Validation",
     "title": "Design validation",
@@ -1538,6 +1545,9 @@
   },
   "connection": {
     "list": {
+      "mcpAllowed": "MCP apply allowed",
+      "mcpManaged": "MCP apply available",
+      "mcpManagedHint": "Managed databases always allow MCP apply.",
       "description": "Manage database credentials for reverse engineering and deployment. Passwords are stored encrypted.",
       "newConnection": "Add connection",
       "columns": {
@@ -1555,6 +1565,9 @@
       }
     },
     "dialog": {
+      "mcpApply": "Allow MCP apply",
+      "mcpApplyHint": "When on, Claude can apply ERDs to this database over MCP.",
+      "mcpApplyWarning": "Claude can change the structure of this database over MCP.",
       "createTitle": "Add connection",
       "editTitle": "Edit connection",
       "notice": "Passwords are stored encrypted. Test the connection after saving.",

@@ -17,6 +17,7 @@
 import type {
   EditorDocument,
   ErdArea,
+  ErdRequirement,
   ErdColumn,
   ErdNote,
   ErdRelationship,
@@ -32,6 +33,7 @@ export type DocDiffKind =
   | 'relationship'
   | 'note'
   | 'area'
+  | 'requirement'
   | 'node'
 export type DocDiffAction = 'add' | 'update' | 'remove' | 'move'
 
@@ -282,7 +284,10 @@ function diffAreas(from: ErdArea[], to: ErdArea[], items: DocDiffItem[]): void {
       continue
     }
     const contentFields = ['name', 'description', 'color', 'tableIds'] as const
-    const changedContent = contentFields.filter((f) => prev[f] !== next[f])
+    // 멤버 목록은 내용으로 비교한다 — 따로 읽은 두 본문(버전 비교)은 배열이 서로 다른 객체다
+    const changedContent = contentFields.filter((f) =>
+      f === 'tableIds' ? prev.tableIds.join('\0') !== next.tableIds.join('\0') : prev[f] !== next[f],
+    )
     if (changedContent.length > 0) {
       items.push({ kind: 'area', action: 'update', table: '', name: next.name, detail: changedContent.join(', ') })
     }
@@ -295,6 +300,30 @@ function diffAreas(from: ErdArea[], to: ErdArea[], items: DocDiffItem[]): void {
   }
 }
 
+/** 요구사항 차분 — 이름은 코드다. 요구사항은 설계 근거라 레이아웃 변경으로 치지 않는다 */
+function diffRequirements(from: ErdRequirement[], to: ErdRequirement[], items: DocDiffItem[]): void {
+  const toById = new Map(to.map((r) => [r.id, r]))
+  for (const prev of from) {
+    const next = toById.get(prev.id)
+    if (!next) {
+      items.push({ kind: 'requirement', action: 'remove', table: '', name: prev.code, detail: prev.title })
+      continue
+    }
+    const fields = ['title', 'description', 'status', 'areaId', 'scope', 'appliedRevision'] as const
+    const changed: string[] = fields.filter((f) => prev[f] !== next[f])
+    if (prev.tableIds.join('\0') !== next.tableIds.join('\0')) changed.push('tableIds')
+    if (changed.length > 0) {
+      items.push({ kind: 'requirement', action: 'update', table: '', name: next.code, detail: changed.join(', ') })
+    }
+  }
+  const fromIds = new Set(from.map((r) => r.id))
+  for (const next of to) {
+    if (!fromIds.has(next.id)) {
+      items.push({ kind: 'requirement', action: 'add', table: '', name: next.code, detail: next.title })
+    }
+  }
+}
+
 /** 노드 레이아웃 차분 — 같은 테이블의 위치(x,y)=move, 폭·색=update. 신규/소멸 노드는 테이블 항목이 대신한다 */
 function diffNodes(from: EditorDocument, to: EditorDocument, items: DocDiffItem[]): void {
   const physOf = (tableId: string): string =>
@@ -303,7 +332,13 @@ function diffNodes(from: EditorDocument, to: EditorDocument, items: DocDiffItem[
     ''
   for (const [tableId, next] of Object.entries(to.diagram.nodes)) {
     const prev = from.diagram.nodes[tableId]
-    if (!prev) continue
+    if (!prev) {
+      // 있던 테이블에 위치가 새로 생겼다 — 열 때 자동 배치(§18). 새 테이블이면 테이블 항목이 대신한다
+      if (from.model.tables.some((t) => t.id === tableId)) {
+        items.push({ kind: 'node', action: 'move', table: physOf(tableId), name: physOf(tableId), detail: 'x, y' })
+      }
+      continue
+    }
     if (prev.x !== next.x || prev.y !== next.y) {
       items.push({ kind: 'node', action: 'move', table: physOf(tableId), name: physOf(tableId), detail: 'x, y' })
     }
@@ -348,6 +383,7 @@ export function diffDocuments(
   diffRelationships(from, to, items)
   diffNotes(from.diagram.notes, to.diagram.notes, items)
   diffAreas(from.diagram.areas, to.diagram.areas, items)
+  diffRequirements(from.diagram.requirements, to.diagram.requirements, items)
   diffNodes(from, to, items)
 
   const viewportChanged =

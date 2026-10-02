@@ -108,7 +108,7 @@ Crowfoot 的界面大致分为三种。
 
 ### 3.2 工作区的标签页
 
-打开工作区后，名称下方有五个标签页。
+打开工作区后，名称下方有六个标签页。
 
 | 标签页 | 内容 |
 |---|---|
@@ -116,6 +116,7 @@ Crowfoot 的界面大致分为三种。
 | **{{workspace.detail.tabs.database}}** | 服务方提供的数据库和数据库连接 |
 | **{{workspace.detail.tabs.overview}}** | 名称、说明、创建者、成员数、创建日期 |
 | **{{workspace.detail.tabs.members}}** | 成员和角色 |
+| **{{workspace.detail.tabs.mcp}}** | 签发和吊销用于连接 Claude 等 MCP 客户端的令牌（见第 20 节） |
 | **{{workspace.detail.tabs.settings}}** | 修改名称和说明、删除工作区。仅所有者可见 |
 
 ### 3.3 ERD 标签页 — 文档列表
@@ -221,6 +222,7 @@ Crowfoot 的界面大致分为三种。
 | **{{model.editor.explorer.toggle}}** | 在左侧打开或关闭模型资源管理器（见 5.2 节） |
 | **{{model.editor.termDictionary.toggle}}** | 打开或关闭术语词典和域类型面板（见第 9 节） |
 | **{{model.validation.toggle}}** | 打开或关闭设计校验面板。问题数量以数字显示（见第 12 节） |
+| **{{model.editor.toolbar.requirements}}** | 打开或关闭需求面板。待反映的需求数量以数字显示（见第 20.3 节） |
 | {{model.editor.toolbar.undo}}、{{model.editor.toolbar.redo}} | 把编辑逐步撤销或重做 |
 | **{{model.editor.toolbar.save}}** | 立即保存。编辑后稍等片刻也会自动保存 |
 | **{{model.editor.toolbar.autoLayoutLayered}}** | 自动重新排列表。用旁边的箭头选择方式和方向（见 5.3 节） |
@@ -361,7 +363,7 @@ Crowfoot 的界面大致分为三种。
 
 ![表信息](/guide-assets/zh/editor-table-info.webp)
 
-点击表的 ⓘ，或在右键菜单中选择 **{{model.editor.contextMenu.tableInfo}}**。可以设置物理名、逻辑名、说明和颜色。属于分组的表优先使用分组颜色。
+点击表的 ⓘ，或在右键菜单中选择 **{{model.editor.contextMenu.tableInfo}}**。可以设置物理名、逻辑名、说明和颜色。属于分组的表优先使用分组颜色。链接到需求的表会在这里列出这些需求，点击后在需求面板中打开该条目（见第 20.3 节）。
 
 ### 6.5 唯一键和索引
 
@@ -603,6 +605,7 @@ Crowfoot 的界面大致分为三种。
 * 列表的每一行都有测试连接、从数据库导入为文档、查看数据、编辑、删除按钮。
 * 测试连接成功时会同时显示耗时。
 * 删除连接后，用该连接创建的文档仍会保留。
+* **{{connection.dialog.mcpApply}}** 是允许 Claude 通过 MCP 更改此数据库结构的开关。默认关闭（见第 20.4 节）。
 
 ### 10.2 生成 SQL
 
@@ -893,7 +896,84 @@ Crowfoot 的界面大致分为三种。
 
 光标位于文字输入框中时，除帮助以外的快捷键不起作用。没有编辑权限时，编辑、移动、删除的快捷键不起作用。
 
-## 20. 常见问题
+## 20. 与 Claude 一起设计 (MCP)
+
+把 Claude Code 等 MCP 客户端连接到工作区后，可以通过对话整理需求、创建和修改 ERD。Claude 创建的内容会原样显示在 Crowfoot 中，在界面上修改的内容 Claude 会重新读取。
+
+### 20.1 连接
+
+![MCP 标签页](/guide-assets/zh/workspace-mcp.webp)
+
+在工作区的 **{{workspace.detail.tabs.mcp}}** 标签页签发令牌。所有成员都能看到这个标签页。
+
+![签发令牌](/guide-assets/zh/mcp-issue.webp)
+
+* 点击 **{{workspace.mcp.issueButton}}**，设置名称和期限。每人在每个工作区最多可签发五个。
+* 签发后会显示令牌和 **{{workspace.mcp.commandLabel}}**。复制命令并在终端运行，即可完成连接。
+* 令牌只在此时显示。如果丢失，请吊销后重新签发。
+
+![已签发的令牌和注册命令](/guide-assets/zh/mcp-issued.webp)
+
+* 令牌以签发者的权限运行，且只在该工作区有效。{{common.role.VIEWER}} 或 {{common.role.COMMENTER}} 签发的令牌只能读取。
+* 不要把令牌粘贴到与 Claude 的对话中。注册命令在终端运行。
+* 列表中的垃圾桶图标是吊销。吊销后，用该令牌连接的 Claude 立即无法访问。所有者也可以吊销其他成员的令牌。
+* 目前可用于能够设置请求头的客户端（Claude Code）。
+
+### 20.2 可以交给 Claude 的事
+
+| 事项 | 说明 |
+|---|---|
+| 查看工作区 | 读取文档列表、术语词典、域类型和设计规则 |
+| 整理需求 | 把对话中提到的需求登记到文档并修改（见第 20.3 节） |
+| 创建和修改 ERD | 创建和修改表、列、键、索引、关系和分组，并遵循工作区的术语和域类型 |
+| 校验和 SQL | 获取设计校验结果和 SQL 脚本 |
+| 导入 SQL | 用 CREATE TABLE 脚本创建新文档 |
+| 应用到数据库 | 签发托管数据库，部署文档或只应用变更部分（见第 20.4 节） |
+
+* Claude 每次修改都会留下版本。如果不满意，可以恢复到以前的版本（见第 14 节）。
+* Claude 不能删除文档。删除表或列之前，会先显示将被删除的内容。
+* Claude 创建的表会在打开文档时自动排好位置。已经摆好的表和备注不会被移动。
+* 编辑器打开期间如果 Claude 修改了文档，界面会加载新内容。如果有未保存的编辑，会先显示提示。
+
+### 20.3 需求面板
+
+![需求面板](/guide-assets/zh/editor-requirements.webp)
+
+点击工具栏的 **{{model.editor.toolbar.requirements}}**，左侧会打开面板。需求与文档一起保存。有待反映的需求时，按钮上会显示数量。
+
+* 需求按分组归类显示。没有分组的归入 **{{model.requirements.group.unassigned}}**，适用于整个文档的归入 **{{model.requirements.group.document}}**。
+* 点击行会展开内容和链接的表。点击表名，画布会移动到该表。
+* 用上方的状态按钮筛选。最初只隐藏 **{{model.requirements.state.DROPPED}}**。
+* 面板下方的 **{{model.requirements.untraced.title}}** 是未链接到任何需求的表。
+
+| 状态 | 含义 |
+|---|---|
+| **{{model.requirements.state.APPLIED}}** | 已确认的需求已反映到 ERD |
+| **{{model.requirements.state.PENDING}}** | 已确认，但 ERD 尚未反映最新内容。修改标题或内容后会变为此状态 |
+| **{{model.requirements.state.UNLINKED}}** | 已标记为已反映，但没有链接的表 |
+| **{{model.requirements.state.LEFTOVER}}** | 已排除的需求仍链接着表 |
+| **{{model.requirements.state.DRAFT}}** | 尚未确认 |
+| **{{model.requirements.state.DROPPED}}** | 不再处理 |
+
+![编辑需求](/guide-assets/zh/editor-requirement-dialog.webp)
+
+编辑者及以上可以自己添加和修改需求。
+
+* 点击面板上方的 **{{model.requirements.add}}** 或展开行中的编辑按钮。设置标题、内容、范围、状态、分组和要链接的表。代码（REQ-001）会自动生成。
+* 点击待反映行的 **{{model.requirements.markApplied}}**，会变为已反映。
+* 不再需要的需求不要删除，把状态改为 **{{model.requirements.status.dropped}}**。删除只用于登记错误的条目。
+* 每个文档最多登记 500 条。
+
+### 20.4 应用到数据库
+
+要让 Claude 更改数据库的结构，需要在该连接上允许。
+
+* 添加或编辑连接时开启 **{{connection.dialog.mcpApply}}**。默认关闭，开启的连接会在列表中带有标记。
+* 托管数据库从一开始就允许。
+* Claude 会先显示要执行的 SQL，只执行已确认的计划。如果查看计划后文档或数据库发生了变化，则不执行并重新制定计划。
+* 对未允许的连接，Claude 只显示要执行的 SQL。请在编辑器的部署（见第 10.3 节）或迁移 DDL（见第 14.3 节）中自行执行。
+
+## 21. 常见问题
 
 **可以更改文档的数据库类型吗？**
 不可以。请用 **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** 创建其他类型的新文档。
@@ -921,3 +1001,6 @@ Crowfoot 的界面大致分为三种。
 
 **改进建议写在哪里？**
 请写在 **{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}** 中。
+
+**Claude 修改的内容可以撤销吗？**
+可以。Claude 每次修改都会留下版本，可以在版本历史中恢复到以前的版本。

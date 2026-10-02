@@ -15,7 +15,7 @@
  */
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CircleHelp, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Shapes, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
+import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CircleHelp, ClipboardList, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Shapes, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -58,7 +58,9 @@ import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
 import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
+import { requirementState } from '@/features/editor/model/requirements'
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
+import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { ConvertDbmsDialog } from './ConvertDbmsDialog'
 import { LogicalNamesDialog } from './LogicalNamesDialog'
@@ -150,6 +152,11 @@ export function EditorToolbar({
   onOpenShortcuts,
 }: EditorToolbarProps) {
   const { t } = useTranslation()
+  const requirementsOpen = useRequirementsPanel((state) => state.open)
+  const toggleRequirements = useRequirementsPanel((state) => state.toggle)
+  const pendingRequirements = useEditorStore(
+    (state) => state.present.diagram.requirements.filter((requirement) => requirementState(requirement) === 'PENDING').length,
+  )
   const dirty = useEditorStore(selectDirty)
   const canUndo = useEditorStore(selectCanUndo)
   const canRedo = useEditorStore(selectCanRedo)
@@ -224,6 +231,32 @@ export function EditorToolbar({
           ) : null}
         </Button>
       ) : null}
+
+      {/* 요구사항 패널(v1.31 02-ui.md §17) — 문서에 속한 내용이라 공개 뷰어에서도 보인다.
+          반영 대기 요구사항이 있으면 그 수가 붙는다 */}
+      <Button
+        type="button"
+        variant={requirementsOpen ? 'secondary' : 'ghost'}
+        size="sm"
+        className="h-7 gap-1.5 px-2"
+        onClick={toggleRequirements}
+        aria-label={t('model.editor.toolbar.requirements')}
+        aria-pressed={requirementsOpen}
+        title={t('model.editor.toolbar.requirements')}
+        data-testid="requirements-toggle"
+      >
+        <ClipboardList aria-hidden className="size-3.5" />
+        {t('model.editor.toolbar.requirements')}
+        {pendingRequirements > 0 ? (
+          <span
+            data-testid="requirements-badge"
+            title={t('model.requirements.state.PENDING')}
+            className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-amber-950"
+          >
+            {pendingRequirements}
+          </span>
+        ) : null}
+      </Button>
 
       <Button type="button" variant="ghost" size="icon" onClick={undo} disabled={!canEdit || !canUndo} aria-label={t('model.editor.toolbar.undo')} title={t('model.editor.toolbar.undo')}>
         <Undo2 aria-hidden />

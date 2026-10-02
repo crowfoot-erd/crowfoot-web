@@ -477,8 +477,26 @@ export interface DbConnection {
   /** PostgreSQL 커넥션의 대상 스키마 — null이면 기본 스키마(search_path) */
   schemaName?: string | null
   username: string
+  /** 매니지드 데이터베이스의 커넥션 — MCP 반영이 늘 허용된다(08-core/06-connection.md §2.1) */
+  managed?: boolean
+  /** MCP 반영 허용 — 켜진 커넥션에만 Claude가 MCP로 구조를 반영한다. 기본은 꺼짐 */
+  mcpApplyAllowed?: boolean
   createdBy: { userId: string; name: string } | null
   createdAt: string
+}
+
+/** 워크스페이스 액세스 토큰 (08-core/18-access-token.md) — token(원문)은 발급 응답에만 실린다 */
+export interface WorkspaceAccessToken {
+  tokenId: string
+  name: string
+  /** 원문의 앞부분(cfw_ 포함) — 목록에서 토큰을 알아보는 용도 */
+  tokenPrefix: string
+  createdBy: { userId: string; name: string } | null
+  /** 없으면 무기한 */
+  expiresAt?: string | null
+  lastUsedAt?: string | null
+  createdAt: string
+  token?: string
 }
 
 /** 접속 테스트 응답 — 실패도 200 계약(connected:false + 분류 문구) */

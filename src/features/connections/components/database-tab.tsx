@@ -177,6 +177,15 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     {connection.name}
+                    {connection.managed ? (
+                      <Badge variant="secondary" data-testid="connection-mcp-badge" title={t('connection.list.mcpManagedHint')}>
+                        {t('connection.list.mcpManaged')}
+                      </Badge>
+                    ) : connection.mcpApplyAllowed ? (
+                      <Badge variant="secondary" data-testid="connection-mcp-badge" title={t('connection.dialog.mcpApplyWarning')}>
+                        {t('connection.list.mcpAllowed')}
+                      </Badge>
+                    ) : null}
                     {testResultBadge(connection)}
                   </div>
                 </TableCell>

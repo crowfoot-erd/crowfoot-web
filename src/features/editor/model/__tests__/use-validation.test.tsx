@@ -49,7 +49,7 @@ function twoErrorDocument(): EditorDocument {
       tables: [table('t1', [column('t1:c1', 'code')]), table('t2', [column('t2:c1', 'code'), column('t2:c2', 'code')])],
       relationships: [],
     },
-    diagram: { nodes: {}, notes: [], areas: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null },
   }
 }
 

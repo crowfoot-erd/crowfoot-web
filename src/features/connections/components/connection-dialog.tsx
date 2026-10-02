@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -31,6 +32,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -61,6 +63,7 @@ interface ConnectionFormValues {
   schemaName: string
   username: string
   password: string
+  mcpApplyAllowed: boolean
 }
 
 function connectionSchema(requiredMessage: string, schemaPatternMessage: string) {
@@ -81,6 +84,7 @@ function connectionSchema(requiredMessage: string, schemaPatternMessage: string)
     username: required,
     // 편집에서는 빈 비밀번호 = 기존 유지 — 등록에서만 필요
     password: z.string(),
+    mcpApplyAllowed: z.boolean(),
   })
 }
 
@@ -104,6 +108,7 @@ export function ConnectionDialog({ open, onOpenChange, workspaceId, connection }
       schemaName: '',
       username: '',
       password: '',
+      mcpApplyAllowed: false,
     },
   })
 
@@ -120,6 +125,7 @@ export function ConnectionDialog({ open, onOpenChange, workspaceId, connection }
         schemaName: connection.schemaName ?? '',
         username: connection.username,
         password: '',
+        mcpApplyAllowed: connection.mcpApplyAllowed === true,
       })
     } else {
       form.reset({
@@ -131,6 +137,7 @@ export function ConnectionDialog({ open, onOpenChange, workspaceId, connection }
         schemaName: '',
         username: '',
         password: '',
+        mcpApplyAllowed: false,
       })
     }
   }, [open, connection, form])
@@ -178,6 +185,10 @@ export function ConnectionDialog({ open, onOpenChange, workspaceId, connection }
       }
       if (watchDbms === 'postgresql') body.schemaName = schemaName
       if (password) body.password = password
+      // 매니지드 커넥션은 늘 허용이라 값을 보내지 않는다. 그 밖에는 바뀌었을 때만 보낸다
+      if (!connection.managed && values.mcpApplyAllowed !== (connection.mcpApplyAllowed === true)) {
+        body.mcpApplyAllowed = values.mcpApplyAllowed
+      }
       updateMutation.mutate(
         { connectionId: connection.connectionId, body },
         {
@@ -199,6 +210,7 @@ export function ConnectionDialog({ open, onOpenChange, workspaceId, connection }
           ...(watchDbms === 'postgresql' ? { schemaName } : {}),
           username: values.username.trim(),
           password,
+          ...(values.mcpApplyAllowed ? { mcpApplyAllowed: true } : {}),
         },
         {
           onSuccess: () => {
@@ -362,6 +374,32 @@ export function ConnectionDialog({ open, onOpenChange, workspaceId, connection }
                 )}
               />
             </div>
+            {/* MCP 반영 허용(v1.31, 08-core/06-connection.md §2.1) — 켜야 Claude가 MCP로 이 데이터베이스에 반영한다.
+                매니지드 커넥션은 늘 허용이라 토글을 두지 않는다 */}
+            {connection?.managed ? null : (
+              <FormField
+                control={form.control}
+                name="mcpApplyAllowed"
+                render={({ field }) => (
+                  <FormItem className="flex items-start justify-between gap-3 rounded-md border p-3">
+                    <div className="grid gap-1">
+                      <FormLabel htmlFor="connection-mcp-apply">{t('connection.dialog.mcpApply')}</FormLabel>
+                      <p className={cn('text-xs', field.value ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')}>
+                        {field.value ? t('connection.dialog.mcpApplyWarning') : t('connection.dialog.mcpApplyHint')}
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        id="connection-mcp-apply"
+                        data-testid="connection-mcp-apply"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpen(false)} disabled={pending}>
                 {t('common.cancel')}
