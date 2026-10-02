@@ -842,6 +842,13 @@
         "add": "Add",
         "empty": "No domain types yet",
         "usage": "Columns in this document",
+        "tabHint": "Types shared by many columns",
+        "addTitle": "Add a domain type",
+        "editTitle": "Edit domain type",
+        "nullableYes": "Nullable",
+        "nullableNo": "NOT NULL",
+        "columnCount": "{{count}} columns",
+        "termCount": "{{count}} terms",
         "usageNote": "Counts cover the document that is open now. Usage in other documents is unknown.",
         "actions": "Actions",
         "edit": "Edit {{name}}",
@@ -936,6 +943,8 @@
         "systemDictionaryFailed": "Could not load the system dictionary — computing with the workspace dictionary only"
       },
       "termDictionary": {
+        "domainFilter": "Terms linked to domain type \"{{name}}\"",
+        "showAll": "Show all",
         "domainTypeHint": "When a domain type is selected, it decides the type. Using this term on a column links the domain type.",
         "promote": "Make a domain type",
         "promoteUnreadable": "This type notation cannot be read as a common type",

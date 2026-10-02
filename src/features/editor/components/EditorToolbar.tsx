@@ -54,7 +54,6 @@ import {
   type LayoutDirection,
   type TableSizes,
 } from '@/features/editor/model/auto-layout'
-import { templateIdForDatabase } from '@/features/editor/model/dbms'
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
@@ -62,7 +61,6 @@ import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBa
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { ConvertDbmsDialog } from './ConvertDbmsDialog'
-import { DomainTypesDialog } from '@/features/editor/components/DomainTypesDialog'
 import { LogicalNamesDialog } from './LogicalNamesDialog'
 import { useAreaViewFit } from './ModelExplorerPanel'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
@@ -82,6 +80,8 @@ export interface EditorToolbarProps {
   /** 용어 사전 패널 열림 — 토글 버튼 상태. 열람은 멤버 전체라 공개 뷰어만 숨긴다 */
   termsOpen: boolean
   onToggleTermsPanel: () => void
+  /** 「도구」 메뉴의 "도메인 타입" — 용어 사전 패널의 도메인 타입 탭을 연다 */
+  onOpenDomainTypes?: () => void
   /** 검증 패널 열림 — 토글 버튼 상태(05-validation §4.1). 열람은 멤버 전체라 공개 뷰어만 숨긴다 */
   validationOpen: boolean
   onToggleValidationPanel: () => void
@@ -127,6 +127,7 @@ export function EditorToolbar({
   onToggleExplorer,
   termsOpen,
   onToggleTermsPanel,
+  onOpenDomainTypes,
   validationOpen,
   onToggleValidationPanel,
   validationErrorCount,
@@ -275,6 +276,7 @@ export function EditorToolbar({
           modelDescription={modelDescription}
           databaseType={databaseType}
           sourceConnectionId={sourceConnectionId}
+          onOpenDomainTypes={onOpenDomainTypes}
         />
       ) : null}
       {/* 문서 좋아요 — 공개 뷰어 헤더 전용(§1.10.6). 내보내기 메뉴 다음 자리.
@@ -813,7 +815,7 @@ function ShareButton({
  *  · 다른 DBMS로 복제(§3.5 — 편집 권한) · 도메인 타입(§16 — 멤버 전체, 쓰기는 편집 권한)
  *  · 버전 기록(08-core/02-model.md §1.11 — 멤버 전체)
  *  항목은 어느 다이얼로그를 열지만 정하고, 다이얼로그는 메뉴 밖에서 렌더한다. */
-type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'convert' | 'history' | 'domainTypes'
+type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'convert' | 'history'
 
 function ToolsMenu({
   canEdit,
@@ -823,6 +825,7 @@ function ToolsMenu({
   modelDescription,
   databaseType,
   sourceConnectionId,
+  onOpenDomainTypes,
 }: {
   canEdit: boolean
   workspaceId: string
@@ -831,6 +834,7 @@ function ToolsMenu({
   modelDescription: string | null
   databaseType: string
   sourceConnectionId: string | null
+  onOpenDomainTypes?: () => void
 }) {
   const { t } = useTranslation()
   const [active, setActive] = useState<ToolDialog | null>(null)
@@ -878,10 +882,13 @@ function ToolsMenu({
             </DropdownMenuItem>
           ) : null}
           {canEdit ? <DropdownMenuSeparator /> : null}
-          <DropdownMenuItem onSelect={() => setActive('domainTypes')}>
-            <Shapes aria-hidden />
-            {t('model.editor.domainType.menu')}
-          </DropdownMenuItem>
+          {onOpenDomainTypes ? (
+            // 도메인 타입은 용어 사전 패널의 탭이다 — 여기서는 그 탭을 연다(§14)
+            <DropdownMenuItem onSelect={onOpenDomainTypes}>
+              <Shapes aria-hidden />
+              {t('model.editor.domainType.menu')}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onSelect={() => setActive('history')}>
             <History aria-hidden />
             {t('model.editor.toolbar.history')}
@@ -915,13 +922,6 @@ function ToolsMenu({
         modelName={modelName}
         modelDescription={modelDescription}
         databaseType={databaseType}
-      />
-      <DomainTypesDialog
-        open={active === 'domainTypes'}
-        onOpenChange={close}
-        workspaceId={workspaceId}
-        canEdit={canEdit}
-        dbmsId={templateIdForDatabase(databaseType)}
       />
       <VersionHistoryDialog
         open={active === 'history'}

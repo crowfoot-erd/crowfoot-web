@@ -35,6 +35,8 @@ import {
   useWorkspaceTerms,
 } from '@/features/terms/hooks'
 import { useDomainTypes } from '@/features/domain-types/hooks'
+import { DomainTypesTab } from '@/features/editor/components/DomainTypesTab'
+import { templateIdForDatabase } from '@/features/editor/model/dbms'
 import { errorMessage } from '@/lib/result-code'
 import { TermUpsertDialog } from './TermUpsertDialog'
 
@@ -51,18 +53,41 @@ export interface TermDictionaryPanelProps {
   databaseType: string
   /** 편집 권한 — 쓰기 affordance만 게이트(목록·검색은 읽기 전용도 가능) */
   canEdit: boolean
+  /** 고른 탭 — 주면 밖에서 정한다(「도구」 메뉴의 "도메인 타입"이 이 패널의 탭을 연다). 없으면 패널이 기억한다 */
+  tab?: TermPanelTab
+  onTabChange?: (tab: TermPanelTab) => void
 }
 
-export function TermDictionaryPanel({ open, workspaceId, databaseType, canEdit }: TermDictionaryPanelProps) {
+/** 패널의 탭 — 워크스페이스 사전·도메인 타입·시스템 사전 */
+export type TermPanelTab = 'standard' | 'domain' | 'system'
+
+export function TermDictionaryPanel({ open, ...rest }: TermDictionaryPanelProps) {
   if (!open) return null
-  return <PanelBody workspaceId={workspaceId} databaseType={databaseType} canEdit={canEdit} />
+  return <PanelBody {...rest} />
 }
 
-function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string; databaseType: string; canEdit: boolean }) {
+function PanelBody({ workspaceId, databaseType, canEdit, tab: tabProp, onTabChange }: Omit<TermDictionaryPanelProps, 'open'>) {
   const { t, i18n } = useTranslation()
   const terms = useWorkspaceTerms(workspaceId)
 
-  const [tab, setTab] = useState<'standard' | 'system'>('standard')
+  const [innerTab, setInnerTab] = useState<TermPanelTab>('standard')
+  const tab = tabProp ?? innerTab
+  const setTab = (next: TermPanelTab) => {
+    setInnerTab(next)
+    onTabChange?.(next)
+  }
+  // 용어와 도메인 타입 사이를 오간다(§14) — 용어 행의 도메인 타입 이름 → 도메인 타입 탭의 그 항목,
+  // 도메인 타입 행의 "용어 N" → 워크스페이스 사전 탭에서 그 용어만
+  const [focusDomainId, setFocusDomainId] = useState<string | null>(null)
+  const [domainFilter, setDomainFilter] = useState<string | null>(null)
+  const showDomain = (domainTypeId: string) => {
+    setFocusDomainId(domainTypeId)
+    setTab('domain')
+  }
+  const showTermsOf = (domainTypeId: string) => {
+    setDomainFilter(domainTypeId)
+    setTab('standard')
+  }
   const [standardQuery, setStandardQuery] = useState('')
   const [systemQuery, setSystemQuery] = useState('')
 
@@ -78,13 +103,16 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
     >
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as 'standard' | 'system')}
+        onValueChange={(value) => setTab(value as TermPanelTab)}
         className="flex min-h-0 flex-1 flex-col gap-0"
       >
         <div className="border-b px-2 py-1.5">
           <TabsList className="w-full">
             <TabsTrigger value="standard" className="text-xs">
               {t('model.editor.termDictionary.tabStandard')}
+            </TabsTrigger>
+            <TabsTrigger value="domain" className="text-xs">
+              {t('model.editor.domainType.menu')}
             </TabsTrigger>
             <TabsTrigger value="system" className="text-xs">
               {t('model.editor.termDictionary.tabSystem')}
@@ -101,6 +129,20 @@ function PanelBody({ workspaceId, databaseType, canEdit }: { workspaceId: string
             standardTerms={standardTerms}
             query={standardQuery}
             onQueryChange={setStandardQuery}
+            domainFilter={domainFilter}
+            onClearDomainFilter={() => setDomainFilter(null)}
+            onShowDomain={showDomain}
+          />
+        </TabsContent>
+
+        <TabsContent value="domain" className="flex min-h-0 flex-1 flex-col">
+          <DomainTypesTab
+            workspaceId={workspaceId}
+            canEdit={canEdit}
+            dbmsId={templateIdForDatabase(databaseType)}
+            terms={standardTerms}
+            focusId={focusDomainId}
+            onShowTerms={showTermsOf}
           />
         </TabsContent>
 
@@ -128,6 +170,9 @@ function StandardTab({
   standardTerms,
   query,
   onQueryChange,
+  domainFilter,
+  onClearDomainFilter,
+  onShowDomain,
 }: {
   workspaceId: string
   databaseType: string
@@ -136,6 +181,11 @@ function StandardTab({
   standardTerms: readonly WorkspaceTerm[]
   query: string
   onQueryChange: (query: string) => void
+  /** 이 도메인 타입을 가리키는 용어만 본다 — null이면 전체 */
+  domainFilter: string | null
+  onClearDomainFilter: () => void
+  /** 용어 행의 도메인 타입 이름을 눌렀다 */
+  onShowDomain: (domainTypeId: string) => void
 }) {
   const { t } = useTranslation()
   const deleteMutation = useDeleteTerm(workspaceId)
@@ -171,11 +221,12 @@ function StandardTab({
   )
 
   const q = query.trim().toLowerCase()
+  const scoped = domainFilter ? standardTerms.filter((row) => row.domainTypeId === domainFilter) : standardTerms
   const filtered = q
-    ? standardTerms.filter(
+    ? scoped.filter(
         (row) => row.term.toLowerCase().includes(q) || row.label.toLowerCase().includes(q),
       )
-    : standardTerms
+    : scoped
 
   return (
     <>
@@ -214,6 +265,16 @@ function StandardTab({
         ) : null}
       </div>
 
+      {domainFilter ? (
+        <div className="flex items-center gap-2 border-b bg-violet-500/10 px-2 py-1 text-xs" data-testid="term-domain-filter">
+          <span className="min-w-0 flex-1 truncate">
+            {t('model.editor.termDictionary.domainFilter', { name: domainNameOf.get(domainFilter) ?? domainFilter })}
+          </span>
+          <button type="button" className="shrink-0 underline underline-offset-2" onClick={onClearDomainFilter}>
+            {t('model.editor.termDictionary.showAll')}
+          </button>
+        </div>
+      ) : null}
       {/* 워크스페이스 사전 목록 — term 오름차순(서버 정렬). 행 클릭 = 수정 다이얼로그(재등록으로 덮어쓴다) */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
         {termsStatus.isPending ? (
@@ -264,14 +325,19 @@ function StandardTab({
               </span>
               <span className="min-w-0 flex-1 truncate">{row.label}</span>
               {row.domainTypeId && domainNameOf.has(row.domainTypeId) ? (
-                // 도메인 타입을 가리키는 용어 — 타입 표기 대신 도메인 타입 이름
-                <span
-                  className="shrink-0 rounded-sm bg-violet-500/15 px-1 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+                // 도메인 타입을 가리키는 용어 — 타입 표기 대신 도메인 타입 이름. 누르면 도메인 타입 탭의 그 항목으로 간다
+                <button
+                  type="button"
+                  className="shrink-0 rounded-sm bg-violet-500/15 px-1 text-[10px] font-medium text-violet-600 hover:bg-violet-500/25 dark:text-violet-400"
                   data-testid={`term-domain-${row.term}`}
                   title={t('model.editor.domainType.badge', { name: domainNameOf.get(row.domainTypeId) })}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if (row.domainTypeId) onShowDomain(row.domainTypeId)
+                  }}
                 >
                   {domainNameOf.get(row.domainTypeId)}
-                </span>
+                </button>
               ) : row.types?.[databaseType] ? (
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                   {row.types[databaseType]}

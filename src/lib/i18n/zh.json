@@ -842,6 +842,13 @@
         "add": "添加",
         "empty": "还没有域类型",
         "usage": "此文档中的列",
+        "tabHint": "多个列共用的类型",
+        "addTitle": "添加域类型",
+        "editTitle": "编辑域类型",
+        "nullableYes": "允许 NULL",
+        "nullableNo": "NOT NULL",
+        "columnCount": "{{count}} 个列",
+        "termCount": "{{count}} 个术语",
         "usageNote": "列数以当前打开的文档为准，无法得知其他文档是否使用。",
         "actions": "操作",
         "edit": "编辑 {{name}}",
@@ -936,6 +943,8 @@
         "systemDictionaryFailed": "无法加载系统词典——将仅使用工作区词典计算"
       },
       "termDictionary": {
+        "domainFilter": "关联域类型“{{name}}”的术语",
+        "showAll": "显示全部",
         "domainTypeHint": "选择域类型后，类型由域类型决定。在列上使用此术语时会关联该域类型。",
         "promote": "创建为域类型",
         "promoteUnreadable": "此类型写法无法识别为通用类型",

@@ -842,6 +842,13 @@
         "add": "追加",
         "empty": "まだドメインタイプがありません",
         "usage": "このドキュメントのカラム",
+        "tabHint": "複数のカラムが共有する型",
+        "addTitle": "ドメインタイプを追加",
+        "editTitle": "ドメインタイプを編集",
+        "nullableYes": "NULL許可",
+        "nullableNo": "NOT NULL",
+        "columnCount": "カラム {{count}}",
+        "termCount": "用語 {{count}}",
         "usageNote": "カラム数は今開いているドキュメントが基準です。他のドキュメントでの使用は分かりません。",
         "actions": "操作",
         "edit": "{{name}}を編集",
@@ -936,6 +943,8 @@
         "systemDictionaryFailed": "システム辞書を読み込めませんでした — ワークスペース辞書のみで計算します"
       },
       "termDictionary": {
+        "domainFilter": "ドメインタイプ「{{name}}」を指す用語",
+        "showAll": "すべて表示",
         "domainTypeHint": "ドメインタイプを選ぶと、型はドメインタイプが決めます。カラムにこの用語を使うとドメインタイプが連携されます。",
         "promote": "ドメインタイプにする",
         "promoteUnreadable": "この型表記は共通の型として読み取れません",

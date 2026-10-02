@@ -78,6 +78,8 @@ beforeEach(() => {
 afterEach(() => {
   resetEditorStore()
   resetSessionState()
+  // 「도구」 메뉴로 연 패널의 열림이 다음 테스트로 넘어가지 않게 한다
+  window.localStorage.clear()
 })
 
 async function renderEditor(canEdit = true) {
@@ -121,26 +123,31 @@ function seedUsers(linked: { email?: { version: number; overrides?: string[]; le
 
 const column = (id: string) => useEditorStore.getState().present.model.tables[0].columns.find((c) => c.id === id)!
 
+/** 「도구」 메뉴의 "도메인 타입" — 용어 사전 패널이 열리고 도메인 타입 탭이 골라진다 */
 async function openPanel() {
   const trigger = screen.getByRole('button', { name: '도구' })
   fireEvent.pointerDown(trigger, { button: 0 })
   fireEvent.click(trigger)
   fireEvent.click(await screen.findByRole('menuitem', { name: '도메인 타입' }))
-  return screen.findByRole('dialog')
+  const panel = await screen.findByTestId('term-dictionary-panel')
+  await waitFor(() => expect(within(panel).getByRole('tab', { name: '도메인 타입' })).toHaveAttribute('aria-selected', 'true'))
+  return panel
 }
 
-describe('도메인 타입 패널', () => {
+describe('도메인 타입 탭 (용어 사전 패널)', () => {
   it('목록에 타입 표기와 이 문서의 사용 컬럼 수를 보여 준다 — 새로 만들면 서버에 보낸다', async () => {
     await renderEditor()
     seedUsers({ email: { version: 1 }, backup: { version: 1 } })
-    const dialog = await openPanel()
+    const panel = await openPanel()
 
-    const row = (await within(dialog).findByText('이메일')).closest('tr') as HTMLElement
+    const row = await within(panel).findByTestId('domain-type-row-이메일')
     expect(within(row).getByText('VARCHAR(191)')).toBeVisible()
     expect(within(row).getByText('로그인에 쓰는 주소')).toBeVisible()
-    expect(within(row).getByText('2')).toBeVisible()
+    expect(within(row).getByText('컬럼 2')).toBeVisible()
+    expect(within(row).getByText('NOT NULL')).toBeVisible()
 
-    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }))
+    fireEvent.click(within(panel).getByRole('button', { name: '추가' }))
+    const dialog = await screen.findByRole('dialog', { name: '도메인 타입 추가' })
     fireEvent.change(within(dialog).getByLabelText('이름'), { target: { value: '금액' } })
     fireEvent.change(within(dialog).getByLabelText('타입'), { target: { value: 'DECIMAL' } })
     fireEvent.change(within(dialog).getByLabelText('정밀도'), { target: { value: '15' } })
@@ -154,15 +161,16 @@ describe('도메인 타입 패널', () => {
       method: 'POST',
       body: { name: '금액', dataType: 'DECIMAL', length: null, precision: 15, scale: 2, nullable: false, defaultValue: '0', description: null },
     })
-    expect(await within(dialog).findByText('금액')).toBeVisible()
+    expect(await within(panel).findByTestId('domain-type-row-금액')).toBeVisible()
   })
 
   it('고치면 이 문서에서 쓰는 컬럼에 대한 전파 미리보기가 바로 뜬다 — 전파하면 값이 바뀌고 Undo 한 번으로 돌아온다', async () => {
     await renderEditor()
     seedUsers({ email: { version: 1 }, backup: { version: 1 } })
-    const dialog = await openPanel()
+    const panel = await openPanel()
 
-    fireEvent.click(await within(dialog).findByRole('button', { name: '이메일 수정' }))
+    fireEvent.click(await within(panel).findByRole('button', { name: '이메일 수정' }))
+    const dialog = await screen.findByRole('dialog', { name: '도메인 타입 수정' })
     fireEvent.change(within(dialog).getByLabelText('길이'), { target: { value: '255' } })
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }))
 
@@ -182,48 +190,82 @@ describe('도메인 타입 패널', () => {
 
   it('그 사이 다른 사람이 고쳤으면 알리고 목록을 다시 읽는다', async () => {
     await renderEditor()
-    const dialog = await openPanel()
-    fireEvent.click(await within(dialog).findByRole('button', { name: '이메일 수정' }))
+    const panel = await openPanel()
+    fireEvent.click(await within(panel).findByRole('button', { name: '이메일 수정' }))
+    const dialog = await screen.findByRole('dialog', { name: '도메인 타입 수정' })
     // 다른 사람이 먼저 고쳤다
     serverList = [email({ version: 2, length: 320 })]
     fireEvent.change(within(dialog).getByLabelText('길이'), { target: { value: '255' } })
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await within(dialog).findByText('VARCHAR(320)')).toBeVisible()
-    expect(within(dialog).queryByLabelText('길이')).not.toBeInTheDocument()
+    expect(await within(panel).findByText('VARCHAR(320)')).toBeVisible()
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '도메인 타입 수정' })).not.toBeInTheDocument())
   })
 
   it('지울 때 이 문서의 사용 컬럼 수를 알린다', async () => {
     await renderEditor()
     seedUsers({ email: { version: 1 } })
-    const dialog = await openPanel()
+    const panel = await openPanel()
 
-    fireEvent.click(await within(dialog).findByRole('button', { name: '이메일 삭제' }))
+    fireEvent.click(await within(panel).findByRole('button', { name: '이메일 삭제' }))
     const confirm = await screen.findByRole('dialog', { name: '"이메일"을 지울까요?' })
     expect(within(confirm).getByText(/이 문서의 컬럼 1개가 쓰고 있습니다/)).toBeVisible()
     fireEvent.click(within(confirm).getByRole('button', { name: '삭제' }))
 
     await waitFor(() => expect(requests).toEqual([{ method: 'DELETE', body: { id: '11' } }]))
-    expect(await within(dialog).findByText('아직 도메인 타입이 없습니다')).toBeVisible()
+    expect(await within(panel).findByText('아직 도메인 타입이 없습니다')).toBeVisible()
     // 컬럼의 값과 연결은 그대로다(끊긴 연결로 보인다)
     expect(column('c-email')).toMatchObject({ length: 191, domain: { id: '11' } })
   })
 
   it('읽기 전용은 목록만 본다', async () => {
     await renderEditor(false)
-    const dialog = await openPanel()
+    const panel = await openPanel()
 
-    expect(await within(dialog).findByText('이메일')).toBeVisible()
-    expect(within(dialog).queryByRole('button', { name: '추가' })).not.toBeInTheDocument()
-    expect(within(dialog).queryByRole('button', { name: '이메일 수정' })).not.toBeInTheDocument()
+    expect(await within(panel).findByTestId('domain-type-row-이메일')).toBeVisible()
+    expect(within(panel).queryByRole('button', { name: '추가' })).not.toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: '이메일 수정' })).not.toBeInTheDocument()
+  })
+
+  it('용어와 도메인 타입 사이를 오간다 — "용어 N"은 그 용어만 걸러 보여 주고, 용어의 도메인 타입 이름은 그 항목으로 간다', async () => {
+    server.use(
+      http.get('/api/v1/core/workspaces/101/terms', () =>
+        HttpResponse.json({
+          header: HEADER,
+          responses: [
+            { termId: '1', workspaceId: '101', term: 'user', label: '회원', types: null, domainTypeId: null, updatedAt: '2026-10-02T00:00:00Z' },
+            { termId: '2', workspaceId: '101', term: 'user_email', label: '회원 이메일', types: null, domainTypeId: '11', updatedAt: '2026-10-02T00:00:00Z' },
+          ],
+          totalCount: 2,
+        }),
+      ),
+    )
+    await renderEditor()
+    const panel = await openPanel()
+
+    // 도메인 타입 → 용어
+    const row = await within(panel).findByTestId('domain-type-row-이메일')
+    fireEvent.click(await within(row).findByRole('button', { name: '용어 1' }))
+    await waitFor(() => expect(within(panel).getByRole('tab', { name: '워크스페이스 사전' })).toHaveAttribute('aria-selected', 'true'))
+    expect(within(panel).getByTestId('term-domain-filter')).toHaveTextContent('도메인 타입 "이메일"을 가리키는 용어')
+    expect(within(panel).getByTestId('term-row-user_email')).toBeVisible()
+    expect(within(panel).queryByTestId('term-row-user')).not.toBeInTheDocument()
+
+    fireEvent.click(within(panel).getByRole('button', { name: '전체 보기' }))
+    expect(within(panel).getByTestId('term-row-user')).toBeVisible()
+
+    // 용어 → 도메인 타입
+    fireEvent.click(within(panel).getByTestId('term-domain-user_email'))
+    await waitFor(() => expect(within(panel).getByRole('tab', { name: '도메인 타입' })).toHaveAttribute('aria-selected', 'true'))
+    expect(await within(panel).findByTestId('domain-type-row-이메일')).toHaveAttribute('data-focused', 'true')
   })
 })
 
 describe('컬럼에서 도메인 타입 쓰기', () => {
   async function openColumn(name: string) {
     fireEvent.doubleClick(await screen.findByLabelText(`컬럼 물리명 — ${name}`))
-    await screen.findByText('컬럼 정보')
-    return screen.findByLabelText('도메인 타입')
+    const dialog = (await screen.findByText('컬럼 정보')).closest('[role="dialog"]') as HTMLElement
+    return within(dialog).findByLabelText('도메인 타입')
   }
 
   it('고르면 타입·길이·NULL 허용이 채워지고, 저장하면 연결이 기록되고 노드에 배지가 붙는다', async () => {

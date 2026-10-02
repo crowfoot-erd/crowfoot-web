@@ -60,7 +60,7 @@ import { ErdCanvas } from './ErdCanvas'
 import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
-import { TermDictionaryPanel } from './TermDictionaryPanel'
+import { TermDictionaryPanel, type TermPanelTab } from './TermDictionaryPanel'
 import { ValidationPanel } from './ValidationPanel'
 import { ValidationHighlightContext } from './canvas/validation-context'
 import { useValidationIssues } from '@/features/editor/model/use-validation'
@@ -181,6 +181,17 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
   }, [])
   // 용어 사전 패널 — 열림은 브라우저에 기억(기본 닫힘)
   const [termsOpen, setTermsOpen] = useState(readTermsOpen)
+  const [termsTab, setTermsTab] = useState<TermPanelTab>('standard')
+  /** 「도구」 메뉴의 "도메인 타입" — 용어 사전 패널을 열고 도메인 타입 탭을 고른다(05-editor/02-ui.md §14) */
+  const openDomainTypes = useCallback(() => {
+    setTermsTab('domain')
+    setTermsOpen(true)
+    try {
+      localStorage.setItem(TERMS_OPEN_KEY, 'true')
+    } catch {
+      // 저장 실패는 무시 — 상태만 전환한다
+    }
+  }, [])
   const toggleTermsPanel = useCallback(() => {
     setTermsOpen((open) => {
       try {
@@ -800,6 +811,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
         onToggleExplorer={toggleExplorer}
         termsOpen={termsOpen}
         onToggleTermsPanel={toggleTermsPanel}
+        onOpenDomainTypes={openDomainTypes}
         validationOpen={validationOpen}
         onToggleValidationPanel={toggleValidationPanel}
         validationErrorCount={validationErrorCount}
@@ -840,6 +852,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
             workspaceId={model.workspaceId}
             databaseType={model.databaseType}
             canEdit={canEdit}
+            tab={termsTab}
+            onTabChange={setTermsTab}
           />
         ) : null}
         {/* 검증 패널 — 열림 때만 마운트. 감사 전송은 Editor 멤버십(canEdit)뿐 —
