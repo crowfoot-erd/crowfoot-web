@@ -618,7 +618,8 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
             <ChevronDown aria-hidden className="size-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-44">
+        {/* 가장 긴 항목(방향 — "Left to right" 등)이 한 줄에 들어가게 폭을 내용에 맞춘다 */}
+        <DropdownMenuContent align="start" className="w-max min-w-44 whitespace-nowrap">
           <DropdownMenuRadioGroup value={mode} onValueChange={selectMode}>
             {LAYOUT_MODES.map((candidate) => {
               const { labelKey, Icon } = LAYOUT_MODE_META[candidate]
