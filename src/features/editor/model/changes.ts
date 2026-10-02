@@ -75,6 +75,24 @@ export function newId(): string {
   return crypto.randomUUID()
 }
 
+/** 도메인 타입이 다루는 컬럼 속성 (05-editor/01-core.md §11.1) */
+export const DOMAIN_FIELDS = ['dataType', 'length', 'precision', 'scale', 'nullable', 'defaultValue'] as const
+export type DomainField = (typeof DOMAIN_FIELDS)[number]
+
+/**
+ * 컬럼 패치 — 도메인 타입을 쓰는 컬럼에서 도메인 타입이 다루는 속성을 직접 고치면
+ * 그 속성을 overrides에 넣는다("도메인 타입과 다르게 쓰기" — 이후 전파에서 건너뛴다).
+ * 패치가 domain을 직접 싣고 오면(적용·전파·되돌리기·연결 풀기) 그대로 따른다.
+ */
+function patchColumn(column: ErdColumn, patch: ColumnPatch): ErdColumn {
+  const next = { ...column, ...patch }
+  if (!column.domain || 'domain' in patch) return next
+  const touched = DOMAIN_FIELDS.filter((field) => field in patch && patch[field] !== column[field])
+  if (touched.length === 0) return next
+  const overrides = [...new Set([...column.domain.overrides, ...touched])]
+  return { ...next, domain: { ...column.domain, overrides } }
+}
+
 export function createColumn(init: Partial<ErdColumn> = {}): ErdColumn {
   return {
     id: newId(),
@@ -606,7 +624,7 @@ export function applyChange(doc: EditorDocument, change: ErdChange, databaseType
     case 'column/patch':
       return mapTable(doc, change.tableId, (table) => ({
         ...table,
-        columns: table.columns.map((c) => (c.id === change.columnId ? { ...c, ...change.patch } : c)),
+        columns: table.columns.map((c) => (c.id === change.columnId ? patchColumn(c, change.patch) : c)),
       }))
     case 'column/move':
       return mapTable(doc, change.tableId, (table) => {

@@ -357,6 +357,20 @@ function ColumnRow({
               autoFocus={autoFocus}
               onFocused={onFocusedAuto}
             />
+            {column.domain ? (
+              // 도메인 타입을 쓰는 컬럼 — 이름은 연결할 때의 것이다(목록을 읽지 못하는 뷰어에서도 보인다). 다르게 쓰는 속성이 있으면 *를 붙인다
+              <span
+                className="shrink-0 rounded-sm bg-violet-500/15 px-0.5 text-[9px] font-semibold text-violet-600 dark:text-violet-400"
+                data-testid="domain-badge"
+                title={
+                  column.domain.overrides.length > 0
+                    ? t('model.editor.domainType.badgeOverridden', { name: column.domain.name })
+                    : t('model.editor.domainType.badge', { name: column.domain.name })
+                }
+              >
+                D{column.domain.overrides.length > 0 ? '*' : ''}
+              </span>
+            ) : null}
             {isFk ? (
               <span className="shrink-0 rounded-sm bg-sky-500/15 px-0.5 text-[9px] font-semibold text-sky-600 dark:text-sky-400" title={t('model.editor.table.foreignKey')}>
                 FK

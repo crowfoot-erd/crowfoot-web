@@ -825,6 +825,65 @@
         "untitledNote": "Untitled note",
         "groupUngrouped": "Ungrouped"
       },
+      "domainType": {
+        "menu": "Domain types",
+        "title": "Domain types",
+        "description": "Type definitions shared by many columns. Every document in this workspace uses them.",
+        "label": "Domain type",
+        "none": "None",
+        "missing": "Link broken: {{name}}",
+        "missingHint": "This domain type was deleted or does not exist in this workspace. The column keeps its values.",
+        "staleHint": "The domain type has changed. Saving re-syncs based on the current values.",
+        "fkHint": "A foreign key column follows the parent column's type. A domain type cannot be applied.",
+        "differs": "Differs from the domain type: {{fields}}",
+        "revert": "Revert to the domain type's values",
+        "badge": "Domain type: {{name}}",
+        "badgeOverridden": "Domain type: {{name}} (some properties differ)",
+        "add": "Add",
+        "empty": "No domain types yet",
+        "usage": "Columns in this document",
+        "usageNote": "Counts cover the document that is open now. Usage in other documents is unknown.",
+        "actions": "Actions",
+        "edit": "Edit {{name}}",
+        "delete": "Delete {{name}}",
+        "nameRequired": "Enter a name",
+        "conflict": "Someone else changed it first. The list was reloaded.",
+        "created": "Created domain type \"{{name}}\"",
+        "updated": "Updated domain type \"{{name}}\"",
+        "deleted": "Deleted domain type \"{{name}}\"",
+        "field": {
+          "name": "Name",
+          "dataType": "Type",
+          "length": "Length",
+          "precision": "Precision",
+          "scale": "Scale",
+          "nullable": "Nullable",
+          "defaultValue": "Default",
+          "description": "Description"
+        },
+        "value": {
+          "yes": "Yes",
+          "no": "No",
+          "none": "none"
+        },
+        "deleteConfirm": {
+          "title": "Delete \"{{name}}\"?",
+          "description": "{{count}} columns in this document use it. Usage in other documents is unknown. Columns keep their values after deletion."
+        },
+        "banner": {
+          "message": "Domain types have changed. {{count}} columns",
+          "review": "Review",
+          "dismiss": "Dismiss"
+        },
+        "propagation": {
+          "title": "Apply domain type changes to columns?",
+          "description": "Only the selected columns take the domain type's new values. Unselected columns keep their values and are marked as differing.",
+          "noValueChange": "No values change (only the name or description changed)",
+          "skipped": "overridden — skipped",
+          "skipAll": "Do not propagate",
+          "apply": "Propagate to {{count}} selected columns"
+        }
+      },
       "clipboard": {
         "copyLabel": "copy",
         "localOnly": "Too large to share — you can paste only within this document"

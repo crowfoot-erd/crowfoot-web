@@ -825,6 +825,65 @@
         "untitledNote": "未命名备注",
         "groupUngrouped": "未分组"
       },
+      "domainType": {
+        "menu": "域类型",
+        "title": "域类型",
+        "description": "多个列共用的类型定义。此工作区的所有文档共同使用。",
+        "label": "域类型",
+        "none": "不使用",
+        "missing": "链接已断开: {{name}}",
+        "missingHint": "此域类型已被删除或不在此工作区中。列的值保持不变。",
+        "staleHint": "域类型已更改。保存后将以当前值为准重新同步。",
+        "fkHint": "外键列的类型跟随父列，无法应用域类型。",
+        "differs": "与域类型不同: {{fields}}",
+        "revert": "恢复为域类型的值",
+        "badge": "域类型: {{name}}",
+        "badgeOverridden": "域类型: {{name}}（部分属性不同）",
+        "add": "添加",
+        "empty": "还没有域类型",
+        "usage": "此文档中的列",
+        "usageNote": "列数以当前打开的文档为准，无法得知其他文档是否使用。",
+        "actions": "操作",
+        "edit": "编辑 {{name}}",
+        "delete": "删除 {{name}}",
+        "nameRequired": "请输入名称",
+        "conflict": "其他人已先行修改，已重新加载列表。",
+        "created": "已创建域类型“{{name}}”",
+        "updated": "已修改域类型“{{name}}”",
+        "deleted": "已删除域类型“{{name}}”",
+        "field": {
+          "name": "名称",
+          "dataType": "类型",
+          "length": "长度",
+          "precision": "精度",
+          "scale": "小数位",
+          "nullable": "允许 NULL",
+          "defaultValue": "默认值",
+          "description": "说明"
+        },
+        "value": {
+          "yes": "允许",
+          "no": "不允许",
+          "none": "无"
+        },
+        "deleteConfirm": {
+          "title": "要删除“{{name}}”吗？",
+          "description": "此文档中有 {{count}} 个列在使用。无法得知其他文档是否使用。删除后列的值保持不变。"
+        },
+        "banner": {
+          "message": "域类型已更改，涉及 {{count}} 个列",
+          "review": "查看",
+          "dismiss": "关闭"
+        },
+        "propagation": {
+          "title": "要将域类型的更改应用到列吗？",
+          "description": "只有选中的列会改为域类型的新值。未选中的列保持原值，并标记为“不同”。",
+          "noValueChange": "没有值发生变化（仅名称或说明更改）",
+          "skipped": "不同的属性 — 跳过",
+          "skipAll": "不传播",
+          "apply": "传播到选中的 {{count}} 个列"
+        }
+      },
       "clipboard": {
         "copyLabel": "复制",
         "localOnly": "内容过大，只能在此文档内粘贴"

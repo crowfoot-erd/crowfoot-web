@@ -1276,6 +1276,11 @@ export const handlers = [
   ),
 
   // 모델 목록 — keyword는 이름·설명 부분 일치
+  /** 도메인 타입 목록(08-core/16-domain-type.md §3.1) — 기본은 빈 목록. 테스트가 server.use()로 덧씌운다 */
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/domain-types`, () =>
+    HttpResponse.json({ header: { isSuccessful: true, resultCode: 'OK', resultMessage: 'OK' }, responses: [], totalCount: 0 }),
+  ),
+
   http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models`, ({ request }) => {
     const keyword = new URL(request.url).searchParams.get('keyword')?.toLowerCase() ?? ''
     const matched = fixtures.models.responses.filter(

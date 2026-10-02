@@ -9,7 +9,7 @@
  * 컬럼·키 변경은 전부 테이블 귀속이라 락 단위도 테이블이다.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -44,7 +44,11 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import type { ColumnPatch } from '@/features/editor/model/changes'
 import { splitLogicalName } from '@/features/editor/model/logical-name'
+import type { DomainType } from '@/features/domain-types/api'
+import { DOMAIN_FIELDS, type DomainField } from '@/features/editor/model/changes'
 import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
+import { differingFields, domainValues, linkFor } from '@/features/editor/model/domain-type'
+import { typeLabel } from '@/features/editor/model/domain-type-format'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import { useEditLock } from '@/features/editor/collab-locks'
 
@@ -66,6 +70,10 @@ export interface ColumnInfoDialogProps {
   pkCount: number
   /** 문서 대상 DBMS — 타입 옵션 라벨을 물리 표기로(값은 공용 논리 코드 유지) */
   dbmsId: string
+  /** 워크스페이스 도메인 타입 목록 — 주면 도메인 타입을 고를 수 있다(§11.1). undefined면 목록을 읽지 못한 것이다 */
+  domainTypes?: readonly DomainType[]
+  /** 외래 키 컬럼인지 — 외래 키 컬럼에는 도메인 타입을 적용할 수 없다(타입이 부모 컬럼을 따른다) */
+  isFk?: boolean
   onConfirm: (values: ColumnInfoSubmit) => void
 }
 
@@ -94,7 +102,18 @@ function toDisplay(value: number | null): string {
   return value === null ? '' : String(value)
 }
 
-export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pkCount, dbmsId, onConfirm }: ColumnInfoDialogProps) {
+export function ColumnInfoDialog({
+  open,
+  onOpenChange,
+  column,
+  tableId,
+  isPk,
+  pkCount,
+  dbmsId,
+  domainTypes,
+  isFk = false,
+  onConfirm,
+}: ColumnInfoDialogProps) {
   const { t } = useTranslation()
   // 다이얼로그 수명 락 — 남이 잡았으면(반환값) 확정을 막는다
   const foreignLock = useEditLock('table', tableId, open)
@@ -131,6 +150,9 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
     },
   })
 
+  /** 고른 도메인 타입 id — ''는 쓰지 않음. 목록에 없는 id는 끊긴 연결이다(그대로 두면 연결을 유지한다) */
+  const [domainId, setDomainId] = useState('')
+
   // 열릴 때마다 대상 컬럼 값으로 초기화 — 논리명 "-----" 구분자(05-editor/01-core.md §3.3)는
   // 두 필드로 나눠 보여준다: 논리명 = 앞부분, 코멘트 필드 = 뒷부분(없으면 빈 칸). 코멘트 필드는
   // 이 구분자 설명부 소관이라 content의 comment는 여기서 다루지 않는다(테이블 정보와 같은 규칙).
@@ -150,8 +172,39 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
         defaultValue: column.defaultValue ?? '',
         comment: description ?? '',
       })
+      setDomainId(column.domain?.id ?? '')
     }
   }, [open, column, isPk, form])
+
+  const selectedDomain = domainTypes?.find((candidate) => candidate.domainTypeId === domainId)
+  const domainMissing = domainId !== '' && domainTypes !== undefined && !selectedDomain
+  const watched = form.watch()
+  /** 폼의 지금 값(도메인 타입이 다루는 여섯 속성) — 제출 값과 같은 정규화를 거친다 */
+  const formDomainValues = () => {
+    const formSpec = dataTypeSpec(watched.dataType)
+    return {
+      dataType: watched.dataType,
+      length: formSpec?.length ? toNumberOrNull(watched.length) : null,
+      precision: formSpec?.precision ? toNumberOrNull(watched.precision) : null,
+      scale: formSpec?.precision ? toNumberOrNull(watched.scale) : null,
+      nullable: watched.pk ? false : watched.nullable,
+      defaultValue: watched.defaultValue.trim() === '' ? null : watched.defaultValue.trim(),
+    }
+  }
+  /** 기본 키 컬럼은 nullable을 따르지 않는다 */
+  const domainFields = DOMAIN_FIELDS.filter((field) => !(watched.pk && field === 'nullable'))
+  const differing = selectedDomain ? differingFields(formDomainValues(), selectedDomain, domainFields) : []
+
+  /** 도메인 타입의 값을 폼에 넣는다 — fields를 주면 그 속성만 */
+  const fillFromDomain = (domainType: DomainType, fields: readonly DomainField[] = domainFields) => {
+    const values = domainValues(domainType)
+    for (const field of fields) {
+      if (field === 'dataType') form.setValue('dataType', values.dataType)
+      else if (field === 'nullable') form.setValue('nullable', values.nullable)
+      else if (field === 'defaultValue') form.setValue('defaultValue', values.defaultValue ?? '')
+      else form.setValue(field, toDisplay(values[field]))
+    }
+  }
 
   const dataType = form.watch('dataType')
   const pk = form.watch('pk')
@@ -177,6 +230,15 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
         nullable: values.pk ? false : values.nullable,
         autoIncrement: values.pk && otherPkCount === 0 && isAutoIncrementType(values.dataType) ? values.autoIncrement : false,
         defaultValue: values.defaultValue === '' ? null : values.defaultValue,
+        // 도메인 타입 연결 — 고른 것이 없으면 푼다. 끊긴 연결을 그대로 두면 건드리지 않는다.
+        // 고른 도메인 타입과 값이 다른 속성은 "다르게 쓰기"로 적힌다(맞춘 버전은 지금 버전이 된다)
+        ...(domainId === ''
+          ? column.domain
+            ? { domain: null }
+            : {}
+          : selectedDomain
+            ? { domain: linkFor(selectedDomain, formDomainValues(), domainFields) }
+            : {}),
       },
     })
     onOpenChange(false)
@@ -268,6 +330,60 @@ export function ColumnInfoDialog({ open, onOpenChange, column, tableId, isPk, pk
             ) : null}
             {!aiAvailable ? (
               <p className="-mt-2 text-xs text-muted-foreground">{t('model.editor.columnInfo.aiHint')}</p>
+            ) : null}
+
+            {/* 도메인 타입 — 고르면 타입·길이·NULL 허용·기본값이 그 값으로 채워진다(§11.1) */}
+            {domainTypes !== undefined && (domainTypes.length > 0 || domainId !== '') ? (
+              <div className="grid gap-1.5 rounded-md border p-2">
+                <label className="grid gap-1 text-sm font-medium">
+                  {t('model.editor.domainType.label')}
+                  <select
+                    value={domainId}
+                    disabled={isFk || locked}
+                    onChange={(event) => {
+                      setDomainId(event.target.value)
+                      const picked = domainTypes.find((candidate) => candidate.domainTypeId === event.target.value)
+                      if (picked) fillFromDomain(picked)
+                    }}
+                    className="h-9 rounded-md border border-input bg-background px-2 text-sm font-normal"
+                  >
+                    <option value="">{t('model.editor.domainType.none')}</option>
+                    {domainMissing ? (
+                      <option value={domainId}>
+                        {t('model.editor.domainType.missing', { name: column?.domain?.name ?? '' })}
+                      </option>
+                    ) : null}
+                    {domainTypes.map((domainType) => (
+                      <option key={domainType.domainTypeId} value={domainType.domainTypeId}>
+                        {domainType.name} — {typeLabel(domainType, dbmsId)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {isFk ? <p className="text-xs text-muted-foreground">{t('model.editor.domainType.fkHint')}</p> : null}
+                {domainMissing ? <p className="text-xs text-amber-600 dark:text-amber-400">{t('model.editor.domainType.missingHint')}</p> : null}
+                {selectedDomain && column?.domain?.id === selectedDomain.domainTypeId && column.domain.version < selectedDomain.version ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">{t('model.editor.domainType.staleHint')}</p>
+                ) : null}
+                {selectedDomain && differing.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                    <span data-testid="domain-differs">
+                      {t('model.editor.domainType.differs', {
+                        fields: differing.map((field) => t(`model.editor.domainType.field.${field}`)).join(', '),
+                      })}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => fillFromDomain(selectedDomain, differing)}
+                    >
+                      {t('model.editor.domainType.revert')}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
             <div className="grid grid-cols-2 gap-3">

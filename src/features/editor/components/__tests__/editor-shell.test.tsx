@@ -1347,12 +1347,12 @@ describe('EditorShell — 도구 메뉴 항목 노출 조건', () => {
     openSpy.mockRestore()
   })
 
-  it('읽기 전용(편집 권한 없음)에서는 DB 동기화를 노출하지 않는다 — 버전 기록만 남는다', async () => {
+  it('읽기 전용(편집 권한 없음)에서는 DB 동기화를 노출하지 않는다 — 도메인 타입(보기)과 버전 기록만 남는다', async () => {
     await renderEditor(false)
     await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
     await openToolsMenu()
     expect(screen.queryByRole('menuitem', { name: 'DB 동기화' })).toBeNull()
-    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['도메인 타입', '버전 기록'])
   })
 
   it('원천 연결이 없는(직접 생성) 문서에는 DB 동기화 대신 데이터베이스 연결을 노출한다', async () => {

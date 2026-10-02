@@ -59,6 +59,8 @@ import type { CursorPayload, RemoteCursorState } from '@/features/editor/collab'
 import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab-presence'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
 import { databaseBrowserPath } from '@/features/database'
+import { useDomainTypes } from '@/features/domain-types/hooks'
+import { DomainSyncBanner } from '@/features/editor/components/DomainSyncBanner'
 import { hasClipboard } from '@/features/editor/model/clipboard'
 import { copySelection, duplicateSelection, pasteClipboard } from '@/features/editor/model/clipboard-commands'
 import { setViewCenterProvider } from '@/features/editor/model/view-center'
@@ -1050,6 +1052,19 @@ export function ErdCanvas({
     [infoColumnRef, present.model.tables],
   )
 
+  /** 대상 컬럼이 외래 키인지 — 외래 키 컬럼에는 도메인 타입을 적용할 수 없다(§11.1) */
+  const infoColumnIsFk = useMemo(
+    () =>
+      infoColumnRef
+        ? present.model.relationships.some((rel) =>
+            rel.columnMappings.some((mapping) => mapping.childColumnId === infoColumnRef.columnId),
+          )
+        : false,
+    [infoColumnRef, present.model.relationships],
+  )
+  // 워크스페이스 도메인 타입 — 편집할 수 있는 문서에서만 읽는다(공개 뷰어·읽기 전용은 컬럼에 적힌 이름만 본다)
+  const domainTypes = useDomainTypes(canEdit ? workspaceId : null)
+
   /** 대상 컬럼 소속 테이블의 PK 컬럼 수 — 복합 PK에서는 AI를 제공하지 않는다 */
   const infoColumnPkCount = useMemo(
     () => (infoColumnRef ? (present.model.tables.find((tb) => tb.id === infoColumnRef.tableId)?.primaryKey?.columnIds.length ?? 0) : 0),
@@ -1241,6 +1256,8 @@ export function ErdCanvas({
       className={cn('relative h-full w-full', pendingRelation && 'cursor-crosshair')}
       onMouseMove={handlePointerMove}
     >
+      {/* 도메인 타입이 바뀐 컬럼이 있으면 전파할지 묻는다(§16) */}
+      <DomainSyncBanner workspaceId={workspaceId} canEdit={canEdit} dbmsId={dbmsId} />
       <ReactFlow<AppNode, AppEdge>
         nodes={nodes}
         edges={edges}
@@ -1400,6 +1417,8 @@ export function ErdCanvas({
         isPk={infoColumnIsPk}
         pkCount={infoColumnPkCount}
         dbmsId={dbmsId}
+        domainTypes={domainTypes.data?.items}
+        isFk={infoColumnIsFk}
         onConfirm={({ pk, patch }) => {
           if (!infoColumnRef) return
           const { tableId, columnId } = infoColumnRef

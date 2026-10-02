@@ -15,7 +15,7 @@
  */
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
+import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Shapes, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -54,6 +54,7 @@ import {
   type LayoutDirection,
   type TableSizes,
 } from '@/features/editor/model/auto-layout'
+import { templateIdForDatabase } from '@/features/editor/model/dbms'
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
@@ -61,6 +62,7 @@ import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBa
 import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { ConvertDbmsDialog } from './ConvertDbmsDialog'
+import { DomainTypesDialog } from '@/features/editor/components/DomainTypesDialog'
 import { LogicalNamesDialog } from './LogicalNamesDialog'
 import { useAreaViewFit } from './ModelExplorerPanel'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
@@ -807,9 +809,10 @@ function ShareButton({
 
 /** 「도구」 메뉴 — 가끔 쓰는 문서 작업을 묶는다(05-editor/02-ui.md §1.1).
  *  · 논리명 추론(§3.2 — 편집 권한) · 데이터베이스 연결(§1.14 — 미연결 문서) 또는 DB 동기화(§3.3 — 연결된 문서)
- *  · 다른 DBMS로 복제(§3.5 — 편집 권한) · 버전 기록(08-core/02-model.md §1.11 — 멤버 전체)
+ *  · 다른 DBMS로 복제(§3.5 — 편집 권한) · 도메인 타입(§16 — 멤버 전체, 쓰기는 편집 권한)
+ *  · 버전 기록(08-core/02-model.md §1.11 — 멤버 전체)
  *  항목은 어느 다이얼로그를 열지만 정하고, 다이얼로그는 메뉴 밖에서 렌더한다. */
-type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'convert' | 'history'
+type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'convert' | 'history' | 'domainTypes'
 
 function ToolsMenu({
   canEdit,
@@ -874,6 +877,10 @@ function ToolsMenu({
             </DropdownMenuItem>
           ) : null}
           {canEdit ? <DropdownMenuSeparator /> : null}
+          <DropdownMenuItem onSelect={() => setActive('domainTypes')}>
+            <Shapes aria-hidden />
+            {t('model.editor.domainType.menu')}
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setActive('history')}>
             <History aria-hidden />
             {t('model.editor.toolbar.history')}
@@ -907,6 +914,13 @@ function ToolsMenu({
         modelName={modelName}
         modelDescription={modelDescription}
         databaseType={databaseType}
+      />
+      <DomainTypesDialog
+        open={active === 'domainTypes'}
+        onOpenChange={close}
+        workspaceId={workspaceId}
+        canEdit={canEdit}
+        dbmsId={templateIdForDatabase(databaseType)}
       />
       <VersionHistoryDialog
         open={active === 'history'}

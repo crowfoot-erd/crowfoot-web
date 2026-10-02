@@ -46,6 +46,19 @@ export type ReferentialAction = (typeof REFERENTIAL_ACTIONS)[number]
 
 // 데이터 타입 카탈로그·DBMS 템플릿은 dbms.ts로 이관 — content에는 공용 논리 코드만 저장된다
 
+/** 컬럼이 쓰는 도메인 타입 연결 (05-editor/01-core.md §11.1) — 값은 컬럼이 자기 것으로 갖고, 이것은 출처만 가리킨다 */
+export const columnDomainSchema = z.object({
+  /** 워크스페이스 도메인 타입 id */
+  id: z.string().min(1),
+  /** 연결할 때의 이름 — 도메인 타입 목록을 읽지 못하는 곳(공유 뷰어·버전 뷰어)에서 보여 준다 */
+  name: z.string(),
+  /** 이 컬럼이 마지막으로 맞춘 도메인 타입의 버전 */
+  version: z.number().int(),
+  /** 도메인 타입과 다르게 갖기로 한 속성 이름 — 전파에서 건너뛴다 */
+  overrides: z.array(z.string()),
+})
+export type ErdColumnDomain = z.infer<typeof columnDomainSchema>
+
 export const columnSchema = z.object({
   id: z.string().min(1),
   logicalName: z.string(),
@@ -58,6 +71,8 @@ export const columnSchema = z.object({
   defaultValue: z.string().nullable(),
   autoIncrement: z.boolean(),
   comment: z.string().nullable(),
+  /** 도메인 타입 연결 — 없으면 도메인 타입을 쓰지 않는 컬럼이다(v1.29 이전 문서는 전부 없다) */
+  domain: columnDomainSchema.nullish(),
 })
 export type ErdColumn = z.infer<typeof columnSchema>
 
