@@ -37,11 +37,21 @@ const LOADERS: Record<Language, () => Promise<{ default: string }>> = {
 
 /** 본문의 `{{키}}`를 화면 문구로 바꾼다. 번역 파일에 없는 키는 그대로 둔다(테스트가 잡는다) */
 export function resolveLabels(markdown: string, translate: (key: string) => string): string {
-  return markdown.replace(/\{\{([\w.]+)\}\}/g, (token, key: string) => {
+  const resolve = (token: string, key: string) => {
     const label = translate(key)
     // 문구 안의 세로줄(기수 표기 "(|<)" 등)은 표의 칸 구분으로 읽히지 않게 이스케이프한다
     return label === key ? token : label.replaceAll('|', '\\|')
-  })
+  }
+  return (
+    markdown
+      // 굵은 버튼 이름 바로 뒤에 붙는 조사("**저장**을", "**保存**を") — 붙여 쓴다. 다만 문구가 문장부호로 끝나면
+      // 마크다운이 닫는 **를 굵게의 끝으로 읽지 못하므로 그때만 한 칸 띄운다
+      .replace(/\*\*\{\{([\w.]+)\}\}\*\*(?=[^\s*.,:;!?)\]、。，：；！？）])/gu, (token, key: string) => {
+        const label = resolve(`{{${key}}}`, key)
+        return /[\p{P}\p{S}]$/u.test(label) ? `**${label}** ` : `**${label}**`
+      })
+      .replace(/\{\{([\w.]+)\}\}/g, resolve)
+  )
 }
 
 /** 고정 헤더 아래의 기준선(px) — 제목이 이 선을 지나면 그 절을 읽는 중으로 본다 */

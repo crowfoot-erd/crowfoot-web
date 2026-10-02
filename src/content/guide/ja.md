@@ -76,7 +76,7 @@ Crowfootの画面は大きく3種類あります。
 2. 利用規約を読み、同意欄にチェックを入れます。チェックを入れるとログインボタンが有効になります。
 3. GitHubまたはGoogleアカウントで続行します。別途の登録手続きはありません。
 
-しばらく使わないでいると **{{auth.sessionExpired.title}}** ウィンドウが表示されます。**{{auth.sessionExpired.loginAgain}}** を押してください。
+しばらく使わないでいると **{{auth.sessionExpired.title}}** ウィンドウが表示されます。**{{auth.sessionExpired.loginAgain}}**を押してください。
 
 ### 2.2 ダッシュボード
 
@@ -85,9 +85,9 @@ Crowfootの画面は大きく3種類あります。
 ログインするとダッシュボードが開きます。
 
 * 上の数字カードは、自分のワークスペース数、自分のチーム数、メンバーとして参加しているワークスペース数です。
-* **{{dashboard.shortcuts}}** のカードを押すと、そのワークスペースに移動します。
-* **{{dashboard.myTeams}}** のカードを押すと、そのチームに移動します。
-* **{{community.recent.title}}** には、リリースノートとフィードバックの投稿が新しい順に出ます。
+* **{{dashboard.shortcuts}}**のカードを押すと、そのワークスペースに移動します。
+* **{{dashboard.myTeams}}**のカードを押すと、そのチームに移動します。
+* **{{community.recent.title}}**には、リリースノートとフィードバックの投稿が新しい順に出ます。
 * 右上の **{{dashboard.newWorkspace}}** ボタンでワークスペースを作ります。
 
 ### 2.3 マイプロフィール、言語、テーマ
@@ -104,7 +104,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![新規ワークスペース](/guide-assets/ja/workspace-create.webp)
 
-サイドバーの **{{shell.sidebar.newWorkspace}}** を押して名前を入力します。作った人がオーナーになります。
+サイドバーの **{{shell.sidebar.newWorkspace}}**を押して名前を入力します。作った人がオーナーになります。
 
 ### 3.2 ワークスペースのタブ
 
@@ -130,7 +130,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![ドキュメント行のメニュー](/guide-assets/ja/document-row-menu.webp)
 
-行の右端にある3点ボタンを押すと、**{{model.list.menu.edit}}** と **{{model.list.menu.delete}}** が出ます。データベースに接続していないドキュメントには **{{model.list.menu.connect}}** も出ます。削除したドキュメントは元に戻せません。
+行の右端にある3点ボタンを押すと、**{{model.list.menu.edit}}**と **{{model.list.menu.delete}}**が出ます。データベースに接続していないドキュメントには **{{model.list.menu.connect}}**も出ます。削除したドキュメントは元に戻せません。
 
 ### 3.4 メンバータブ — メンバーとロール
 
@@ -147,12 +147,12 @@ Crowfootの画面は大きく3種類あります。
 
 ![メンバーを追加](/guide-assets/ja/member-add.webp)
 
-**{{workspace.members.addButton}}** を押すと、ユーザー1人またはチームを選べます。
+**{{workspace.members.addButton}}**を押すと、ユーザー1人またはチームを選べます。
 
 * **{{workspace.members.addDialog.targetUser}}**: 名前またはメールアドレスを2文字以上入力して探します。
 * **{{workspace.members.addDialog.targetTeam}}**: チームにロールを与えると、そのチームの全メンバーが同じロールになります。
 * オーナーのロールは与えられません。
-* 一覧でロールを変えるか、**{{workspace.members.revoke}}** で権限を取り消します。
+* 一覧でロールを変えるか、**{{workspace.members.revoke}}**で権限を取り消します。
 
 ### 3.5 概要タブと設定タブ
 
@@ -162,7 +162,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![設定タブ](/guide-assets/ja/workspace-settings.webp)
 
-設定タブで名前と説明を編集します。**{{workspace.detail.settings.dangerZone}}** の **{{workspace.detail.settings.deleteButton}}** は、ワークスペースとその中のドキュメントをすべて削除します。元に戻せません。
+設定タブで名前と説明を編集します。**{{workspace.detail.settings.dangerZone}}**の **{{workspace.detail.settings.deleteButton}}**は、ワークスペースとその中のドキュメントをすべて削除します。元に戻せません。
 
 ## 4. ERDドキュメントを作る
 
@@ -180,22 +180,22 @@ Crowfootの画面は大きく3種類あります。
 
 ![新規ERDドキュメント](/guide-assets/ja/document-create.webp)
 
-名前とデータベースの種類を選びます。データベースの種類はドキュメントを作るときに決まり、あとから変更できません。別の種類に移すには、エディタの **{{model.editor.toolbar.dbmsConvert}}** を使います(10.5 節)。
+名前とデータベースの種類を選びます。データベースの種類はドキュメントを作るときに決まり、あとから変更できません。別の種類に移すには、エディタの **{{model.editor.toolbar.dbmsConvert}}**を使います(10.5 節)。
 
 ### 4.2 テンプレートから始める
 
 ![テンプレートから始める](/guide-assets/ja/document-template.webp)
 
-用意された例のドキュメントから1つ選び、自分のワークスペースにコピーします。**{{model.templates.preview}}** で先に開いて確認できます。
+用意された例のドキュメントから1つ選び、自分のワークスペースにコピーします。**{{model.templates.preview}}**で先に開いて確認できます。
 
 ### 4.3 SQLを取り込む
 
 ![SQLを取り込む](/guide-assets/ja/document-sql-import.webp)
 
 1. データベースの種類とドキュメント名を入力します。
-2. CREATE TABLEスクリプトを貼り付けるか、**{{sqlImport.readFile}}** でファイルを読み込みます。ファイルは1MBまでです。
-3. **{{sqlImport.preview}}** を押すと、読み取ったテーブル数とリレーション数、読み取れなかった文が表示されます。
-4. **{{sqlImport.submit}}** を押します。
+2. CREATE TABLEスクリプトを貼り付けるか、**{{sqlImport.readFile}}**でファイルを読み込みます。ファイルは1MBまでです。
+3. **{{sqlImport.preview}}**を押すと、読み取ったテーブル数とリレーション数、読み取れなかった文が表示されます。
+4. **{{sqlImport.submit}}**を押します。
 
 データベースに接続せず、スクリプトだけでドキュメントを作る方法です。
 
@@ -203,11 +203,11 @@ Crowfootの画面は大きく3種類あります。
 
 ![DBから取り込む](/guide-assets/ja/document-reverse.webp)
 
-登録した接続を選ぶと、そのデータベースのテーブル、カラム、キー、リレーション、コメントを読み取ってドキュメントを作ります。カラムのコメントは論理名として入ります。こうして作ったドキュメントはその接続に紐付けられ、**{{model.editor.toolbar.sync}}** を使えます。接続は先にデータベースタブで登録します(10.1 節)。
+登録した接続を選ぶと、そのデータベースのテーブル、カラム、キー、リレーション、コメントを読み取ってドキュメントを作ります。カラムのコメントは論理名として入ります。こうして作ったドキュメントはその接続に紐付けられ、**{{model.editor.toolbar.sync}}**を使えます。接続は先にデータベースタブで登録します(10.1 節)。
 
 ### 4.5 ドキュメントファイル(.crown)を取り込む
 
-エディタの **{{model.editor.toolbar.export}}** › **{{model.editor.toolbar.crown}}** でダウンロードしたファイルを、もう一度ドキュメントにします。別のワークスペースにドキュメントを移すときや、バックアップから復元するときに使います。
+エディタの **{{model.editor.toolbar.export}}** › **{{model.editor.toolbar.crown}}**でダウンロードしたファイルを、もう一度ドキュメントにします。別のワークスペースにドキュメントを移すときや、バックアップから復元するときに使います。
 
 ## 5. エディタ画面とツールバー
 
@@ -237,7 +237,7 @@ Crowfootの画面は大きく3種類あります。
 | はてなマークのアイコン | この利用ガイドを新しいウィンドウで開きます |
 | 太陽のアイコン | ライト表示とダーク表示を切り替えます |
 
-読み取り専用のロールで開くと、編集ボタンが無効になり、**{{model.editor.toolbar.readOnly}}** の表示が付きます。
+読み取り専用のロールで開くと、編集ボタンが無効になり、**{{model.editor.toolbar.readOnly}}**の表示が付きます。
 
 ### 5.2 エクスプローラー(モデルエクスプローラー)
 
@@ -262,7 +262,7 @@ Crowfootの画面は大きく3種類あります。
 | **{{model.editor.toolbar.autoLayoutDown}}** | 親が上、子が下 |
 | **{{model.editor.toolbar.autoLayoutRight}}** | 親が左、子が右 |
 
-* 大きなドキュメントは計算に数秒かかります。計算中も画面は止まらず、**{{model.editor.toolbar.autoLayoutCancel}}** で中止できます。
+* 大きなドキュメントは計算に数秒かかります。計算中も画面は止まらず、**{{model.editor.toolbar.autoLayoutCancel}}**で中止できます。
 * 結果が気に入らなければ、元に戻す1回で元の位置に戻ります。
 * メモは関連テーブルの近くに置かれます。
 
@@ -274,7 +274,7 @@ Crowfootの画面は大きく3種類あります。
 |---|---|
 | **{{model.editor.image.viewport}}** | 今画面に見えている部分をPNG画像としてダウンロードします |
 | **{{model.editor.image.document}}** | ドキュメント全体を1枚のPNG画像としてダウンロードします |
-| **{{model.editor.toolbar.crown}}** | ドキュメントを.crownファイルとしてダウンロードします。**{{model.import.button}}** で取り込み直せます |
+| **{{model.editor.toolbar.crown}}** | ドキュメントを.crownファイルとしてダウンロードします。**{{model.import.button}}**で取り込み直せます |
 
 ### 5.5 ツールメニュー
 
@@ -314,7 +314,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![空いている場所の右クリックメニュー](/guide-assets/ja/editor-context-canvas.webp)
 
-キャンバスの空いている場所を右クリックして **{{model.editor.contextMenu.createTable}}** を選びます。クリックした位置にテーブルができます。
+キャンバスの空いている場所を右クリックして **{{model.editor.contextMenu.createTable}}**を選びます。クリックした位置にテーブルができます。
 
 ### 6.2 テーブルの見た目
 
@@ -323,7 +323,7 @@ Crowfootの画面は大きく3種類あります。
 | 位置 | 説明 |
 |---|---|
 | 色の帯 | テーブルの論理名。帯をドラッグするとテーブルが動きます |
-| 名前の行 | テーブルの物理名。押してその場で編集します。右の ⓘ は **{{model.editor.table.info}}** です |
+| 名前の行 | テーブルの物理名。押してその場で編集します。右の ⓘ は **{{model.editor.table.info}}**です |
 | カラムの行 | 左の6つの点をドラッグして順番を変えます。鍵のアイコンは主キーの印です |
 | カラム名 | 上が物理名、下が論理名。押してその場で編集します |
 | 型、長さ | データ型と長さ(または精度とスケール)。押して編集します |
@@ -362,13 +362,13 @@ Crowfootの画面は大きく3種類あります。
 
 ![テーブル情報](/guide-assets/ja/editor-table-info.webp)
 
-テーブルの ⓘ を押すか、右クリックメニューで **{{model.editor.contextMenu.tableInfo}}** を選びます。物理名、論理名、説明、色を決めます。グループに属するテーブルは、グループの色が優先されます。要件にリンクされたテーブルにはその要件が一緒に表示され、押すと要件パネルでその項目が開きます(20.3 節)。
+テーブルの ⓘ を押すか、右クリックメニューで **{{model.editor.contextMenu.tableInfo}}**を選びます。物理名、論理名、説明、色を決めます。グループに属するテーブルは、グループの色が優先されます。要件にリンクされたテーブルにはその要件が一緒に表示され、押すと要件パネルでその項目が開きます(20.3 節)。
 
 ### 6.5 ユニークキーとインデックス
 
 ![インデックスを追加](/guide-assets/ja/editor-key-dialog.webp)
 
-1. テーブルの下にある **{{model.editor.key.addUnique}}** または **{{model.editor.key.addIndex}}** を押します。
+1. テーブルの下にある **{{model.editor.key.addUnique}}** または **{{model.editor.key.addIndex}}**を押します。
 2. 名前を入力してカラムを選びます。選んだ順番が複合キーのカラム順になります。矢印で順番を変えます。
 3. インデックスは、カラムごとに並び順(ASC、DESC)を決められます。
 
@@ -397,7 +397,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![リレーションの右クリックメニュー](/guide-assets/ja/editor-context-relationship.webp)
 
-リレーション線を右クリックすると、**{{model.editor.contextMenu.editRelationship}}** と **{{model.editor.contextMenu.removeRelationship}}** が出ます。リレーション線をダブルクリックしても編集ウィンドウが開きます。
+リレーション線を右クリックすると、**{{model.editor.contextMenu.editRelationship}}**と **{{model.editor.contextMenu.removeRelationship}}**が出ます。リレーション線をダブルクリックしても編集ウィンドウが開きます。
 
 ![リレーションを編集](/guide-assets/ja/editor-relationship-dialog.webp)
 
@@ -417,9 +417,9 @@ Crowfootの画面は大きく3種類あります。
 
 リレーションを作ると、外部キーのカラムが新しく作られます。既存のカラムを外部キーとして使いたいときは、カラムマッピングでそのカラムを選びます。
 
-* 一覧から子テーブルの別のカラムを選ぶか、**{{model.editor.relationship.mappingNewColumn}}** を選びます。
-* 選んだカラムの型が親カラムと異なる場合は、**{{model.editor.relationship.mappingAlignType}}** のチェック欄が表示されます。
-* 使われなくなった以前の外部キーカラムは、**{{model.editor.relationship.mappingRemoveReleased}}** で一緒に削除できます。
+* 一覧から子テーブルの別のカラムを選ぶか、**{{model.editor.relationship.mappingNewColumn}}**を選びます。
+* 選んだカラムの型が親カラムと異なる場合は、**{{model.editor.relationship.mappingAlignType}}**のチェック欄が表示されます。
+* 使われなくなった以前の外部キーカラムは、**{{model.editor.relationship.mappingRemoveReleased}}**で一緒に削除できます。
 * 同じ子カラムを2回選ぶことはできません。
 
 ## 8. メモ、グループ、コピー
@@ -428,11 +428,11 @@ Crowfootの画面は大きく3種類あります。
 
 ![メモ](/guide-assets/ja/editor-note.webp)
 
-* 空いている場所の右クリックメニューで **{{model.editor.contextMenu.createNote}}** を選びます。
+* 空いている場所の右クリックメニューで **{{model.editor.contextMenu.createNote}}**を選びます。
 * メモをダブルクリックすると内容を編集できます。上の帯をドラッグすると動きます。
-* メモの編集ウィンドウで、タイトル、色、**{{model.editor.note.linkedTable}}** を決めます。メモをテーブルの上にドラッグ＆ドロップしても関連テーブルが決まります。
+* メモの編集ウィンドウで、タイトル、色、**{{model.editor.note.linkedTable}}**を決めます。メモをテーブルの上にドラッグ＆ドロップしても関連テーブルが決まります。
 * 関連テーブルのあるメモは、自動レイアウトのときにそのテーブルの近くに置かれます。
-* メモを削除するには、メモの右クリックメニューで **{{model.editor.contextMenu.removeNote}}** を選びます。
+* メモを削除するには、メモの右クリックメニューで **{{model.editor.contextMenu.removeNote}}**を選びます。
 
 ### 8.2 グループ
 
@@ -440,11 +440,11 @@ Crowfootの画面は大きく3種類あります。
 
 グループはテーブルをテーマごとにまとめます。グループに属するテーブルには、グループの色の帯が付きます。
 
-* テーブルを選び、右クリックメニューで **{{model.editor.contextMenu.createGroup}}** を押します。複数のテーブルを一緒に選んでもかまいません。
-* **{{model.editor.contextMenu.addToGroup}}**、**{{model.editor.contextMenu.removeFromGroup}}** で出し入れします。
-* **{{model.editor.contextMenu.editGroup}}** で、名前、説明、色、メンバーのテーブルを編集します。
+* テーブルを選び、右クリックメニューで **{{model.editor.contextMenu.createGroup}}**を押します。複数のテーブルを一緒に選んでもかまいません。
+* **{{model.editor.contextMenu.addToGroup}}**、**{{model.editor.contextMenu.removeFromGroup}}**で出し入れします。
+* **{{model.editor.contextMenu.editGroup}}**で、名前、説明、色、メンバーのテーブルを編集します。
 * **{{model.editor.toolbar.view}}** メニューまたはエクスプローラーで、グループを1つだけ選んで表示できます。
-* グループを 1 つだけ表示しているときは、右クリックメニューの **{{model.editor.contextMenu.exitGroupView}}** でドキュメント全体に戻ります。
+* グループを 1 つだけ表示しているときは、右クリックメニューの **{{model.editor.contextMenu.exitGroupView}}**でドキュメント全体に戻ります。
 
 ### 8.3 テーブルの右クリックメニュー
 
@@ -465,7 +465,7 @@ Crowfootの画面は大きく3種類あります。
 * 複数のテーブルを一緒にコピーすると、その間のリレーションも一緒にコピーされます。
 * 貼り付けたテーブルには、名前が重ならないように別の名前が自動で付きます。
 * 同じブラウザで開いた別のドキュメントにも貼り付けられます。内容がとても大きい場合は、同じドキュメント内にだけ貼り付けられます。
-* 空いている場所の右クリックメニューで **{{model.editor.contextMenu.paste}}** を選ぶと、クリックした位置に貼り付けられます。
+* 空いている場所の右クリックメニューで **{{model.editor.contextMenu.paste}}**を選ぶと、クリックした位置に貼り付けられます。
 
 ## 9. 標準 — 単語、用語、ドメインタイプ
 
@@ -481,7 +481,7 @@ Crowfootの画面は大きく3種類あります。
 
 ### 9.1 標準パネルを開く
 
-ツールバーの **{{model.editor.termDictionary.toggle}}** を押すと、左側にパネルが開きます。タブは3つです。
+ツールバーの **{{model.editor.termDictionary.toggle}}**を押すと、左側にパネルが開きます。タブは3つです。
 
 | タブ | 内容 |
 |---|---|
@@ -494,7 +494,7 @@ Crowfootの画面は大きく3種類あります。
 ![ワークスペース辞書](/guide-assets/ja/standard-terms.webp)
 
 * 検索欄でトークンやラベルを探します。
-* **{{model.editor.termDictionary.add}}** を押すと登録ウィンドウが開きます。一覧の項目を押すと編集できます。
+* **{{model.editor.termDictionary.add}}**を押すと登録ウィンドウが開きます。一覧の項目を押すと編集できます。
 * 用語には、指しているドメインタイプの名前が紫色のバッジで付きます。バッジを押すと、ドメインタイプタブのその項目に移動します。
 
 ![用語を編集](/guide-assets/ja/standard-term-dialog.webp)
@@ -520,17 +520,17 @@ Crowfootの画面は大きく3種類あります。
 
 ![ドメインタイプを追加](/guide-assets/ja/standard-domain-dialog.webp)
 
-**{{model.editor.domainType.add}}** を押し、名前、型、長さ(または精度とスケール)、NULL許可、デフォルト値、説明を入力します。1つのワークスペースに200個まで作れ、名前は重複できません。
+**{{model.editor.domainType.add}}**を押し、名前、型、長さ(または精度とスケール)、NULL許可、デフォルト値、説明を入力します。1つのワークスペースに200個まで作れ、名前は重複できません。
 
 ### 9.4 カラムでドメインタイプを使う
 
 ![カラム情報のドメインタイプ](/guide-assets/ja/standard-column.webp)
 
 1. カラム名をダブルクリックしてカラム情報ウィンドウを開きます。
-2. **{{model.editor.domainType.label}}** でドメインタイプを選びます。型、長さ、NULL許可、デフォルト値が埋まります。
+2. **{{model.editor.domainType.label}}**でドメインタイプを選びます。型、長さ、NULL許可、デフォルト値が埋まります。
 3. 保存します。テーブルのカラム名の横に **D** バッジが付きます。
 
-カラムごとに異なる値を使うこともできます。ドメインタイプを選んだあとで長さを直接変えると「ドメインタイプと異なる」の表示が付き、その属性はドメインタイプが変わっても追従しません。**{{model.editor.domainType.revert}}** で元に戻します。
+カラムごとに異なる値を使うこともできます。ドメインタイプを選んだあとで長さを直接変えると「ドメインタイプと異なる」の表示が付き、その属性はドメインタイプが変わっても追従しません。**{{model.editor.domainType.revert}}**で元に戻します。
 
 外部キーカラムの型は親カラムに従うため、ドメインタイプは使えません。
 
@@ -545,7 +545,7 @@ Crowfootの画面は大きく3種類あります。
 * **{{model.editor.table.termGroupWords}}**: 選ぶと、今入力している部分だけがその単語に置き換わります。続けて次の部分を入力できます。
 * 矢印キーで選び、`Enter` で入力します。`Esc` で閉じます。
 
-カラム情報ウィンドウでは、カラム名が辞書の用語と同じ場合に **辞書の標準** の案内が表示されます。**{{model.editor.domainType.standardApply}}** を押すと、その用語のドメインタイプが入ります。
+カラム情報ウィンドウでは、カラム名が辞書の用語と同じ場合に **辞書の標準** の案内が表示されます。**{{model.editor.domainType.standardApply}}**を押すと、その用語のドメインタイプが入ります。
 
 ### 9.6 ドメインタイプを変更したとき
 
@@ -553,14 +553,14 @@ Crowfootの画面は大きく3種類あります。
 
 ![ドメインタイプ変更の案内](/guide-assets/ja/standard-banner.webp)
 
-**{{model.editor.domainType.banner.review}}** を押すと、反映ウィンドウが開きます。
+**{{model.editor.domainType.banner.review}}**を押すと、反映ウィンドウが開きます。
 
 ![反映ウィンドウ](/guide-assets/ja/standard-propagation.webp)
 
 * カラムごとに、変わる属性と値が表示されます。
 * チェックを入れたカラムだけが新しい値に変わります。チェックを入れなかったカラムは値をそのままにして、「一部の属性が異なる」状態で残ります。
 * カラムで直接変更してある属性はスキップします。
-* **{{model.editor.domainType.propagation.skipAll}}** を押すと、どのカラムも変更しません。
+* **{{model.editor.domainType.propagation.skipAll}}**を押すと、どのカラムも変更しません。
 
 ドメインタイプを削除しても、カラムの値はそのままです。カラムには「リンク切れ」の表示だけが残ります。
 
@@ -568,10 +568,10 @@ Crowfootの画面は大きく3種類あります。
 
 ![論理名の自動推論](/guide-assets/ja/editor-logical-names.webp)
 
-**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.logicalNames}}** は、論理名が空か、物理名と同じになっているテーブルとカラムを探し、辞書で埋めます。
+**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.logicalNames}}**は、論理名が空か、物理名と同じになっているテーブルとカラムを探し、辞書で埋めます。
 
 * 名前を `_` で区切り、部分ごとに辞書で探します。ワークスペース辞書がシステム辞書より優先されます。
-* **{{model.editor.logicalNames.languageLabel}}** で、システム辞書のどの言語の表記を使うかを選びます。
+* **{{model.editor.logicalNames.languageLabel}}**で、システム辞書のどの言語の表記を使うかを選びます。
 * 埋める項目を選んで適用します。すでにある論理名には手を加えません。
 * 適用したあと、元に戻す1回ですべて元の状態に戻せます。
 
@@ -579,7 +579,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![システム辞書](/guide-assets/ja/standard-system.webp)
 
-システム辞書は、管理者が登録した共用の単語です。複数の言語のラベルを持ち、すべてのワークスペースで閲覧できます。頭文字の行で文字を選んで探します。同じトークンをワークスペース辞書に登録するとワークスペース側が優先され、**{{model.editor.termDictionary.overridden}}** の表示が付きます。
+システム辞書は、管理者が登録した共用の単語です。複数の言語のラベルを持ち、すべてのワークスペースで閲覧できます。頭文字の行で文字を選んで探します。同じトークンをワークスペース辞書に登録するとワークスペース側が優先され、**{{model.editor.termDictionary.overridden}}**の表示が付きます。
 
 ## 10. SQLとデータベース
 
@@ -591,7 +591,7 @@ Crowfootの画面は大きく3種類あります。
 
 **{{managed.sectionTitle}}** — 練習や試験に使うデータベースがないときに、Crowfootが1つ用意します。
 
-* **{{managed.issue}}** を押すと専用のスキーマが作られ、接続として自動で登録されます。
+* **{{managed.issue}}**を押すと専用のスキーマが作られ、接続として自動で登録されます。
 * PostgreSQLとMySQLから選べ、1アカウントにつき5個まで無料です。
 * 鍵のアイコンを押すと、接続先アドレス、ユーザー名、パスワードが表示されます。DBeaverなどの外部ツールでそのまま使えます。
 * ごみ箱のアイコンは発行の取り消しです。スキーマとその中のデータがすべて削除され、元に戻せません。
@@ -600,31 +600,31 @@ Crowfootの画面は大きく3種類あります。
 
 ![接続を追加](/guide-assets/ja/connection-dialog.webp)
 
-* **{{connection.list.newConnection}}** を押し、名前、DBMS、ホスト、ポート、データベース、ユーザー、パスワードを入力します。パスワードは暗号化して保存されます。
+* **{{connection.list.newConnection}}**を押し、名前、DBMS、ホスト、ポート、データベース、ユーザー、パスワードを入力します。パスワードは暗号化して保存されます。
 * 一覧の各行に、接続テスト、DBからドキュメントとして取り込む、データを見る、編集、削除のボタンがあります。
 * 接続テストに成功すると、かかった時間も一緒に表示されます。
 * 接続を削除しても、その接続で作ったドキュメントは残ります。
-* **{{connection.dialog.mcpApply}}** は、ClaudeがMCPでこのデータベースの構造を変更することを許可するスイッチです。既定ではオフです(20.4 節)。
+* **{{connection.dialog.mcpApply}}**は、ClaudeがMCPでこのデータベースの構造を変更することを許可するスイッチです。既定ではオフです(20.4 節)。
 
 ### 10.2 SQL生成
 
 ![SQLスクリプト](/guide-assets/ja/editor-sql.webp)
 
-エディタの **{{model.editor.toolbar.ddl}}** を押すと、ドキュメント全体を対象DBMSの文法で書いたスクリプトが表示されます。
+エディタの **{{model.editor.toolbar.ddl}}**を押すと、ドキュメント全体を対象DBMSの文法で書いたスクリプトが表示されます。
 
 * テーブル、主キー、ユニークキー、インデックス、外部キー、コメントが含まれます。論理名はCOMMENTとして出力されます。
-* **{{model.editor.ddl.copy}}** でコピーし、**{{model.editor.ddl.download}}** で.sqlファイルを取得します。
+* **{{model.editor.ddl.copy}}**でコピーし、**{{model.editor.ddl.download}}**で.sqlファイルを取得します。
 * スクリプトは最後に保存した内容をもとにしています。保存していない変更があると案内が表示されます。
-* 注意すべき点があれば、**{{model.editor.ddl.warningTitle}}** に表示されます。
+* 注意すべき点があれば、**{{model.editor.ddl.warningTitle}}**に表示されます。
 
 ### 10.3 デプロイ
 
 ![データベースにデプロイ](/guide-assets/ja/editor-deploy.webp)
 
-SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押すと、スクリプトを接続先のデータベースでそのまま実行します。
+SQLスクリプトウィンドウの **{{model.editor.deploy.button}}**を押すと、スクリプトを接続先のデータベースでそのまま実行します。
 
-1. **{{model.editor.deploy.connection}}** を選びます。ドキュメントと同じDBMSの接続だけが表示されます。
-2. **{{model.editor.deploy.run}}** を押します。
+1. **{{model.editor.deploy.connection}}**を選びます。ドキュメントと同じDBMSの接続だけが表示されます。
+2. **{{model.editor.deploy.run}}**を押します。
 3. 文ごとに成功と失敗が表示されます。既存のオブジェクトとぶつかった文は失敗として記録され、残りは続けて実行されます。
 
 空のデータベースに初めて作るときに使う機能です。すでに作ったデータベースを変更するときは、マイグレーションDDLを使います(10.4 節、14.3 節)。
@@ -633,23 +633,23 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 ![データベースとの同期](/guide-assets/ja/editor-sync.webp)
 
-ドキュメントと実際のデータベースに差が出たときに使います。**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.sync}}** で開きます。データベースに接続されたドキュメントにだけ表示されます。
+ドキュメントと実際のデータベースに差が出たときに使います。**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.sync}}**で開きます。データベースに接続されたドキュメントにだけ表示されます。
 
 | ボタン | 方向 | 説明 |
 |---|---|---|
 | **{{model.editor.sync.compare}}** → **{{model.editor.sync.apply}}** | データベース → ドキュメント | データベースの現在の構造とドキュメントを比較して違いを表示し、ドキュメントをデータベースに合わせます |
-| **{{model.editor.migration.button}}** | ドキュメント → データベース | ドキュメントとデータベースの差分をALTER文にします。**{{model.editor.migration.apply}}** でそのまま実行できます |
+| **{{model.editor.migration.button}}** | ドキュメント → データベース | ドキュメントとデータベースの差分をALTER文にします。**{{model.editor.migration.apply}}**でそのまま実行できます |
 
 * ドキュメントを合わせるとき、テーブルの色、位置、メモなどドキュメントだけの属性はそのまま残ります。元に戻す1回ですべて元の状態に戻せます。
-* マイグレーションDDLをデータベースで実行すると、元に戻せません。カラムやテーブルを削除する文は既定では実行せず、追加と変更だけを反映します。削除する文まで実行するには **{{model.editor.migration.destructiveToggle}}** をオンにします。すでに使っているデータベースに新しいドキュメントを接続すると、ドキュメントにない既存のテーブルがすべて削除対象として出るので、必ず確認してください。
+* マイグレーションDDLをデータベースで実行すると、元に戻せません。カラムやテーブルを削除する文は既定では実行せず、追加と変更だけを反映します。削除する文まで実行するには **{{model.editor.migration.destructiveToggle}}**をオンにします。すでに使っているデータベースに新しいドキュメントを接続すると、ドキュメントにない既存のテーブルがすべて削除対象として出るので、必ず確認してください。
 
-接続していないドキュメントは、ドキュメント一覧の行メニューにある **{{model.list.menu.connect}}** で接続します。
+接続していないドキュメントは、ドキュメント一覧の行メニューにある **{{model.list.menu.connect}}**で接続します。
 
 ### 10.5 別のDBMSに複製
 
 ![別のDBMSに複製](/guide-assets/ja/editor-convert.webp)
 
-**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** は、対象DBMSだけが異なる新しいドキュメントを作ります。元のドキュメントは変わりません。
+**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}**は、対象DBMSだけが異なる新しいドキュメントを作ります。元のドキュメントは変わりません。
 
 * 作る前に、表記が変わる型と、対象DBMSに合わない型を表示します。
 * 合わない型は、新しいドキュメントに元の値のまま残ります。作ったあとで自分で直します。
@@ -669,11 +669,11 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 ![データタブ](/guide-assets/ja/data-tab.webp)
 
 * 左の一覧からテーブルまたはビューを選びます。名前の横の数字は、おおよその行数です。
-* **{{database.data.addFilter}}** でカラム、演算子、値を決め、**{{database.data.apply}}** を押します。条件は複数入れられます。
+* **{{database.data.addFilter}}**でカラム、演算子、値を決め、**{{database.data.apply}}**を押します。条件は複数入れられます。
 * 演算子は `=`、`≠`、`<`、`≤`、`>`、`≥`、{{database.data.op.CONTAINS}}、{{database.data.op.STARTS_WITH}}、{{database.data.op.IN}}、{{database.data.op.IS_NULL}}、{{database.data.op.IS_NOT_NULL}} です。
 * 列の見出しを押すと、そのカラムで並べ替えます。
-* 下部でページを切り替えます。**{{database.data.countExact}}** を押すと、全体の行数を正確に数えます。
-* **{{database.data.downloadCsv}}** は、今の条件の結果をファイルとして取得します。
+* 下部でページを切り替えます。**{{database.data.countExact}}**を押すと、全体の行数を正確に数えます。
+* **{{database.data.downloadCsv}}**は、今の条件の結果をファイルとして取得します。
 * 接続に紐付いたERDドキュメントがあると、列の見出しにそのドキュメントの論理名も一緒に表示されます。
 * 長い値は省略して表示されます。セルを押すと値全体を確認できます。
 
@@ -691,7 +691,7 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 | 行を削除する | 行の左にあるごみ箱のアイコン | 行が赤色、文字に取り消し線 |
 | 取り消す | 行の左にある元に戻すアイコン、または **{{database.edit.discard}}** | 表示が消える |
 
-下部の帯に、追加、編集、削除の件数が表示されます。**{{database.edit.apply}}** を押すと確認ウィンドウが表示されます。
+下部の帯に、追加、編集、削除の件数が表示されます。**{{database.edit.apply}}**を押すと確認ウィンドウが表示されます。
 
 ![適用の確認](/guide-assets/ja/data-apply-confirm.webp)
 
@@ -709,18 +709,18 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 ![SQLタブ](/guide-assets/ja/data-sql.webp)
 
-* SQLを入力して **{{database.sql.run}}** を押すか、`Ctrl/Cmd+Enter` を押します。カーソルのある文、または選択した部分だけを実行します。
+* SQLを入力して **{{database.sql.run}}**を押すか、`Ctrl/Cmd+Enter` を押します。カーソルのある文、または選択した部分だけを実行します。
 * テーブル名とカラム名は自動で補完されます。
 * 参照の結果は下の表に表示されます。結果が多いときは先頭の部分だけを表示し、その旨を知らせます。
 * データを変更する文では、変更された行数が表示されます。
 * 履歴ボタンで、以前に実行した文を呼び出せます。
-* テーブルの構造を変える文を実行すると、ERDドキュメントと差が出ることがあります。**{{model.editor.toolbar.sync}}** でドキュメントに反映します。
+* テーブルの構造を変える文を実行すると、ERDドキュメントと差が出ることがあります。**{{model.editor.toolbar.sync}}**でドキュメントに反映します。
 
 ## 12. 検証
 
 ![設計検証](/guide-assets/ja/editor-validation.webp)
 
-ツールバーの **{{model.validation.toggle}}** を押すと、左側に **{{model.validation.title}}** パネルが開きます。ドキュメントを編集するたびに検査し直します。
+ツールバーの **{{model.validation.toggle}}**を押すと、左側に **{{model.validation.title}}** パネルが開きます。ドキュメントを編集するたびに検査し直します。
 
 * 上の深刻度ボタンで、エラー、警告、参考を選んで表示します。
 * 項目を押すと、キャンバスがそのテーブルに移動します。
@@ -752,12 +752,12 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 ![ドキュメントを共有](/guide-assets/ja/editor-share.webp)
 
-**{{model.editor.toolbar.share}}** を押し、**{{model.share.issue}}** を押すとリンクが作られます。リンクを知っている人は、ログインしなくてもドキュメントを閲覧できます。編集はできません。
+**{{model.editor.toolbar.share}}**を押し、**{{model.share.issue}}**を押すとリンクが作られます。リンクを知っている人は、ログインしなくてもドキュメントを閲覧できます。編集はできません。
 
-* **{{model.share.period.unlimited}}** または **{{model.share.period.custom}}** を選びます。期間を指定すると、開始と終了の日時の外では開けません。
+* **{{model.share.period.unlimited}}** または **{{model.share.period.custom}}**を選びます。期間を指定すると、開始と終了の日時の外では開けません。
 * リンクごとに、閲覧数、いいね数、コメント数が表示されます。
 * コピーのアイコンでアドレスをコピーし、ごみ箱のアイコンでリンクを取り消します。取り消したリンクは、すぐに開けなくなります。
-* 共有したドキュメントは、スタートページの共有ギャラリーにも表示されます。ギャラリーの下の **{{landing.gallery.more}}** を選ぶと、すべての共有ドキュメントを名前・説明で検索し、ページを送りながら見られます。
+* 共有したドキュメントは、スタートページの共有ギャラリーにも表示されます。ギャラリーの下の **{{landing.gallery.more}}**を選ぶと、すべての共有ドキュメントを名前・説明で検索し、ページを送りながら見られます。
 
 共有画面では、ERDを見て、SQLスクリプトを取得し、いいねとコメントを残せます。いいねはログインした人だけが残せます。ログインしていない人は、ニックネームとパスワードを入力してコメントを残します。
 
@@ -771,24 +771,24 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 ![バージョン履歴](/guide-assets/ja/editor-history.webp)
 
-ドキュメントは、保存するたびにバージョンが1つずつ残ります。**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}** で開きます。
+ドキュメントは、保存するたびにバージョンが1つずつ残ります。**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}**で開きます。
 
 * バージョンごとに、保存した人、時刻、変更内容の要約(追加、変更、削除、移動)が表示されます。
-* **{{model.editor.history.editMemo}}** でバージョンにメモを残します。検索欄はメモの中から探します。
-* **{{model.editor.history.view}}** は、そのバージョンのドキュメントを読み取り専用で開きます。
-* **{{model.editor.history.restore}}** は、そのバージョンの内容を新しいバージョンとして保存します。今のドキュメントも履歴にそのまま残ります。
+* **{{model.editor.history.editMemo}}**でバージョンにメモを残します。検索欄はメモの中から探します。
+* **{{model.editor.history.view}}**は、そのバージョンのドキュメントを読み取り専用で開きます。
+* **{{model.editor.history.restore}}**は、そのバージョンの内容を新しいバージョンとして保存します。今のドキュメントも履歴にそのまま残ります。
 
 ### 14.2 バージョン比較
 
-**{{model.editor.history.compare}}** を押すと、2つのバージョンの違いを確認できます。
+**{{model.editor.history.compare}}**を押すと、2つのバージョンの違いを確認できます。
 
 * キャンバスは比較バージョンをもとに描かれ、変わったテーブルに `+`(追加)と `~`(変更)の印が付きます。
 * なくなったテーブルは、別に一覧で表示されます。
-* **{{model.editor.compare.exit}}** でドキュメントに戻ります。
+* **{{model.editor.compare.exit}}**でドキュメントに戻ります。
 
 ### 14.3 マイグレーションDDL
 
-バージョン比較画面の **{{model.editor.compare.migrationDdl}}** は、2つのバージョンの差分をALTER文にします。前回のデプロイ以降に変わった部分だけをデータベースに反映するときに使います。スクリプトをコピーしてデータベースで実行します。データが消える可能性のある文には警告が付きます。データベースでそのまま実行したいときは、DB同期のマイグレーションDDLを使います(10.4 節)。
+バージョン比較画面の **{{model.editor.compare.migrationDdl}}**は、2つのバージョンの差分をALTER文にします。前回のデプロイ以降に変わった部分だけをデータベースに反映するときに使います。スクリプトをコピーしてデータベースで実行します。データが消える可能性のある文には警告が付きます。データベースでそのまま実行したいときは、DB同期のマイグレーションDDLを使います(10.4 節)。
 
 ## 15. 一緒に編集する
 
@@ -797,14 +797,14 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 * ツールバーに今一緒に見ている人が表示され、キャンバス上でほかの人のカーソルが動きます。
 * ほかの人が編集した内容は、すぐ自分の画面に反映されます。
 * ほかの人が編集している項目はロックされます。誰が編集しているか、名前が表示されます。
-* 2人が同じ属性を編集すると、あとから編集した値が残ります。自分の値が変わると通知が表示され、**{{model.editor.collab.lwwRestore}}** で元に戻せます。
-* 右下の吹き出しボタンは **{{model.editor.chat.label}}** です。ドキュメントを一緒に見ている人と会話します。
+* 2人が同じ属性を編集すると、あとから編集した値が残ります。自分の値が変わると通知が表示され、**{{model.editor.collab.lwwRestore}}**で元に戻せます。
+* 右下の吹き出しボタンは **{{model.editor.chat.label}}**です。ドキュメントを一緒に見ている人と会話します。
 
 保存するときに、ほかの人が先に保存していると **{{model.editor.conflict.title}}** ウィンドウが表示されます。
 
 * 互いに重ならない変更は、自動でマージされます。
-* 重なる項目ごとに、**{{model.editor.conflict.keepMine}}** または **{{model.editor.conflict.useServer}}** を選びます。
-* **{{model.editor.conflict.resolve}}** を押すと、選んだとおりにマージして保存します。
+* 重なる項目ごとに、**{{model.editor.conflict.keepMine}}** または **{{model.editor.conflict.useServer}}**を選びます。
+* **{{model.editor.conflict.resolve}}**を押すと、選んだとおりにマージして保存します。
 
 保存できないままウィンドウが閉じても、編集内容はブラウザに残ります。ドキュメントをもう一度開くと復元されます。
 
@@ -814,9 +814,9 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 チームは、人をまとめておく単位です。ワークスペースにチームをメンバーとして入れると、チームの全員が一度に権限を得ます。
 
-* 上部メニューの **{{shell.nav.teams}}** から移動します。サイドバーの **{{shell.sidebar.newTeam}}** でチームを作ります。チームを作っても、ワークスペースは一緒には作られません。
-* **{{team.members.addButton}}** で人を探して追加し、**{{team.members.remove}}** で外します。
-* チームのオーナーは、名前と説明を編集し、**{{team.detail.settings.dissolveButton}}** を実行できます。チームを解散すると、チームに与えたワークスペースの権限も一緒に取り消されます。
+* 上部メニューの **{{shell.nav.teams}}** から移動します。サイドバーの **{{shell.sidebar.newTeam}}**でチームを作ります。チームを作っても、ワークスペースは一緒には作られません。
+* **{{team.members.addButton}}**で人を探して追加し、**{{team.members.remove}}**で外します。
+* チームのオーナーは、名前と説明を編集し、**{{team.detail.settings.dissolveButton}}**を実行できます。チームを解散すると、チームに与えたワークスペースの権限も一緒に取り消されます。
 
 ## 17. コミュニティと通知
 
@@ -830,13 +830,13 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 ![フィードバック](/guide-assets/ja/community-feedback.webp)
 
-改善してほしい点や、見つけたバグを書く掲示板です。**{{community.board.newPost}}** で投稿を書き、画像を添付できます。投稿ごとにコメントをやり取りします。
+改善してほしい点や、見つけたバグを書く掲示板です。**{{community.board.newPost}}**で投稿を書き、画像を添付できます。投稿ごとにコメントをやり取りします。
 
 ### 17.3 自分のコメント、いいねしたドキュメント
 
 ![自分のコメント](/guide-assets/ja/community-my-comments.webp)
 
-**{{shell.sidebar.communityMyComments}}** は、共有ドキュメントに自分が残したコメントをまとめて表示します。**{{shell.sidebar.communityMyLikes}}** は、自分がいいねした共有ドキュメントです。行を押すと、そのドキュメントに移動します。
+**{{shell.sidebar.communityMyComments}}**は、共有ドキュメントに自分が残したコメントをまとめて表示します。**{{shell.sidebar.communityMyLikes}}**は、自分がいいねした共有ドキュメントです。行を押すと、そのドキュメントに移動します。
 
 ### 17.4 通知
 
@@ -848,7 +848,7 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 * 自分のドキュメントにいいねが付いたとき
 * 自分のコメントにドキュメントのオーナーが返信したとき
 
-**{{shell.notifications.markAll}}** ですべて既読にし、**{{shell.notifications.viewAll}}** で全体の一覧に移動します。
+**{{shell.notifications.markAll}}**ですべて既読にし、**{{shell.notifications.viewAll}}**で全体の一覧に移動します。
 
 ![通知一覧](/guide-assets/ja/community-notifications.webp)
 
@@ -856,7 +856,7 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}** を押�
 
 ![管理者画面](/guide-assets/ja/admin-users.webp)
 
-管理者アカウントには、上部メニューに **{{shell.nav.admin}}** が表示されます。
+管理者アカウントには、上部メニューに **{{shell.nav.admin}}**が表示されます。
 
 | メニュー | 内容 |
 |---|---|
@@ -907,8 +907,8 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 
 ![トークンの発行](/guide-assets/ja/mcp-issue.webp)
 
-* **{{workspace.mcp.issueButton}}** を押して、名前と期間を決めます。1人につきワークスペースごとに5個まで発行できます。
-* 発行すると、トークンと **{{workspace.mcp.commandLabel}}** が表示されます。コマンドをコピーしてターミナルで実行すると接続が完了します。
+* **{{workspace.mcp.issueButton}}**を押して、名前と期間を決めます。1人につきワークスペースごとに5個まで発行できます。
+* 発行すると、トークンと **{{workspace.mcp.commandLabel}}**が表示されます。コマンドをコピーしてターミナルで実行すると接続が完了します。
 * トークンとコマンドは、タブでいつでもコピーし直せます。一覧のトークン横のコピーボタンはトークンだけをコピーします。全文は発行した本人にだけ表示され、他のメンバーのトークンはオーナーにも先頭部分しか見えません。
 
 ![発行したトークンと登録コマンド](/guide-assets/ja/mcp-issued.webp)
@@ -916,13 +916,13 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 * トークンは発行した人の権限で、そのワークスペースでのみ動作します。{{common.role.VIEWER}} や {{common.role.COMMENTER}} が発行したトークンは読み取りのみです。
 * トークンをClaudeとの会話に貼り付けません。登録コマンドはターミナルで実行します。
 * 一覧のごみ箱アイコンは破棄です。破棄すると、そのトークンで接続したClaudeはすぐにアクセスできなくなります。オーナーは他のメンバーのトークンも破棄できます。
-* Claude Code と ChatGPT (Codex) で使えます。タブの **{{workspace.mcp.connectTitle}}** でクライアントを選ぶと登録方法が表示され、コピーできます。ChatGPT の Web・モバイルアプリのコネクタには対応していません。
+* Claude Code と ChatGPT (Codex) で使えます。タブの **{{workspace.mcp.connectTitle}}**でクライアントを選ぶと登録方法が表示され、コピーできます。ChatGPT の Web・モバイルアプリのコネクタには対応していません。
 
 ### 20.2 Claudeに任せられること
 
 ![使い方と依頼の例](/guide-assets/ja/mcp-usage.webp)
 
-登録したフォルダで Claude Code または Codex を起動し、やりたいことを言葉で依頼します。タブの **{{workspace.mcp.usage.title}}** に依頼の例があり、コピーできます。
+登録したフォルダで Claude Code または Codex を起動し、やりたいことを言葉で依頼します。タブの **{{workspace.mcp.usage.title}}**に依頼の例があり、コピーできます。
 
 * チャットに `/mcp` と入力すると、接続されたか確認できます。
 * 登録はコマンドを実行したフォルダにだけ適用されます。すべてのフォルダで使うには、登録コマンドに `--scope user` を付けます。
@@ -949,12 +949,12 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 
 エディタ最下部の **{{shareViewer.tab.requirements}}** タブを押すと、要件の画面が開きます。要件はドキュメントと一緒に保存されます。反映待ちの要件があると、タブにその件数が付きます。
 
-* 要件はドメイン(グループ)ごとに整理されます。左の一覧でドメインを選ぶとそのドメインだけが表示され、ドメインごとに反映済みの数と進捗バーが出ます。グループのないものは **{{model.requirements.group.unassigned}}**、ドキュメント全体に当てはまるものは **{{model.requirements.group.document}}** に集まります。
-* ドメイン区画のタイトルを押すと折りたたまれ、**{{model.requirements.domains.showOnCanvas}}** を押すとそのドメインのテーブルを選択して ERD タブで表示します。
-* 行を押すと、内容とリンクされたテーブルが開きます。テーブル名を押すと、ERD タブに戻ってそのテーブルを表示します。開いた行の **{{model.requirements.domains.showOnCanvas}}** は、リンクされたテーブルをすべて選択して 1 画面に収めます。
+* 要件はドメイン(グループ)ごとに整理されます。左の一覧でドメインを選ぶとそのドメインだけが表示され、ドメインごとに反映済みの数と進捗バーが出ます。グループのないものは **{{model.requirements.group.unassigned}}**、ドキュメント全体に当てはまるものは **{{model.requirements.group.document}}**に集まります。
+* ドメイン区画のタイトルを押すと折りたたまれ、**{{model.requirements.domains.showOnCanvas}}**を押すとそのドメインのテーブルを選択して ERD タブで表示します。
+* 行を押すと、内容とリンクされたテーブルが開きます。テーブル名を押すと、ERD タブに戻ってそのテーブルを表示します。開いた行の **{{model.requirements.domains.showOnCanvas}}**は、リンクされたテーブルをすべて選択して 1 画面に収めます。
 * 上の状態ボタンで絞り込みます。最初は **{{model.requirements.state.DROPPED}}** だけが隠れています。検索欄ではコード、タイトル、内容、テーブル名から探します。
-* ドメイン区画の下の **{{model.requirements.untraced.title}}** は、そのドメインのテーブルのうち、どの要件にもリンクされていないテーブルです。
-* **{{model.requirements.export.button}}** で要件仕様を Markdown または CSV ファイルとして受け取れます。
+* ドメイン区画の下の **{{model.requirements.untraced.title}}**は、そのドメインのテーブルのうち、どの要件にもリンクされていないテーブルです。
+* **{{model.requirements.export.button}}**で要件仕様を Markdown または CSV ファイルとして受け取れます。
 
 | 状態 | 意味 |
 |---|---|
@@ -970,16 +970,16 @@ Claude CodeのようなMCPクライアントをワークスペースに接続す
 編集者以上は、要件を自分で追加・編集できます。
 
 * パネル上部の **{{model.requirements.add}}** か、開いた行の編集ボタンを押します。タイトル、内容、範囲、状態、グループ、リンクするテーブルを決めます。コード(REQ-001)は自動で付きます。
-* 反映待ちの行の **{{model.requirements.markApplied}}** を押すと、反映済みに変わります。
-* **{{model.requirements.criteria.title}}** は、要件が正しく反映されたかを確認する項目です。編集ダイアログで 1 行に 1 つ書き、開いた行でチェックします。
-* 不要になった要件は削除せず、状態を **{{model.requirements.status.dropped}}** に変えます。削除は誤って登録したものにだけ使います。
+* 反映待ちの行の **{{model.requirements.markApplied}}**を押すと、反映済みに変わります。
+* **{{model.requirements.criteria.title}}**は、要件が正しく反映されたかを確認する項目です。編集ダイアログで 1 行に 1 つ書き、開いた行でチェックします。
+* 不要になった要件は削除せず、状態を **{{model.requirements.status.dropped}}**に変えます。削除は誤って登録したものにだけ使います。
 * 1つのドキュメントに500件まで登録できます。
 
 ### 20.4 データベースに反映する
 
 Claudeがデータベースの構造を変更するには、その接続で許可する必要があります。
 
-* 接続を追加または編集するときに **{{connection.dialog.mcpApply}}** をオンにします。既定ではオフで、オンにした接続には一覧に表示が付きます。
+* 接続を追加または編集するときに **{{connection.dialog.mcpApply}}**をオンにします。既定ではオフで、オンにした接続には一覧に表示が付きます。
 * マネージドデータベースは最初から許可されています。
 * Claudeは実行するSQLを先に示し、確認した計画だけを実行します。計画を見た後にドキュメントやデータベースが変わっていれば、実行せずに計画を立て直します。
 * サンプルデータは、まず入れてから元に戻して制約違反がないかを確認し、確認したデータだけを実際に入れます。入れるだけで、変更や削除はしません。1回につきテーブル20個、1,000行までです。
@@ -988,7 +988,7 @@ Claudeがデータベースの構造を変更するには、その接続で許�
 ## 21. よくある質問
 
 **ドキュメントのデータベースの種類は変えられますか？**
-変えられません。**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** で、別の種類の新しいドキュメントを作ります。
+変えられません。**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}**で、別の種類の新しいドキュメントを作ります。
 
 **保存はいつされますか？**
 編集すると、少しあとに自動で保存されます。**{{model.editor.toolbar.save}}** ボタンや `Ctrl/Cmd+S` ですぐに保存することもできます。保存するたびにバージョンが残ります。
@@ -1012,7 +1012,7 @@ Claudeがデータベースの構造を変更するには、その接続で許�
 編集できません。一緒に編集するには、ワークスペースのメンバーに追加して編集者のロールを与えます。
 
 **改善してほしい点はどこに書けばよいですか？**
-**{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}** に書いてください。
+**{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}**に書いてください。
 
 **Claudeが変更した内容を元に戻せますか？**
 戻せます。Claudeが変更するたびにバージョンが残るので、バージョン履歴から以前のバージョンに戻します。

@@ -76,7 +76,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 2. 이용약관을 읽고 동의 칸에 표시합니다. 표시해야 로그인 버튼이 켜집니다.
 3. GitHub 또는 Google 계정으로 계속합니다. 따로 가입하는 절차는 없습니다.
 
-오래 쓰지 않으면 **{{auth.sessionExpired.title}}** 창이 뜹니다. **{{auth.sessionExpired.loginAgain}}** 을 누르면 됩니다.
+오래 쓰지 않으면 **{{auth.sessionExpired.title}}** 창이 뜹니다. **{{auth.sessionExpired.loginAgain}}**을 누르면 됩니다.
 
 ### 2.2 대시보드
 
@@ -85,9 +85,9 @@ Crowfoot의 화면은 크게 세 종류입니다.
 로그인하면 대시보드가 열립니다.
 
 * 위쪽 숫자 카드는 내 워크스페이스 수, 내 팀 수, 멤버로 참여한 워크스페이스 수입니다.
-* **{{dashboard.shortcuts}}** 의 카드를 누르면 그 워크스페이스로 갑니다.
-* **{{dashboard.myTeams}}** 의 카드를 누르면 그 팀으로 갑니다.
-* **{{community.recent.title}}** 에는 릴리스 노트와 제안 글이 최근 순으로 나옵니다.
+* **{{dashboard.shortcuts}}**의 카드를 누르면 그 워크스페이스로 갑니다.
+* **{{dashboard.myTeams}}**의 카드를 누르면 그 팀으로 갑니다.
+* **{{community.recent.title}}**에는 릴리스 노트와 제안 글이 최근 순으로 나옵니다.
 * 오른쪽 위 **{{dashboard.newWorkspace}}** 버튼으로 워크스페이스를 만듭니다.
 
 ### 2.3 내 정보, 언어, 테마
@@ -104,7 +104,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![새 워크스페이스](/guide-assets/ko/workspace-create.webp)
 
-사이드바의 **{{shell.sidebar.newWorkspace}}** 를 누르고 이름을 적습니다. 만든 사람이 소유자가 됩니다.
+사이드바의 **{{shell.sidebar.newWorkspace}}**를 누르고 이름을 적습니다. 만든 사람이 소유자가 됩니다.
 
 ### 3.2 워크스페이스의 탭
 
@@ -130,7 +130,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![문서 행 메뉴](/guide-assets/ko/document-row-menu.webp)
 
-행 오른쪽 끝의 점 세 개 버튼을 누르면 **{{model.list.menu.edit}}** 과 **{{model.list.menu.delete}}** 가 나옵니다. 데이터베이스에 연결하지 않은 문서에는 **{{model.list.menu.connect}}** 도 나옵니다. 삭제한 문서는 되돌릴 수 없습니다.
+행 오른쪽 끝의 점 세 개 버튼을 누르면 **{{model.list.menu.edit}}**과 **{{model.list.menu.delete}}**가 나옵니다. 데이터베이스에 연결하지 않은 문서에는 **{{model.list.menu.connect}}**도 나옵니다. 삭제한 문서는 되돌릴 수 없습니다.
 
 ### 3.4 멤버 탭 — 멤버와 역할
 
@@ -147,12 +147,12 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![멤버 추가](/guide-assets/ko/member-add.webp)
 
-**{{workspace.members.addButton}}** 를 누르면 사람 한 명 또는 팀을 고를 수 있습니다.
+**{{workspace.members.addButton}}**를 누르면 사람 한 명 또는 팀을 고를 수 있습니다.
 
 * **{{workspace.members.addDialog.targetUser}}**: 이름이나 이메일을 두 글자 이상 적어 찾습니다.
 * **{{workspace.members.addDialog.targetTeam}}**: 팀에 역할을 주면 그 팀의 모든 멤버가 같은 역할을 받습니다.
 * 소유자 역할은 줄 수 없습니다.
-* 목록에서 역할을 바꾸거나 **{{workspace.members.revoke}}** 로 권한을 거둡니다.
+* 목록에서 역할을 바꾸거나 **{{workspace.members.revoke}}**로 권한을 거둡니다.
 
 ### 3.5 개요 탭과 설정 탭
 
@@ -162,7 +162,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![설정 탭](/guide-assets/ko/workspace-settings.webp)
 
-설정 탭에서 이름과 설명을 고칩니다. **{{workspace.detail.settings.dangerZone}}** 의 **{{workspace.detail.settings.deleteButton}}** 는 워크스페이스와 그 안의 문서를 모두 지웁니다. 되돌릴 수 없습니다.
+설정 탭에서 이름과 설명을 고칩니다. **{{workspace.detail.settings.dangerZone}}**의 **{{workspace.detail.settings.deleteButton}}**는 워크스페이스와 그 안의 문서를 모두 지웁니다. 되돌릴 수 없습니다.
 
 ## 4. ERD 문서 만들기
 
@@ -180,22 +180,22 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![새 ERD 문서](/guide-assets/ko/document-create.webp)
 
-이름과 데이터베이스 종류를 고릅니다. 데이터베이스 종류는 문서를 만들 때 정해지고 나중에 바꿀 수 없습니다. 다른 종류로 옮기려면 에디터의 **{{model.editor.toolbar.dbmsConvert}}** 를 씁니다(10.5절).
+이름과 데이터베이스 종류를 고릅니다. 데이터베이스 종류는 문서를 만들 때 정해지고 나중에 바꿀 수 없습니다. 다른 종류로 옮기려면 에디터의 **{{model.editor.toolbar.dbmsConvert}}**를 씁니다(10.5절).
 
 ### 4.2 템플릿으로 시작
 
 ![템플릿으로 시작](/guide-assets/ko/document-template.webp)
 
-준비된 예시 문서 가운데 하나를 골라 내 워크스페이스로 복사합니다. **{{model.templates.preview}}** 로 먼저 열어 볼 수 있습니다.
+준비된 예시 문서 가운데 하나를 골라 내 워크스페이스로 복사합니다. **{{model.templates.preview}}**로 먼저 열어 볼 수 있습니다.
 
 ### 4.3 SQL 가져오기
 
 ![SQL 가져오기](/guide-assets/ko/document-sql-import.webp)
 
 1. 데이터베이스 종류와 문서 이름을 적습니다.
-2. CREATE TABLE 스크립트를 붙여 넣거나 **{{sqlImport.readFile}}** 로 파일을 읽습니다. 파일은 1MB까지입니다.
-3. **{{sqlImport.preview}}** 를 누르면 읽은 테이블 수와 관계 수, 읽지 못한 문장이 나옵니다.
-4. **{{sqlImport.submit}}** 를 누릅니다.
+2. CREATE TABLE 스크립트를 붙여 넣거나 **{{sqlImport.readFile}}**로 파일을 읽습니다. 파일은 1MB까지입니다.
+3. **{{sqlImport.preview}}**를 누르면 읽은 테이블 수와 관계 수, 읽지 못한 문장이 나옵니다.
+4. **{{sqlImport.submit}}**를 누릅니다.
 
 데이터베이스에 접속하지 않고 스크립트만으로 문서를 만드는 방법입니다.
 
@@ -203,11 +203,11 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![DB에서 가져오기](/guide-assets/ko/document-reverse.webp)
 
-등록한 커넥션을 고르면 그 데이터베이스의 테이블, 컬럼, 키, 관계, 코멘트를 읽어 문서를 만듭니다. 컬럼 코멘트는 논리명으로 들어옵니다. 이렇게 만든 문서는 그 커넥션에 연결되어 **{{model.editor.toolbar.sync}}** 를 쓸 수 있습니다. 커넥션은 먼저 데이터베이스 탭에서 등록합니다(10.1절).
+등록한 커넥션을 고르면 그 데이터베이스의 테이블, 컬럼, 키, 관계, 코멘트를 읽어 문서를 만듭니다. 컬럼 코멘트는 논리명으로 들어옵니다. 이렇게 만든 문서는 그 커넥션에 연결되어 **{{model.editor.toolbar.sync}}**를 쓸 수 있습니다. 커넥션은 먼저 데이터베이스 탭에서 등록합니다(10.1절).
 
 ### 4.5 문서 파일(.crown) 가져오기
 
-에디터의 **{{model.editor.toolbar.export}}** › **{{model.editor.toolbar.crown}}** 로 내려받은 파일을 다시 문서로 만듭니다. 다른 워크스페이스로 문서를 옮기거나 백업을 되살릴 때 씁니다.
+에디터의 **{{model.editor.toolbar.export}}** › **{{model.editor.toolbar.crown}}**로 내려받은 파일을 다시 문서로 만듭니다. 다른 워크스페이스로 문서를 옮기거나 백업을 되살릴 때 씁니다.
 
 ## 5. 에디터 화면과 도구 모음
 
@@ -262,7 +262,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **{{model.editor.toolbar.autoLayoutDown}}** | 부모가 위, 자식이 아래 |
 | **{{model.editor.toolbar.autoLayoutRight}}** | 부모가 왼쪽, 자식이 오른쪽 |
 
-* 큰 문서는 계산에 몇 초가 걸립니다. 계산하는 동안에도 화면은 멈추지 않고, **{{model.editor.toolbar.autoLayoutCancel}}** 로 그만둘 수 있습니다.
+* 큰 문서는 계산에 몇 초가 걸립니다. 계산하는 동안에도 화면은 멈추지 않고, **{{model.editor.toolbar.autoLayoutCancel}}**로 그만둘 수 있습니다.
 * 결과가 마음에 들지 않으면 되돌리기 한 번으로 원래 자리로 돌아갑니다.
 * 메모는 연관 테이블 가까이에 놓입니다.
 
@@ -274,7 +274,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 |---|---|
 | **{{model.editor.image.viewport}}** | 지금 화면에 보이는 부분을 PNG 이미지로 내려받습니다 |
 | **{{model.editor.image.document}}** | 문서 전체를 PNG 이미지 한 장으로 내려받습니다 |
-| **{{model.editor.toolbar.crown}}** | 문서를 .crown 파일로 내려받습니다. **{{model.import.button}}** 로 다시 넣을 수 있습니다 |
+| **{{model.editor.toolbar.crown}}** | 문서를 .crown 파일로 내려받습니다. **{{model.import.button}}**로 다시 넣을 수 있습니다 |
 
 ### 5.5 도구 메뉴
 
@@ -314,7 +314,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![빈 곳의 우클릭 메뉴](/guide-assets/ko/editor-context-canvas.webp)
 
-캔버스의 빈 곳을 오른쪽 버튼으로 누르고 **{{model.editor.contextMenu.createTable}}** 을 고릅니다. 누른 자리에 테이블이 생깁니다.
+캔버스의 빈 곳을 오른쪽 버튼으로 누르고 **{{model.editor.contextMenu.createTable}}**을 고릅니다. 누른 자리에 테이블이 생깁니다.
 
 ### 6.2 테이블의 생김새
 
@@ -362,13 +362,13 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![테이블 정보](/guide-assets/ko/editor-table-info.webp)
 
-테이블의 ⓘ 를 누르거나 우클릭 메뉴에서 **{{model.editor.contextMenu.tableInfo}}** 를 고릅니다. 물리명, 논리명, 설명, 색상을 정합니다. 그룹에 속한 테이블은 그룹 색이 우선합니다. 요구사항에 연결된 테이블에는 그 요구사항이 함께 나오고, 누르면 요구사항 패널에서 그 항목이 열립니다(20.3절).
+테이블의 ⓘ 를 누르거나 우클릭 메뉴에서 **{{model.editor.contextMenu.tableInfo}}**를 고릅니다. 물리명, 논리명, 설명, 색상을 정합니다. 그룹에 속한 테이블은 그룹 색이 우선합니다. 요구사항에 연결된 테이블에는 그 요구사항이 함께 나오고, 누르면 요구사항 패널에서 그 항목이 열립니다(20.3절).
 
 ### 6.5 유니크 키와 인덱스
 
 ![인덱스 추가](/guide-assets/ko/editor-key-dialog.webp)
 
-1. 테이블 아래의 **{{model.editor.key.addUnique}}** 또는 **{{model.editor.key.addIndex}}** 를 누릅니다.
+1. 테이블 아래의 **{{model.editor.key.addUnique}}** 또는 **{{model.editor.key.addIndex}}**를 누릅니다.
 2. 이름을 적고 컬럼을 고릅니다. 고른 순서가 복합 키의 컬럼 순서입니다. 화살표로 순서를 바꿉니다.
 3. 인덱스는 컬럼마다 정렬(ASC, DESC)을 정할 수 있습니다.
 
@@ -397,7 +397,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![관계 우클릭 메뉴](/guide-assets/ko/editor-context-relationship.webp)
 
-관계선을 오른쪽 버튼으로 누르면 **{{model.editor.contextMenu.editRelationship}}** 과 **{{model.editor.contextMenu.removeRelationship}}** 가 나옵니다. 관계선을 두 번 눌러도 편집 창이 열립니다.
+관계선을 오른쪽 버튼으로 누르면 **{{model.editor.contextMenu.editRelationship}}**과 **{{model.editor.contextMenu.removeRelationship}}**가 나옵니다. 관계선을 두 번 눌러도 편집 창이 열립니다.
 
 ![관계 편집](/guide-assets/ko/editor-relationship-dialog.webp)
 
@@ -417,9 +417,9 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 관계를 만들면 외래 키 컬럼이 새로 생깁니다. 이미 있는 컬럼을 외래 키로 쓰고 싶으면 컬럼 매핑에서 그 컬럼을 고릅니다.
 
-* 목록에서 자식 테이블의 다른 컬럼을 고르거나 **{{model.editor.relationship.mappingNewColumn}}** 를 고릅니다.
+* 목록에서 자식 테이블의 다른 컬럼을 고르거나 **{{model.editor.relationship.mappingNewColumn}}**를 고릅니다.
 * 고른 컬럼의 타입이 부모 컬럼과 다르면 **{{model.editor.relationship.mappingAlignType}}** 선택 칸이 나옵니다.
-* 쓰지 않게 된 예전 외래 키 컬럼은 **{{model.editor.relationship.mappingRemoveReleased}}** 로 함께 지울 수 있습니다.
+* 쓰지 않게 된 예전 외래 키 컬럼은 **{{model.editor.relationship.mappingRemoveReleased}}**로 함께 지울 수 있습니다.
 * 같은 자식 컬럼을 두 번 고를 수 없습니다.
 
 ## 8. 메모, 그룹, 복사
@@ -428,11 +428,11 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![메모](/guide-assets/ko/editor-note.webp)
 
-* 빈 곳의 우클릭 메뉴에서 **{{model.editor.contextMenu.createNote}}** 을 고릅니다.
+* 빈 곳의 우클릭 메뉴에서 **{{model.editor.contextMenu.createNote}}**을 고릅니다.
 * 메모를 두 번 누르면 내용을 고칩니다. 위쪽 띠를 끌면 움직입니다.
-* 메모 편집 창에서 제목, 색, **{{model.editor.note.linkedTable}}** 을 정합니다. 메모를 테이블 위로 끌어다 놓아도 연관 테이블이 정해집니다.
+* 메모 편집 창에서 제목, 색, **{{model.editor.note.linkedTable}}**을 정합니다. 메모를 테이블 위로 끌어다 놓아도 연관 테이블이 정해집니다.
 * 연관 테이블이 있는 메모는 자동 배치 때 그 테이블 가까이에 놓입니다.
-* 메모의 우클릭 메뉴에서 **{{model.editor.contextMenu.removeNote}}** 로 지웁니다.
+* 메모의 우클릭 메뉴에서 **{{model.editor.contextMenu.removeNote}}**로 지웁니다.
 
 ### 8.2 그룹
 
@@ -440,11 +440,11 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 그룹은 테이블을 주제별로 묶습니다. 그룹에 속한 테이블은 그룹 색 띠를 갖습니다.
 
-* 테이블을 고르고 우클릭 메뉴에서 **{{model.editor.contextMenu.createGroup}}** 을 누릅니다. 여러 테이블을 함께 골라도 됩니다.
-* **{{model.editor.contextMenu.addToGroup}}**, **{{model.editor.contextMenu.removeFromGroup}}** 로 넣고 뺍니다.
-* **{{model.editor.contextMenu.editGroup}}** 에서 이름, 설명, 강조색, 멤버 테이블을 고칩니다.
+* 테이블을 고르고 우클릭 메뉴에서 **{{model.editor.contextMenu.createGroup}}**을 누릅니다. 여러 테이블을 함께 골라도 됩니다.
+* **{{model.editor.contextMenu.addToGroup}}**, **{{model.editor.contextMenu.removeFromGroup}}**로 넣고 뺍니다.
+* **{{model.editor.contextMenu.editGroup}}**에서 이름, 설명, 강조색, 멤버 테이블을 고칩니다.
 * **{{model.editor.toolbar.view}}** 메뉴나 탐색기에서 그룹 하나만 골라 볼 수 있습니다.
-* 그룹 하나만 보는 중에는 우클릭 메뉴의 **{{model.editor.contextMenu.exitGroupView}}** 로 전체 문서로 돌아옵니다.
+* 그룹 하나만 보는 중에는 우클릭 메뉴의 **{{model.editor.contextMenu.exitGroupView}}**로 전체 문서로 돌아옵니다.
 
 ### 8.3 테이블의 우클릭 메뉴
 
@@ -465,7 +465,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 * 여러 테이블을 함께 복사하면 그 사이의 관계도 함께 복사됩니다.
 * 붙여 넣은 테이블은 이름이 겹치지 않게 다른 이름이 자동으로 붙습니다.
 * 같은 브라우저에서 연 다른 문서에도 붙여 넣을 수 있습니다. 내용이 아주 크면 같은 문서 안에서만 붙여 넣을 수 있습니다.
-* 빈 곳의 우클릭 메뉴에서 **{{model.editor.contextMenu.paste}}** 를 고르면 누른 자리에 붙습니다.
+* 빈 곳의 우클릭 메뉴에서 **{{model.editor.contextMenu.paste}}**를 고르면 누른 자리에 붙습니다.
 
 ## 9. 표준 — 단어, 용어, 도메인 타입
 
@@ -481,7 +481,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ### 9.1 표준 패널 열기
 
-도구 모음의 **{{model.editor.termDictionary.toggle}}** 을 누르면 왼쪽에 패널이 열립니다. 탭이 세 개입니다.
+도구 모음의 **{{model.editor.termDictionary.toggle}}**을 누르면 왼쪽에 패널이 열립니다. 탭이 세 개입니다.
 
 | 탭 | 내용 |
 |---|---|
@@ -494,7 +494,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 ![워크스페이스 사전](/guide-assets/ko/standard-terms.webp)
 
 * 검색 칸으로 토큰이나 라벨을 찾습니다.
-* **{{model.editor.termDictionary.add}}** 을 누르면 등록 창이 열립니다. 목록의 항목을 누르면 고칩니다.
+* **{{model.editor.termDictionary.add}}**을 누르면 등록 창이 열립니다. 목록의 항목을 누르면 고칩니다.
 * 용어에는 가리키는 도메인 타입의 이름이 보라색 배지로 붙습니다. 배지를 누르면 도메인 타입 탭의 그 항목으로 갑니다.
 
 ![용어 수정](/guide-assets/ko/standard-term-dialog.webp)
@@ -512,7 +512,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![도메인 타입 탭](/guide-assets/ko/standard-domain-types.webp)
 
-도메인 타입 탭은 **{{model.editor.toolbar.tools}}** › **{{model.editor.domainType.menu}}** 로도 열립니다.
+도메인 타입 탭은 **{{model.editor.toolbar.tools}}** › **{{model.editor.domainType.menu}}**로도 열립니다.
 
 * 항목마다 타입과 NULL 허용 여부, 지금 문서에서 쓰는 컬럼 수, 가리키는 용어 수가 나옵니다.
 * 용어 수를 누르면 사전 탭이 그 도메인 타입을 가리키는 용어만 보여 줍니다.
@@ -520,17 +520,17 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![도메인 타입 추가](/guide-assets/ko/standard-domain-dialog.webp)
 
-**{{model.editor.domainType.add}}** 를 누르고 이름, 타입, 길이(또는 정밀도와 스케일), NULL 허용, 기본값, 설명을 적습니다. 워크스페이스 하나에 200개까지 만들 수 있고 이름은 겹칠 수 없습니다.
+**{{model.editor.domainType.add}}**를 누르고 이름, 타입, 길이(또는 정밀도와 스케일), NULL 허용, 기본값, 설명을 적습니다. 워크스페이스 하나에 200개까지 만들 수 있고 이름은 겹칠 수 없습니다.
 
 ### 9.4 컬럼에 도메인 타입 쓰기
 
 ![컬럼 정보의 도메인 타입](/guide-assets/ko/standard-column.webp)
 
 1. 컬럼 이름을 두 번 눌러 컬럼 정보 창을 엽니다.
-2. **{{model.editor.domainType.label}}** 에서 도메인 타입을 고릅니다. 타입, 길이, NULL 허용, 기본값이 채워집니다.
+2. **{{model.editor.domainType.label}}**에서 도메인 타입을 고릅니다. 타입, 길이, NULL 허용, 기본값이 채워집니다.
 3. 저장합니다. 테이블의 컬럼 이름 옆에 **D** 배지가 붙습니다.
 
-컬럼마다 값을 다르게 쓸 수도 있습니다. 도메인 타입을 고른 뒤 길이를 직접 고치면 "도메인 타입과 다름" 표시가 붙고, 그 속성은 도메인 타입이 바뀌어도 따라가지 않습니다. **{{model.editor.domainType.revert}}** 로 되돌립니다.
+컬럼마다 값을 다르게 쓸 수도 있습니다. 도메인 타입을 고른 뒤 길이를 직접 고치면 "도메인 타입과 다름" 표시가 붙고, 그 속성은 도메인 타입이 바뀌어도 따라가지 않습니다. **{{model.editor.domainType.revert}}**로 되돌립니다.
 
 외래 키 컬럼의 타입은 부모 컬럼을 따르므로 도메인 타입을 쓸 수 없습니다.
 
@@ -545,7 +545,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 * **{{model.editor.table.termGroupWords}}**: 고르면 지금 치고 있는 조각만 그 단어로 바뀝니다. 이어서 다음 조각을 칠 수 있습니다.
 * 화살표 키로 고르고 `Enter` 로 넣습니다. `Esc` 로 닫습니다.
 
-컬럼 정보 창에서는 컬럼 이름이 사전의 용어와 같으면 **사전 표준** 안내가 나옵니다. **{{model.editor.domainType.standardApply}}** 을 누르면 그 용어의 도메인 타입이 들어갑니다.
+컬럼 정보 창에서는 컬럼 이름이 사전의 용어와 같으면 **사전 표준** 안내가 나옵니다. **{{model.editor.domainType.standardApply}}**을 누르면 그 용어의 도메인 타입이 들어갑니다.
 
 ### 9.6 도메인 타입을 고쳤을 때
 
@@ -553,14 +553,14 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![도메인 타입 변경 안내](/guide-assets/ko/standard-banner.webp)
 
-**{{model.editor.domainType.banner.review}}** 를 누르면 반영 창이 열립니다.
+**{{model.editor.domainType.banner.review}}**를 누르면 반영 창이 열립니다.
 
 ![전파 창](/guide-assets/ko/standard-propagation.webp)
 
 * 컬럼마다 바뀌는 속성과 값이 나옵니다.
 * 표시한 컬럼만 새 값으로 바뀝니다. 표시하지 않은 컬럼은 값을 그대로 두고 "다르게 씀"으로 남습니다.
 * 컬럼에서 직접 고쳐 둔 속성은 건너뜁니다.
-* **{{model.editor.domainType.propagation.skipAll}}** 을 누르면 아무 컬럼도 바꾸지 않습니다.
+* **{{model.editor.domainType.propagation.skipAll}}**을 누르면 아무 컬럼도 바꾸지 않습니다.
 
 도메인 타입을 지워도 컬럼의 값은 그대로입니다. 컬럼에는 "연결 끊김" 표시만 남습니다.
 
@@ -568,10 +568,10 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![논리명 자동 추론](/guide-assets/ko/editor-logical-names.webp)
 
-**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.logicalNames}}** 은 논리명이 비어 있거나 물리명과 같은 테이블과 컬럼을 찾아 사전으로 채웁니다.
+**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.logicalNames}}**은 논리명이 비어 있거나 물리명과 같은 테이블과 컬럼을 찾아 사전으로 채웁니다.
 
 * 이름을 `_` 로 나눠 조각마다 사전에서 찾습니다. 워크스페이스 사전이 시스템 사전보다 우선합니다.
-* **{{model.editor.logicalNames.languageLabel}}** 로 시스템 사전의 어느 언어 표기를 쓸지 고릅니다.
+* **{{model.editor.logicalNames.languageLabel}}**로 시스템 사전의 어느 언어 표기를 쓸지 고릅니다.
 * 채울 항목을 고르고 적용합니다. 이미 있는 논리명은 건드리지 않습니다.
 * 적용한 뒤 되돌리기 한 번으로 모두 원래대로 돌릴 수 있습니다.
 
@@ -591,7 +591,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 **{{managed.sectionTitle}}** — 연습하거나 시험할 데이터베이스가 없을 때 Crowfoot가 하나 내어 줍니다.
 
-* **{{managed.issue}}** 를 누르면 전용 스키마가 만들어지고 커넥션으로 자동 등록됩니다.
+* **{{managed.issue}}**를 누르면 전용 스키마가 만들어지고 커넥션으로 자동 등록됩니다.
 * PostgreSQL과 MySQL을 고를 수 있고, 계정마다 다섯 개까지 무료입니다.
 * 열쇠 아이콘을 누르면 접속 주소, 계정, 비밀번호가 나옵니다. DBeaver 같은 외부 도구에 그대로 쓸 수 있습니다.
 * 휴지통 아이콘은 발급 철회입니다. 스키마와 그 안의 데이터가 모두 지워지고 되돌릴 수 없습니다.
@@ -600,31 +600,31 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![커넥션 추가](/guide-assets/ko/connection-dialog.webp)
 
-* **{{connection.list.newConnection}}** 를 누르고 이름, DBMS, 호스트, 포트, 데이터베이스, 사용자, 비밀번호를 적습니다. 비밀번호는 암호화해서 저장합니다.
+* **{{connection.list.newConnection}}**를 누르고 이름, DBMS, 호스트, 포트, 데이터베이스, 사용자, 비밀번호를 적습니다. 비밀번호는 암호화해서 저장합니다.
 * 목록의 행마다 접속 테스트, DB에서 문서로 가져오기, 데이터 보기, 편집, 삭제 버튼이 있습니다.
 * 접속 테스트가 성공하면 걸린 시간이 함께 나옵니다.
 * 커넥션을 지워도 그 커넥션으로 만든 문서는 남습니다.
-* **{{connection.dialog.mcpApply}}** 는 Claude가 MCP로 이 데이터베이스의 구조를 바꾸도록 허용하는 스위치입니다. 기본은 꺼져 있습니다(20.4절).
+* **{{connection.dialog.mcpApply}}**는 Claude가 MCP로 이 데이터베이스의 구조를 바꾸도록 허용하는 스위치입니다. 기본은 꺼져 있습니다(20.4절).
 
 ### 10.2 SQL 생성
 
 ![SQL 스크립트](/guide-assets/ko/editor-sql.webp)
 
-에디터의 **{{model.editor.toolbar.ddl}}** 을 누르면 문서 전체를 대상 DBMS의 문법으로 만든 스크립트가 나옵니다.
+에디터의 **{{model.editor.toolbar.ddl}}**을 누르면 문서 전체를 대상 DBMS의 문법으로 만든 스크립트가 나옵니다.
 
 * 테이블, 기본 키, 유니크 키, 인덱스, 외래 키, 코멘트가 들어갑니다. 논리명은 COMMENT로 나갑니다.
-* **{{model.editor.ddl.copy}}** 로 복사하고 **{{model.editor.ddl.download}}** 로 .sql 파일을 받습니다.
+* **{{model.editor.ddl.copy}}**로 복사하고 **{{model.editor.ddl.download}}**로 .sql 파일을 받습니다.
 * 스크립트는 마지막으로 저장한 내용 기준입니다. 저장하지 않은 변경이 있으면 안내가 나옵니다.
-* 주의할 점이 있으면 **{{model.editor.ddl.warningTitle}}** 에 나옵니다.
+* 주의할 점이 있으면 **{{model.editor.ddl.warningTitle}}**에 나옵니다.
 
 ### 10.3 배포
 
 ![데이터베이스에 배포](/guide-assets/ko/editor-deploy.webp)
 
-SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크립트를 커넥션의 데이터베이스에서 바로 실행합니다.
+SQL 스크립트 창의 **{{model.editor.deploy.button}}**를 누르면 스크립트를 커넥션의 데이터베이스에서 바로 실행합니다.
 
-1. **{{model.editor.deploy.connection}}** 을 고릅니다. 문서와 같은 DBMS의 커넥션만 나옵니다.
-2. **{{model.editor.deploy.run}}** 를 누릅니다.
+1. **{{model.editor.deploy.connection}}**을 고릅니다. 문서와 같은 DBMS의 커넥션만 나옵니다.
+2. **{{model.editor.deploy.run}}**를 누릅니다.
 3. 문장마다 성공과 실패가 나옵니다. 이미 있는 객체와 부딪힌 문장은 실패로 기록되고 나머지는 계속 실행됩니다.
 
 빈 데이터베이스에 처음 만들 때 쓰는 기능입니다. 이미 만든 데이터베이스를 고칠 때는 마이그레이션 DDL을 씁니다(10.4절, 14.3절).
@@ -633,23 +633,23 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 ![데이터베이스 동기화](/guide-assets/ko/editor-sync.webp)
 
-문서와 실제 데이터베이스가 달라졌을 때 씁니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.sync}}** 로 엽니다. 데이터베이스에 연결된 문서에만 나옵니다.
+문서와 실제 데이터베이스가 달라졌을 때 씁니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.sync}}**로 엽니다. 데이터베이스에 연결된 문서에만 나옵니다.
 
 | 버튼 | 방향 | 설명 |
 |---|---|---|
 | **{{model.editor.sync.compare}}** → **{{model.editor.sync.apply}}** | 데이터베이스 → 문서 | 데이터베이스의 지금 구조와 문서를 비교해 다른 점을 보여 주고, 문서를 데이터베이스에 맞춥니다 |
-| **{{model.editor.migration.button}}** | 문서 → 데이터베이스 | 문서와 데이터베이스의 차이를 ALTER 문으로 만듭니다. **{{model.editor.migration.apply}}** 으로 바로 실행할 수 있습니다 |
+| **{{model.editor.migration.button}}** | 문서 → 데이터베이스 | 문서와 데이터베이스의 차이를 ALTER 문으로 만듭니다. **{{model.editor.migration.apply}}**으로 바로 실행할 수 있습니다 |
 
 * 문서에 맞출 때 테이블의 색상, 위치, 메모 같은 문서만의 속성은 그대로 남습니다. 되돌리기 한 번으로 모두 원래대로 돌릴 수 있습니다.
-* 마이그레이션 DDL을 데이터베이스에 실행하면 되돌릴 수 없습니다. 컬럼이나 테이블을 지우는 문장은 기본으로 실행하지 않고 추가와 변경만 반영합니다. 지우는 문장까지 실행하려면 **{{model.editor.migration.destructiveToggle}}** 을 켭니다. 이미 쓰던 데이터베이스에 새 문서를 연결하면 문서에 없는 기존 테이블이 모두 삭제 대상으로 나오니 꼭 확인하세요.
+* 마이그레이션 DDL을 데이터베이스에 실행하면 되돌릴 수 없습니다. 컬럼이나 테이블을 지우는 문장은 기본으로 실행하지 않고 추가와 변경만 반영합니다. 지우는 문장까지 실행하려면 **{{model.editor.migration.destructiveToggle}}**을 켭니다. 이미 쓰던 데이터베이스에 새 문서를 연결하면 문서에 없는 기존 테이블이 모두 삭제 대상으로 나오니 꼭 확인하세요.
 
-연결하지 않은 문서는 문서 목록의 행 메뉴에서 **{{model.list.menu.connect}}** 로 연결합니다.
+연결하지 않은 문서는 문서 목록의 행 메뉴에서 **{{model.list.menu.connect}}**로 연결합니다.
 
 ### 10.5 다른 DBMS로 복제
 
 ![다른 DBMS로 복제](/guide-assets/ko/editor-convert.webp)
 
-**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** 는 대상 DBMS만 다른 새 문서를 만듭니다. 원래 문서는 바뀌지 않습니다.
+**{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}**는 대상 DBMS만 다른 새 문서를 만듭니다. 원래 문서는 바뀌지 않습니다.
 
 * 만들기 전에 표기가 바뀌는 타입과 대상 DBMS에 맞지 않는 타입을 보여 줍니다.
 * 맞지 않는 타입은 새 문서에 원래 값 그대로 남습니다. 만든 뒤 직접 고칩니다.
@@ -669,11 +669,11 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 ![데이터 탭](/guide-assets/ko/data-tab.webp)
 
 * 왼쪽 목록에서 테이블이나 뷰를 고릅니다. 이름 옆 숫자는 어림한 행 수입니다.
-* **{{database.data.addFilter}}** 로 컬럼, 연산자, 값을 정하고 **{{database.data.apply}}** 을 누릅니다. 조건은 여러 개 넣을 수 있습니다.
+* **{{database.data.addFilter}}**로 컬럼, 연산자, 값을 정하고 **{{database.data.apply}}**을 누릅니다. 조건은 여러 개 넣을 수 있습니다.
 * 연산자는 `=`, `≠`, `<`, `≤`, `>`, `≥`, {{database.data.op.CONTAINS}}, {{database.data.op.STARTS_WITH}}, {{database.data.op.IN}}, {{database.data.op.IS_NULL}}, {{database.data.op.IS_NOT_NULL}} 입니다.
 * 열 머리글을 누르면 그 컬럼으로 정렬합니다.
-* 아래쪽에서 쪽을 넘깁니다. **{{database.data.countExact}}** 를 누르면 전체 행 수를 정확히 셉니다.
-* **{{database.data.downloadCsv}}** 는 지금 조건의 결과를 파일로 받습니다.
+* 아래쪽에서 쪽을 넘깁니다. **{{database.data.countExact}}**를 누르면 전체 행 수를 정확히 셉니다.
+* **{{database.data.downloadCsv}}**는 지금 조건의 결과를 파일로 받습니다.
 * 커넥션에 연결된 ERD 문서가 있으면 열 머리글에 그 문서의 논리명이 함께 나옵니다.
 * 글자가 긴 값은 줄여서 보여 줍니다. 칸을 누르면 전체 값을 봅니다.
 
@@ -691,7 +691,7 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 | 행 삭제 | 행 왼쪽의 휴지통 아이콘 | 행이 빨간색, 글자에 줄 |
 | 취소 | 행 왼쪽의 되돌리기 아이콘 또는 **{{database.edit.discard}}** | 표시가 사라짐 |
 
-아래쪽 띠에 추가, 수정, 삭제 건수가 나옵니다. **{{database.edit.apply}}** 을 누르면 확인 창이 뜹니다.
+아래쪽 띠에 추가, 수정, 삭제 건수가 나옵니다. **{{database.edit.apply}}**을 누르면 확인 창이 뜹니다.
 
 ![적용 확인](/guide-assets/ko/data-apply-confirm.webp)
 
@@ -709,18 +709,18 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 ![SQL 탭](/guide-assets/ko/data-sql.webp)
 
-* SQL을 적고 **{{database.sql.run}}** 을 누르거나 `Ctrl/Cmd+Enter` 를 누릅니다. 커서가 놓인 문장 또는 선택한 부분만 실행합니다.
+* SQL을 적고 **{{database.sql.run}}**을 누르거나 `Ctrl/Cmd+Enter` 를 누릅니다. 커서가 놓인 문장 또는 선택한 부분만 실행합니다.
 * 테이블과 컬럼 이름이 자동 완성됩니다.
 * 조회 결과는 아래 표로 나옵니다. 결과가 많으면 앞부분만 보여 주고 알려 줍니다.
 * 데이터를 바꾸는 문장은 바뀐 행 수가 나옵니다.
 * 이력 버튼으로 앞서 실행한 문장을 다시 부릅니다.
-* 테이블 구조를 바꾸는 문장을 실행하면 ERD 문서와 달라질 수 있습니다. **{{model.editor.toolbar.sync}}** 로 문서에 반영합니다.
+* 테이블 구조를 바꾸는 문장을 실행하면 ERD 문서와 달라질 수 있습니다. **{{model.editor.toolbar.sync}}**로 문서에 반영합니다.
 
 ## 12. 검증
 
 ![설계 검증](/guide-assets/ko/editor-validation.webp)
 
-도구 모음의 **{{model.validation.toggle}}** 을 누르면 왼쪽에 **{{model.validation.title}}** 패널이 열립니다. 문서를 고칠 때마다 다시 검사합니다.
+도구 모음의 **{{model.validation.toggle}}**을 누르면 왼쪽에 **{{model.validation.title}}** 패널이 열립니다. 문서를 고칠 때마다 다시 검사합니다.
 
 * 위쪽의 등급 버튼으로 오류, 경고, 참고를 골라 봅니다.
 * 항목을 누르면 캔버스가 그 테이블로 옮겨 갑니다.
@@ -752,12 +752,12 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 ![문서 공유](/guide-assets/ko/editor-share.webp)
 
-**{{model.editor.toolbar.share}}** 를 누르고 **{{model.share.issue}}** 을 누르면 링크가 만들어집니다. 링크를 아는 사람은 로그인하지 않아도 문서를 읽을 수 있습니다. 고칠 수는 없습니다.
+**{{model.editor.toolbar.share}}**를 누르고 **{{model.share.issue}}**을 누르면 링크가 만들어집니다. 링크를 아는 사람은 로그인하지 않아도 문서를 읽을 수 있습니다. 고칠 수는 없습니다.
 
-* **{{model.share.period.unlimited}}** 또는 **{{model.share.period.custom}}** 을 고릅니다. 기간을 정하면 시작과 종료 일시 밖에서는 열리지 않습니다.
+* **{{model.share.period.unlimited}}** 또는 **{{model.share.period.custom}}**을 고릅니다. 기간을 정하면 시작과 종료 일시 밖에서는 열리지 않습니다.
 * 링크마다 조회 수, 좋아요 수, 댓글 수가 나옵니다.
 * 복사 아이콘으로 주소를 복사하고, 휴지통 아이콘으로 링크를 철회합니다. 철회한 링크는 바로 열리지 않습니다.
-* 공유한 문서는 시작 페이지의 공유 갤러리에도 나옵니다. 갤러리 아래의 **{{landing.gallery.more}}** 를 누르면 공유 문서 전체를 이름·설명으로 검색하고 페이지를 넘기며 볼 수 있습니다.
+* 공유한 문서는 시작 페이지의 공유 갤러리에도 나옵니다. 갤러리 아래의 **{{landing.gallery.more}}**를 누르면 공유 문서 전체를 이름·설명으로 검색하고 페이지를 넘기며 볼 수 있습니다.
 
 공유 화면에서는 ERD를 보고, SQL 스크립트를 받고, 좋아요와 댓글을 남길 수 있습니다. 좋아요는 로그인한 사람만 남길 수 있습니다. 로그인하지 않은 사람은 별명과 비밀번호를 적고 댓글을 남깁니다.
 
@@ -771,24 +771,24 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 ![버전 기록](/guide-assets/ko/editor-history.webp)
 
-문서는 저장할 때마다 버전이 하나씩 남습니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}** 으로 엽니다.
+문서는 저장할 때마다 버전이 하나씩 남습니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}**으로 엽니다.
 
 * 버전마다 저장한 사람, 시각, 바뀐 내용 요약(추가, 변경, 삭제, 이동)이 나옵니다.
-* **{{model.editor.history.editMemo}}** 으로 버전에 메모를 남깁니다. 검색 칸은 메모에서 찾습니다.
-* **{{model.editor.history.view}}** 는 그 버전의 문서를 읽기 전용으로 엽니다.
-* **{{model.editor.history.restore}}** 는 그 버전의 내용을 새 버전으로 저장합니다. 지금 문서도 기록에 그대로 남습니다.
+* **{{model.editor.history.editMemo}}**으로 버전에 메모를 남깁니다. 검색 칸은 메모에서 찾습니다.
+* **{{model.editor.history.view}}**는 그 버전의 문서를 읽기 전용으로 엽니다.
+* **{{model.editor.history.restore}}**는 그 버전의 내용을 새 버전으로 저장합니다. 지금 문서도 기록에 그대로 남습니다.
 
 ### 14.2 버전 비교
 
-**{{model.editor.history.compare}}** 를 누르면 두 버전의 차이를 봅니다.
+**{{model.editor.history.compare}}**를 누르면 두 버전의 차이를 봅니다.
 
 * 캔버스는 비교 버전 기준으로 그려지고, 바뀐 테이블에 `+`(추가)와 `~`(변경) 표시가 붙습니다.
 * 사라진 테이블은 따로 목록으로 나옵니다.
-* **{{model.editor.compare.exit}}** 로 문서로 돌아옵니다.
+* **{{model.editor.compare.exit}}**로 문서로 돌아옵니다.
 
 ### 14.3 마이그레이션 DDL
 
-버전 비교 화면의 **{{model.editor.compare.migrationDdl}}** 은 두 버전의 차이를 ALTER 문으로 만듭니다. 지난 배포 뒤에 바뀐 것만 데이터베이스에 반영할 때 씁니다. 스크립트를 복사해 데이터베이스에서 실행합니다. 데이터가 지워질 수 있는 문장에는 경고가 붙습니다. 데이터베이스에 바로 실행하려면 DB 동기화의 마이그레이션 DDL을 씁니다(10.4절).
+버전 비교 화면의 **{{model.editor.compare.migrationDdl}}**은 두 버전의 차이를 ALTER 문으로 만듭니다. 지난 배포 뒤에 바뀐 것만 데이터베이스에 반영할 때 씁니다. 스크립트를 복사해 데이터베이스에서 실행합니다. 데이터가 지워질 수 있는 문장에는 경고가 붙습니다. 데이터베이스에 바로 실행하려면 DB 동기화의 마이그레이션 DDL을 씁니다(10.4절).
 
 ## 15. 함께 편집하기
 
@@ -797,14 +797,14 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 * 도구 모음에 지금 함께 보는 사람이 나오고, 캔버스에 다른 사람의 커서가 움직입니다.
 * 다른 사람이 고친 내용은 바로 내 화면에 반영됩니다.
 * 다른 사람이 고치고 있는 항목은 잠깁니다. 누가 고치고 있는지 이름이 나옵니다.
-* 두 사람이 같은 속성을 고치면 나중에 고친 값이 남습니다. 내 값이 바뀌면 알림이 뜨고 **{{model.editor.collab.lwwRestore}}** 으로 되돌릴 수 있습니다.
+* 두 사람이 같은 속성을 고치면 나중에 고친 값이 남습니다. 내 값이 바뀌면 알림이 뜨고 **{{model.editor.collab.lwwRestore}}**으로 되돌릴 수 있습니다.
 * 오른쪽 아래 말풍선 버튼은 **{{model.editor.chat.label}}** 입니다. 문서를 함께 보는 사람과 이야기합니다.
 
 저장할 때 다른 사람이 먼저 저장했으면 **{{model.editor.conflict.title}}** 창이 뜹니다.
 
 * 서로 겹치지 않는 변경은 자동으로 합쳐집니다.
-* 겹치는 항목마다 **{{model.editor.conflict.keepMine}}** 또는 **{{model.editor.conflict.useServer}}** 을 고릅니다.
-* **{{model.editor.conflict.resolve}}** 을 누르면 고른 대로 합쳐 저장합니다.
+* 겹치는 항목마다 **{{model.editor.conflict.keepMine}}** 또는 **{{model.editor.conflict.useServer}}**을 고릅니다.
+* **{{model.editor.conflict.resolve}}**을 누르면 고른 대로 합쳐 저장합니다.
 
 저장하지 못한 채 창이 닫혀도 편집 내용은 브라우저에 남습니다. 문서를 다시 열면 복구됩니다.
 
@@ -814,9 +814,9 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 팀은 사람을 묶어 두는 단위입니다. 워크스페이스에 팀을 멤버로 넣으면 팀원 모두가 한 번에 권한을 받습니다.
 
-* 위쪽 메뉴의 **{{shell.nav.teams}}** 로 갑니다. 사이드바의 **{{shell.sidebar.newTeam}}** 으로 팀을 만듭니다. 팀을 만들어도 워크스페이스가 함께 생기지는 않습니다.
-* **{{team.members.addButton}}** 로 사람을 찾아 넣고, **{{team.members.remove}}** 로 뺍니다.
-* 팀 소유자는 이름과 설명을 고치고 **{{team.detail.settings.dissolveButton}}** 를 할 수 있습니다. 팀을 해체하면 팀에 준 워크스페이스 권한도 함께 거둬집니다.
+* 위쪽 메뉴의 **{{shell.nav.teams}}**로 갑니다. 사이드바의 **{{shell.sidebar.newTeam}}**으로 팀을 만듭니다. 팀을 만들어도 워크스페이스가 함께 생기지는 않습니다.
+* **{{team.members.addButton}}**로 사람을 찾아 넣고, **{{team.members.remove}}**로 뺍니다.
+* 팀 소유자는 이름과 설명을 고치고 **{{team.detail.settings.dissolveButton}}**를 할 수 있습니다. 팀을 해체하면 팀에 준 워크스페이스 권한도 함께 거둬집니다.
 
 ## 17. 커뮤니티와 알림
 
@@ -830,13 +830,13 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 ![제안 및 신고](/guide-assets/ko/community-feedback.webp)
 
-고쳤으면 하는 점이나 찾은 버그를 적는 게시판입니다. **{{community.board.newPost}}** 로 글을 쓰고 이미지를 붙일 수 있습니다. 글마다 코멘트를 주고받습니다.
+고쳤으면 하는 점이나 찾은 버그를 적는 게시판입니다. **{{community.board.newPost}}**로 글을 쓰고 이미지를 붙일 수 있습니다. 글마다 코멘트를 주고받습니다.
 
 ### 17.3 내가 작성한 댓글, 좋아요 문서
 
 ![내가 작성한 댓글](/guide-assets/ko/community-my-comments.webp)
 
-**{{shell.sidebar.communityMyComments}}** 은 공유 문서에 내가 남긴 댓글을 모아 보여 줍니다. **{{shell.sidebar.communityMyLikes}}** 는 내가 좋아요를 누른 공유 문서입니다. 행을 누르면 그 문서로 갑니다.
+**{{shell.sidebar.communityMyComments}}**은 공유 문서에 내가 남긴 댓글을 모아 보여 줍니다. **{{shell.sidebar.communityMyLikes}}**는 내가 좋아요를 누른 공유 문서입니다. 행을 누르면 그 문서로 갑니다.
 
 ### 17.4 알림
 
@@ -848,7 +848,7 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 * 내 문서에 좋아요가 눌렸을 때
 * 내 댓글에 문서 소유자가 답했을 때
 
-**{{shell.notifications.markAll}}** 으로 모두 읽은 것으로 바꾸고, **{{shell.notifications.viewAll}}** 로 전체 목록에 갑니다.
+**{{shell.notifications.markAll}}**으로 모두 읽은 것으로 바꾸고, **{{shell.notifications.viewAll}}**로 전체 목록에 갑니다.
 
 ![알림 목록](/guide-assets/ko/community-notifications.webp)
 
@@ -856,7 +856,7 @@ SQL 스크립트 창의 **{{model.editor.deploy.button}}** 를 누르면 스크�
 
 ![관리자 화면](/guide-assets/ko/admin-users.webp)
 
-관리자 계정에는 위쪽 메뉴에 **{{shell.nav.admin}}** 가 보입니다.
+관리자 계정에는 위쪽 메뉴에 **{{shell.nav.admin}}**가 보입니다.
 
 | 메뉴 | 내용 |
 |---|---|
@@ -907,8 +907,8 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 
 ![토큰 발급](/guide-assets/ko/mcp-issue.webp)
 
-* **{{workspace.mcp.issueButton}}** 을 누르고 이름과 기간을 정합니다. 한 사람이 워크스페이스마다 다섯 개까지 발급합니다.
-* 발급하면 토큰과 **{{workspace.mcp.commandLabel}}** 이 나옵니다. 명령을 복사해 터미널에서 실행하면 연결이 끝납니다.
+* **{{workspace.mcp.issueButton}}**을 누르고 이름과 기간을 정합니다. 한 사람이 워크스페이스마다 다섯 개까지 발급합니다.
+* 발급하면 토큰과 **{{workspace.mcp.commandLabel}}**이 나옵니다. 명령을 복사해 터미널에서 실행하면 연결이 끝납니다.
 * 토큰과 명령은 탭에서 언제든 다시 복사할 수 있습니다. 목록의 토큰 옆 복사 버튼은 토큰만 복사합니다. 원문은 발급한 본인에게만 보이고, 다른 멤버의 토큰은 소유자에게도 앞부분만 보입니다.
 
 ![발급한 토큰과 등록 명령](/guide-assets/ko/mcp-issued.webp)
@@ -916,13 +916,13 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 * 토큰은 발급한 사람의 권한으로 그 워크스페이스에서만 동작합니다. {{common.role.VIEWER}} 나 {{common.role.COMMENTER}} 가 발급한 토큰은 읽기만 합니다.
 * 토큰을 Claude와의 대화에 붙여 넣지 않습니다. 등록 명령은 터미널에서 실행합니다.
 * 목록의 휴지통 아이콘은 폐기입니다. 폐기하면 그 토큰으로 연결한 Claude는 바로 접근하지 못합니다. 소유자는 다른 멤버의 토큰도 폐기합니다.
-* Claude Code와 ChatGPT(Codex)에서 쓸 수 있습니다. 탭의 **{{workspace.mcp.connectTitle}}** 에서 클라이언트를 고르면 등록 방법이 나오고 복사할 수 있습니다. ChatGPT 웹·모바일 앱의 커넥터는 지원하지 않습니다.
+* Claude Code와 ChatGPT(Codex)에서 쓸 수 있습니다. 탭의 **{{workspace.mcp.connectTitle}}**에서 클라이언트를 고르면 등록 방법이 나오고 복사할 수 있습니다. ChatGPT 웹·모바일 앱의 커넥터는 지원하지 않습니다.
 
 ### 20.2 Claude에게 맡길 수 있는 일
 
 ![사용 방법과 예시 요청](/guide-assets/ko/mcp-usage.webp)
 
-등록한 폴더에서 Claude Code나 Codex를 켜고, 하고 싶은 일을 말로 요청합니다. 탭의 **{{workspace.mcp.usage.title}}** 에 예시 요청이 있고 복사할 수 있습니다.
+등록한 폴더에서 Claude Code나 Codex를 켜고, 하고 싶은 일을 말로 요청합니다. 탭의 **{{workspace.mcp.usage.title}}**에 예시 요청이 있고 복사할 수 있습니다.
 
 * 대화 창에 `/mcp` 를 입력하면 연결됐는지 볼 수 있습니다.
 * 등록은 명령을 실행한 폴더에서만 적용됩니다. 모든 폴더에서 쓰려면 등록 명령에 `--scope user` 를 붙입니다.
@@ -949,12 +949,12 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 
 에디터 맨 아래의 **{{shareViewer.tab.requirements}}** 탭을 누르면 요구사항 화면이 열립니다. 요구사항은 문서에 함께 저장됩니다. 반영 대기인 요구사항이 있으면 탭에 그 수가 붙습니다.
 
-* 요구사항은 도메인(그룹)별로 정리됩니다. 왼쪽 목록에서 도메인을 고르면 그 도메인만 보이고, 도메인마다 반영된 수와 진행 막대가 나옵니다. 그룹이 없는 것은 **{{model.requirements.group.unassigned}}**, 문서 전체에 해당하는 것은 **{{model.requirements.group.document}}** 에 모입니다.
-* 도메인 구역의 제목을 누르면 접히고, **{{model.requirements.domains.showOnCanvas}}** 를 누르면 그 도메인의 테이블을 골라 ERD 탭에서 보여 줍니다.
-* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블을 보여 줍니다. 펼친 행의 **{{model.requirements.domains.showOnCanvas}}** 는 연결된 테이블을 모두 골라 한 화면에 보여 줍니다.
-* 위쪽의 상태 버튼으로 골라 봅니다. 처음에는 **{{model.requirements.state.DROPPED}}** 만 숨겨져 있습니다. 찾기 칸에서는 코드, 제목, 내용, 테이블 이름으로 찾습니다.
-* 도메인 구역 아래의 **{{model.requirements.untraced.title}}** 은 그 도메인의 테이블 가운데 어떤 요구사항에도 연결되지 않은 테이블입니다.
-* **{{model.requirements.export.button}}** 로 요구사항 명세를 Markdown이나 CSV 파일로 받습니다.
+* 요구사항은 도메인(그룹)별로 정리됩니다. 왼쪽 목록에서 도메인을 고르면 그 도메인만 보이고, 도메인마다 반영된 수와 진행 막대가 나옵니다. 그룹이 없는 것은 **{{model.requirements.group.unassigned}}**, 문서 전체에 해당하는 것은 **{{model.requirements.group.document}}**에 모입니다.
+* 도메인 구역의 제목을 누르면 접히고, **{{model.requirements.domains.showOnCanvas}}**를 누르면 그 도메인의 테이블을 골라 ERD 탭에서 보여 줍니다.
+* 행을 누르면 내용과 연결된 테이블이 펼쳐집니다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블을 보여 줍니다. 펼친 행의 **{{model.requirements.domains.showOnCanvas}}**는 연결된 테이블을 모두 골라 한 화면에 보여 줍니다.
+* 위쪽의 상태 버튼으로 골라 봅니다. 처음에는 **{{model.requirements.state.DROPPED}}**만 숨겨져 있습니다. 찾기 칸에서는 코드, 제목, 내용, 테이블 이름으로 찾습니다.
+* 도메인 구역 아래의 **{{model.requirements.untraced.title}}**은 그 도메인의 테이블 가운데 어떤 요구사항에도 연결되지 않은 테이블입니다.
+* **{{model.requirements.export.button}}**로 요구사항 명세를 Markdown이나 CSV 파일로 받습니다.
 
 | 상태 | 뜻 |
 |---|---|
@@ -969,17 +969,17 @@ Claude Code 같은 MCP 클라이언트를 워크스페이스에 연결하면 대
 
 편집자 이상은 요구사항을 직접 추가하고 고칩니다.
 
-* 패널 위의 **{{model.requirements.add}}** 나 펼친 행의 수정 버튼을 누릅니다. 제목, 내용, 범위, 상태, 그룹, 연결할 테이블을 정합니다. 코드(REQ-001)는 자동으로 붙습니다.
-* 반영 대기인 행의 **{{model.requirements.markApplied}}** 를 누르면 반영됨으로 바뀝니다.
-* **{{model.requirements.criteria.title}}** 은 요구사항이 제대로 반영됐는지 확인할 항목입니다. 수정 창에서 한 줄에 하나씩 적고, 펼친 행에서 체크합니다.
-* 빠진 요구사항은 지우지 않고 상태를 **{{model.requirements.status.dropped}}** 로 바꿉니다. 삭제는 잘못 등록한 것에만 씁니다.
+* 패널 위의 **{{model.requirements.add}}**나 펼친 행의 수정 버튼을 누릅니다. 제목, 내용, 범위, 상태, 그룹, 연결할 테이블을 정합니다. 코드(REQ-001)는 자동으로 붙습니다.
+* 반영 대기인 행의 **{{model.requirements.markApplied}}**를 누르면 반영됨으로 바뀝니다.
+* **{{model.requirements.criteria.title}}**은 요구사항이 제대로 반영됐는지 확인할 항목입니다. 수정 창에서 한 줄에 하나씩 적고, 펼친 행에서 체크합니다.
+* 빠진 요구사항은 지우지 않고 상태를 **{{model.requirements.status.dropped}}**로 바꿉니다. 삭제는 잘못 등록한 것에만 씁니다.
 * 문서 하나에 500개까지 등록합니다.
 
 ### 20.4 데이터베이스에 반영하기
 
 Claude가 데이터베이스의 구조를 바꾸려면 그 커넥션에서 허용해야 합니다.
 
-* 커넥션을 추가하거나 편집할 때 **{{connection.dialog.mcpApply}}** 를 켭니다. 기본은 꺼져 있고, 켠 커넥션에는 목록에 표시가 붙습니다.
+* 커넥션을 추가하거나 편집할 때 **{{connection.dialog.mcpApply}}**를 켭니다. 기본은 꺼져 있고, 켠 커넥션에는 목록에 표시가 붙습니다.
 * 서비스 제공 DB는 처음부터 허용되어 있습니다.
 * Claude는 실행할 SQL을 먼저 보여 주고, 확인한 계획만 실행합니다. 계획을 본 뒤에 문서나 데이터베이스가 바뀌었으면 실행하지 않고 계획을 다시 세웁니다.
 * 샘플 데이터는 먼저 넣어 본 뒤 되돌려서 제약 위반이 없는지 확인하고, 확인한 데이터만 실제로 넣습니다. 넣기만 하고 고치거나 지우지 않습니다. 한 번에 테이블 20개, 행 1,000개까지입니다.
@@ -988,7 +988,7 @@ Claude가 데이터베이스의 구조를 바꾸려면 그 커넥션에서 허�
 ## 21. 자주 묻는 것
 
 **문서의 데이터베이스 종류를 바꿀 수 있나요?**
-바꿀 수 없습니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** 로 다른 종류의 새 문서를 만듭니다.
+바꿀 수 없습니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}**로 다른 종류의 새 문서를 만듭니다.
 
 **저장은 언제 되나요?**
 편집하면 잠시 뒤 자동으로 저장됩니다. **{{model.editor.toolbar.save}}** 버튼이나 `Ctrl/Cmd+S` 로 바로 저장할 수도 있습니다. 저장할 때마다 버전이 남습니다.
@@ -1012,7 +1012,7 @@ Claude가 데이터베이스의 구조를 바꾸려면 그 커넥션에서 허�
 고칠 수 없습니다. 함께 고치려면 워크스페이스 멤버로 넣고 편집자 역할을 줍니다.
 
 **고쳤으면 하는 점은 어디에 적나요?**
-**{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}** 에 적어 주세요.
+**{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}**에 적어 주세요.
 
 **Claude가 고친 것을 되돌릴 수 있나요?**
 되돌릴 수 있습니다. Claude가 고칠 때마다 버전이 남으므로 버전 기록에서 예전 버전으로 되돌립니다.
