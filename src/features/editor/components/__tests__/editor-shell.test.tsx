@@ -20,6 +20,7 @@ import type { DocumentDiffSummary } from '@/features/editor/model/doc-diff'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
 import { estimateTableHeight } from '@/features/editor/model/table-size'
+import { clearClipboard } from '@/features/editor/model/clipboard'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { modelKeys, useModel } from '@/features/models/hooks'
 import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
@@ -465,6 +466,56 @@ describe('EditorShell — 우클릭 컨텍스트 메뉴', () => {
     const table = useEditorStore.getState().present.model.tables[0]
     expect(table.physicalName).toBe('table_1')
     expect(useEditorStore.getState().present.diagram.nodes[table.id]).toBeDefined()
+  })
+
+  it('테이블 우클릭 → 복사 → 빈 영역 우클릭 → 붙여넣기: 사본이 생기고 Undo 한 번으로 취소된다', async () => {
+    await renderEditor()
+    const table = createTable('order_items')
+    useEditorStore.getState().commitAll([
+      { type: 'table/create', table, position: { x: 0, y: 0 } },
+      { type: 'column/add', tableId: table.id, column: createColumn({ id: 'c1', physicalName: 'qty', dataType: 'INT' }) },
+    ])
+    const before = useEditorStore.getState().present.model.tables.length
+    const node = (await screen.findByLabelText('컬럼 물리명 — qty')).closest('[data-nodekind="table"]') as HTMLElement
+
+    // 클립보드가 비어 있으면 붙여넣기는 꺼져 있다
+    fireEvent.contextMenu(document.querySelector('.react-flow') ?? document.body)
+    expect(await screen.findByRole('menuitem', { name: '붙여넣기' })).toHaveAttribute('data-disabled')
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+
+    fireEvent.contextMenu(node)
+    fireEvent.click(await screen.findByRole('menuitem', { name: '복사' }))
+    fireEvent.contextMenu(document.querySelector('.react-flow') ?? document.body)
+    const paste = await screen.findByRole('menuitem', { name: '붙여넣기' })
+    expect(paste).not.toHaveAttribute('data-disabled')
+    fireEvent.click(paste)
+
+    const names = useEditorStore.getState().present.model.tables.map((tb) => tb.physicalName)
+    expect(names).toHaveLength(before + 1)
+    expect(names).toContain('order_items_사본')
+    useEditorStore.getState().undo()
+    expect(useEditorStore.getState().present.model.tables).toHaveLength(before)
+    clearClipboard()
+  })
+
+  it('테이블 우클릭 → 복제는 복사와 붙여넣기를 한 번에 한다 — 선택하지 않은 테이블은 그 테이블만', async () => {
+    await renderEditor()
+    const table = createTable('order_items')
+    useEditorStore.getState().commitAll([
+      { type: 'table/create', table, position: { x: 0, y: 0 } },
+      { type: 'column/add', tableId: table.id, column: createColumn({ id: 'c1', physicalName: 'qty', dataType: 'INT' }) },
+    ])
+    const before = useEditorStore.getState().present.model.tables.length
+    useEditorStore.getState().setSelection([])
+    const node = (await screen.findByLabelText('컬럼 물리명 — qty')).closest('[data-nodekind="table"]') as HTMLElement
+
+    fireEvent.contextMenu(node)
+    fireEvent.click(await screen.findByRole('menuitem', { name: '복제' }))
+
+    const tables = useEditorStore.getState().present.model.tables
+    expect(tables).toHaveLength(before + 1)
+    expect(tables.map((tb) => tb.physicalName)).toContain('order_items_사본')
+    clearClipboard()
   })
 
   it('캔버스 우클릭 → 메모 생성 → note/create 커밋', async () => {

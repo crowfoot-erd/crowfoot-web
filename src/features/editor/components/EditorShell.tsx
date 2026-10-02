@@ -37,7 +37,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, Users } from 'lucide-react'
 import { parseContent, serializeContent } from '@/features/editor/model/content-io'
 import { templateIdForDatabase } from '@/features/editor/model/dbms'
-import { copyToClipboard, pasteFromClipboard } from '@/features/editor/model/clipboard'
+import { copySelection, duplicateSelection, pasteClipboard } from '@/features/editor/model/clipboard-commands'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { conflictRestores, describeTarget, detectLwwConflicts } from '@/features/editor/model/collab-merge'
 import { diffDocuments } from '@/features/editor/model/doc-diff'
@@ -636,28 +636,20 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
         ])
       } else if (key === 'c') {
         if (!editable) return
-        const { present, selectedIds } = useEditorStore.getState()
-        if (copyToClipboard(present, selectedIds)) event.preventDefault()
+        const result = copySelection()
+        if (!result.copied) return
+        event.preventDefault()
+        // 너무 커서 저장소에 두지 못했다 — 이 문서 안에서만 붙여 넣을 수 있다고 알린다
+        if (!result.shared) toast.info(t('model.editor.clipboard.localOnly'))
       } else if (key === 'v') {
+        // 다른 탭(다른 문서)에서 복사한 것도 붙여 넣는다 — 그때는 화면 가운데에 놓인다
         if (!editable) return
-        const { present, commitAll, setSelection, databaseType } = useEditorStore.getState()
-        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'), databaseType)
-        if (pasted) {
-          event.preventDefault()
-          commitAll(pasted.changes)
-          setSelection(pasted.selectedIds)
-        }
+        if (pasteClipboard(t('model.editor.clipboard.copyLabel'))) event.preventDefault()
       } else if (key === 'd') {
         // Duplicate — 선택을 그 자리에서 복사+붙여넣기(같은 규칙, 오프셋 32px)
         if (!editable) return
         event.preventDefault()
-        const { present, selectedIds, commitAll, setSelection, databaseType } = useEditorStore.getState()
-        if (!copyToClipboard(present, selectedIds)) return
-        const pasted = pasteFromClipboard(present, t('model.editor.clipboard.copyLabel'), databaseType)
-        if (pasted) {
-          commitAll(pasted.changes)
-          setSelection(pasted.selectedIds)
-        }
+        duplicateSelection(t('model.editor.clipboard.copyLabel'))
       }
     }
     window.addEventListener('keydown', onKeyDown)

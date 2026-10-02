@@ -13,6 +13,7 @@ import i18n, {
   currentLanguage,
 } from '@/lib/i18n'
 import { fetchMe, fetchProviders, logout, updateMyLocale } from '@/features/auth/api'
+import { removeStoredClipboard } from '@/features/editor/model/clipboard-storage'
 import type { Me } from '@/api/types'
 import { resetSession, useSessionStore } from '@/stores/session'
 
@@ -57,6 +58,8 @@ export function useLogout() {
     mutationFn: logout,
     onSettled: () => {
       useSessionStore.getState().beginLogout()
+      // 에디터 클립보드는 브라우저 저장소에 남는다 — 다음 사용자가 붙여 넣지 못하게 지운다
+      removeStoredClipboard()
       resetSession()
       void queryClient.clear()
       window.location.assign('/')

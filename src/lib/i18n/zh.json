@@ -821,7 +821,8 @@
         "groupUngrouped": "未分组"
       },
       "clipboard": {
-        "copyLabel": "复制"
+        "copyLabel": "复制",
+        "localOnly": "内容过大，只能在此文档内粘贴"
       },
       "shortcuts": {
         "open": "键盘快捷键",
@@ -1037,6 +1038,9 @@
         "createNote": "新建备注",
         "tableInfo": "表信息",
         "viewTableData": "查看此表的数据",
+        "copy": "复制",
+        "duplicate": "创建副本",
+        "paste": "粘贴",
         "removeTable": "删除表",
         "removeNote": "删除备注",
         "editRelationship": "编辑关系",

@@ -821,7 +821,8 @@
         "groupUngrouped": "Ungrouped"
       },
       "clipboard": {
-        "copyLabel": "copy"
+        "copyLabel": "copy",
+        "localOnly": "Too large to share — you can paste only within this document"
       },
       "shortcuts": {
         "open": "Keyboard shortcuts",
@@ -1037,6 +1038,9 @@
         "createNote": "New note",
         "tableInfo": "Table info",
         "viewTableData": "View this table's data",
+        "copy": "Copy",
+        "duplicate": "Duplicate",
+        "paste": "Paste",
         "removeTable": "Delete table",
         "removeNote": "Delete note",
         "editRelationship": "Edit relationship",

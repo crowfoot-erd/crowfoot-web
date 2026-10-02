@@ -821,7 +821,8 @@
         "groupUngrouped": "未分類"
       },
       "clipboard": {
-        "copyLabel": "コピー"
+        "copyLabel": "コピー",
+        "localOnly": "内容が大きいため、このドキュメント内でのみ貼り付けできます"
       },
       "shortcuts": {
         "open": "キーボードショートカット",
@@ -1037,6 +1038,9 @@
         "createNote": "新規メモ",
         "tableInfo": "テーブル情報",
         "viewTableData": "このテーブルのデータを見る",
+        "copy": "コピー",
+        "duplicate": "複製",
+        "paste": "貼り付け",
         "removeTable": "テーブルを削除",
         "removeNote": "メモを削除",
         "editRelationship": "リレーションを編集",

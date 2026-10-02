@@ -2,7 +2,8 @@
  * 캔버스 컨텍스트 메뉴 (05-editor/02-ui.md §8.1, storyboard 02-user §5A)
  *
  * 빈 영역 = 엔터티·메모 생성(우클릭한 화면 좌표를 캔버스 좌표로 변환해 그 위치에 생성),
- * 테이블 노드 = 정보·데이터 보기(원천 커넥션이 있을 때)·그룹 소속·삭제, 메모 노드 = 삭제, 관계선 = 편집·삭제.
+ * 테이블 노드 = 정보·데이터 보기(원천 커넥션이 있을 때)·복사·복제·그룹 소속·삭제,
+ * 메모 노드 = 복사·복제·삭제, 관계선 = 편집·삭제. 빈 영역에는 붙여넣기도 있다(클립보드가 비었으면 꺼진다).
  * 그룹(주제 영역)은 캔버스 객체가 아니라 논리 소속이라 여기서 만들고 뺀다 — 우클릭한
  * 테이블이 선택 상태면 **선택 전체**가 대상(다중 선택 → 그룹 생성), 아니면 그 테이블만.
  * 한 테이블은 한 그룹에만 소속한다 — 대상이 이미 그룹에 있으면 '그룹에 추가'가 잠기고,
@@ -13,7 +14,21 @@
  */
 import { useRef, useState } from 'react'
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
-import { Expand, FolderPlus, FolderMinus, FolderPen, Info, Pencil, Plus, Rows3, StickyNote, Trash2 } from 'lucide-react'
+import {
+  ClipboardPaste,
+  Copy,
+  CopyPlus,
+  Expand,
+  FolderPlus,
+  FolderMinus,
+  FolderPen,
+  Info,
+  Pencil,
+  Plus,
+  Rows3,
+  StickyNote,
+  Trash2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
@@ -28,6 +43,11 @@ export interface CanvasPoint {
 export type ContextMenuAction =
   | { type: 'createTable'; position: CanvasPoint }
   | { type: 'createNote'; position: CanvasPoint }
+  /** 붙여넣기 — 우클릭한 자리에 놓는다 */
+  | { type: 'paste'; position: CanvasPoint }
+  /** 복사·복제 — 대상이 선택 상태면 선택 전체, 아니면 그 객체만(범위는 받는 쪽이 정한다) */
+  | { type: 'copy'; targetId: string }
+  | { type: 'duplicate'; targetId: string }
   | { type: 'createGroup'; tableIds: string[] }
   | { type: 'addToGroup'; areaId: string; tableIds: string[] }
   | { type: 'removeFromGroup'; areaId: string; tableIds: string[] }
@@ -59,6 +79,8 @@ interface CanvasContextMenuProps {
   /** 문서의 원천 커넥션 — 있으면 테이블 메뉴에 "이 테이블의 데이터 보기"가 생긴다
    *  (09-database-manager/00-data-browser.md §5.1). 직접 만든 문서와 공개 뷰어는 null */
   dataSource?: { workspaceId: string; connectionId: string } | null
+  /** 클립보드에 붙여 넣을 것이 있는지 — 메뉴를 열 때마다 묻는다(다른 탭에서 복사했을 수 있다) */
+  canPaste?: () => boolean
   onAction: (action: ContextMenuAction) => void
   children: React.ReactNode
 }
@@ -135,6 +157,7 @@ export function CanvasContextMenu({
   groups,
   activeAreaName,
   dataSource = null,
+  canPaste,
   onAction,
   children,
 }: CanvasContextMenuProps) {
@@ -142,10 +165,27 @@ export function CanvasContextMenu({
   const [target, setTarget] = useState<MenuTarget>({ kind: 'canvas' })
   const screenRef = useRef<CanvasPoint>({ x: 0, y: 0 })
 
+  const [pasteEnabled, setPasteEnabled] = useState(false)
+
   const handleContextMenu = (event: React.MouseEvent) => {
     screenRef.current = { x: event.clientX, y: event.clientY }
     setTarget(resolveTarget(event.target as HTMLElement))
+    setPasteEnabled(canPaste ? canPaste() : false)
   }
+
+  /** 복사·복제 항목 — 테이블과 메모 메뉴가 함께 쓴다 */
+  const copyItems = (targetId: string) => (
+    <>
+      <ContextMenuPrimitive.Item className={SUB_ITEM_CLASS} onSelect={() => onAction({ type: 'copy', targetId })}>
+        <Copy aria-hidden />
+        {t('model.editor.contextMenu.copy')}
+      </ContextMenuPrimitive.Item>
+      <ContextMenuPrimitive.Item className={SUB_ITEM_CLASS} onSelect={() => onAction({ type: 'duplicate', targetId })}>
+        <CopyPlus aria-hidden />
+        {t('model.editor.contextMenu.duplicate')}
+      </ContextMenuPrimitive.Item>
+    </>
+  )
 
   /** 그룹 조작 대상 — 우클릭한 테이블이 선택 상태면 선택 전체, 아니면 그 테이블만 */
   const groupTargets =
@@ -207,6 +247,14 @@ export function CanvasContextMenu({
                 <StickyNote aria-hidden />
                 {t('model.editor.contextMenu.createNote')}
               </ContextMenuPrimitive.Item>
+              <ContextMenuPrimitive.Item
+                className={SUB_ITEM_CLASS}
+                disabled={!pasteEnabled}
+                onSelect={() => onAction({ type: 'paste', position: toFlow(screenRef.current) })}
+              >
+                <ClipboardPaste aria-hidden />
+                {t('model.editor.contextMenu.paste')}
+              </ContextMenuPrimitive.Item>
             </>
           ) : null}
 
@@ -225,6 +273,7 @@ export function CanvasContextMenu({
                   onSelect={() => onAction({ type: 'viewTableData', tableId: target.tableId })}
                 />
               ) : null}
+              {copyItems(target.tableId)}
               <ContextMenuPrimitive.Separator className="mx-1 my-1 h-px bg-border" />
               <ContextMenuPrimitive.Item
                 className={SUB_ITEM_CLASS}
@@ -297,13 +346,17 @@ export function CanvasContextMenu({
           ) : null}
 
           {target.kind === 'note' ? (
-            <ContextMenuPrimitive.Item
-              className={cn(SUB_ITEM_CLASS, 'text-destructive focus:bg-destructive/10 focus:text-destructive')}
-              onSelect={() => onAction({ type: 'removeNote', noteId: target.noteId })}
-            >
-              <Trash2 aria-hidden />
-              {t('model.editor.contextMenu.removeNote')}
-            </ContextMenuPrimitive.Item>
+            <>
+              {copyItems(target.noteId)}
+              <ContextMenuPrimitive.Separator className="mx-1 my-1 h-px bg-border" />
+              <ContextMenuPrimitive.Item
+                className={cn(SUB_ITEM_CLASS, 'text-destructive focus:bg-destructive/10 focus:text-destructive')}
+                onSelect={() => onAction({ type: 'removeNote', noteId: target.noteId })}
+              >
+                <Trash2 aria-hidden />
+                {t('model.editor.contextMenu.removeNote')}
+              </ContextMenuPrimitive.Item>
+            </>
           ) : null}
 
           {target.kind === 'relationship' ? (

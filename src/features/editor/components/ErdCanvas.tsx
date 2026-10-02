@@ -59,6 +59,9 @@ import type { CursorPayload, RemoteCursorState } from '@/features/editor/collab'
 import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab-presence'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
 import { databaseBrowserPath } from '@/features/database'
+import { hasClipboard } from '@/features/editor/model/clipboard'
+import { copySelection, duplicateSelection, pasteClipboard } from '@/features/editor/model/clipboard-commands'
+import { setViewCenterProvider } from '@/features/editor/model/view-center'
 import { EmptyCanvasHint } from './canvas/empty-canvas-hint'
 import {
   EditorCanvasContext,
@@ -888,6 +891,16 @@ export function ErdCanvas({
     return rf ? rf.screenToFlowPosition(point) : point
   }, [])
 
+  // 화면 가운데의 캔버스 좌표 — 다른 문서에서 복사한 것을 붙여 넣을 자리(단축키는 셸이 받는다)
+  useEffect(() => {
+    setViewCenterProvider(() => {
+      const rect = wrapperRef.current?.getBoundingClientRect()
+      if (!rect || !rfRef.current) return null
+      return toFlow({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+    })
+    return () => setViewCenterProvider(null)
+  }, [toFlow])
+
   const handleContextMenuAction = useCallback(
     (action: ContextMenuAction) => {
       switch (action.type) {
@@ -947,6 +960,17 @@ export function ErdCanvas({
           commit({ type: 'area/patch', areaId: action.areaId, patch: { tableIds } })
           return
         }
+        case 'copy': {
+          const result = copySelection(action.targetId)
+          if (result.copied && !result.shared) toast.info(t('model.editor.clipboard.localOnly'))
+          return
+        }
+        case 'duplicate':
+          duplicateSelection(t('model.editor.clipboard.copyLabel'), action.targetId)
+          return
+        case 'paste':
+          pasteClipboard(t('model.editor.clipboard.copyLabel'), action.position)
+          return
         case 'tableInfo':
           setInfoTableId(action.tableId)
           return
@@ -1342,6 +1366,7 @@ export function ErdCanvas({
           groups={contextGroups}
           activeAreaName={present.diagram.areas.find((area) => area.id === activeAreaId)?.name ?? null}
           dataSource={workspaceId && sourceConnectionId ? { workspaceId, connectionId: sourceConnectionId } : null}
+          canPaste={hasClipboard}
           onAction={handleContextMenuAction}
         >
           {flow}
