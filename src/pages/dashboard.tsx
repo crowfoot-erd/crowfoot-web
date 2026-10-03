@@ -6,7 +6,7 @@
  * - 바로가기 6개 + 전체 보기, 내 팀 4개, 커뮤니티 최근글 5건(통합 — 08-community)
  */
 import { Link } from 'react-router-dom'
-import { MessageSquare, Plus, Users } from 'lucide-react'
+import { FolderOpen, MessageSquare, Plus, UserPlus, Users, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -25,14 +25,18 @@ import { timeAgo } from '@/lib/time-ago'
 const SHORTCUT_LIMIT = 6
 const TEAM_LIMIT = 4
 
-function StatCard({ label, value, hint }: { label: string; value: number; hint?: string }) {
+/** 숫자 카드 — 랜딩과 같은 옅은 에메랄드 아이콘 칩 (2026-10-03 사이트 디자인 통일) */
+function StatCard({ label, value, hint, icon: Icon }: { label: string; value: number; hint?: string; icon: LucideIcon }) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        <span className="inline-flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+          <Icon aria-hidden className="size-4" />
+        </span>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-semibold tabular-nums">{formatNumber(value)}</p>
+        <p className="text-3xl font-extrabold tracking-tight tabular-nums">{formatNumber(value)}</p>
         {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
@@ -71,7 +75,7 @@ export function DashboardPage() {
     <div className="flex flex-col gap-8">
       {/* 인사 + 새 워크스페이스 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl font-extrabold tracking-tight">
           {t('dashboard.greeting', { name: me.data?.name ?? '' })}
         </h1>
         <Button type="button" onClick={openCreateDialog}>
@@ -92,11 +96,13 @@ export function DashboardPage() {
           <>
             <StatCard
               label={t('dashboard.cards.workspaces')}
+              icon={FolderOpen}
               value={workspaces.data?.totalCount ?? myWorkspaces.length}
             />
-            <StatCard label={t('dashboard.cards.teams')} value={teams.data?.totalCount ?? myTeams.length} />
+            <StatCard label={t('dashboard.cards.teams')} icon={Users} value={teams.data?.totalCount ?? myTeams.length} />
             <StatCard
               label={t('dashboard.cards.joinedAsMember')}
+              icon={UserPlus}
               value={joinedAsMember}
               hint={t('dashboard.joinedAsMemberHint')}
             />
@@ -134,7 +140,7 @@ export function DashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shortcuts.map((workspace) => (
               <Link key={workspace.workspaceId} to={`/workspaces/${workspace.workspaceId}`}>
-                <Card className="h-full transition-colors hover:border-foreground/25">
+                <Card className="h-full transition hover:-translate-y-0.5 hover:border-emerald-500/50 hover:shadow-md">
                   <CardContent className="flex h-full flex-col gap-2 p-4">
                     <p className="truncate font-medium">{workspace.name}</p>
                     {/* 설명이 없으면 자리만 지킨다(카드 높이 맞춤) — "-"를 찍지 않는다 */}
@@ -161,7 +167,7 @@ export function DashboardPage() {
             ))}
             {hiddenCount > 0 ? (
               <Link to="/workspaces">
-                <Card className="h-full border-dashed transition-colors hover:border-foreground/25">
+                <Card className="h-full border-dashed transition hover:border-emerald-500/50">
                   <CardContent className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
                     +{formatNumber(hiddenCount)}
                   </CardContent>
@@ -192,7 +198,7 @@ export function DashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {myTeams.map((team) => (
               <Link key={team.teamId} to={`/teams/${team.teamId}`}>
-                <Card className="transition-colors hover:border-foreground/25">
+                <Card className="transition hover:-translate-y-0.5 hover:border-emerald-500/50 hover:shadow-md">
                   <CardContent className="flex items-center gap-3 p-4">
                     <Users aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="truncate font-medium">{team.name}</span>

@@ -41,7 +41,7 @@ export function TeamsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t('team.list.title')}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">{t('team.list.title')}</h1>
       <EmptyState
         illustration="team"
         title={t('team.list.empty.title')}

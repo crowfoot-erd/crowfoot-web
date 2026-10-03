@@ -65,7 +65,7 @@ export function CommunityBoardPage({ board }: CommunityBoardPageProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{boardName}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{boardName}</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search aria-hidden className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

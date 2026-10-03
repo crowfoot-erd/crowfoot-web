@@ -91,7 +91,7 @@ function WorkspaceLink({ workspace }: { workspace: MyWorkspace }) {
         cn(
           'flex flex-col gap-1 rounded-md px-2.5 py-2 text-sm transition-colors',
           isActive
-            ? 'bg-muted text-foreground'
+            ? 'bg-emerald-500/10 font-semibold text-emerald-800 shadow-[inset_3px_0_0_var(--color-emerald-500)] dark:text-emerald-300'
             : 'text-foreground/80 hover:bg-muted/60 hover:text-foreground',
         )
       }

@@ -33,7 +33,9 @@ export function AppLayout() {
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-      isActive ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+      isActive
+        ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
     )
 
   return (
@@ -92,7 +94,12 @@ export function AppLayout() {
         ) : (
           <WorkspaceSidebar />
         )}
-        <main className="min-w-0 flex-1 px-4 py-6 md:px-8">
+        <main className="relative isolate min-w-0 flex-1 px-4 py-6 md:px-8">
+          {/* 본문 위쪽의 옅은 색 번짐 — 랜딩·사용 가이드와 같은 분위기 (2026-10-03 사용자 요청 — 사이트 전체 디자인 통일) */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-56 bg-gradient-to-b from-emerald-500/[0.07] via-sky-500/[0.03] to-transparent"
+          />
           <Outlet />
         </main>
       </div>

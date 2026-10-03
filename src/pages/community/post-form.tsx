@@ -245,7 +245,7 @@ function FeedbackPostForm({ mode, postId, backTo, initialTitle, initialContent }
   return (
     <div className="flex flex-col gap-4" data-testid="community-post-form">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl font-extrabold tracking-tight">
           {editing ? t('community.form.editTitle') : t('community.form.createTitle')}
         </h1>
         <Button type="button" variant="ghost" size="sm" asChild className="text-muted-foreground">
@@ -376,7 +376,7 @@ function ReleaseNoteForm({ mode, postId, backTo, initialTitles, initialContents,
   return (
     <div className="flex flex-col gap-4" data-testid="community-post-form">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl font-extrabold tracking-tight">
           {editing ? t('community.form.editTitle') : t('community.form.createTitle')}
         </h1>
         <Button type="button" variant="ghost" size="sm" asChild className="text-muted-foreground">

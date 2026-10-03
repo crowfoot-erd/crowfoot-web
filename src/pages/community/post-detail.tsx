@@ -80,7 +80,7 @@ export function CommunityPostDetailPage() {
             <Badge variant="secondary" className="mb-2">
               {t(`community.boardName.${detail.board}`)}
             </Badge>
-            <h1 className="text-2xl font-semibold break-words">{detail.title}</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight break-words">{detail.title}</h1>
           </div>
           {canMutate ? (
             <div className="flex shrink-0 items-center gap-1">

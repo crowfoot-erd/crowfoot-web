@@ -43,7 +43,7 @@ export function WorkspacesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t('workspace.list.title')}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">{t('workspace.list.title')}</h1>
       <EmptyState
         illustration="workspace"
         title={t('workspace.list.empty.title')}

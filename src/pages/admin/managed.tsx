@@ -153,7 +153,7 @@ export function AdminManagedPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t('admin.managed.title')}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">{t('admin.managed.title')}</h1>
 
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">

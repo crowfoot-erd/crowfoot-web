@@ -24,7 +24,7 @@ export function MyShareCommentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t('community.myComments.title')}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">{t('community.myComments.title')}</h1>
 
       {comments.isPending ? (
         <div className="flex flex-col gap-2">

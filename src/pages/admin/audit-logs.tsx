@@ -113,7 +113,7 @@ export function AdminAuditLogsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{t('admin.auditLogs.title')}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{t('admin.auditLogs.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={action || ALL_ACTIONS} onValueChange={(value) => setParam('action', value === ALL_ACTIONS ? '' : value)}>
             <SelectTrigger size="sm" className="w-56" aria-label={t('admin.auditLogs.actionFilter')}>

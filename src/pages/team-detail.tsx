@@ -165,7 +165,7 @@ export function TeamDetailPage() {
           </BreadcrumbList>
         </Breadcrumb>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold">{data.name}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">{data.name}</h1>
           {isOwner ? <Badge variant="secondary">{t('team.list.ownerBadge')}</Badge> : null}
         </div>
       </div>

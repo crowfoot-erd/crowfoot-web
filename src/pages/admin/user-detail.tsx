@@ -113,7 +113,7 @@ export function AdminUserDetailPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <h1 className="text-2xl font-semibold">{data.name}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{data.name}</h1>
       </div>
 
       {data.withdrawnAt ? (
