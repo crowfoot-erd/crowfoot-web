@@ -1,4 +1,4 @@
-Crowfoot is a tool for drawing ERDs in your browser, editing them with your team, and applying them to a database. This guide starts with where things are on the screen and then walks through every feature in turn. The data in the screenshots is sample data made for this guide.
+Crowfoot is a tool for drawing ERDs in your browser, editing them with your team, and applying them to a database. This guide first shows you around the screens, then walks through each feature. Screenshots use sample data created for this guide.
 
 ## 1. The screens at a glance
 
@@ -8,13 +8,13 @@ Crowfoot has three kinds of screens.
 |---|---|---|
 | App | Opens when you sign in | Workspaces, document lists, members, databases, teams, community |
 | Editor | Click a document in the document list; it opens in a new window | Draw ERDs, manage standards, generate SQL, share, version history |
-| Data browser | Click the browse data button of a connection; it opens in a new window | View real data, edit rows, run SQL |
+| Data browser | Click the Browse data button on a connection; it opens in a new window | View real data, edit rows, run SQL |
 
 ### 1.1 The top menu of the app
 
 ![The top menu of the app](/guide-assets/en/shell-header.webp)
 
-From left to right, it contains the following.
+From left to right, it contains the following items.
 
 | Position | Name | Description |
 |---|---|---|
@@ -28,11 +28,11 @@ From left to right, it contains the following.
 | Right | Sun icon | Switches between the light and dark themes |
 | Right | Globe icon | Changes the language ({{common.language.ko}}, {{common.language.en}}, {{common.language.ja}}, {{common.language.zh}}) |
 | Right | Bell icon | Notifications. A red number shows how many are unread |
-| Right | Your name | Your profile, language, sign out |
+| Right | Your name | Your profile, language, and sign-out |
 
 ### 1.2 The left sidebar
 
-The left sidebar changes with the item you choose in the top menu.
+The left sidebar changes depending on what you select in the top menu.
 
 | Top menu | What the sidebar shows |
 |---|---|
@@ -49,11 +49,11 @@ The left sidebar changes with the item you choose in the top menu.
 |---|---|
 | Top | Document name, target DBMS, version number, who saved last and when, **{{model.viewer.close}}** |
 | Toolbar | Explorer, term dictionary, validation, undo, save, auto layout, generate SQL, share, export, tools, view, zoom in and out |
-| Center | The canvas. Tables, relationship lines, notes, and groups go here |
+| Center | The canvas, which holds tables, relationship lines, notes, and groups |
 | Bottom right | The minimap and the document chat button |
 | Bottom | The **ERD**, **{{shareViewer.tab.requirements}}**, and **{{shareViewer.tab.comments}}** tabs |
 
-Section 5 explains the toolbar buttons one by one.
+Section 5 describes each toolbar button.
 
 ### 1.4 The data browser window
 
@@ -73,8 +73,8 @@ Section 5 explains the toolbar buttons one by one.
 ![The sign-in screen](/guide-assets/en/login.webp)
 
 1. Click the sign-in button on the start page.
-2. Read the Terms of Service and tick the box to agree. The sign-in buttons are enabled only after you tick it.
-3. Continue with a GitHub or Google account. There is no separate sign-up step.
+2. Read the Terms of Service and check the box to agree. The sign-in buttons are enabled only after you check it.
+3. Sign in with your GitHub or Google account. There is no separate sign-up step.
 
 If you have not used the app for a long time, the **{{auth.sessionExpired.title}}** dialog appears. Click **{{auth.sessionExpired.loginAgain}}**.
 
@@ -94,7 +94,7 @@ The dashboard opens when you sign in.
 
 ![The user menu](/guide-assets/en/shell-user-menu.webp)
 
-Click your name at the top right to see your name, email, linked account, and the date you joined. The same menu lets you change the language and sign out. You can also change the language with the globe icon. The language you choose is remembered the next time you visit.
+Click your name at the top right to see your name, email, linked account, and the date you joined. The same menu lets you change the language and sign out. You can also change the language with the globe icon. Crowfoot remembers your language for your next visit.
 
 ## 3. Workspaces
 
@@ -108,7 +108,7 @@ Click **{{shell.sidebar.newWorkspace}}** in the sidebar and enter a name. The pe
 
 ### 3.2 The tabs of a workspace
 
-When you open a workspace, there are six tabs below its name.
+A workspace has six tabs below its name.
 
 | Tab | Contents |
 |---|---|
@@ -125,12 +125,17 @@ When you open a workspace, there are six tabs below its name.
 
 * Type a document name or description in the search box to find a document.
 * Click a document name to open the editor in a new window.
-* The columns of the list are document name, database type, version, creator, and last modified.
-* The five buttons at the top create documents. Section 4 explains them.
+* The list shows the document name, database type, version, creator, and last modified date.
+* When there are more than 20 documents, the total count and Previous and Next buttons appear below the list.
+* Use the five buttons at the top to create documents (section 4).
 
 ![The document row menu](/guide-assets/en/document-row-menu.webp)
 
-Click the three-dot button at the right end of a row to see **{{model.list.menu.edit}}** and **{{model.list.menu.delete}}**. Documents that are not connected to a database also show **{{model.list.menu.connect}}**. A deleted document cannot be restored.
+Click the three-dot menu at the right end of a row to see **{{model.list.menu.edit}}** and **{{model.list.menu.delete}}**. Documents that are not connected to a database also show **{{model.list.menu.connect}}**.
+
+* **{{model.list.menu.edit}}** changes only the name and description. The database type and version cannot be changed.
+* **{{model.list.menu.connect}}** lists only connections with the same DBMS as the document. Once connected, you can use Sync DB in the editor (section 10.4).
+* Only the owner can delete a document. A deleted document cannot be restored.
 
 ### 3.4 The Members tab — members and roles
 
@@ -147,18 +152,23 @@ There are four roles.
 
 ![Adding a member](/guide-assets/en/member-add.webp)
 
-Click **{{workspace.members.addButton}}** to choose one person or a team.
+Click **{{workspace.members.addButton}}** to add a person or a team.
 
 * **{{workspace.members.addDialog.targetUser}}**: Type at least two characters of a name or email to search.
 * **{{workspace.members.addDialog.targetTeam}}**: When you give a role to a team, every member of that team gets the same role.
-* The Owner role cannot be given to anyone.
-* In the list, change a role or take access away with **{{workspace.members.revoke}}**.
+* The Owner role cannot be assigned.
+* In the list, change a member's role or remove access with **{{workspace.members.revoke}}**.
+* Only the owner can add members, change roles, and remove access. Other members can only view the list.
+* People who are already members do not appear in the search results.
+* If someone has one role as an individual and a different role through a team, the higher role applies.
+* If there is only one owner, that owner cannot lower or remove their own role.
+* Permission changes take effect immediately, without signing in again.
 
 ### 3.5 The Overview and Settings tabs
 
 ![The Overview tab](/guide-assets/en/workspace-overview.webp)
 
-The Overview tab shows the basic information of the workspace.
+The Overview tab shows basic information about the workspace.
 
 ![The Settings tab](/guide-assets/en/workspace-settings.webp)
 
@@ -170,44 +180,56 @@ There are five ways to create a document. Each is a button at the top of the ERD
 
 | Button | When to use it |
 |---|---|
-| **{{model.list.newDocument}}** | To draw from a blank document |
+| **{{model.list.newDocument}}** | To start from a blank document |
 | **{{model.templates.openButton}}** | To start from a copy of an example document |
 | **{{sqlImport.openButton}}** | When you have a CREATE TABLE script |
 | **{{reverse.openButton}}** | To read the structure of an existing database |
-| **{{model.import.button}}** | To bring back an exported document file (.crown) |
+| **{{model.import.button}}** | To reopen an exported document file (.crown) |
 
 ### 4.1 New ERD document
 
 ![New ERD document](/guide-assets/en/document-create.webp)
 
-Enter a name and choose a database type. The database type is fixed when the document is created and cannot be changed later. To move to another type, use **{{model.editor.toolbar.dbmsConvert}}** in the editor (section 10.5).
+Enter a name and choose a database type. The database type is fixed when the document is created and cannot be changed later. To switch to another type, use **{{model.editor.toolbar.dbmsConvert}}** in the editor (section 10.5).
 
 ### 4.2 Start from a template
 
 ![Start from a template](/guide-assets/en/document-template.webp)
 
-Choose one of the prepared example documents and copy it into your workspace. You can look at it first with **{{model.templates.preview}}**.
+Pick an example document to copy into your workspace. To look at it first, use **{{model.templates.preview}}**. You can name the copy when you create it; by default it takes the template's name.
+
+The words and terms used in the template are also added to the workspace dictionary, so logical name inference and column name suggestions use them right after you copy (section 9).
 
 ### 4.3 Import SQL
 
 ![Import SQL](/guide-assets/en/document-sql-import.webp)
 
 1. Choose the database type and enter a document name.
-2. Paste a CREATE TABLE script, or read a file with **{{sqlImport.readFile}}**. Files can be up to 1MB.
-3. Click **{{sqlImport.preview}}** to see the number of tables and relationships that were read, and any statements that could not be read.
+2. Paste a CREATE TABLE script, or load a file with **{{sqlImport.readFile}}**. Files can be up to 1 MB.
+3. Click **{{sqlImport.preview}}** to see how many tables and relationships were found and which statements could not be parsed.
 4. Click **{{sqlImport.submit}}**.
 
-This creates a document from a script alone, without connecting to a database.
+This creates a document from the script alone; no database connection is needed.
+
+* The importer reads `CREATE TABLE` and `ALTER TABLE ... ADD CONSTRAINT` statements. It reads columns, types, NOT NULL, default values, auto increment, primary keys, unique keys, foreign keys, and comments. PostgreSQL `COMMENT ON` statements are also read as logical names.
+* Statements it cannot read, such as `CREATE INDEX`, `CREATE VIEW`, and `INSERT`, are skipped and listed in the preview.
+* If the script has no `CREATE TABLE` statement, no document can be created.
+* If you leave the document name empty, the document is named "SQL ERD".
+* A document created this way is not connected to a database. To use Sync DB, choose **{{model.list.menu.connect}}** in the document list.
 
 ### 4.4 Import from DB
 
 ![Import from DB](/guide-assets/en/document-reverse.webp)
 
-Choose a registered connection, and Crowfoot reads the tables, columns, keys, relationships, and comments of that database and creates a document. Column comments become logical names. A document created this way is connected to that connection, so you can use **{{model.editor.toolbar.sync}}**. Register the connection first in the Database tab (section 10.1).
+Choose a registered connection, and Crowfoot reads the tables, columns, keys, relationships, and comments of that database and creates a document. Column comments become logical names. A document created this way is connected to that connection, so you can use **{{model.editor.toolbar.sync}}**. First register the connection in the Database tab (section 10.1).
+
+* The document's database type follows the connection's type.
+* By default, the document is named after the connection followed by "ERD".
+* If you delete the connection later, the document remains, but Sync DB is no longer available for it.
 
 ### 4.5 Import a document file (.crown)
 
-This turns a file downloaded with **{{model.editor.toolbar.export}}** › **{{model.editor.toolbar.crown}}** in the editor back into a document. Use it to move a document to another workspace or to restore a backup.
+This turns a file downloaded with **{{model.editor.toolbar.export}}** › **{{model.editor.toolbar.crown}}** in the editor back into a document. Use it to move a document to another workspace or to restore a backup. Importing always creates a new document and never overwrites an existing one. If the file format is not valid, you are told why.
 
 ## 5. The editor and its toolbar
 
@@ -215,29 +237,29 @@ This turns a file downloaded with **{{model.editor.toolbar.export}}** › **{{mo
 
 ### 5.1 The toolbar buttons
 
-From left to right.
+From left to right:
 
 | Button | Description |
 |---|---|
-| **{{model.editor.explorer.toggle}}** | Opens and closes the Model Explorer on the left (section 5.2) |
-| **{{model.editor.termDictionary.toggle}}** | Opens and closes the term dictionary and domain types panel (section 9) |
-| **{{model.validation.toggle}}** | Opens and closes the design validation panel. A number shows how many issues there are (section 12) |
+| **{{model.editor.explorer.toggle}}** | Shows or hides the Model Explorer on the left (section 5.2) |
+| **{{model.editor.termDictionary.toggle}}** | Shows or hides the term dictionary and domain types panel (section 9) |
+| **{{model.validation.toggle}}** | Shows or hides the design validation panel. A badge shows the number of issues (section 12) |
 | {{model.editor.toolbar.undo}}, {{model.editor.toolbar.redo}} | Undo and redo edits one step at a time |
-| **{{model.editor.toolbar.save}}** | Saves now. Edits are also saved automatically after a moment |
-| **{{model.editor.toolbar.autoLayoutLayered}}** | Rearranges the tables automatically. The arrow next to it chooses the mode and direction (section 5.3) |
-| **{{model.editor.toolbar.ddl}}** | Turns the document into a SQL script (section 10.2) |
+| **{{model.editor.toolbar.save}}** | Saves immediately. Edits are also saved automatically shortly after you make them |
+| **{{model.editor.toolbar.autoLayoutLayered}}** | Rearranges the tables automatically. Use the arrow next to it to choose the mode and direction (section 5.3) |
+| **{{model.editor.toolbar.ddl}}** | Generates a SQL script from the document (section 10.2) |
 | **{{model.editor.toolbar.share}}** | Creates a read-only share link (section 13) |
 | **{{model.editor.toolbar.export}}** | Downloads the document as an image or a document file (section 5.4) |
 | **{{model.editor.toolbar.tools}}** | Logical names, sync DB, browse data, duplicate for another DBMS, domain types, version history (section 5.5) |
 | DBMS badge | The target DBMS of the document. Click it to open the **{{model.editor.toolbar.dbmsConvert}}** dialog |
-| **{{model.editor.toolbar.view}}** | Choose the column name display, the column display, and the group to show (section 5.6) |
+| **{{model.editor.toolbar.view}}** | Chooses how column names appear, which columns appear, and which group is shown (section 5.6) |
 | − number + | Zoom out, current zoom level, zoom in |
 | Four-corners icon | **{{model.editor.toolbar.fit}}**. Fits the whole document on the screen |
 | Keyboard icon | **{{model.editor.shortcuts.open}}** (section 19) |
 | Question mark icon | Opens this user guide in a new window |
 | Sun icon | Switches between the light and dark themes |
 
-If you open a document with a read-only role, the editing buttons are disabled and a **{{model.editor.toolbar.readOnly}}** label is shown.
+If your role is read-only, the editing buttons are disabled and a **{{model.editor.toolbar.readOnly}}** label appears.
 
 ### 5.2 The explorer (Model Explorer)
 
@@ -245,24 +267,24 @@ If you open a document with a read-only role, the editing buttons are disabled a
 
 * Shows the tables, relationships, and notes of the document as a tree. Tables are listed by group.
 * Type in the search box to search tables, columns, relationships, and notes. `Ctrl/Cmd+F` takes you straight to the search box.
-* Click an item to move the canvas to that object and select it.
+* Click an item to jump to it on the canvas and select it.
 * On a group row, the eye icon shows only that group, the pencil icon edits the group, and the trash icon deletes it.
 
 ### 5.3 Auto layout
 
 ![The auto layout menu](/guide-assets/en/editor-menu-layout.webp)
 
-Click the button to rearrange the tables in the selected mode. Click the arrow to choose the mode and direction. Your choice runs right away.
+Click the button to rearrange the tables in the selected mode. Click the arrow to choose a mode and direction; the layout runs as soon as you choose.
 
 | Item | Description |
 |---|---|
-| **{{model.editor.toolbar.autoLayoutLayered}}** | Arranges tables in layers from parent to child. Suits most documents |
+| **{{model.editor.toolbar.autoLayoutLayered}}** | Arranges tables in layers from parent to child. Works well for most documents |
 | **{{model.editor.toolbar.autoLayoutHub}}** | Puts tables with many relationships in the center and the others around them |
-| **{{model.editor.toolbar.autoLayoutHybrid}}** | Mixes the two modes |
+| **{{model.editor.toolbar.autoLayoutHybrid}}** | Combines the two modes |
 | **{{model.editor.toolbar.autoLayoutDown}}** | Parents at the top, children below |
 | **{{model.editor.toolbar.autoLayoutRight}}** | Parents on the left, children on the right |
 
-* Large documents take a few seconds to calculate. The screen does not freeze while it is calculating, and you can stop it with **{{model.editor.toolbar.autoLayoutCancel}}**.
+* Large documents can take a few seconds to lay out. The screen stays responsive meanwhile, and you can stop the layout with **{{model.editor.toolbar.autoLayoutCancel}}**.
 * If you do not like the result, a single undo puts everything back where it was.
 * Notes are placed near their linked table.
 
@@ -272,9 +294,13 @@ Click the button to rearrange the tables in the selected mode. Click the arrow t
 
 | Item | Description |
 |---|---|
-| **{{model.editor.image.viewport}}** | Downloads the part you see on the screen as a PNG image |
+| **{{model.editor.image.viewport}}** | Downloads the visible area as a PNG image |
 | **{{model.editor.image.document}}** | Downloads the whole document as a single PNG image |
-| **{{model.editor.toolbar.crown}}** | Downloads the document as a .crown file. You can bring it back with **{{model.import.button}}** |
+| **{{model.editor.toolbar.crown}}** | Downloads the document as a .crown file. You can reopen it with **{{model.import.button}}** |
+
+* While an image is being created, its progress is shown, and you cannot use the canvas until it finishes.
+* The image items are not available in an empty document with no tables or notes.
+* You can export even a read-only document.
 
 ### 5.5 The Tools menu
 
@@ -283,11 +309,11 @@ Click the button to rearrange the tables in the selected mode. Click the arrow t
 | Item | Description | Details |
 |---|---|---|
 | **{{model.editor.toolbar.logicalNames}}** | Fills in empty logical names from the dictionary | Section 9.7 |
-| **{{model.editor.toolbar.sync}}** | Compares the document with the connected database and brings them in line. Shown only for connected documents | Section 10.4 |
+| **{{model.editor.toolbar.sync}}** | Compares the document with the connected database and syncs them. Shown only for connected documents | Section 10.4 |
 | **{{database.openShort}}** | Opens the data browser of the connected database in a new window | Section 11 |
 | **{{model.editor.toolbar.dbmsConvert}}** | Creates a new document that differs only in its target DBMS | Section 10.5 |
 | **{{model.editor.domainType.menu}}** | Opens the list of domain types | Section 9.3 |
-| **{{model.editor.toolbar.history}}** | View, compare, and restore saved versions | Section 14 |
+| **{{model.editor.toolbar.history}}** | Views, compares, and restores saved versions | Section 14 |
 
 ### 5.6 The View menu
 
@@ -296,25 +322,25 @@ Click the button to rearrange the tables in the selected mode. Click the arrow t
 | Section | Items | Description |
 |---|---|---|
 | **{{model.editor.toolbar.nameMode.label}}** | {{model.editor.toolbar.nameMode.physical}}, {{model.editor.toolbar.nameMode.logical}}, {{model.editor.toolbar.nameMode.both}} | Chooses which name is shown for columns |
-| **{{model.editor.toolbar.columnMode.label}}** | {{model.editor.toolbar.columnMode.all}}, {{model.editor.toolbar.columnMode.keys}} | Keys only shows just the PK and FK columns, so you can take in a large document at a glance |
+| **{{model.editor.toolbar.columnMode.label}}** | {{model.editor.toolbar.columnMode.all}}, {{model.editor.toolbar.columnMode.keys}} | The keys-only option shows only PK and FK columns, which makes a large document easier to scan |
 | **{{model.editor.toolbar.areaFilter.label}}** | {{model.editor.toolbar.areaFilter.all}}, group names | Shows only the tables of the selected group |
 
-View settings change only what is displayed. The document itself does not change.
+View settings affect only the display. The document itself does not change, and view changes are not recorded in the undo history. While only keys are shown, the **{{model.editor.table.addColumn}}** button is hidden.
 
 ### 5.7 Moving around the canvas
 
-* Drag an empty spot, or hold `Space` and drag, to move the view.
+* Drag an empty area, or hold `Space` and drag, to pan the view.
 * Zoom in and out with the mouse wheel or the − + buttons on the toolbar.
-* Click the minimap at the bottom right to go to that spot.
-* Hold `Shift` and click objects to select several of them. `Ctrl/Cmd+A` selects everything.
+* Click the minimap at the bottom right to jump to that area.
+* Hold `Shift` and click objects to select more than one. `Ctrl/Cmd+A` selects everything.
 
 ## 6. Tables and columns
 
 ### 6.1 Creating a table
 
-![The right-click menu of an empty spot](/guide-assets/en/editor-context-canvas.webp)
+![The right-click menu on an empty area of the canvas](/guide-assets/en/editor-context-canvas.webp)
 
-Right-click an empty spot on the canvas and choose **{{model.editor.contextMenu.createTable}}**. A table is created where you clicked.
+Right-click an empty area of the canvas and choose **{{model.editor.contextMenu.createTable}}**. A table is created where you clicked.
 
 ### 6.2 The parts of a table
 
@@ -323,53 +349,53 @@ Right-click an empty spot on the canvas and choose **{{model.editor.contextMenu.
 | Part | Description |
 |---|---|
 | Color band | The logical name of the table. Drag the band to move the table |
-| Name row | The physical name of the table. Click it to edit in place. The ⓘ on the right is **{{model.editor.table.info}}** |
-| Column row | Drag the six dots on the left to reorder. The key icon marks a primary key |
+| Name row | The physical name of the table. Click it to edit in place. The ⓘ on the right opens **{{model.editor.table.info}}** |
+| Column row | Drag the six-dot handle on the left to reorder columns. The key icon marks a primary key |
 | Column name | Physical name on top, logical name below. Click to edit in place |
 | Type, length | The data type and length (or precision and scale). Click to edit |
-| **NN** | NOT NULL. Click to turn it on or off. It is always on for primary key columns |
-| **AI** | Auto increment. Can be turned on only for a primary key with an integer type |
-| **FK** | A foreign key column. It was created by a relationship |
+| **NN** | NOT NULL. Click to toggle it. It is always on for primary key columns |
+| **AI** | Auto increment. Available only for a primary key with an integer type |
+| **FK** | A foreign key column created by a relationship |
 | **D** | A column that uses a domain type (section 9.4) |
 | × | Deletes the column |
 | **{{model.editor.table.addColumn}}** | Adds a column at the bottom |
 | **{{model.editor.key.addUnique}}**, **{{model.editor.key.addIndex}}** | Create a unique key or an index (section 6.5) |
 | Dots on the border | Handles for starting a relationship (section 7.1) |
 
-Primary key columns are always gathered at the top.
+Primary key columns always stay at the top.
 
 ### 6.3 Column info
 
 ![Column info](/guide-assets/en/editor-column-info.webp)
 
-Double-click a column name to open the **{{model.editor.columnInfo.title}}** dialog. It lets you edit everything in one place, including properties that cannot be edited directly on the table.
+Double-click a column name to open the **{{model.editor.columnInfo.title}}** dialog. Here you can edit every property in one place, including those you cannot edit directly on the table.
 
 | Field | Description |
 |---|---|
-| {{model.editor.columnInfo.physicalName}} | The column name created in the database |
-| {{model.editor.columnInfo.logicalName}} | The name people read. It goes out as a COMMENT when SQL is generated |
+| {{model.editor.columnInfo.physicalName}} | The column name used in the database |
+| {{model.editor.columnInfo.logicalName}} | The human-readable name. Generated SQL includes it as a COMMENT |
 | {{model.editor.columnInfo.pk}} | Turning it on makes the column NOT NULL and moves it to the top |
 | {{model.editor.columnInfo.nullable}} | Sets whether the column accepts NULL |
-| {{model.editor.columnInfo.autoIncrement}} | Can be turned on only for a primary key of type INT, BIGINT, or SMALLINT |
+| {{model.editor.columnInfo.autoIncrement}} | Available only for a primary key of type INT, BIGINT, or SMALLINT |
 | {{model.editor.domainType.label}} | Choosing a domain type fills in the type, length, nullability, and default value from it (section 9.4) |
 | {{model.editor.columnInfo.dataType}}, {{model.editor.columnInfo.length}} | Depending on the type, a length field or precision and scale fields appear |
 | {{model.editor.columnInfo.defaultValue}} | For example `0` or `NOW()` |
-| {{model.editor.columnInfo.comment}} | A description of the column |
+| {{model.editor.columnInfo.comment}} | A description of the column used only within the document. It is not included in the SQL COMMENT |
 
-Type names are shown the way the DBMS writes them. For example, the date and time type appears as TIMESTAMP in a PostgreSQL document and as DATETIME in a MySQL document.
+Type names follow the notation of the target DBMS. For example, the date and time type appears as TIMESTAMP in a PostgreSQL document and as DATETIME in a MySQL document.
 
 ### 6.4 Table info
 
 ![Table info](/guide-assets/en/editor-table-info.webp)
 
-Click the ⓘ on a table, or choose **{{model.editor.contextMenu.tableInfo}}** from the right-click menu. Set the physical name, logical name, description, and color. For a table in a group, the group color takes priority. A table linked to requirements lists them here, and clicking one opens it in the requirements panel (section 20.3).
+Click the ⓘ on a table, or choose **{{model.editor.contextMenu.tableInfo}}** from the right-click menu. Set the physical name, logical name, description, and color. For a table in a group, the group color takes priority. If the table is linked to requirements, they are listed here; click one to open it in the requirements panel (section 20.3).
 
 ### 6.5 Unique keys and indexes
 
 ![Adding an index](/guide-assets/en/editor-key-dialog.webp)
 
 1. Click **{{model.editor.key.addUnique}}** or **{{model.editor.key.addIndex}}** at the bottom of the table.
-2. Enter a name and choose the columns. The order you choose them in is the column order of a composite key. Use the arrows to change the order.
+2. Enter a name and choose the columns. The order in which you select them becomes the column order of a composite key. Use the arrows to change the order.
 3. For an index, you can set the sort order (ASC, DESC) of each column.
 
 The keys you create appear as **UK** and **IX** rows at the bottom of the table. Click a row to edit or delete it. When you create a relationship, an index on the foreign key column is created automatically.
@@ -382,7 +408,7 @@ The keys you create appear as **UK** and **IX** rows at the bottom of the table.
 
 1. Click a dot on the border of the table that will be the parent.
 2. In the **{{model.editor.relation.startMenu}}** dialog, choose the relationship type, multiplicity, and relationship kind.
-3. Click the table that will be the child. For a self-reference, click the same table. Press `Esc` to cancel.
+3. Click the table that will be the child. For a self-referencing relationship, click the same table. Press `Esc` to cancel.
 
 A foreign key column is created in the child table automatically. You cannot create a relationship if the parent table has no primary key.
 
@@ -415,12 +441,12 @@ Right-click a relationship line to see **{{model.editor.contextMenu.editRelation
 
 ![Column mapping](/guide-assets/en/editor-relationship-mapping.webp)
 
-Creating a relationship adds a new foreign key column. If you want to use an existing column as the foreign key instead, choose that column in the column mapping.
+Creating a relationship adds a new foreign key column. To use an existing column as the foreign key instead, select it in the column mapping.
 
 * From the list, choose another column of the child table, or choose **{{model.editor.relationship.mappingNewColumn}}**.
 * If the type of the chosen column differs from the parent column, the **{{model.editor.relationship.mappingAlignType}}** checkbox appears.
-* The old foreign key column that is no longer used can be deleted at the same time with **{{model.editor.relationship.mappingRemoveReleased}}**.
-* The same child column cannot be chosen twice.
+* Select **{{model.editor.relationship.mappingRemoveReleased}}** to delete the old foreign key column that is no longer used at the same time.
+* You cannot map the same child column twice.
 
 ## 8. Notes, groups, and copying
 
@@ -428,7 +454,7 @@ Creating a relationship adds a new foreign key column. If you want to use an exi
 
 ![A note](/guide-assets/en/editor-note.webp)
 
-* Choose **{{model.editor.contextMenu.createNote}}** from the right-click menu of an empty spot.
+* Choose **{{model.editor.contextMenu.createNote}}** from the right-click menu on an empty area.
 * Double-click a note to edit its text. Drag the band at the top to move it.
 * In the note edit dialog, set the title, color, and **{{model.editor.note.linkedTable}}**. Dropping a note onto a table also sets its linked table.
 * A note with a linked table is placed near that table by auto layout.
@@ -438,12 +464,12 @@ Creating a relationship adds a new foreign key column. If you want to use an exi
 
 ![Editing a group](/guide-assets/en/editor-group-dialog.webp)
 
-Groups collect tables by topic. A table in a group has a band in the group color.
+Groups organize tables by topic. A table in a group shows the group color in its band.
 
-* Select a table and click **{{model.editor.contextMenu.createGroup}}** in the right-click menu. You can select several tables at once.
+* Select one or more tables and choose **{{model.editor.contextMenu.createGroup}}** from the right-click menu.
 * Add and remove tables with **{{model.editor.contextMenu.addToGroup}}** and **{{model.editor.contextMenu.removeFromGroup}}**.
 * In **{{model.editor.contextMenu.editGroup}}**, edit the name, description, color, and member tables.
-* You can show a single group from the **{{model.editor.toolbar.view}}** menu or the explorer.
+* To show only one group, use the **{{model.editor.toolbar.view}}** menu or the explorer.
 * While viewing a single group, choose **{{model.editor.contextMenu.exitGroupView}}** from the right-click menu to return to the whole document.
 
 ### 8.3 The right-click menu of a table
@@ -463,21 +489,21 @@ Groups collect tables by topic. A table in a group has a band in the group color
 
 * Copy with `Ctrl/Cmd+C` and paste with `Ctrl/Cmd+V`. `Ctrl/Cmd+D` duplicates.
 * When you copy several tables together, the relationships between them are copied too.
-* Pasted tables are renamed automatically so that names do not clash.
+* Pasted tables are renamed automatically to avoid name conflicts.
 * You can also paste into another document open in the same browser. Very large content can be pasted only within the same document.
-* Choose **{{model.editor.contextMenu.paste}}** from the right-click menu of an empty spot to paste where you clicked.
+* Choose **{{model.editor.contextMenu.paste}}** from the right-click menu on an empty area to paste where you clicked.
 
 ## 9. Standards — words, terms, and domain types
 
-A workspace keeps standards so that column names and types are not written differently from document to document. There are three kinds.
+A workspace keeps naming standards so that column names and types stay consistent across documents. There are three kinds.
 
 | Standard | What it defines | Example |
 |---|---|---|
-| Word | One part of a name and its meaning | `user` → Members, `email` → Email |
-| Term | A whole column name, its meaning, and the type it uses | `user_email` → Members Email, domain type "Email" |
+| Word | One part of a name and its meaning | `user` → Member, `email` → Email |
+| Term | A whole column name, its meaning, and the type it uses | `user_email` → Member Email, domain type "Email" |
 | Domain type | A type definition shared by many columns | Email = VARCHAR(191), NOT NULL |
 
-Words and terms are registered in the same dictionary. An entry that points to a domain type or has a type written in is a term; any other entry is a word. Every document in the workspace shares the same standards.
+Words and terms are registered in the same dictionary. An entry that points to a domain type or specifies a type is a term; any other entry is a word. Every document in the workspace shares the same standards.
 
 ### 9.1 Opening the standards panel
 
@@ -487,7 +513,7 @@ Click **{{model.editor.termDictionary.toggle}}** on the toolbar to open the pane
 |---|---|
 | **{{model.editor.termDictionary.tabStandard}}** | The words and terms of this workspace |
 | **{{model.editor.domainType.menu}}** | The domain types of this workspace |
-| **{{model.editor.termDictionary.tabSystem}}** | The shared dictionary registered by administrators. Read-only |
+| **{{model.editor.termDictionary.tabSystem}}** | The shared dictionary maintained by administrators. Read-only |
 
 ### 9.2 Registering words and terms
 
@@ -495,7 +521,7 @@ Click **{{model.editor.termDictionary.toggle}}** on the toolbar to open the pane
 
 * Use the search box to find a token or label.
 * Click **{{model.editor.termDictionary.add}}** to open the registration dialog. Click an entry in the list to edit it.
-* A term shows the name of the domain type it points to as a purple badge. Click the badge to go to that entry in the Domain types tab.
+* A term shows its domain type as a purple badge. Click the badge to go to that entry in the Domain types tab.
 
 ![Editing a term](/guide-assets/en/standard-term-dialog.webp)
 
@@ -503,10 +529,10 @@ Click **{{model.editor.termDictionary.toggle}}** on the toolbar to open the pane
 |---|---|
 | {{model.editor.termDictionary.term}} | The text used in column names. Enter `email` for a word, or the whole name such as `user_email` for a term |
 | {{model.editor.termDictionary.label}} | The text to use as the logical name |
-| {{model.editor.domainType.label}} | Choosing one makes the entry a term. The type is defined by the domain type |
-| **{{model.editor.termDictionary.promote}}** | Creates a new domain type from the type written in and links it. If one with the same name exists, that one is selected |
+| {{model.editor.domainType.label}} | Choosing one makes the entry a term, and its type comes from the domain type |
+| **{{model.editor.termDictionary.promote}}** | Creates a domain type from the type you entered and links it. If a domain type with the same name already exists, it is selected instead |
 
-Registering the same token again overwrites it. A term registered as a whole name takes priority over the result of joining words together.
+Registering the same token again overwrites it. A term registered as a whole name takes priority over a name assembled from words.
 
 ### 9.3 Creating a domain type
 
@@ -515,8 +541,8 @@ Registering the same token again overwrites it. A term registered as a whole nam
 You can also open the Domain types tab with **{{model.editor.toolbar.tools}}** › **{{model.editor.domainType.menu}}**.
 
 * Each entry shows its type and nullability, the number of columns using it in the current document, and the number of terms pointing to it.
-* Click the number of terms, and the dictionary tab shows only the terms that point to that domain type.
-* The number of columns counts only the document that is open now.
+* Click the term count to show, in the dictionary tab, only the terms that point to that domain type.
+* The column count covers only the currently open document.
 
 ![Adding a domain type](/guide-assets/en/standard-domain-dialog.webp)
 
@@ -530,26 +556,26 @@ Click **{{model.editor.domainType.add}}** and enter the name, type, length (or p
 2. Choose a domain type under **{{model.editor.domainType.label}}**. The type, length, nullability, and default value are filled in.
 3. Save. A **D** badge appears next to the column name on the table.
 
-A column can also use values of its own. If you choose a domain type and then edit the length yourself, a "Differs from the domain type" label appears, and that property no longer follows changes to the domain type. Use **{{model.editor.domainType.revert}}** to go back.
+A column can also override the domain type's values. If you choose a domain type and then edit the length yourself, a "Differs from the domain type" label appears, and that property no longer follows changes to the domain type. Use **{{model.editor.domainType.revert}}** to go back.
 
-The type of a foreign key column follows its parent column, so it cannot use a domain type.
+A foreign key column cannot use a domain type, because its type follows the parent column.
 
 ### 9.5 Suggestions while you type a column name
 
 ![Dictionary suggestions](/guide-assets/en/standard-suggest.webp)
 
-When you type a column name on a table, the matching dictionary entries appear below it.
+As you type a column name on a table, matching dictionary entries appear below it.
 
-* The top line is the logical name that the name you have typed will produce.
+* The top line shows the logical name produced from what you have typed.
 * **{{model.editor.table.termGroupTerms}}**: Choosing one replaces the whole name with that term and fills in the logical name and domain type as well.
-* **{{model.editor.table.termGroupWords}}**: Choosing one replaces only the part you are typing with that word. You can go on to type the next part.
+* **{{model.editor.table.termGroupWords}}**: Choosing one replaces only the part you are typing with that word. You can then continue typing the next part.
 * Choose with the arrow keys and insert with `Enter`. Press `Esc` to close.
 
 In the column info dialog, a **Dictionary standard** notice appears when the column name matches a term in the dictionary. Click **{{model.editor.domainType.standardApply}}** to apply the domain type of that term.
 
 ### 9.6 When a domain type is edited
 
-Editing the values of a domain type does not change the columns in your documents by itself. When you open a document, Crowfoot tells you about the change and asks which columns to apply it to.
+Editing a domain type does not automatically change the columns in your documents. When you open a document, Crowfoot notifies you of the change and asks which columns to apply it to.
 
 ![The notice that domain types have changed](/guide-assets/en/standard-banner.webp)
 
@@ -557,12 +583,12 @@ Click **{{model.editor.domainType.banner.review}}** to open the dialog for apply
 
 ![The propagation dialog](/guide-assets/en/standard-propagation.webp)
 
-* For each column, it shows the properties that change and their values.
-* Only the columns you tick are changed to the new values. Columns you leave unticked keep their values and stay marked as "differs".
+* For each column, the dialog lists the properties that will change and their new values.
+* Only the columns you select get the new values. Unselected columns keep their values and stay marked as "differs".
 * Properties you edited directly on a column are skipped.
 * Click **{{model.editor.domainType.propagation.skipAll}}** to change no columns at all.
 
-Deleting a domain type leaves the values of the columns as they are. The columns only show a "Link broken" label.
+Deleting a domain type does not change column values; the affected columns only show a "Link broken" label.
 
 ### 9.7 Logical name inference
 
@@ -572,14 +598,14 @@ Deleting a domain type leaves the values of the columns as they are. The columns
 
 * It splits each name at `_` and looks up every part in the dictionary. The workspace dictionary takes priority over the system dictionary.
 * Use **{{model.editor.logicalNames.languageLabel}}** to choose which language of the system dictionary to use.
-* Choose the items to fill in and apply. Existing logical names are left untouched.
+* Select the items to fill in, then apply. Existing logical names are left untouched.
 * After applying, a single undo puts everything back.
 
 ### 9.8 The system dictionary
 
 ![The system dictionary](/guide-assets/en/standard-system.webp)
 
-The system dictionary is a set of shared words registered by administrators. It has labels in several languages and can be read from every workspace. Use the row of initial letters to find words by letter. If you register the same token in the workspace dictionary, the workspace entry takes priority and an **{{model.editor.termDictionary.overridden}}** label is shown.
+The system dictionary is a set of shared words maintained by administrators. It has labels in several languages and can be read from every workspace. Use the initial-letter bar to find words by their first letter. If you register the same token in the workspace dictionary, the workspace entry takes priority and an **{{model.editor.termDictionary.overridden}}** label is shown.
 
 ## 10. SQL and databases
 
@@ -589,20 +615,25 @@ The system dictionary is a set of shared words registered by administrators. It 
 
 The **{{workspace.detail.tabs.database}}** tab of a workspace has two parts.
 
-**{{managed.sectionTitle}}** — If you have no database to practice or test with, Crowfoot gives you one.
+**{{managed.sectionTitle}}** — If you do not have a database for practice or testing, Crowfoot provides one. This section appears only when an administrator has set up service-provided databases.
 
 * Click **{{managed.issue}}** to create a dedicated schema, which is registered as a connection automatically.
-* You can choose PostgreSQL or MySQL, and each account gets up to five for free.
-* Click the key icon to see the host address, user, and password. You can use them as they are in an external tool such as DBeaver.
-* The trash icon revokes the database. The schema and all the data in it are deleted, and this cannot be undone.
+* You can choose PostgreSQL or MySQL. The number each person can create per workspace is set by the administrator; the default is five. The section shows how many you have used and the limit.
+* Each database gets its own dedicated account, which can access only its own schema.
+* Click the key icon to see the host address, user, and password. You can use them directly in an external tool such as DBeaver. Only the person who created the database can see these credentials.
+* The trash icon revokes the database. The schema and all the data in it are deleted, and this cannot be undone. Only the person who created the database can revoke it.
+* A connection created this way can only be renamed. You cannot edit its connection details or delete it; to remove it, revoke the database.
 
 **Connection list** — Register the connection details of your own databases.
 
 ![Adding a connection](/guide-assets/en/connection-dialog.webp)
 
-* Click **{{connection.list.newConnection}}** and enter the name, DBMS, host, port, database, user, and password. The password is stored encrypted.
-* Each row of the list has buttons to test the connection, import from the DB into a document, browse data, edit, and delete.
-* When a connection test succeeds, the time it took is shown as well.
+* Click **{{connection.list.newConnection}}** and enter the name, DBMS, host, port, database, user, and password. Choosing a DBMS fills in the default port (MySQL 3306, PostgreSQL 5432). The password is stored encrypted and is never shown again.
+* When you edit a connection, leave the password field empty to keep the existing password.
+* Editors and above can register, edit, delete, and test connections. All members can see the list.
+* Each row has buttons to test the connection, import from DB, browse data, edit, and delete.
+* Registering a connection does not test it automatically. After registering, check it with the Test connection button. A successful test shows how long it took; a failed test shows the cause (host unreachable, authentication failed, or timed out).
+* Once a connection is registered, members with the Editor role or higher can view and edit that database's data in the data browser (section 11). Keep this in mind before registering a production database.
 * Deleting a connection does not delete the documents created from it.
 * **{{connection.dialog.mcpApply}}** is the switch that lets Claude change the structure of this database over MCP. It is off by default (section 20.4).
 
@@ -612,38 +643,38 @@ The **{{workspace.detail.tabs.database}}** tab of a workspace has two parts.
 
 Click **{{model.editor.toolbar.ddl}}** in the editor to get a script of the whole document in the syntax of the target DBMS.
 
-* It includes tables, primary keys, unique keys, indexes, foreign keys, and comments. Logical names go out as COMMENT.
+* It includes tables, primary keys, unique keys, indexes, foreign keys, and comments. Logical names are output as COMMENT clauses.
 * Copy it with **{{model.editor.ddl.copy}}** or get a .sql file with **{{model.editor.ddl.download}}**.
 * The script is based on the last saved content. If you have unsaved changes, a notice tells you so.
-* Anything you should watch out for is listed under **{{model.editor.ddl.warningTitle}}**.
+* Potential issues are listed under **{{model.editor.ddl.warningTitle}}**.
 
 ### 10.3 Deploying
 
 ![Deploying to a database](/guide-assets/en/editor-deploy.webp)
 
-Click **{{model.editor.deploy.button}}** in the SQL script dialog to run the script directly on the database of a connection.
+Click **{{model.editor.deploy.button}}** in the SQL script dialog to run the script directly against a connected database.
 
 1. Choose the **{{model.editor.deploy.connection}}**. Only connections with the same DBMS as the document are listed.
 2. Click **{{model.editor.deploy.run}}**.
-3. Success or failure is shown for each statement. A statement that clashes with an existing object is recorded as failed, and the rest keep running.
+3. Success or failure is shown for each statement. A statement that conflicts with an existing object is recorded as failed, and the rest continue to run.
 
-This feature is for creating everything in an empty database for the first time. To change a database that already exists, use migration DDL (sections 10.4 and 14.3).
+Deploy is meant for creating the full schema in an empty database. To change an existing database, use migration DDL (sections 10.4 and 14.3).
 
 ### 10.4 Sync DB
 
 ![Syncing with a database](/guide-assets/en/editor-sync.webp)
 
-Use this when the document and the real database have drifted apart. Open it with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.sync}}**. It is shown only for documents connected to a database.
+Use this when the document and the real database are out of sync. Open it with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.sync}}**. It is shown only for documents connected to a database.
 
 | Button | Direction | Description |
 |---|---|---|
-| **{{model.editor.sync.compare}}** → **{{model.editor.sync.apply}}** | Database → document | Compares the current structure of the database with the document, shows the differences, and brings the document in line with the database |
+| **{{model.editor.sync.compare}}** → **{{model.editor.sync.apply}}** | Database → document | Compares the current structure of the database with the document, shows the differences, and updates the document to match the database |
 | **{{model.editor.migration.button}}** | Document → database | Turns the differences between the document and the database into ALTER statements. You can run them right away with **{{model.editor.migration.apply}}** |
 
-* When the document is brought in line, properties that exist only in the document, such as table colors, positions, and notes, are kept. A single undo puts everything back.
+* When the document is updated, document-only properties such as table colors, positions, and notes are kept. A single undo puts everything back.
 * Running migration DDL on a database cannot be undone. Statements that drop a column or a table are not run by default; only additions and changes are applied. To run them too, turn on **{{model.editor.migration.destructiveToggle}}**. If you link a new document to a database that is already in use, every existing table missing from the document shows up as a deletion, so check carefully.
 
-To connect a document that is not connected, use **{{model.list.menu.connect}}** in the row menu of the document list.
+To connect an unconnected document, use **{{model.list.menu.connect}}** in its row menu in the document list.
 
 ### 10.5 Duplicating for another DBMS
 
@@ -651,43 +682,49 @@ To connect a document that is not connected, use **{{model.list.menu.connect}}**
 
 **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}** creates a new document that differs only in its target DBMS. The original document is not changed.
 
-* Before creating it, Crowfoot shows the types whose notation changes and the types that do not fit the target DBMS.
-* Types that do not fit are kept in the new document with their original values. Fix them yourself afterwards.
+* Before creating it, Crowfoot shows the types whose notation changes and the types that are incompatible with the target DBMS.
+* Incompatible types keep their original values in the new document. Fix them yourself afterward.
+* Unsaved edits are included in the new document.
+* If the target DBMS does not create indexes for foreign keys automatically, indexes are added to foreign key columns that do not have one. These indexes are also shown before the document is created.
+* The new document is named "original name (target DBMS)" by default, and you can change it.
 
 ## 11. The data browser
 
 The data browser is a window for viewing and editing the real data of a connection. You can open it from three places.
 
-* The browse data button on a connection row in the Database tab
+* The Browse data button on a connection row in the Database tab
 * **{{model.editor.toolbar.tools}}** › **{{database.openShort}}** in the editor
 * Right-click a table in the editor › **{{model.editor.contextMenu.viewTableData}}**
 
-You need the Editor role or higher. What you can actually do depends on the permissions of the database account registered in the connection. If the account has no write permission, row edits and SQL that writes will fail.
+You need the Editor role or higher; Viewers and Commenters do not see the browse data buttons. What you can actually do depends on the permissions of the database account registered in the connection. If the account has no write permission, row edits and write statements fail.
+
+Each statement must finish within 8 seconds. After 8 seconds it is canceled, so narrow the conditions and run it again. Each person can run up to two requests at the same time.
 
 ### 11.1 The Data tab — viewing
 
 ![The Data tab](/guide-assets/en/data-tab.webp)
 
 * Choose a table or view from the list on the left. The number next to the name is an estimated row count.
-* Use **{{database.data.addFilter}}** to set a column, operator, and value, then click **{{database.data.apply}}**. You can add several conditions.
+* Use **{{database.data.addFilter}}** to set a column, operator, and value, then click **{{database.data.apply}}**. You can add up to 10 conditions, and only rows that meet all of them are shown. Nothing is queried while you type a value; the query runs only when you click **{{database.data.apply}}**.
 * The operators are `=`, `≠`, `<`, `≤`, `>`, `≥`, {{database.data.op.CONTAINS}}, {{database.data.op.STARTS_WITH}}, {{database.data.op.IN}}, {{database.data.op.IS_NULL}}, and {{database.data.op.IS_NOT_NULL}}.
-* Click a column header to sort by that column.
-* Move between pages at the bottom. Click **{{database.data.countExact}}** to count the exact total number of rows.
-* **{{database.data.downloadCsv}}** downloads the result of the current conditions as a file.
-* If an ERD document is connected to the connection, the column headers also show the logical names from that document.
-* Long values are shortened. Click a cell to see the whole value.
+* Click a column header to sort by that column. Click it again to reverse the order.
+* Rows are shown 100 per page; move between pages at the bottom. Until you click **{{database.data.countExact}}**, an estimated row count is shown; click it to count the exact total number of rows.
+* **{{database.data.downloadCsv}}** downloads the rows currently shown on screen as a CSV file. Rows on other pages are not included.
+* If an ERD document is linked to the connection, the column headers also show the logical names from that document.
+* Long values are truncated, with their full character count shown at the end. Click a cell to see the whole value.
+* NULL appears as a dimmed `NULL`, and an empty string appears as an empty cell. For binary values, only the size is shown.
 
 ### 11.2 The Data tab — editing rows
 
 ![Editing rows](/guide-assets/en/data-edit.webp)
 
-Your edits are not applied right away. They are collected and applied together.
+Edits are not applied immediately. They are queued and applied together.
 
 | What you do | How | How it is marked |
 |---|---|---|
 | Edit a value | Double-click the cell, type the value, and press `Enter` | The cell turns orange |
-| Set to NULL | The **{{database.edit.setNull}}** button while editing | The cell turns orange |
-| Add a row | **{{database.edit.addRow}}** | The row turns green |
+| Set to NULL | The **{{database.edit.setNull}}** button while editing. It appears only for columns that accept NULL | The cell turns orange |
+| Add a row | **{{database.edit.addRow}}**. A blank row appears at the top of the table | The row turns green |
 | Delete a row | The trash icon to the left of the row | The row turns red, with the text struck through |
 | Cancel | The undo icon to the left of the row, or **{{database.edit.discard}}** | The mark disappears |
 
@@ -695,9 +732,15 @@ The bar at the bottom shows how many rows are added, edited, and deleted. Click 
 
 ![Confirming the changes](/guide-assets/en/data-apply-confirm.webp)
 
-* The changes are applied as one batch. If any one fails, all of them are rolled back.
+* The changes are applied as one batch. If any change fails, all of them are rolled back.
 * A warning appears if the batch includes deletions. Changes cannot be undone once applied.
-* Views and tables without a primary key cannot be edited.
+* The data of views and tables without a primary key cannot be edited. In that case, the reason is shown above the tab.
+* Cells left blank in a new row get the database's default value.
+* Clearing a cell sets it to an empty string. To set NULL, use the **{{database.edit.setNull}}** button.
+* A cell changed back to its original value is dropped from the changes.
+* Up to 100 changes can be applied at once.
+* If applying fails, the changes stay on screen, and the failed rows show the database's error message.
+* If you move to another table or tab, or close the window, with unapplied changes, a confirmation dialog appears.
 
 ### 11.3 The Structure tab
 
@@ -710,21 +753,24 @@ Shows the columns (name, type, nullability, default value, comment), indexes, an
 ![The SQL tab](/guide-assets/en/data-sql.webp)
 
 * Write SQL and click **{{database.sql.run}}** or press `Ctrl/Cmd+Enter`. Only the statement under the cursor, or the selected text, is run.
-* Table and column names are autocompleted.
-* Query results appear in the table below. If there are many results, only the first part is shown and a notice tells you so.
-* For statements that change data, the number of affected rows is shown.
-* Use the history button to bring back statements you ran earlier.
-* Running a statement that changes the table structure can make the database differ from the ERD document. Bring the change into the document with **{{model.editor.toolbar.sync}}**.
+* Syntax highlighting follows the DBMS of the connection. SQL keywords and table and view names are autocompleted. Column names are not.
+* Query results appear in the table below. For large results, only the first 500 rows are shown, along with a notice. The result table cannot be sorted by its headers; to sort, use `ORDER BY` in the statement. You can download the results as a CSV file.
+* A confirmation dialog appears before a statement that changes data or structure runs. Once run, it cannot be undone.
+* For statements that change data, the number of affected rows is shown. If an error occurs, the database's error message is shown as is.
+* Use the history button to recall statements you ran earlier. The history keeps up to the last 50 statements per connection, stored only in this browser.
+* Statements that change the table structure can leave the database out of sync with the ERD document. In that case, bring the change into the document with **{{model.editor.toolbar.sync}}**.
 
 ## 12. Validation
 
 ![Design validation](/guide-assets/en/editor-validation.webp)
 
-Click **{{model.validation.toggle}}** on the toolbar to open the **{{model.validation.title}}** panel on the left. The document is checked again every time you edit it.
+Click **{{model.validation.toggle}}** on the toolbar to open the **{{model.validation.title}}** panel on the left. The document is rechecked every time you edit it.
 
-* Use the level buttons at the top to show errors, warnings, or info.
-* Click an item to move the canvas to that table.
-* Tables with issues are also marked on the canvas.
+* Use the level buttons at the top to filter by errors, warnings, or info.
+* Click an item to jump to that table on the canvas.
+* While the panel is open, tables with issues also have their borders marked in the level's color on the canvas. Info-level issues are not marked on the canvas.
+* The **{{model.validation.toggle}}** button on the toolbar shows the number of errors, or the number of warnings if there are no errors. The count stays up to date even when the panel is closed.
+* Errors do not block saving. Errors are problems that can make applying the document to a database fail, so fix them before deploying.
 
 | Level | Rule | Meaning |
 |---|---|---|
@@ -739,7 +785,7 @@ Click **{{model.validation.toggle}}** on the toolbar to open the **{{model.valid
 | Warning | {{model.validation.rules.MISSING_PK}} | A table has no primary key |
 | Warning | {{model.validation.rules.EMPTY_TABLE}} | A table has no columns |
 | Warning | {{model.validation.rules.FK_MAPPING_EMPTY}} | A relationship has no linked columns |
-| Warning | {{model.validation.rules.ORPHAN_TABLE}} | A table has no relationship with any other table |
+| Warning | {{model.validation.rules.ORPHAN_TABLE}} | A table is not related to any other table |
 | Warning | {{model.validation.rules.CIRCULAR_REFERENCE}} | Foreign keys form a loop that leads back to the same table |
 | Warning | {{model.validation.rules.NAMING_CONVENTION}} | A physical name does not follow the naming rules |
 | Warning | {{model.validation.rules.MISSING_LOGICAL_NAME}} | A logical name is empty |
@@ -752,18 +798,26 @@ Click **{{model.validation.toggle}}** on the toolbar to open the **{{model.valid
 
 ![Sharing a document](/guide-assets/en/editor-share.webp)
 
-Click **{{model.editor.toolbar.share}}** and then **{{model.share.issue}}** to create a link. Anyone who knows the link can read the document without signing in. They cannot edit it.
+Click **{{model.editor.toolbar.share}}** and then **{{model.share.issue}}** to create a link. Anyone with the link can view the document without signing in, but cannot edit it.
 
-* Choose **{{model.share.period.unlimited}}** or **{{model.share.period.custom}}**. If you set a period, the link does not open outside the start and end date and time.
+* Choose **{{model.share.period.unlimited}}** or **{{model.share.period.custom}}**. With a custom period, the link works only between the start and end date and time.
 * Each link shows its number of views, likes, and comments.
-* Use the copy icon to copy the address and the trash icon to revoke the link. A revoked link stops opening right away.
-* Shared documents also appear in the share gallery on the start page. Select **{{landing.gallery.more}}** under the gallery to search every shared document by name or description and page through the list.
+* Use the copy icon to copy the address and the trash icon to revoke the link. A revoked link stops working immediately.
+* Editors and above can create and revoke links. A document can have several links.
+* A share link shows the latest content of the document, not a copy taken when the link was created.
+* Shared documents also appear in the share gallery on the start page. Click **{{landing.gallery.more}}** under the gallery to search every shared document by name or description and page through the list.
 
-On the shared page, people can view the ERD, download the SQL script, and leave likes and comments. Only signed-in people can leave a like. People who are not signed in enter a nickname and a password to leave a comment.
+On the shared page, people can view the ERD, download the SQL script, and leave likes and comments. Only signed-in users can like a document. Visitors who are not signed in can comment by entering a nickname and a password.
 
 ### 13.2 The Comments tab
 
-The **{{shareViewer.tab.comments}}** tab at the bottom of the editor collects the likes and comments that came in through share links. With the Commenter role or higher, you can reply here. When a comment is posted, a notification appears on the bell icon.
+The **{{shareViewer.tab.comments}}** tab at the bottom of the editor collects the likes and comments received through share links. When a comment is posted, a notification appears on the bell icon.
+
+* Comments belong to the document. All share links of the same document show the same comments, and comments remain even after a link is revoked.
+* Members can also comment on a document in this tab even if it has no share link.
+* Users with the Commenter role or higher can comment. Viewers can only read comments and like the document.
+* Only the person who created the document can reply to comments, and replies carry an author label. Replies cannot be replied to.
+* Comments posted without signing in can be edited or deleted with the password entered when posting.
 
 ## 14. Version history
 
@@ -771,34 +825,38 @@ The **{{shareViewer.tab.comments}}** tab at the bottom of the editor collects th
 
 ![Version history](/guide-assets/en/editor-history.webp)
 
-Every time a document is saved, one version is kept. Open the list with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}**.
+Each time a document is saved, a version is kept. Open the list with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}**.
 
 * Each version shows who saved it, when, and a summary of what changed (added, changed, deleted, moved).
 * Use **{{model.editor.history.editMemo}}** to leave a note on a version. The search box searches these notes.
-* **{{model.editor.history.view}}** opens the document of that version as read-only.
-* **{{model.editor.history.restore}}** saves the content of that version as a new version. The current document also stays in the history.
+* **{{model.editor.history.view}}** opens that version read-only.
+* **{{model.editor.history.restore}}** saves the content of that version as a new version. The current content also remains in the history.
 
 ### 14.2 Comparing versions
 
 Click **{{model.editor.history.compare}}** to see the differences between two versions.
 
 * The canvas is drawn from the compared version, and changed tables are marked with `+` (added) and `~` (changed).
-* Tables that were removed are listed separately.
+* Deleted tables are listed separately.
 * Return to the document with **{{model.editor.compare.exit}}**.
 
 ### 14.3 Migration DDL
 
-**{{model.editor.compare.migrationDdl}}** on the version comparison screen turns the differences between two versions into ALTER statements. Use it to apply only what has changed since the last deployment to the database. Copy the script and run it on the database. Statements that may delete data carry a warning. To run it on the database directly, use the migration DDL of Sync DB (section 10.4).
+**{{model.editor.compare.migrationDdl}}** on the version comparison screen turns the differences between two versions into ALTER statements. Use it to apply to the database only what has changed since the last deployment. Copy the script and run it on the database. Statements that may delete data carry a warning. To run it on the database directly, use the migration DDL of Sync DB (section 10.4).
 
 ## 15. Editing together
 
 Several people can open and edit the same document at the same time.
 
-* The toolbar shows who is viewing the document with you, and other people's cursors move on the canvas.
-* What other people edit shows up on your screen right away.
-* An item that someone else is editing is locked. The name of the person editing it is shown.
-* If two people edit the same property, the later value stays. When your value is replaced, a notice appears and you can bring yours back with **{{model.editor.collab.lwwRestore}}**.
-* The speech bubble button at the bottom right is **{{model.editor.chat.label}}**. Use it to talk with the people viewing the document with you.
+* The toolbar shows who is viewing the document with you, and you can see other people's cursors move on the canvas.
+* Other people's edits appear on your screen immediately.
+* An item someone else is editing is locked and shows that person's name. The lock is released when that person closes the edit dialog or leaves the document.
+* Viewers and Commenters can see other people's edits and cursors, but cannot edit the document.
+* If two people edit the same property, the last edit wins. When your value is overwritten, a notice appears and you can restore yours with **{{model.editor.collab.lwwRestore}}**.
+* The speech bubble button at the bottom right is **{{model.editor.chat.label}}**. Use it to chat with the people viewing the document with you.
+  * Press `Enter` to send and `Shift+Enter` for a new line. Messages can be up to 500 characters.
+  * If a message arrives while the chat is closed, a notification appears and the button shows the unread count.
+  * People who join later can see the last 50 messages. Chat is not saved with the document.
 
 If someone else saved before you, the **{{model.editor.conflict.title}}** dialog appears when you save.
 
@@ -806,17 +864,17 @@ If someone else saved before you, the **{{model.editor.conflict.title}}** dialog
 * For each overlapping item, choose **{{model.editor.conflict.keepMine}}** or **{{model.editor.conflict.useServer}}**.
 * Click **{{model.editor.conflict.resolve}}** to merge as you chose and save.
 
-Even if the window closes before you can save, your edits stay in the browser. They are recovered when you open the document again.
+If the window closes before you save, your edits remain in the browser and are recovered when you reopen the document.
 
 ## 16. Teams
 
 ![The team screen](/guide-assets/en/team-detail.webp)
 
-A team is a way to keep people together. When you add a team as a member of a workspace, everyone on the team gets access at once.
+A team groups people together. When you add a team as a member of a workspace, everyone on the team gets access at once.
 
-* Go to **{{shell.nav.teams}}** in the top menu. Create a team with **{{shell.sidebar.newTeam}}** in the sidebar. Creating a team does not create a workspace along with it.
-* Find and add people with **{{team.members.addButton}}**, and take them out with **{{team.members.remove}}**.
-* The team owner can edit the name and description and use **{{team.detail.settings.dissolveButton}}**. Dissolving a team also takes away the workspace access given to that team.
+* Go to **{{shell.nav.teams}}** in the top menu. Create a team with **{{shell.sidebar.newTeam}}** in the sidebar. Creating a team does not create a workspace.
+* Find and add people with **{{team.members.addButton}}**, and remove them with **{{team.members.remove}}**.
+* The team owner can edit the name and description and use **{{team.detail.settings.dissolveButton}}**. Dissolving a team also removes the workspace access granted to that team.
 
 ## 17. Community and notifications
 
@@ -830,7 +888,7 @@ These posts announce what has changed in each new version. Click a post to open 
 
 ![Feedback](/guide-assets/en/community-feedback.webp)
 
-This board is for things you would like improved and bugs you have found. Write a post with **{{community.board.newPost}}**; you can attach images. Each post has its own comments.
+Use this board to suggest improvements and report bugs. Write a post with **{{community.board.newPost}}**; you can attach images. Each post has its own comments.
 
 ### 17.3 My comments and liked documents
 
@@ -846,7 +904,7 @@ Click the bell icon to see your recent notifications. There are three kinds.
 
 * Someone commented on your document
 * Someone liked your document
-* The document owner replied to your comment
+* The person who created the document replied to your comment
 
 Use **{{shell.notifications.markAll}}** to mark them all as read, and **{{shell.notifications.viewAll}}** to go to the full list.
 
@@ -860,11 +918,11 @@ Administrator accounts see **{{shell.nav.admin}}** in the top menu.
 
 | Menu | Contents |
 |---|---|
-| **{{shell.sidebar.adminUsers}}** | The list of users, administrator rights, account status |
+| **{{shell.sidebar.adminUsers}}** | Users, administrator rights, and account status |
 | **{{shell.sidebar.adminCodes}}** | Code values such as database types |
-| **{{shell.sidebar.adminManaged}}** | Instances of the service-provided databases and what has been issued |
+| **{{shell.sidebar.adminManaged}}** | Instances for service-provided databases and the databases issued from them |
 | **{{shell.sidebar.adminSystemTerms}}** | Add and delete words in the system dictionary |
-| **{{shell.sidebar.adminAuditLogs}}** | A record of important actions |
+| **{{shell.sidebar.adminAuditLogs}}** | A log of important actions |
 | **{{shell.sidebar.adminTraffic}}** | Visit statistics |
 
 ## 19. Keyboard shortcuts
@@ -891,87 +949,89 @@ In the editor, press `Ctrl/Cmd+/` or click the keyboard icon on the toolbar to o
 | `Space+Drag` | {{model.editor.shortcuts.row.pan}} |
 | Right mouse button | {{model.editor.shortcuts.row.contextMenu}} |
 | `Ctrl/Cmd+/` | {{model.editor.shortcuts.row.help}} |
-| `Ctrl/Cmd+Enter` | Run in the SQL tab of the data browser |
+| `Ctrl/Cmd+Enter` | Run SQL in the SQL tab of the data browser |
 
-While the cursor is in a text field, no shortcut works except the one for help. Without edit permission, the shortcuts for editing, moving, and deleting do not work.
+While you are typing in a text field, only the help shortcut works. Without edit permission, the shortcuts for editing, moving, and deleting are disabled.
 
 ## 20. Designing with Claude (MCP)
 
-Connect an MCP client such as Claude Code to a workspace, and you can collect requirements and build and edit ERDs through conversation. What Claude creates appears in Crowfoot as it is, and what you change on screen is read back by Claude.
+Connect an MCP client such as Claude Code to a workspace to collect requirements and build and edit ERDs through conversation. What Claude creates appears in Crowfoot as is, and Claude can read the changes you make on screen.
 
 ### 20.1 Connecting
 
-![MCP tab](/guide-assets/en/workspace-mcp.webp)
+![The MCP tab](/guide-assets/en/workspace-mcp.webp)
 
-Issue a token on the workspace's **{{workspace.detail.tabs.mcp}}** tab. Every member sees this tab.
+Issue a token on the workspace's **{{workspace.detail.tabs.mcp}}** tab. All members can see this tab.
 
 ![Issuing a token](/guide-assets/en/mcp-issue.webp)
 
-* Click **{{workspace.mcp.issueButton}}** and set a name and a lifetime. Each person can issue up to five tokens per workspace.
+* Click **{{workspace.mcp.issueButton}}** and set a name and a lifetime. Choose a lifetime of no expiry, 30 days, 90 days, or 365 days. Each person can issue up to five tokens per workspace.
 * After issuing, the token and the **{{workspace.mcp.commandLabel}}** are shown. Copy the command and run it in a terminal to finish connecting.
-* You can copy the token and the command again from the tab at any time. The copy button next to a token in the list copies only the token. The full token is shown only to the person who issued it; even the owner sees just the beginning of other members' tokens.
+* You can copy the token and the command again from the tab at any time. The copy button next to a token in the list copies only the token. The full token is shown only to the person who issued it; even the owner sees only the beginning of other members' tokens. The owner sees every token in the workspace; other members see only their own.
+* The list shows each token's name, who issued it, the issue date, the expiration date, and when it was last used.
 
 ![Issued token and registration command](/guide-assets/en/mcp-issued.webp)
 
 * A token works only in that workspace, with the permissions of the person who issued it. A token issued by a {{common.role.VIEWER}} or {{common.role.COMMENTER}} is read-only.
 * Do not paste the token into a conversation with Claude. Run the registration command in a terminal.
-* The trash icon in the list revokes a token. Claude sessions connected with it lose access at once. The owner can revoke other members' tokens too.
-* It works with Claude Code and ChatGPT (Codex). Pick a client under **{{workspace.mcp.connectTitle}}** on the tab to see and copy how to register. Connectors in the ChatGPT web and mobile apps are not supported.
+* The trash icon in the list revokes a token. Claude sessions connected with it lose access immediately. The owner can revoke other members' tokens too.
+* It works with Claude Code and ChatGPT (Codex). Pick a client under **{{workspace.mcp.connectTitle}}** on the tab to see and copy the registration instructions. Connectors in the ChatGPT web and mobile apps are not supported.
 
 ### 20.2 What you can ask Claude to do
 
 ![How to use and example requests](/guide-assets/en/mcp-usage.webp)
 
-Start Claude Code or Codex in the folder where you registered, and ask for what you want in plain words. **{{workspace.mcp.usage.title}}** on the tab lists example requests you can copy.
+Start Claude Code or Codex in the folder where you ran the registration command, and ask for what you want in plain words. **{{workspace.mcp.usage.title}}** on the tab lists example requests you can copy.
 
-* Type `/mcp` in the chat to see whether it is connected.
+* Type `/mcp` in the chat to check the connection.
 * The registration applies only to the folder where you ran the command. To use it from every folder, add `--scope user` to the registration command.
 * Example requests: "Collect the requirements for a book rental service and create a new ERD document for MySQL", "Validate this document and show me the DDL".
 
 | Task | Description |
 |---|---|
-| Look around the workspace | Reads the document list, the term dictionary, domain types, and design rules |
+| Explore the workspace | Reads the document list, the term dictionary, domain types, and design rules |
 | Collect requirements | Registers and edits the requirements that come up in conversation (section 20.3) |
 | Create and edit ERDs | Creates and edits tables, columns, keys, indexes, relationships, and groups, following the workspace's terms and domain types |
 | Validation and SQL | Gets the design validation result and the SQL script |
 | Import SQL | Creates a new document from a CREATE TABLE script |
-| Apply to a database | Issues a managed database and deploys a document or applies only what changed (section 20.4) |
-| Sample data | Creates sample data that fits the table structure and puts it into the deployed database (section 20.4) |
+| Apply to a database | Issues a service-provided database and deploys a document or applies only what changed (section 20.4) |
+| Sample data | Creates sample data that fits the table structure and inserts it into the deployed database (section 20.4) |
 
 * Every change Claude makes is saved as a version. If you do not like it, restore an earlier version (section 14).
 * Claude cannot delete documents. Before deleting a table or column, it shows what will be removed.
-* Tables Claude creates are placed automatically when the document is opened. Tables and notes you already arranged are not moved.
-* If Claude edits a document while you have the editor open, the screen loads the new content. If you have unsaved edits, a notice appears first.
+* Some things Claude does not do. Do these yourself in the app: managing workspaces and members, registering and changing connections, revoking service-provided databases, viewing connection credentials, creating share links, restoring versions, and registering dictionary entries and domain types.
+* Tables Claude creates are laid out automatically when you open the document. Tables and notes you have already arranged stay where they are.
+* If Claude edits a document while you have it open in the editor, the editor reloads with the new content. If you have unsaved edits, a notice appears first.
 
 ### 20.3 Requirements panel
 
-![Requirements panel](/guide-assets/en/editor-requirements.webp)
+![The requirements panel](/guide-assets/en/editor-requirements.webp)
 
-Click the **{{shareViewer.tab.requirements}}** tab at the bottom of the editor to open the requirements view. Requirements are saved with the document. When some requirements are pending, the tab shows their number.
+Click the **{{shareViewer.tab.requirements}}** tab at the bottom of the editor to open the requirements view. Requirements are saved with the document. When requirements are pending, the tab shows how many.
 
-* Requirements are organized by domain (group). Pick a domain in the list on the left to see only that domain; each domain shows how many requirements are applied and a progress bar. Those without a group gather under **{{model.requirements.group.unassigned}}**, and those that apply to the whole document under **{{model.requirements.group.document}}**.
+* Requirements are organized by domain (group). Pick a domain in the list on the left to see only that domain; each domain shows its number of applied requirements with a progress bar. Requirements without a group are collected under **{{model.requirements.group.unassigned}}**, and those that apply to the whole document under **{{model.requirements.group.document}}**.
 * Click a domain section's title to collapse it, and **{{model.requirements.domains.showOnCanvas}}** to select that domain's tables and show them in the ERD tab.
 * Click a row to expand its description and linked tables. Click a table name to go back to the ERD tab and show that table. **{{model.requirements.domains.showOnCanvas}}** in an expanded row selects all linked tables and fits them on screen.
-* Use the status buttons at the top to filter. At first only **{{model.requirements.state.DROPPED}}** is hidden. The search box looks in the code, title, description, and table names.
+* Use the status buttons at the top to filter. By default, only **{{model.requirements.state.DROPPED}}** is hidden. The search box searches codes, titles, descriptions, and table names.
 * **{{model.requirements.untraced.title}}** under a domain section lists that domain's tables that are not linked to any requirement.
 * **{{model.requirements.export.button}}** downloads the requirements specification as a Markdown or CSV file.
 
 | Status | Meaning |
 |---|---|
 | **{{model.requirements.state.APPLIED}}** | The confirmed requirement is reflected in the ERD |
-| **{{model.requirements.state.PENDING}}** | Confirmed, but the ERD does not reflect the latest text yet. Editing the title or description leads to this status |
+| **{{model.requirements.state.PENDING}}** | Confirmed, but the ERD does not reflect the latest text yet. Editing the title or description puts a requirement in this status |
 | **{{model.requirements.state.UNLINKED}}** | Marked as applied, but no table is linked |
-| **{{model.requirements.state.LEFTOVER}}** | A dropped requirement still has tables linked |
+| **{{model.requirements.state.LEFTOVER}}** | A dropped requirement still has linked tables |
 | **{{model.requirements.state.DRAFT}}** | Not confirmed yet |
 | **{{model.requirements.state.DROPPED}}** | No longer in scope |
 
 ![Editing a requirement](/guide-assets/en/editor-requirement-dialog.webp)
 
-Editors and above can add and edit requirements themselves.
+Users with the Editor role or higher can add and edit requirements directly.
 
-* Click **{{model.requirements.add}}** at the top of the panel, or the edit button in an expanded row. Set the title, description, scope, status, group, and tables to link. The code (REQ-001) is assigned automatically.
+* Click **{{model.requirements.add}}** at the top of the panel, or the edit button in an expanded row. Set the title, description, scope, status, group, and tables to link. The code (such as REQ-001) is assigned automatically.
 * Click **{{model.requirements.markApplied}}** on a pending row to change it to applied.
-* **{{model.requirements.criteria.title}}** are the checks that show a requirement is properly reflected. Write one per line in the edit dialog and tick them in the expanded row.
+* **{{model.requirements.criteria.title}}** are the checks that show a requirement is properly reflected. Write one per line in the edit dialog and check them off in the expanded row.
 * For a requirement that is no longer needed, change its status to **{{model.requirements.status.dropped}}** instead of deleting it. Delete only entries added by mistake.
 * A document can hold up to 500 requirements.
 
@@ -980,10 +1040,13 @@ Editors and above can add and edit requirements themselves.
 For Claude to change the structure of a database, the connection must allow it.
 
 * Turn on **{{connection.dialog.mcpApply}}** when adding or editing a connection. It is off by default, and connections with it on are marked in the list.
-* Managed databases allow it from the start.
-* Claude shows the SQL first and runs only the plan you confirmed. If the document or the database changed after the plan was shown, it does not run and plans again.
-* Sample data is first inserted and rolled back to check for constraint violations, and only the data you confirmed is actually inserted. It only inserts; it does not update or delete. One request can hold up to 20 tables and 1,000 rows.
-* For a connection that does not allow it, Claude only shows the SQL. Run it yourself from the editor's deploy (section 10.3) or migration DDL (section 14.3).
+* Service-provided databases allow it by default.
+* Claude shows the SQL first and runs only the plan you confirmed. If the document or the database has changed since the plan was shown, Claude does not run it and makes a new plan.
+* Claude first inserts sample data in a trial run and rolls it back to check for constraint violations, then inserts only the data you confirm. It only inserts rows; it never updates or deletes them. Each request can cover up to 20 tables and 1,000 rows.
+* The first deployment is made only to an empty database. For a database that already has tables, only what changed is applied.
+* Renaming the physical name of a table or column shows up in the change plan as a deletion and an addition. Running it as is loses that column's data, so make sure the plan reflects a rename you intended.
+* Statements that delete run only after separate approval. Without approval, only additions and changes are run.
+* For a connection that does not allow it, Claude only shows the SQL. Run it yourself with Deploy (section 10.3) or migration DDL (section 14.3) in the editor.
 
 ## 21. Frequently asked questions
 
@@ -991,10 +1054,10 @@ For Claude to change the structure of a database, the connection must allow it.
 No. Create a new document of another type with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.dbmsConvert}}**.
 
 **When is my work saved?**
-It is saved automatically a moment after you edit. You can also save right away with the **{{model.editor.toolbar.save}}** button or `Ctrl/Cmd+S`. A version is kept every time the document is saved.
+It is saved automatically shortly after you edit. You can also save right away with the **{{model.editor.toolbar.save}}** button or `Ctrl/Cmd+S`. Each save also keeps a version.
 
 **How do I undo a mistake?**
-Undo an edit you have just made with `Ctrl/Cmd+Z`. For content that is already saved, restore an earlier version from the version history.
+Press `Ctrl/Cmd+Z` to undo a recent edit. For changes that are already saved, restore an earlier version from the version history.
 
 **How do words and terms differ?**
 A word is one part of a name, and a term is a whole column name. A term can point to a domain type, so using a term on a column sets its type as well.
@@ -1003,7 +1066,7 @@ A word is one part of a name, and a term is a whole column name. A term can poin
 No. When you open a document, Crowfoot tells you about the change and lets you choose which columns to apply it to.
 
 **Can I use Crowfoot without a database?**
-Yes. You can just draw an ERD and take the SQL script with you. If you want to try running it, get a service-provided database in the Database tab.
+Yes. You can simply draw an ERD and use the generated SQL script elsewhere. To try running it, issue a service-provided database in the Database tab.
 
 **Can I change the structure in the data browser?**
 Not in the Data tab or the Structure tab. Edit it in the ERD and then apply it with migration DDL.
@@ -1011,11 +1074,11 @@ Not in the Data tab or the Structure tab. Edit it in the ERD and then apply it w
 **Can someone with a share link edit the document?**
 No. To edit together, add them as a workspace member and give them the Editor role.
 
-**Where do I write what I would like improved?**
-Please write it in **{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}**.
+**Where can I suggest improvements?**
+Post it in **{{shell.nav.community}}** › **{{shell.sidebar.communityFeedback}}**.
 
 **Can I undo what Claude changed?**
 Yes. Every change Claude makes is saved as a version, so you can restore an earlier one from the version history.
 
 **What if "A new version has been deployed" appears at the top?**
-Refresh the page. The screen you had open is the old version, so it stops saving. Unsaved edits are restored after the refresh.
+Refresh the page. The page you have open is an old version, so it no longer saves. Unsaved edits are restored after the refresh.

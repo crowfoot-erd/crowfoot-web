@@ -334,12 +334,14 @@ async function openSession(browser: Browser, lang: Lang, viewport: { width: numb
   session.shot = async (name, options = {}) => {
     const page = session.page
     const png = options.locator ? await options.locator.screenshot() : await page.screenshot(options.clip ? { clip: options.clip } : {})
-    // PNG → webp(브라우저 캔버스) — 축소만, 최대 폭 1400px
-    const dataUrl = await page.evaluate(async (base64) => {
+    // PNG → webp(브라우저 캔버스) — 모든 그림을 같은 비율로 줄인다(화면 1px = 그림 1.6px).
+    // 가이드는 그림의 절반 폭으로 보여 주므로 어느 그림이든 실제 화면의 0.8배로 보인다 — 전에는 폭 상한(1400px)에 맞춰
+    // 줄이고 본문 폭에 맞춰 늘려, 작은 메뉴는 2배로 크게, 넓은 화면은 0.6배로 작게 보였다(2026-10-03 사용자 지적)
+    const dataUrl = await page.evaluate(async ([base64, GUIDE_IMAGE_SCALE]) => {
       const image = new Image()
       image.src = `data:image/png;base64,${base64}`
       await image.decode()
-      const scale = Math.min(1, 1400 / image.naturalWidth)
+      const scale = GUIDE_IMAGE_SCALE
       const canvas = document.createElement('canvas')
       canvas.width = Math.round(image.naturalWidth * scale)
       canvas.height = Math.round(image.naturalHeight * scale)
@@ -347,11 +349,14 @@ async function openSession(browser: Browser, lang: Lang, viewport: { width: numb
       ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
       return canvas.toDataURL('image/webp', 0.8)
-    }, png.toString('base64'))
+    }, [png.toString('base64'), GUIDE_IMAGE_SCALE] as const)
     writeFileSync(resolve(outDir, `${name}.webp`), Buffer.from(dataUrl.split(',')[1], 'base64'))
   }
   return session
 }
+
+/** 촬영(deviceScaleFactor 2) 뒤 그림을 줄이는 비율 — 화면 1px이 그림 1.6px이 된다. guide.tsx의 GUIDE_IMAGE_PIXEL_RATIO와 짝이다 */
+const GUIDE_IMAGE_SCALE = 0.8
 
 type Scene = { name: string; run: (s: Session) => Promise<void> }
 

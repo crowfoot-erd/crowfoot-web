@@ -9,7 +9,7 @@
  *   전환기로 고르면 그 언어로 재조회(?lang=)한다. 요청 언어가 없으면 폴백 배지(서버가 en→ko 폴백)
  * - 본문은 lazy MarkdownViewer(toast-ui 전용 청크) 재사용
  */
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, Loader2 } from 'lucide-react'
@@ -26,6 +26,10 @@ import { currentLanguage, type Language } from '@/lib/i18n'
 import { summarizeMarkdown } from '@/lib/markdown'
 import { resultCodeMessage } from '@/lib/result-code'
 import { cn } from 'cn'
+import { DOC_ARTICLE_CLASS, useDocImages } from '@/lib/doc-article'
+
+/** 릴리스 노트 그림 px 대 화면 px — 레티나 2배(deviceScaleFactor 2)로 찍는다(docs/assets/release-notes) */
+const RELEASE_NOTE_IMAGE_PIXEL_RATIO = 2
 
 // toast-ui 청크 분리 — 메인 번들에 포함하지 않는다(post-detail 관례)
 const MarkdownViewer = lazy(() => import('@/features/community/components/markdown-viewer'))
@@ -43,6 +47,9 @@ export function ReleaseNoteViewerPage() {
   const [contentLangOverride, setContentLangOverride] = useState<Language | null>(null)
   const contentLang = contentLangOverride ?? currentLanguage()
   const note = usePublicReleaseNote(postId, contentLang)
+  // 본문 그림 — 레티나 2배로 찍은 그림을 실제 화면 크기(1배)로, 모두 같은 배율로 보여 준다(doc-article.ts)
+  const articleRef = useRef<HTMLElement | null>(null)
+  useDocImages(articleRef, note.data?.content, RELEASE_NOTE_IMAGE_PIXEL_RATIO)
   // 게시글 제목·본문 요약·canonical — 데이터 도착 전·오류에는 색인만 막는다
   usePageMeta(
     note.data
@@ -57,13 +64,13 @@ export function ReleaseNoteViewerPage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <PublicHeader />
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 md:flex-row md:gap-10">
+      <PublicHeader wide />
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 md:flex-row md:gap-10">
         {/* 목차 — 넓은 화면에서는 왼쪽에 붙어 따라오고, 좁은 화면에서는 본문 위에 접힌 높이로 둔다 */}
         <nav
           aria-label={t('releaseNoteViewer.toc')}
           data-testid="release-note-toc"
-          className="shrink-0 md:sticky md:top-6 md:max-h-[calc(100svh-3rem)] md:w-56 md:self-start md:overflow-y-auto"
+          className="shrink-0 md:sticky md:top-6 md:max-h-[calc(100svh-3rem)] md:w-60 md:self-start md:overflow-y-auto"
         >
           <h2 className="mb-2 flex items-baseline gap-2 text-sm font-semibold">
             {t('releaseNoteViewer.toc')}
@@ -132,9 +139,10 @@ export function ReleaseNoteViewerPage() {
             </div>
           ) : (
             <>
-              <div className="mb-6 border-b pb-4">
+              {/* 머리말 — 사용 가이드와 같은 색 번짐 패널 */}
+              <div className="mb-8 rounded-2xl border bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 px-6 py-6">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="break-words text-2xl font-semibold">{note.data.title}</h1>
+                  <h1 className="break-words text-2xl font-extrabold tracking-tight md:text-3xl">{note.data.title}</h1>
                   <Badge variant="secondary" className="text-[10px]">
                     {t('releaseNoteViewer.badge')}
                   </Badge>
@@ -181,7 +189,12 @@ export function ReleaseNoteViewerPage() {
                   {t('releaseNoteViewer.fallbackNotice', { lang: t(`common.language.${contentLang}`) })}
                 </p>
               ) : null}
-              <article data-testid="release-note-detail" className="flex flex-col gap-4">
+              <article ref={articleRef} data-testid="release-note-detail" className={cn('flex flex-col gap-4', DOC_ARTICLE_CLASS)}
+                onClick={(event) => {
+                  const target = event.target
+                  if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')
+                }}
+              >
                 <Suspense fallback={<Skeleton className="h-96 w-full" />}>
                   <MarkdownViewer
                     key={contentLang}

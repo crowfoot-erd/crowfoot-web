@@ -12,7 +12,7 @@
  *   scripts/capture-guide.test.ts가 만든다). 그림을 누르면 새 창에서 원래 크기로 열린다
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { BookOpenText, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { currentLanguage, type Language } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { DOC_ARTICLE_CLASS, useDocImages } from '@/lib/doc-article'
 
 // toast-ui 청크 분리 — 메인 번들에 포함하지 않는다(release-note-viewer 관례)
 const MarkdownViewer = lazy(() => import('@/features/community/components/markdown-viewer'))
@@ -46,13 +47,16 @@ export function resolveLabels(markdown: string, translate: (key: string) => stri
     markdown
       // 굵은 버튼 이름 바로 뒤에 붙는 조사("**저장**을", "**保存**を") — 붙여 쓴다. 다만 문구가 문장부호로 끝나면
       // 마크다운이 닫는 **를 굵게의 끝으로 읽지 못하므로 그때만 한 칸 띄운다
-      .replace(/\*\*\{\{([\w.]+)\}\}\*\*(?=[^\s*.,:;!?)\]、。，：；！？）])/gu, (token, key: string) => {
+      .replace(/\*\*\{\{([\w.]+)\}\}\*\*(?=[^\s*.,:;!?)\]、。，：；！？）])/gu, (_token, key: string) => {
         const label = resolve(`{{${key}}}`, key)
         return /[\p{P}\p{S}]$/u.test(label) ? `**${label}** ` : `**${label}**`
       })
       .replace(/\{\{([\w.]+)\}\}/g, resolve)
   )
 }
+
+/** 그림 px 대 화면 px — 그림을 이 값으로 나눈 폭으로 보여 준다(촬영 배율 1.6 ÷ 보여 줄 배율 0.8) */
+const GUIDE_IMAGE_PIXEL_RATIO = 2
 
 /** 고정 헤더 아래의 기준선(px) — 제목이 이 선을 지나면 그 절을 읽는 중으로 본다 */
 const ACTIVE_LINE = 96
@@ -205,6 +209,11 @@ export default function GuidePage() {
     }
   }, [markdown])
 
+  /* ---------- 그림 — 같은 배율과 설명 ----------
+     촬영은 화면 1px을 그림 1.6px로 저장한다(scripts/capture-guide.test.ts GUIDE_IMAGE_SCALE). 그림의 절반 폭으로 보여 주면
+     어느 그림이든 실제 화면의 0.8배다 */
+  useDocImages(articleRef, markdown !== null, GUIDE_IMAGE_PIXEL_RATIO)
+
   /* ---------- 찾기 ---------- */
   const [query, setQuery] = useState('')
   const [matches, setMatches] = useState<GuideMatch[]>([])
@@ -241,7 +250,7 @@ export default function GuidePage() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
           <Link to="/" aria-label={t('common.appName')} className="flex shrink-0 items-center gap-2 text-lg font-semibold hover:opacity-80">
             <Logo className="size-6" />
             {/* 좁은 화면에서는 이름을 숨겨 찾기 칸에 자리를 준다 */}
@@ -290,9 +299,9 @@ export default function GuidePage() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-1 gap-8 px-4 py-8">
-        <nav aria-label={t('guide.contents')} className="sticky top-20 hidden h-fit w-56 shrink-0 md:block">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">{t('guide.contents')}</p>
+      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-10 px-4 py-8">
+        <nav aria-label={t('guide.contents')} className="sticky top-20 hidden max-h-[calc(100svh-6rem)] w-60 shrink-0 self-start overflow-y-auto pr-1 md:block">
+          <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('guide.contents')}</p>
           <ul className="grid gap-1 text-sm">
             {headings.map((heading, index) => (
               <li key={heading}>
@@ -301,9 +310,9 @@ export default function GuidePage() {
                   onClick={() => scrollTo(index)}
                   aria-current={index === active ? 'location' : undefined}
                   className={cn(
-                    'flex w-full items-start gap-2 rounded border-l-2 px-2 py-1 text-left hover:bg-muted hover:text-foreground',
+                    'flex w-full items-start gap-2 rounded-r-md border-l-2 px-2 py-1.5 text-left transition-colors hover:bg-muted hover:text-foreground',
                     index === active
-                      ? 'border-primary bg-muted font-medium text-foreground'
+                      ? 'border-emerald-500 bg-emerald-500/10 font-medium text-foreground'
                       : 'border-transparent text-muted-foreground',
                     // 찾는 중에는 결과가 없는 절을 흐리게 한다
                     searching && !sectionCounts.has(index) && 'opacity-40',
@@ -311,7 +320,7 @@ export default function GuidePage() {
                 >
                   <span className="min-w-0 flex-1">{heading}</span>
                   {sectionCounts.has(index) ? (
-                    <span data-testid="guide-toc-count" className="mt-0.5 shrink-0 rounded-full bg-primary px-1.5 text-[11px] font-medium leading-5 text-primary-foreground tabular-nums">
+                    <span data-testid="guide-toc-count" className="mt-0.5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[11px] font-medium leading-5 text-white tabular-nums">
                       {sectionCounts.get(index)}
                     </span>
                   ) : null}
@@ -322,13 +331,20 @@ export default function GuidePage() {
         </nav>
 
         <main className="min-w-0 flex-1">
-          <h1 className="mb-6 text-2xl font-bold tracking-tight">{t('guide.title')}</h1>
+          {/* 머리말 — 제목과 무엇을 다루는지. 랜딩과 같은 색 번짐으로 시작을 알린다 */}
+          <div className="relative mb-8 overflow-hidden rounded-2xl border bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 px-6 py-7">
+            <h1 className="flex items-center gap-2 text-3xl font-extrabold tracking-tight">
+              <BookOpenText aria-hidden className="size-7 text-emerald-600 dark:text-emerald-400" />
+              {t('guide.title')}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('guide.description')}</p>
+          </div>
           {/* 그림을 누르면 새 창에서 원래 크기로 연다 — 본문 폭에 맞춰 줄어든 화면 글자를 읽기 위해서다 */}
           <article
             ref={articleRef}
             data-testid="guide-article"
             // 절(h2)과 소제목(h3) 위에 여백을 넉넉히 둔다 — 뷰어 기본값은 앞 문단에 바짝 붙는다(뷰어 스타일보다 우선하게 !)
-            className="[&_h2]:scroll-mt-20 [&_h3]:scroll-mt-20 [&_h2]:mt-16! [&_h2]:mb-5! [&_h2:first-of-type]:mt-8! [&_h3]:mt-10! [&_h3]:mb-3! [&_img]:my-3! [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_img]:border"
+            className={DOC_ARTICLE_CLASS}
             onClick={(event) => {
               const target = event.target
               if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')

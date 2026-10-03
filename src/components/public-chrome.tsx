@@ -20,12 +20,13 @@ export function publicPath(path: string): string {
   return currentLanguage() === 'ko' ? path : `/${currentLanguage()}${path}`
 }
 
-export function PublicHeader() {
+/** @param wide 본문이 넓은 화면(릴리스 노트)에서 머리의 폭을 본문에 맞춘다 */
+export function PublicHeader({ wide = false }: { wide?: boolean } = {}) {
   const { t } = useTranslation()
   const authenticated = useSessionStore((state) => state.status) === 'authenticated'
   const guideHref = publicPath('/guide')
   return (
-    <header className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4">
+    <header className={`mx-auto flex h-16 w-full items-center justify-between px-4 ${wide ? 'max-w-6xl' : 'max-w-5xl'}`}>
       <Link to={publicPath('/')} className="flex items-center gap-2 text-lg font-semibold">
         <Logo className="size-6" />
         {t('common.appName')}
