@@ -297,6 +297,38 @@ describe('데이터베이스 탭', () => {
     })
   })
 
+  it('서비스 제공 DB의 커넥션 삭제는 발급 철회로 이어진다 — 철회 확인창, DELETE managed-databases/{id}', async () => {
+    const user = userEvent.setup()
+    const revoked: string[] = []
+    server.use(
+      http.get('/api/v1/core/workspaces/101/connections', () =>
+        HttpResponse.json(
+          ok({
+            totalCount: 1,
+            responses: [
+              { connectionId: '302', workspaceId: '101', name: 'Academy PG #1', dbmsType: 'postgresql', host: 'h', port: 5432, databaseName: 'cf_u2_d1', username: 'cf_u2_d1', createdBy: null, createdAt: '2026-09-13T01:00:00Z', managed: true },
+            ],
+          }),
+        ),
+      ),
+      http.delete('/api/v1/core/workspaces/101/managed-databases/:databaseId', ({ params }) => {
+        revoked.push(String(params.databaseId))
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.delete('/api/v1/core/workspaces/101/connections/:connectionId', () => {
+        throw new Error('발급 커넥션은 커넥션 삭제 API를 부르지 않는다')
+      }),
+    )
+    renderDatabaseTab()
+
+    const rowDelete = await screen.findByRole('button', { name: 'Academy PG #1 커넥션 삭제' })
+    await user.click(rowDelete)
+    expect(await screen.findByText(/발급을 철회해야 지워집니다/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '철회' }))
+
+    await waitFor(() => expect(revoked).toEqual(['31']))
+  })
+
   it('빈 목록 — 빈 상태 + CTA', async () => {
     server.use(
       http.get('/api/v1/core/workspaces/101/connections', () =>

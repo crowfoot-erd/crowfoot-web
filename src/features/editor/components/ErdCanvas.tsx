@@ -53,12 +53,12 @@ import { isDuplicateRelationship, isDuplicateTableName } from '@/features/editor
 import { findNoteDropTarget } from '@/features/editor/model/note-link'
 import { objectRects, placeNoteFree, rectsOverlap, type ObjectRect } from '@/features/editor/model/note-overlap'
 import { readStoredViewport, storeViewport } from '@/features/editor/model/viewport-memory'
+import { useDataView } from '@/features/editor/store/data-view-store'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import type { CursorPayload, RemoteCursorState } from '@/features/editor/collab'
 import { clearRemotePresence, setRemotePresence } from '@/features/editor/collab-presence'
 import { CanvasContextMenu, type ContextMenuAction } from './canvas/CanvasContextMenu'
-import { databaseBrowserPath } from '@/features/database'
 import { useDomainTypes } from '@/features/domain-types/hooks'
 import { useWorkspaceTerms } from '@/features/terms/hooks'
 import { DomainSyncBanner } from '@/features/editor/components/DomainSyncBanner'
@@ -979,17 +979,10 @@ export function ErdCanvas({
           setInfoTableId(action.tableId)
           return
         case 'viewTableData': {
-          // 그 테이블을 고른 상태로 데이터 브라우저를 새 창으로 연다(09-database-manager/00-data-browser.md §5.1)
+          // 하단의 데이터 보기 탭으로 옮기고 그 테이블을 고른다(05-editor/02-ui.md §22, 09-database-manager/00-data-browser.md §5.1)
           const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === action.tableId)
-          if (!table || !workspaceId || !sourceConnectionId) return
-          window.open(
-            databaseBrowserPath(workspaceId, sourceConnectionId, {
-              objectName: table.physicalName,
-              modelId: modelId ?? undefined,
-            }),
-            '_blank',
-            'noopener,noreferrer',
-          )
+          if (!table) return
+          useDataView.getState().show(table.physicalName)
           return
         }
         case 'removeTable':
@@ -1005,7 +998,7 @@ export function ErdCanvas({
           commit({ type: 'relationship/remove', relationshipId: action.relationshipId })
       }
     },
-    [commit, t, onOpenAreaEdit, workspaceId, sourceConnectionId, modelId],
+    [commit, t, onOpenAreaEdit],
   )
 
   /* ---------- 다이얼로그 재료 ---------- */
@@ -1064,6 +1057,8 @@ export function ErdCanvas({
         : false,
     [infoColumnRef, present.model.relationships],
   )
+  // 데이터 보기 탭이 있는 화면인지 — 테이블 우클릭의 "이 테이블의 데이터 보기"가 그 탭으로 간다
+  const dataViewAvailable = useDataView((state) => state.available)
   // 워크스페이스 도메인 타입 — 편집할 수 있는 문서에서만 읽는다(공개 뷰어·읽기 전용은 컬럼에 적힌 이름만 본다)
   const domainTypes = useDomainTypes(canEdit ? workspaceId : null)
   // 워크스페이스 사전 — 컬럼 정보 창의 "사전 표준" 안내에 쓴다(컬럼 이름 제안과 같은 캐시)
@@ -1410,7 +1405,8 @@ export function ErdCanvas({
           selectedTableIds={selectedTableIds}
           groups={contextGroups}
           activeAreaName={present.diagram.areas.find((area) => area.id === activeAreaId)?.name ?? null}
-          dataSource={workspaceId && sourceConnectionId ? { workspaceId, connectionId: sourceConnectionId } : null}
+          // 데이터 보기 탭이 있는 화면(Editor 이상의 문서 열기)에서만 — 탭이 없으면 갈 곳이 없다(§22)
+          dataSource={dataViewAvailable && workspaceId && sourceConnectionId ? { workspaceId, connectionId: sourceConnectionId } : null}
           canPaste={hasClipboard}
           onAction={handleContextMenuAction}
         >

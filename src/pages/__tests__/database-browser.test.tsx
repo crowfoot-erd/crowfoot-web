@@ -9,12 +9,14 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { Route } from 'react-router-dom'
+import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { fail, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
-import { createColumn, createTable } from '@/features/editor/model/changes'
+import { createArea, createColumn, createTable } from '@/features/editor/model/changes'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
+import { databaseFixtures } from '@/api/mocks/database-handlers'
 import type { RowsQuery } from '@/features/database/api'
 import DatabaseBrowserPage from '@/pages/database-browser'
 import { asAuthenticated, renderWithProviders } from '@/test/test-app'
@@ -71,7 +73,9 @@ describe('데이터 브라우저 — 객체 목록', () => {
 
   it('접속 실패는 목록 자리에 문구와 다시 시도를 보여 준다', async () => {
     server.use(
-      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects', () => fail('CONNECTION_UNREACHABLE', 502)),
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects', () =>
+        fail('CONNECTION_UNREACHABLE', 502),
+      ),
     )
     renderBrowser()
 
@@ -105,11 +109,17 @@ describe('데이터 브라우저 — 데이터 탭', () => {
 
     await userEvent.click(header())
     await waitFor(() => expect(idsInTable()).toEqual(['5', '1', '2', '4', '3'])) // CANCELLED, PAID×3, READY
-    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute('aria-sort', 'ascending')
+    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    )
 
     await userEvent.click(header())
     await waitFor(() => expect(idsInTable()).toEqual(['3', '4', '2', '1', '5']))
-    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute('aria-sort', 'descending')
+    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    )
 
     await userEvent.click(header())
     await waitFor(() => expect(idsInTable()).toEqual(['1', '2', '3', '4', '5']))
@@ -118,7 +128,11 @@ describe('데이터 브라우저 — 데이터 탭', () => {
   it('조건은 [적용]을 눌러야 서버로 간다', async () => {
     const queries: RowsQuery[] = []
     server.events.on('request:start', ({ request }) => {
-      if (request.url.endsWith('/objects/orders/rows')) void request.clone().json().then((body) => queries.push(body as RowsQuery))
+      if (request.url.endsWith('/objects/orders/rows'))
+        void request
+          .clone()
+          .json()
+          .then((body) => queries.push(body as RowsQuery))
     })
     renderBrowser('/workspaces/101/connections/302/data?object=orders')
     await screen.findByRole('table')
@@ -131,7 +145,10 @@ describe('데이터 브라우저 — 데이터 탭', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '적용' }))
     await waitFor(() => expect(idsInTable()).toEqual(['1', '2', '4']))
-    expect(queries.at(-1)).toMatchObject({ page: 1, filters: [{ column: 'status', op: 'EQ', value: 'PAID' }] })
+    expect(queries.at(-1)).toMatchObject({
+      page: 1,
+      filters: [{ column: 'status', op: 'EQ', value: 'PAID' }],
+    })
 
     // 값이 필요 없는 연산자 — 값 칸이 사라지고 조건만 간다
     await userEvent.selectOptions(screen.getByLabelText('컬럼'), 'memo')
@@ -158,22 +175,33 @@ describe('데이터 브라우저 — 데이터 탭', () => {
 
   it('다음 페이지가 있을 때만 [다음]이 켜진다', async () => {
     server.use(
-      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', async ({ request }) => {
-        const query = (await request.json()) as RowsQuery
-        return HttpResponse.json(
-          ok({
-            response: {
-              columns: [{ name: 'id', typeName: 'BIGINT', category: 'integer', nullable: false, primaryKey: true }],
-              rows: [[String(query.page)]],
-              page: query.page,
-              size: query.size,
-              hasNext: query.page < 2,
-              truncated: false,
-              elapsedMs: 3,
-            },
-          }),
-        )
-      }),
+      http.post(
+        '/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows',
+        async ({ request }) => {
+          const query = (await request.json()) as RowsQuery
+          return HttpResponse.json(
+            ok({
+              response: {
+                columns: [
+                  {
+                    name: 'id',
+                    typeName: 'BIGINT',
+                    category: 'integer',
+                    nullable: false,
+                    primaryKey: true,
+                  },
+                ],
+                rows: [[String(query.page)]],
+                page: query.page,
+                size: query.size,
+                hasNext: query.page < 2,
+                truncated: false,
+                elapsedMs: 3,
+              },
+            }),
+          )
+        },
+      ),
     )
     renderBrowser('/workspaces/101/connections/302/data?object=orders')
     await screen.findByRole('table')
@@ -189,15 +217,25 @@ describe('데이터 브라우저 — 데이터 탭', () => {
 
   it('제한 시간 초과는 조건을 좁히라고 안내하고, 데이터베이스가 거부한 문구는 그대로 보여 준다', async () => {
     server.use(
-      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () => fail('QUERY_TIMEOUT', 504)),
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () =>
+        fail('QUERY_TIMEOUT', 504),
+      ),
     )
     renderBrowser('/workspaces/101/connections/302/data?object=orders')
-    expect(await screen.findByText('8초 안에 끝나지 않아 취소했습니다. 조건을 좁혀 보세요.')).toBeVisible()
+    expect(
+      await screen.findByText('8초 안에 끝나지 않아 취소했습니다. 조건을 좁혀 보세요.'),
+    ).toBeVisible()
 
     server.use(
       http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () =>
         HttpResponse.json(
-          { header: { isSuccessful: false, resultCode: 'QUERY_FAILED', resultMessage: 'permission denied for table orders' } },
+          {
+            header: {
+              isSuccessful: false,
+              resultCode: 'QUERY_FAILED',
+              resultMessage: 'permission denied for table orders',
+            },
+          },
           { status: 409 },
         ),
       ),
@@ -209,7 +247,19 @@ describe('데이터 브라우저 — 데이터 탭', () => {
   it('편집할 수 없는 객체는 이유를 한 줄로 알린다', async () => {
     server.use(
       http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows', () =>
-        HttpResponse.json(ok({ response: { columns: [], rows: [], page: 1, size: 100, hasNext: false, truncated: false, elapsedMs: 1 } })),
+        HttpResponse.json(
+          ok({
+            response: {
+              columns: [],
+              rows: [],
+              page: 1,
+              size: 100,
+              hasNext: false,
+              truncated: false,
+              elapsedMs: 1,
+            },
+          }),
+        ),
       ),
     )
     renderBrowser('/workspaces/101/connections/302/data?object=paid_orders')
@@ -278,7 +328,11 @@ describe('데이터 브라우저 — SQL 탭', () => {
   it('문장이 여러 개면 커서가 놓인 문장만 보낸다 — Ctrl+Enter로 실행한다', async () => {
     const sent: string[] = []
     server.events.on('request:start', ({ request }) => {
-      if (request.url.endsWith('/queries')) void request.clone().json().then((body) => sent.push((body as { sql: string }).sql))
+      if (request.url.endsWith('/queries'))
+        void request
+          .clone()
+          .json()
+          .then((body) => sent.push((body as { sql: string }).sql))
     })
     renderBrowser(SQL_ROUTE)
     const input = (await screen.findByLabelText('SQL 입력')) as HTMLTextAreaElement
@@ -296,11 +350,17 @@ describe('데이터 브라우저 — SQL 탭', () => {
     const confirmedFlags: boolean[] = []
     server.events.on('request:start', ({ request }) => {
       if (request.url.endsWith('/queries')) {
-        void request.clone().json().then((body) => confirmedFlags.push((body as { confirmed: boolean }).confirmed))
+        void request
+          .clone()
+          .json()
+          .then((body) => confirmedFlags.push((body as { confirmed: boolean }).confirmed))
       }
     })
     renderBrowser(SQL_ROUTE)
-    await userEvent.type(await screen.findByLabelText('SQL 입력'), "UPDATE orders SET status = 'PAID'")
+    await userEvent.type(
+      await screen.findByLabelText('SQL 입력'),
+      "UPDATE orders SET status = 'PAID'",
+    )
     await userEvent.click(screen.getByRole('button', { name: '실행' }))
 
     // 확인 다이얼로그 — 종류·대상 커넥션·문장·되돌릴 수 없다는 문구
@@ -317,7 +377,9 @@ describe('데이터 브라우저 — SQL 탭', () => {
 
     // 다시 실행 → 확인
     await userEvent.click(screen.getByRole('button', { name: '실행' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '실행' }))
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '실행' }),
+    )
 
     expect(await screen.findByText('3행이 바뀌었습니다')).toBeVisible()
     expect(confirmedFlags).toEqual([false, false, true])
@@ -357,13 +419,17 @@ describe('데이터 브라우저 — SQL 탭', () => {
 
   it('여러 문장·지원하지 않는 문장은 서버 판정 문구로 안내한다', async () => {
     server.use(
-      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/queries', () => fail('UNSUPPORTED_STATEMENT', 400)),
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/queries', () =>
+        fail('UNSUPPORTED_STATEMENT', 400),
+      ),
     )
     renderBrowser(SQL_ROUTE)
     await userEvent.type(await screen.findByLabelText('SQL 입력'), 'BEGIN')
     await userEvent.click(screen.getByRole('button', { name: '실행' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('이 콘솔에서는 그 문장을 실행하지 않습니다')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '이 콘솔에서는 그 문장을 실행하지 않습니다',
+    )
   })
 
   it('실행 이력은 이 브라우저에 남고, 고르면 입력 칸에 다시 들어온다', async () => {
@@ -373,12 +439,14 @@ describe('데이터 브라우저 — SQL 탭', () => {
     await userEvent.click(screen.getByRole('button', { name: '실행' }))
     await screen.findByRole('table')
 
-    expect(JSON.parse(window.localStorage.getItem('crowfoot.database.sql-history.302') ?? '[]')).toMatchObject([
-      { sql: 'SELECT * FROM orders', ok: true },
-    ])
+    expect(
+      JSON.parse(window.localStorage.getItem('crowfoot.database.sql-history.302') ?? '[]'),
+    ).toMatchObject([{ sql: 'SELECT * FROM orders', ok: true }])
     await userEvent.clear(input)
     await userEvent.click(screen.getByRole('button', { name: '이력 1' }))
-    await userEvent.click(within(screen.getByRole('list', { name: '실행 이력' })).getByRole('button'))
+    await userEvent.click(
+      within(screen.getByRole('list', { name: '실행 이력' })).getByRole('button'),
+    )
 
     expect(input).toHaveValue('SELECT * FROM orders')
   })
@@ -401,7 +469,11 @@ describe('데이터 브라우저 — 행 편집', () => {
   function captureChanges() {
     const bodies: { changes: unknown[] }[] = []
     server.events.on('request:start', ({ request }) => {
-      if (request.url.endsWith('/changes')) void request.clone().json().then((body) => bodies.push(body as { changes: unknown[] }))
+      if (request.url.endsWith('/changes'))
+        void request
+          .clone()
+          .json()
+          .then((body) => bodies.push(body as { changes: unknown[] }))
     })
     return bodies
   }
@@ -474,7 +546,10 @@ describe('데이터 브라우저 — 행 편집', () => {
     await userEvent.click(within(rowOf('2')).getByRole('button', { name: '행 삭제' }))
     await userEvent.click(screen.getByRole('button', { name: '되돌리기' }))
     expect(screen.queryByText(/^변경 \d+건$/)).not.toBeInTheDocument()
-    expect(within(rowOf('2')).getByRole('button', { name: '행 삭제' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(rowOf('2')).getByRole('button', { name: '행 삭제' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 
   it('적용이 실패하면 변경은 화면에 남고, 실패한 행에 데이터베이스 문구가 붙는다', async () => {
@@ -482,8 +557,18 @@ describe('데이터 브라우저 — 행 편집', () => {
       http.post(CHANGES, () =>
         HttpResponse.json(
           {
-            header: { isSuccessful: false, resultCode: 'ROW_CHANGE_FAILED', resultMessage: '데이터베이스가 변경을 거부했습니다' },
-            errors: [{ field: 'changes[1]', code: 'ROW_CHANGE_FAILED', message: "Column 'status' cannot be null" }],
+            header: {
+              isSuccessful: false,
+              resultCode: 'ROW_CHANGE_FAILED',
+              resultMessage: '데이터베이스가 변경을 거부했습니다',
+            },
+            errors: [
+              {
+                field: 'changes[1]',
+                code: 'ROW_CHANGE_FAILED',
+                message: "Column 'status' cannot be null",
+              },
+            ],
           },
           { status: 409 },
         ),
@@ -496,9 +581,13 @@ describe('데이터 브라우저 — 행 편집', () => {
     await userEvent.type(screen.getByLabelText('status 편집'), '!{Enter}')
 
     await userEvent.click(screen.getByRole('button', { name: '적용' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }),
+    )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('적용하지 못했습니다. 변경은 전부 되돌렸습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '적용하지 못했습니다. 변경은 전부 되돌렸습니다.',
+    )
     // 변경은 그대로 — 두 번째 변경(2번 주문 수정)의 행에 문구가 붙는다
     expect(screen.getByText('변경 2건')).toBeVisible()
     expect(rowOf('2')).toHaveAttribute('title', "Column 'status' cannot be null")
@@ -521,7 +610,9 @@ describe('데이터 브라우저 — 행 편집', () => {
     expect(screen.getByText('변경 1건')).toBeVisible()
 
     await userEvent.click(screen.getByRole('button', { name: '적용' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }),
+    )
     await waitFor(() => expect(bodies).toHaveLength(1))
     const full = '긴 메모의 앞부분' + ' 그리고 이어지는 뒷부분'.repeat(3)
     expect(bodies[0].changes).toEqual([
@@ -553,9 +644,21 @@ describe('데이터 브라우저 — 행 편집', () => {
         HttpResponse.json(
           ok({
             response: {
-              columns: [{ name: 'message', typeName: 'VARCHAR(100)', category: 'character', nullable: true, primaryKey: false }],
+              columns: [
+                {
+                  name: 'message',
+                  typeName: 'VARCHAR(100)',
+                  category: 'character',
+                  nullable: true,
+                  primaryKey: false,
+                },
+              ],
               rows: [['hello']],
-              page: 1, size: 100, hasNext: false, truncated: false, elapsedMs: 1,
+              page: 1,
+              size: 100,
+              hasNext: false,
+              truncated: false,
+              elapsedMs: 1,
             },
           }),
         ),
@@ -591,27 +694,43 @@ describe('데이터 브라우저 — ERD 논리명', () => {
     },
   })
   const summary = (modelId: string, sourceConnectionId: string | null) => ({
-    modelId, workspaceId: '101', name: `문서 ${modelId}`, description: null, databaseType: 'mysql', sourceConnectionId,
-    version: 3, createdBy: null, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
+    modelId,
+    workspaceId: '101',
+    name: `문서 ${modelId}`,
+    description: null,
+    databaseType: 'mysql',
+    sourceConnectionId,
+    version: 3,
+    createdBy: null,
+    createdAt: '2026-09-01T00:00:00Z',
+    updatedAt: '2026-09-01T00:00:00Z',
   })
   /** 문서 목록과 상세를 정한다 — 상세는 요청된 id를 기록한다 */
   function useModels(models: ReturnType<typeof summary>[]) {
     const requested: string[] = []
     server.use(
       http.get('/api/v1/core/workspaces/101/models', () =>
-        HttpResponse.json(ok({ responses: models, totalCount: models.length, page: 1, size: 100, totalPages: 1 })),
+        HttpResponse.json(
+          ok({ responses: models, totalCount: models.length, page: 1, size: 100, totalPages: 1 }),
+        ),
       ),
       http.get('/api/v1/core/workspaces/101/models/:modelId', ({ params }) => {
         requested.push(String(params.modelId))
         const found = models.find((model) => model.modelId === params.modelId)
         return found
           ? HttpResponse.json(ok({ response: { ...found, content } }))
-          : HttpResponse.json({ header: { isSuccessful: false, resultCode: 'MODEL_NOT_FOUND', resultMessage: 'x' } }, { status: 404 })
+          : HttpResponse.json(
+              {
+                header: { isSuccessful: false, resultCode: 'MODEL_NOT_FOUND', resultMessage: 'x' },
+              },
+              { status: 404 },
+            )
       }),
     )
     return requested
   }
-  const header = (name: string) => within(screen.getByRole('table')).getByRole('columnheader', { name: new RegExp(`^${name}`) })
+  const header = (name: string) =>
+    within(screen.getByRole('table')).getByRole('columnheader', { name: new RegExp(`^${name}`) })
 
   it('이 커넥션을 원천으로 하는 문서가 하나면 컬럼 머리에 논리명을 함께 보여 준다 — 물리명과 같은 논리명은 뺀다', async () => {
     useModels([summary('700', '302'), summary('701', null)])
@@ -648,3 +767,435 @@ describe('데이터 브라우저 — ERD 논리명', () => {
   })
 })
 
+/** 문서 하나를 주소의 `?model=`로 받게 한다 — 원천 커넥션은 302 */
+function useDocument(modelId: string, content: string) {
+  server.use(
+    http.get(`/api/v1/core/workspaces/101/models/${modelId}`, () =>
+      HttpResponse.json(
+        ok({
+          response: {
+            modelId,
+            workspaceId: '101',
+            name: `문서 ${modelId}`,
+            description: null,
+            databaseType: 'mysql',
+            sourceConnectionId: '302',
+            version: 3,
+            createdBy: null,
+            createdAt: '2026-09-01T00:00:00Z',
+            updatedAt: '2026-09-01T00:00:00Z',
+            content,
+          },
+        }),
+      ),
+    ),
+  )
+}
+
+describe('데이터 브라우저 — 문서 그룹으로 나눈 목록 (§5.6)', () => {
+  const orders = createTable('ORDERS') // 대소문자가 달라도 같은 테이블이다
+  const users = createTable('users')
+  const logs = createTable('order_logs')
+  const base = emptyContent()
+  const content = serializeContent({
+    ...base,
+    model: { ...base.model, tables: [orders, users, logs] },
+    diagram: {
+      ...base.diagram,
+      areas: [
+        createArea('주문', { color: 'red', tableIds: [orders.id, users.id] }),
+        createArea('회원', { color: 'blue', tableIds: [users.id] }),
+        createArea('빈 그룹', { color: 'green', tableIds: [] }),
+      ],
+    },
+  })
+
+  beforeEach(() => {
+    useDocument('800', content)
+    // 문서에 없는 DB 테이블 하나를 더한다
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects', () =>
+        HttpResponse.json(
+          ok({
+            response: {
+              ...databaseFixtures.objects,
+              objects: [
+                ...databaseFixtures.objects.objects,
+                { name: 'coupons', kind: 'TABLE', estimatedRows: 5, editable: true, comment: null },
+              ],
+            },
+          }),
+        ),
+      ),
+    )
+  })
+
+  const groups = () => screen.getAllByTestId('object-group')
+  /** 묶음 머리 글자 — 이름과 테이블 수 */
+  const headerText = (group: HTMLElement) => group.querySelector('h2 button')?.textContent
+  const groupNamed = (name: string) =>
+    groups().find((group) => within(group).queryByRole('button', { name: new RegExp(`^${name}`) }))!
+
+  it('문서 순서로 그룹을 나누고 색을 붙인다 — 그룹 없음·문서에 없는 테이블이 뒤에 오고, 뷰는 따로 둔다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?model=800')
+    await waitFor(() => expect(screen.getAllByTestId('object-group')).toHaveLength(4))
+
+    // 빈 그룹은 감춘다
+    expect(groups().map(headerText)).toEqual([
+      '주문2',
+      '회원1',
+      '그룹 없음1',
+      '문서에 없는 테이블1',
+    ])
+    // 색 — 에디터 탐색기의 그룹 폴더와 같은 프리셋(점·머리 왼쪽 띠)
+    expect(groups().map((group) => group.dataset.color)).toEqual([
+      'red',
+      'blue',
+      undefined,
+      undefined,
+    ])
+    expect(within(groupNamed('주문')).getByTestId('object-group-color')).toHaveStyle({
+      backgroundColor: '#ef4444',
+    })
+    expect(within(groupNamed('그룹 없음')).queryByTestId('object-group-color')).toBeNull()
+
+    // 여러 그룹에 든 테이블은 그룹마다 나온다
+    expect(within(groupNamed('주문')).getByRole('button', { name: /^orders/ })).toBeVisible()
+    expect(within(groupNamed('주문')).getByRole('button', { name: /^users/ })).toBeVisible()
+    expect(within(groupNamed('회원')).getByRole('button', { name: /^users/ })).toBeVisible()
+    expect(
+      within(groupNamed('그룹 없음')).getByRole('button', { name: /^order_logs/ }),
+    ).toBeVisible()
+    expect(
+      within(groupNamed('문서에 없는 테이블')).getByRole('button', { name: /^coupons/ }),
+    ).toBeVisible()
+    // 뷰는 지금처럼 뷰 묶음에 — 테이블 묶음 제목은 없다
+    expect(screen.getByRole('heading', { name: '뷰 (1)' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: /^테이블 \(/ })).toBeNull()
+  })
+
+  it('머리를 누르면 접힌다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?model=800')
+    await waitFor(() => expect(screen.getAllByTestId('object-group')).toHaveLength(4))
+    const header = within(groupNamed('주문')).getByRole('button', { name: /^주문/ })
+
+    fireEvent.click(header)
+    expect(header).toHaveAttribute('aria-expanded', 'false')
+    expect(within(groupNamed('주문')).queryByRole('button', { name: /^orders/ })).toBeNull()
+    fireEvent.click(header)
+    expect(within(groupNamed('주문')).getByRole('button', { name: /^orders/ })).toBeVisible()
+  })
+
+  it('검색은 그룹을 가로질러 걸고, 빈 그룹은 감춘다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?model=800')
+    await waitFor(() => expect(screen.getAllByTestId('object-group')).toHaveLength(4))
+    const search = screen.getByLabelText('테이블·뷰 검색')
+
+    await userEvent.type(search, 'users')
+    expect(groups().map(headerText)).toEqual(['주문1', '회원1'])
+
+    await userEvent.clear(search)
+    await userEvent.type(search, 'coupon')
+    expect(groups()).toHaveLength(1)
+    expect(groups()[0]).toHaveAttribute('data-group', '__not-in-document')
+  })
+
+  it('문서 없이 열면 지금처럼 한 목록이다', async () => {
+    renderBrowser()
+    expect(await screen.findByRole('heading', { name: '테이블 (4)' })).toBeVisible()
+    expect(screen.queryByTestId('object-group')).toBeNull()
+  })
+})
+
+describe('데이터 브라우저 — 논리명의 설명은 툴팁으로 (§5.7)', () => {
+  const base = emptyContent()
+  const content = serializeContent({
+    ...base,
+    model: {
+      ...base.model,
+      tables: [
+        createTable('orders', {
+          columns: [
+            createColumn({
+              physicalName: 'status',
+              logicalName: '작업 종류-----(USER_SUSPEND, TOPIC_CREATE 등)',
+            }),
+          ],
+        }),
+      ],
+    },
+  })
+
+  it('머리글은 `-----` 앞부분만 보여 주고, 설명은 마우스를 올리면 보이며 정렬 버튼의 설명으로 읽힌다', async () => {
+    useDocument('801', content)
+    renderBrowser('/workspaces/101/connections/302/data?object=orders&model=801')
+    await screen.findByRole('table')
+
+    const label = await screen.findByText('작업 종류')
+    expect(label).toHaveAttribute('title', '(USER_SUSPEND, TOPIC_CREATE 등)')
+    const header = within(screen.getByRole('table')).getByRole('columnheader', { name: /^status/ })
+    expect(header).not.toHaveTextContent('-----')
+    const sort = screen.getByRole('button', { name: 'status 기준 정렬' })
+    expect(sort).toHaveAccessibleDescription('(USER_SUSPEND, TOPIC_CREATE 등)')
+  })
+
+  it('구조 탭의 코멘트도 같은 관례로 보여 준다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/structure', () =>
+        HttpResponse.json(
+          ok({
+            response: {
+              ...databaseFixtures.orderStructure,
+              columns: databaseFixtures.orderStructure.columns.map((column) =>
+                column.name === 'id'
+                  ? { ...column, comment: '주문 ID-----자동 증가 번호' }
+                  : column,
+              ),
+            },
+          }),
+        ),
+      ),
+    )
+    renderBrowser('/workspaces/101/connections/302/data?object=orders&tab=structure')
+    const label = await screen.findByText('주문 ID')
+    expect(label).toHaveAttribute('title', '자동 증가 번호')
+    expect(screen.queryByText(/-----/)).toBeNull()
+  })
+})
+
+describe('데이터 브라우저 — 열 너비 (§5.8)', () => {
+  const KEY = 'crowfoot.database.column-widths:302:orders'
+  const col = (name: string) =>
+    document.querySelector<HTMLTableColElement>(`col[data-column="${name}"]`)!
+  const widthOf = (name: string) => Number.parseInt(col(name).style.width, 10)
+
+  beforeEach(() => localStorage.removeItem(KEY))
+
+  it('열을 늘려 채우지 않는다 — 머리글과 타입으로 정한 기본 너비로 시작한다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    const table = await screen.findByRole('table')
+
+    expect(table).toHaveClass('table-fixed')
+    expect(table).not.toHaveClass('min-w-full')
+    // 숫자는 좁게, 텍스트는 넓게 — 너비는 px로 정해지고 표 너비는 그 합이다
+    expect(col('id').style.width).toMatch(/px$/)
+    expect(widthOf('id')).toBeLessThan(widthOf('memo'))
+    const total =
+      36 + ['id', 'status', 'memo', 'receipt'].reduce((sum, name) => sum + widthOf(name), 0)
+    expect(table.style.width).toBe(`${total}px`)
+  })
+
+  it('머리글 오른쪽 끝을 끌면 너비가 바뀌고 기억한다 — 두 번 누르면 기본 너비로 돌아간다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    const initial = widthOf('status')
+    const handle = screen.getByRole('separator', { name: 'status 열 너비' })
+
+    fireEvent.mouseDown(handle, { button: 0, clientX: 100 })
+    fireEvent.mouseMove(window, { clientX: 160 })
+    expect(widthOf('status')).toBe(initial + 60)
+    fireEvent.mouseUp(window)
+    expect(JSON.parse(localStorage.getItem(KEY) ?? '{}')).toEqual({ status: initial + 60 })
+    // 정렬 버튼은 눌리지 않는다
+    expect(screen.getByRole('columnheader', { name: /status/ })).toHaveAttribute(
+      'aria-sort',
+      'none',
+    )
+
+    // 키보드 — 손잡이에서 →
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    expect(widthOf('status')).toBe(initial + 76)
+
+    fireEvent.doubleClick(handle)
+    expect(widthOf('status')).toBe(initial)
+    expect(localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it('기억한 너비로 다시 연다', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ memo: 420 }))
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    expect(widthOf('memo')).toBe(420)
+  })
+})
+
+describe('데이터 브라우저 — 외래 키 따라가기와 생성 컬럼 (§5.9)', () => {
+  const ROWS = '/api/v1/database-manager/workspaces/:w/connections/:c/objects/:objectName/rows'
+  const STRUCTURE =
+    '/api/v1/database-manager/workspaces/:w/connections/:c/objects/:objectName/structure'
+  const logColumns = [
+    {
+      name: 'order_id',
+      typeName: 'BIGINT',
+      category: 'integer',
+      nullable: false,
+      primaryKey: false,
+    },
+    {
+      name: 'status',
+      typeName: 'VARCHAR(20)',
+      category: 'character',
+      nullable: false,
+      primaryKey: false,
+    },
+  ]
+
+  /** orders 구조를 바꾸고, order_logs 행 요청의 조건을 모은다 */
+  function withLogs(structurePatch: Record<string, unknown>) {
+    const logQueries: RowsQuery[] = []
+    server.use(
+      http.post(STRUCTURE, ({ params }) =>
+        params.objectName === 'orders'
+          ? HttpResponse.json(
+              ok({ response: { ...databaseFixtures.orderStructure, ...structurePatch } }),
+            )
+          : fail('OBJECT_NOT_FOUND', 404),
+      ),
+      http.post(ROWS, async ({ params, request }) => {
+        if (params.objectName !== 'order_logs') return undefined
+        logQueries.push((await request.json()) as RowsQuery)
+        return HttpResponse.json(
+          ok({
+            response: {
+              columns: logColumns,
+              rows: [['1', 'PAID']],
+              page: 1,
+              size: 100,
+              hasNext: false,
+              truncated: false,
+              elapsedMs: 3,
+            },
+          }),
+        )
+      }),
+    )
+    return logQueries
+  }
+
+  it('외래 키 값 옆의 단추는 부모 테이블을 그 값의 조건으로 연다', async () => {
+    const logQueries = withLogs({
+      foreignKeys: [
+        {
+          name: 'fk_orders_status',
+          columns: ['status'],
+          referencedObject: 'order_logs',
+          referencedColumns: ['status'],
+        },
+      ],
+    })
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+
+    const buttons = await screen.findAllByRole('button', { name: 'order_logs의 이 행 열기' })
+    expect(buttons).toHaveLength(5) // status는 모든 행에 값이 있다
+    await userEvent.click(buttons[0])
+
+    await waitFor(() =>
+      expect(logQueries.at(-1)?.filters).toEqual([{ column: 'status', op: 'EQ', value: 'PAID' }]),
+    )
+    expect(screen.getByRole('heading', { level: 2, name: 'order_logs' })).toBeVisible()
+    // 조건 줄에 따라온 조건이 보인다 — 고치거나 지울 수 있다
+    expect(screen.getByLabelText('값')).toHaveValue('PAID')
+  })
+
+  it('행 앞의 단추는 이 행을 참조하는 테이블을 그 값으로 걸러 연다', async () => {
+    const logQueries = withLogs({
+      referencedBy: [
+        {
+          name: 'fk_logs_order',
+          object: 'order_logs',
+          columns: ['order_id'],
+          referencedColumns: ['id'],
+        },
+      ],
+    })
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+
+    const triggers = await screen.findAllByRole('button', { name: '이 행을 참조하는 행 보기' })
+    await userEvent.click(triggers[2]) // 3번 주문
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'order_logs (order_id)' }))
+
+    await waitFor(() =>
+      expect(logQueries.at(-1)?.filters).toEqual([{ column: 'order_id', op: 'EQ', value: '3' }]),
+    )
+  })
+
+  it('목록에 없는 테이블을 가리키는 외래 키는 따라가지 않고 알린다', async () => {
+    withLogs({
+      foreignKeys: [
+        {
+          name: 'fk_x',
+          columns: ['status'],
+          referencedObject: 'archived',
+          referencedColumns: ['code'],
+        },
+      ],
+    })
+    const toastError = vi.spyOn(toast, 'error')
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    await userEvent.click(
+      (await screen.findAllByRole('button', { name: 'archived의 이 행 열기' }))[0],
+    )
+    expect(toastError).toHaveBeenCalledWith(
+      'archived 테이블을 이 데이터베이스에서 찾을 수 없습니다',
+    )
+    toastError.mockRestore()
+    expect(screen.getByRole('heading', { level: 2, name: 'orders' })).toBeVisible()
+  })
+
+  it('생성 컬럼은 값을 넣거나 고칠 수 없다 — 새 행 칸은 "자동 계산", 두 번 눌러도 편집하지 않는다', async () => {
+    server.use(
+      http.post(ROWS, () =>
+        HttpResponse.json(
+          ok({
+            response: {
+              columns: databaseFixtures.orderColumns.map((column) =>
+                column.name === 'status' ? { ...column, generated: true } : column,
+              ),
+              rows: databaseFixtures.orderRows,
+              page: 1,
+              size: 100,
+              hasNext: false,
+              truncated: false,
+              elapsedMs: 3,
+            },
+          }),
+        ),
+      ),
+    )
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+
+    await userEvent.click(screen.getByRole('button', { name: '행 추가' }))
+    const insertRow = screen.getByTestId('insert-row')
+    expect(within(insertRow).getByText('자동 계산')).toBeVisible()
+    expect(within(insertRow).queryByLabelText(/status/)).not.toBeInTheDocument()
+    expect(within(insertRow).getByLabelText(/memo/)).toBeInTheDocument()
+
+    fireEvent.doubleClick(screen.getAllByText('PAID')[0])
+    expect(screen.queryByLabelText('status 편집')).not.toBeInTheDocument()
+  })
+
+  it('구조 탭 — 생성 컬럼 표시와 참조하는 외래 키', async () => {
+    withLogs({
+      columns: databaseFixtures.orderStructure.columns.map((column) =>
+        column.name === 'status' ? { ...column, generated: true } : column,
+      ),
+      referencedBy: [
+        {
+          name: 'fk_logs_order',
+          object: 'order_logs',
+          columns: ['order_id'],
+          referencedColumns: ['id'],
+        },
+      ],
+    })
+    renderBrowser('/workspaces/101/connections/302/data?object=orders&tab=structure')
+    expect(await screen.findByText('생성')).toBeVisible()
+    const section = screen.getByRole('region', { name: '참조하는 외래 키' })
+    expect(within(section).getByText('fk_logs_order')).toBeVisible()
+    expect(within(section).getByText(/order_logs \(order_id\) → \(id\)/)).toBeVisible()
+  })
+})

@@ -2,7 +2,8 @@
  * 요구사항 패널 — 묶음, 판정 배지와 필터, 펼치기, 편집, 읽기 전용 (05-editor/02-ui.md §17)
  */
 import { ReactFlowProvider } from '@xyflow/react'
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { HttpResponse, http } from 'msw'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { RequirementsPanel, descriptionLines } from '@/features/editor/components/RequirementsPanel'
@@ -10,7 +11,11 @@ import { createColumn, createTable } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdRequirement } from '@/features/editor/model/content-schema'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
-import { renderWithProviders, resetSessionState } from '@/test/test-app'
+import { ok } from '@/api/mocks/handlers'
+import { server } from '@/api/mocks/server'
+import type { RequirementChanges } from '@/features/editor/api'
+import { diffItems, diffLines } from '@/features/editor/model/requirement-diff'
+import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
 
 const requirement = (overrides: Partial<ErdRequirement>): ErdRequirement => ({
   id: 'r1',
@@ -263,7 +268,8 @@ describe('RequirementsPanel', () => {
   it('캔버스에서 보기 — 요구사항에 연결된 테이블을 모두 고르고 ERD 탭으로 돌아간다', () => {
     renderPanel()
     fireEvent.click(screen.getByText('주문을 만든다'))
-    fireEvent.click(screen.getByTestId('requirement-show-on-canvas'))
+    // 반영 대기 요구사항은 반영 단계의 "테이블로 이동"이 같은 동작이다(§21)
+    fireEvent.click(screen.getByTestId('requirement-step-tables'))
     expect(useEditorStore.getState().selectedIds).toEqual(['t-orders', 't-users'])
     expect(useRequirementsPanel.getState().open).toBe(false)
   })
@@ -389,5 +395,156 @@ describe('descriptionLines', () => {
     ])
     expect(descriptionLines('  ')).toEqual([])
     expect(descriptionLines('한 문장')).toEqual(['한 문장'])
+  })
+})
+
+describe('요구사항 패널 — 반영 대기 요구사항 반영하기 (§21, 08-core/17-model-edit.md §2.4)', () => {
+  const snapshot = (overrides: Partial<NonNullable<RequirementChanges['before']>> = {}) => ({
+    title: '주문을 만든다',
+    description: '',
+    status: 'confirmed',
+    tables: ['orders', 'users'],
+    criteria: [],
+    ...overrides,
+  })
+  /** 개요 응답 — REQ-002의 바뀐 내용을 정한다. 요청 수를 센다 */
+  function useOutline(changes: RequirementChanges) {
+    const calls = { count: 0 }
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models/501/outline', () => {
+        calls.count += 1
+        return HttpResponse.json(
+          ok({ response: { version: 3, requirements: [{ code: 'REQ-002', state: 'PENDING', changes }] } }),
+        )
+      }),
+    )
+    return calls
+  }
+  function renderLinked(options: { canEdit?: boolean; sourceConnectionId?: string | null } = {}) {
+    asAuthenticated()
+    useEditorStore.getState().hydrate({ modelId: '501', baseVersion: 3, document: fixture(), databaseType: 'mysql' })
+    useRequirementsPanel.setState({ open: true, focusId: null })
+    return renderWithProviders(
+      <ReactFlowProvider>
+        <RequirementsPanel
+          canEdit={options.canEdit ?? true}
+          documentName="주문 서비스"
+          workspaceId="101"
+          modelId="501"
+          sourceConnectionId={options.sourceConnectionId === undefined ? '301' : options.sourceConnectionId}
+        />
+      </ReactFlowProvider>,
+      { wrapRoutes: false },
+    )
+  }
+  const openChanges = async () => {
+    fireEvent.click(screen.getByText('주문을 만든다'))
+    fireEvent.click(screen.getByTestId('requirement-changes-toggle'))
+    return screen.findByTestId('requirement-changes')
+  }
+
+  it('줄 비교 — 같은 줄은 그대로, 지운 줄과 더한 줄을 나눈다', () => {
+    expect(diffLines('a\nb\nc', 'a\nB\nc\nd')).toEqual([
+      { kind: 'same', text: 'a' },
+      { kind: 'remove', text: 'b' },
+      { kind: 'add', text: 'B' },
+      { kind: 'same', text: 'c' },
+      { kind: 'add', text: 'd' },
+    ])
+    expect(diffLines('', 'x')).toEqual([{ kind: 'add', text: 'x' }])
+    expect(diffItems(['a', 'b', 'b'], ['b', 'c'])).toEqual({ added: ['c'], removed: ['a', 'b'] })
+  })
+
+  it('바뀐 내용 — 제목, 내용의 줄 차이, 수용 기준, 연결된 테이블을 보여 준다', async () => {
+    useOutline({
+      appliedRevision: 1,
+      revision: 2,
+      isNew: false,
+      beforeKnown: true,
+      before: snapshot({ title: '주문한다', description: '결제는 카드만\n주문은 취소할 수 있다', tables: ['orders'], criteria: [{ text: '카드 결제' }] }),
+      after: snapshot({ description: '결제는 카드와 계좌이체\n주문은 취소할 수 있다', criteria: [{ text: '계좌이체 결제' }] }),
+    })
+    renderLinked()
+    const view = await openChanges()
+
+    await waitFor(() => expect(within(view).getByTestId('requirement-changes-title')).toHaveTextContent('주문한다→주문을 만든다'))
+    const lines = within(view).getByTestId('requirement-changes-description').querySelectorAll('li')
+    expect([...lines].map((line) => [line.dataset.kind, line.textContent?.replace(/^[+−\s]+/, '').replace(/^(추가|삭제): /, '')])).toEqual([
+      ['remove', '결제는 카드만'],
+      ['add', '결제는 카드와 계좌이체'],
+      ['same', '주문은 취소할 수 있다'],
+    ])
+    const criteria = within(view).getByTestId('requirement-changes-criteria')
+    expect(criteria.querySelector('[data-kind="add"]')).toHaveTextContent('계좌이체 결제')
+    expect(criteria.querySelector('[data-kind="remove"]')).toHaveTextContent('카드 결제')
+    expect(within(view).getByTestId('requirement-changes-tables-summary')).toHaveTextContent('orders → orders, users')
+    // 상태는 그대로라 나오지 않는다
+    expect(within(view).queryByTestId('requirement-changes-status')).toBeNull()
+  })
+
+  it('새 요구사항과 이전 내용을 찾지 못한 요구사항은 그렇다고 알린다', async () => {
+    useOutline({ appliedRevision: 0, revision: 2, isNew: true, beforeKnown: true, before: null, after: snapshot() })
+    const first = renderLinked()
+    let view = await openChanges()
+    expect(await within(view).findByTestId('requirement-changes-new')).toHaveTextContent('새 요구사항')
+    first.unmount()
+
+    useOutline({ appliedRevision: 1, revision: 2, isNew: false, beforeKnown: false, before: null, after: snapshot() })
+    renderLinked()
+    view = await openChanges()
+    expect(await within(view).findByTestId('requirement-changes-unknown')).toHaveTextContent(
+      '이전 내용을 찾을 수 없습니다(오래된 버전이 정리됨)',
+    )
+  })
+
+  it('저장하지 않은 편집이 있으면 저장된 문서 기준이라고 알린다', async () => {
+    useOutline({ appliedRevision: 1, revision: 2, isNew: false, beforeKnown: true, before: snapshot({ title: '주문한다' }), after: snapshot() })
+    renderLinked()
+    act(() => useEditorStore.getState().commit({ type: 'requirement/patch', requirementId: 'r3', patch: { title: '쿠폰을 적용한다' } }))
+    const view = await openChanges()
+    expect(await within(view).findByTestId('requirement-changes-unsaved')).toBeInTheDocument()
+  })
+
+  it('DB에 반영 — 원천 커넥션이 있고 편집할 수 있을 때만 보이고, 마이그레이션 다이얼로그를 연다', async () => {
+    useOutline({ appliedRevision: 0, revision: 2, isNew: true, beforeKnown: true, before: null, after: snapshot() })
+    const first = renderLinked()
+    fireEvent.click(screen.getByText('주문을 만든다'))
+    // 커넥션 목록(301 존재)을 읽은 뒤에 나타난다
+    fireEvent.click(await screen.findByTestId('requirement-step-database'))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    first.unmount()
+
+    // 원천 커넥션이 없는 문서 — DB 단계가 없고, 반영함으로 표시는 2단계다
+    const second = renderLinked({ sourceConnectionId: null })
+    fireEvent.click(screen.getByText('주문을 만든다'))
+    expect(screen.getByTestId('requirement-steps')).toBeInTheDocument()
+    expect(screen.queryByTestId('requirement-step-database')).toBeNull()
+    expect(screen.getByTestId('requirement-steps')).toHaveTextContent('2. 다 반영했으면 표시합니다')
+    second.unmount()
+
+    // 읽기 전용 — 반영 단계가 없다. 바뀐 내용은 볼 수 있다
+    renderLinked({ canEdit: false })
+    fireEvent.click(screen.getByText('주문을 만든다'))
+    expect(screen.queryByTestId('requirement-steps')).toBeNull()
+    expect(screen.getByTestId('requirement-changes-toggle')).toBeInTheDocument()
+  })
+
+  it('반영함으로 표시 — appliedRevision을 revision으로 맞춘다(문서 편집이라 되돌릴 수 있다)', async () => {
+    useOutline({ appliedRevision: 1, revision: 2, isNew: false, beforeKnown: true, before: snapshot(), after: snapshot() })
+    renderLinked()
+    fireEvent.click(screen.getByText('주문을 만든다'))
+    fireEvent.click(screen.getByTestId('requirement-mark-applied'))
+    const target = () => requirements().find((item) => item.id === 'r2')!
+    expect(target().appliedRevision).toBe(2)
+    act(() => useEditorStore.getState().undo())
+    expect(target().appliedRevision).toBe(1)
+  })
+
+  it('공개·버전 뷰어처럼 문서 경로가 없으면 개요를 읽지 않고 바뀐 내용 보기도 없다', () => {
+    const calls = useOutline({ appliedRevision: 0, revision: 2, isNew: true, beforeKnown: true, before: null, after: snapshot() })
+    renderPanel()
+    fireEvent.click(screen.getByText('주문을 만든다'))
+    expect(screen.queryByTestId('requirement-changes-toggle')).toBeNull()
+    expect(calls.count).toBe(0)
   })
 })

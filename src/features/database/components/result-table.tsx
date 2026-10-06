@@ -3,7 +3,7 @@
  *
  * 셀 값은 문자열·null·잘린 값·이진 값 넷 중 하나다(§2.2). NULL과 빈 문자열을 구분해 보여 준다.
  */
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -13,6 +13,8 @@ import {
   type ColumnMeta,
   type RowSort,
 } from '@/features/database/api'
+import { useColumnWidths } from '@/features/database/column-widths'
+import { ColumnHeader } from '@/features/database/components/column-header'
 import { formatNumber } from '@/lib/format'
 import { cn } from 'cn'
 
@@ -29,7 +31,8 @@ function cellText(cell: CellValue): string {
 
 /** 화면에 올라온 행을 CSV로 — 잘린 값은 잘린 채로, 이진 값은 16진 앞부분만 담긴다 */
 export function toCsv(columns: ColumnMeta[], rows: CellValue[][]): string {
-  const escape = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value)
+  const escape = (value: string) =>
+    /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
   const lines = [columns.map((column) => escape(column.name)).join(',')]
   for (const row of rows) lines.push(row.map((cell) => escape(cellText(cell))).join(','))
   return `${BOM}${lines.join('\r\n')}\r\n`
@@ -45,63 +48,101 @@ export interface ResultTableProps {
   dimmed?: boolean
   /** 컬럼 이름(소문자) → ERD 논리명 — 있으면 머리글에 함께 보여 준다 */
   columnLabels?: Record<string, string>
+  /** 열 너비를 기억할 키(커넥션·테이블) — 주면 열마다 기본 너비로 시작하고 끌어서 바꾼다. SQL 결과는 주지 않는다 */
+  widthKey?: string
+  /** 외래 키 셀의 따라가기 — 따라갈 수 없는 셀은 undefined(§5.9) */
+  followOf?: (columnIndex: number, row: CellValue[]) => CellFollow | undefined
 }
 
-export function ResultTable({ columns, rows, sort = null, onSort, dimmed = false, columnLabels }: ResultTableProps) {
-  const { t } = useTranslation()
+/** 셀 옆의 따라가기 단추 */
+export interface CellFollow {
+  label: string
+  onFollow: () => void
+}
+
+/** 외래 키 값 옆의 작은 단추 — 두 번 눌러 편집하는 셀에서도 누르기만 하면 따라간다 */
+export function FollowButton({ follow }: { follow: CellFollow }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        follow.onFollow()
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+      aria-label={follow.label}
+      title={follow.label}
+      data-testid="follow-foreign-key"
+      className="ml-1 inline-flex rounded align-middle text-primary/50 hover:bg-muted hover:text-primary focus-visible:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      <ArrowUpRight aria-hidden className="size-3.5" />
+    </button>
+  )
+}
+
+export function ResultTable({
+  columns,
+  rows,
+  sort = null,
+  onSort,
+  dimmed = false,
+  columnLabels,
+  widthKey,
+  followOf,
+}: ResultTableProps) {
+  const widths = useColumnWidths(widthKey ?? '', columnLabels)
+  const sized = widthKey !== undefined
 
   return (
-    <table className={cn('w-max min-w-full border-collapse text-sm', dimmed && 'opacity-60')}>
+    <table
+      className={cn(
+        'border-collapse text-sm',
+        // 열 너비를 정하는 표는 늘려 채우지 않는다 — 남는 폭은 오른쪽에 빈 채로 둔다(§5.8)
+        sized ? 'table-fixed' : 'w-max min-w-full',
+        dimmed && 'opacity-60',
+      )}
+      style={
+        sized
+          ? { width: columns.reduce((sum, column) => sum + widths.widthOf(column), 0) }
+          : undefined
+      }
+    >
+      {sized ? (
+        <colgroup>
+          {columns.map((column, index) => (
+            <col
+              key={`${index}:${column.name}`}
+              data-column={column.name}
+              style={{ width: widths.widthOf(column) }}
+            />
+          ))}
+        </colgroup>
+      ) : null}
       <thead className="sticky top-0 z-10 bg-muted">
         <tr>
-          {columns.map((column, index) => {
-            const direction = sort?.column === column.name ? sort.direction : null
-            const label = (
-              <>
-                <span className={cn(column.primaryKey && 'underline decoration-dotted underline-offset-4')}>
-                  {column.name}
-                </span>
-                {columnLabels?.[column.name.toLowerCase()] ? (
-                  <span className="text-xs font-normal text-muted-foreground">{columnLabels[column.name.toLowerCase()]}</span>
-                ) : null}
-                <span className="text-[10px] font-normal text-muted-foreground">{column.typeName}</span>
-                {direction === 'ASC' ? <ArrowUp aria-hidden className="size-3" /> : null}
-                {direction === 'DESC' ? <ArrowDown aria-hidden className="size-3" /> : null}
-              </>
-            )
-            return (
-              <th
-                // 콘솔 결과는 컬럼 이름이 겹칠 수 있다(SELECT a.id, b.id) — 위치로 구분한다
-                key={`${index}:${column.name}`}
-                scope="col"
-                aria-sort={
-                  onSort ? (direction === 'ASC' ? 'ascending' : direction === 'DESC' ? 'descending' : 'none') : undefined
-                }
-                className="border-b border-r px-0 py-0 text-left font-medium last:border-r-0"
-              >
-                {onSort ? (
-                  <button
-                    type="button"
-                    onClick={() => onSort(column.name)}
-                    title={column.typeName}
-                    aria-label={t('database.data.sortBy', { column: column.name })}
-                    className="flex w-full items-center gap-1 px-2 py-1.5 hover:bg-muted-foreground/10"
-                  >
-                    {label}
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-1 px-2 py-1.5">{label}</span>
-                )}
-              </th>
-            )
-          })}
+          {columns.map((column, index) => (
+            <ColumnHeader
+              // 콘솔 결과는 컬럼 이름이 겹칠 수 있다(SELECT a.id, b.id) — 위치로 구분한다
+              key={`${index}:${column.name}`}
+              column={column}
+              logicalName={columnLabels?.[column.name.toLowerCase()]}
+              direction={sort?.column === column.name ? sort.direction : null}
+              onSort={onSort}
+              widths={sized ? widths : undefined}
+            />
+          ))}
         </tr>
       </thead>
       <tbody>
         {rows.map((row, rowIndex) => (
           <tr key={rowIndex} className="border-b hover:bg-muted/40">
             {row.map((cell, cellIndex) => (
-              <DataCell key={cellIndex} cell={cell} category={columns[cellIndex]?.category ?? 'other'} />
+              <DataCell
+                key={cellIndex}
+                cell={cell}
+                category={columns[cellIndex]?.category ?? 'other'}
+                follow={followOf?.(cellIndex, row)}
+              />
             ))}
           </tr>
         ))}
@@ -111,12 +152,22 @@ export function ResultTable({ columns, rows, sort = null, onSort, dimmed = false
 }
 
 /** 셀 하나 — NULL·빈 문자열·잘린 값·이진 값을 구분해 보여 준다(§5.2) */
-export function DataCell({ cell, category }: { cell: CellValue; category: string }) {
+export function DataCell({
+  cell,
+  category,
+  follow,
+}: {
+  cell: CellValue
+  category: string
+  follow?: CellFollow
+}) {
   const { t } = useTranslation()
   const base = 'max-w-96 truncate border-r px-2 py-1 align-top last:border-r-0'
 
   if (cell === null) {
-    return <td className={cn(base, 'text-muted-foreground/60 italic')}>{t('database.data.null')}</td>
+    return (
+      <td className={cn(base, 'text-muted-foreground/60 italic')}>{t('database.data.null')}</td>
+    )
   }
   if (isBinaryCell(cell)) {
     return (
@@ -127,7 +178,10 @@ export function DataCell({ cell, category }: { cell: CellValue; category: string
   }
   if (isTruncatedCell(cell)) {
     return (
-      <td className={base} title={t('database.data.truncatedCell', { formatted: formatNumber(cell.length) })}>
+      <td
+        className={base}
+        title={t('database.data.truncatedCell', { formatted: formatNumber(cell.length) })}
+      >
         {cell.text}
         <span className="ml-1 text-xs text-muted-foreground">
           … {t('database.data.truncatedCell', { formatted: formatNumber(cell.length) })}
@@ -139,10 +193,15 @@ export function DataCell({ cell, category }: { cell: CellValue; category: string
   const text = category === 'datetime' ? cell.replace(/^(\d{4}-\d{2}-\d{2})T/, '$1 ') : cell
   return (
     <td
-      className={cn(base, (NUMERIC.has(category) || category === 'datetime') && 'tabular-nums', NUMERIC.has(category) && 'text-right')}
+      className={cn(
+        base,
+        (NUMERIC.has(category) || category === 'datetime') && 'tabular-nums',
+        NUMERIC.has(category) && 'text-right',
+      )}
       title={cell.length > 40 ? cell : undefined}
     >
       {text}
+      {follow ? <FollowButton follow={follow} /> : null}
     </td>
   )
 }

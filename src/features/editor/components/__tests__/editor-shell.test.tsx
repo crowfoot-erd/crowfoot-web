@@ -22,6 +22,7 @@ import { buildRelationship } from '@/features/editor/model/relationship'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
 import { estimateTableHeight } from '@/features/editor/model/table-size'
 import { clearClipboard } from '@/features/editor/model/clipboard'
+import { resetDataView, useDataView } from '@/features/editor/store/data-view-store'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { modelKeys, useModel } from '@/features/models/hooks'
 import { asAuthenticated, renderWithProviders, resetSessionState } from '@/test/test-app'
@@ -1346,32 +1347,119 @@ describe('EditorShell — 도구 메뉴 항목 노출 조건', () => {
     expect(await screen.findByRole('menuitem', { name: 'DB 동기화' })).toBeVisible()
     // 연결된 문서에는 최초 연결 항목이 없다
     expect(screen.queryByRole('menuitem', { name: '데이터베이스 연결' })).toBeNull()
-    // 연결된 문서에는 데이터 보기도 함께 나온다 — 원천 커넥션의 데이터 브라우저를 새 창으로 연다
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    fireEvent.click(screen.getByRole('menuitem', { name: '데이터 보기' }))
-    // 문서 id를 함께 넘긴다 — 데이터 브라우저가 이 문서의 논리명을 컬럼 머리에 보여 준다
-    expect(openSpy).toHaveBeenCalledWith('/workspaces/101/connections/301/data?model=501', '_blank', 'noopener,noreferrer')
-    openSpy.mockRestore()
+    // 데이터 보기 탭이 없는 화면(셸만 — 공개·버전 뷰어와 같다)에서는 데이터 보기 항목이 없다
+    expect(screen.queryByRole('menuitem', { name: '데이터 보기' })).toBeNull()
   })
 
-  it('테이블 우클릭 → "이 테이블의 데이터 보기"는 그 테이블을 고른 상태로 데이터 브라우저를 연다', async () => {
-    await renderEditor()
-    const table = createTable('order_items')
-    useEditorStore.getState().commitAll([
-      { type: 'table/create', table, position: { x: 0, y: 0 } },
-      { type: 'column/add', tableId: table.id, column: createColumn({ id: 'c1', physicalName: 'qty', dataType: 'INT' }) },
-    ])
-    const node = (await screen.findByLabelText('컬럼 물리명 — qty')).closest('[data-nodekind="table"]') as HTMLElement
-    fireEvent.contextMenu(node)
+  describe('데이터 보기 탭으로 옮기기 (05-editor/02-ui.md §22)', () => {
+    afterEach(() => resetDataView())
 
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    fireEvent.click(await screen.findByRole('menuitem', { name: '이 테이블의 데이터 보기' }))
-    expect(openSpy).toHaveBeenCalledWith(
-      '/workspaces/101/connections/301/data?object=order_items&model=501',
-      '_blank',
-      'noopener,noreferrer',
-    )
-    openSpy.mockRestore()
+    it('도구 › 데이터 보기 — 새 창을 열지 않고 하단의 데이터 보기 탭을 연다. 캔버스는 감추기만 한다', async () => {
+      // 문서 열기 화면(model-viewer)이 Editor 이상에게 켜는 값 — 여기서는 직접 켠다
+      useDataView.getState().setAvailable(true)
+      await renderEditor()
+      // 처음 열기 전에는 데이터 브라우저를 마운트하지 않는다
+      expect(screen.queryByTestId('editor-data-view')).toBeNull()
+      await openToolsMenu()
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+      fireEvent.click(await screen.findByRole('menuitem', { name: '데이터 보기' }))
+      expect(openSpy).not.toHaveBeenCalled()
+      openSpy.mockRestore()
+
+      expect(useDataView.getState().open).toBe(true)
+      expect(await screen.findByTestId('editor-data-view')).toBeInTheDocument()
+      expect(screen.getByTestId('editor-canvas-area')).toHaveClass('hidden')
+      // 원천 커넥션 301의 데이터 브라우저가 에디터 안에 뜬다(코드는 이때 내려받는다)
+      expect(await screen.findByTestId('data-browser')).toBeInTheDocument()
+      expect(await screen.findByRole('complementary', { name: '테이블과 뷰' })).toBeInTheDocument()
+      // 탭 안에는 커넥션 머리 줄이 따로 없다 — 커넥션은 도구 줄 오른쪽에 붙는다(v1.35 사용자 요청)
+      const browser = screen.getByTestId('data-browser')
+      expect(browser.querySelector('header')).toBeNull()
+      expect(await screen.findByTestId('data-browser-connection')).toBeInTheDocument()
+    })
+
+    it('구조 탭의 문서와 다른 점 — 비교하면 그 테이블의 항목을 보여 주고, 문서를 고치면 바로 바뀌고, DB에 반영·문서로 가져오기 다이얼로그를 연다', async () => {
+      useDataView.getState().setAvailable(true)
+      await renderEditor()
+      act(() => {
+        useDataView.getState().show()
+        useDataView.getState().navigate('orders', 'structure')
+      })
+      const panel = await screen.findByTestId('data-view-document-diff')
+      expect(within(panel).getByText('이 테이블의 실제 구조와 ERD 문서를 비교합니다.')).toBeInTheDocument()
+
+      fireEvent.click(within(panel).getByRole('button', { name: '문서와 비교' }))
+      // 문서에는 orders가 없다 — DB에만 있는 테이블
+      const items = await within(panel).findByTestId('compare-items')
+      expect(items).toHaveTextContent('테이블 — DB에만 있음')
+      expect(items).toHaveTextContent('orders')
+
+      // 문서에 같은 테이블을 만들면(컬럼은 아직) 목록이 다시 읽지 않고 바뀐다
+      act(() => {
+        useEditorStore.getState().commitAll([
+          { type: 'table/create', table: createTable('orders'), position: { x: 0, y: 0 } },
+        ])
+      })
+      await waitFor(() => expect(within(panel).getByTestId('compare-items')).not.toHaveTextContent('테이블 — DB에만 있음'))
+      expect(within(panel).getByTestId('compare-items')).toHaveTextContent('컬럼 — DB에만 있음')
+
+      fireEvent.click(within(panel).getByRole('button', { name: 'DB에 반영' }))
+      expect(await screen.findByRole('dialog', { name: '마이그레이션 DDL — 문서 ↔ DB' })).toBeInTheDocument()
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: '마이그레이션 DDL — 문서 ↔ DB' })).toBeNull())
+
+      fireEvent.click(within(panel).getByRole('button', { name: '문서로 가져오기' }))
+      expect(await screen.findByRole('dialog', { name: '데이터베이스 동기화' })).toBeInTheDocument()
+    })
+
+    it('테이블 우클릭 → "이 테이블의 데이터 보기"는 데이터 보기 탭으로 옮기고 그 테이블을 고른다', async () => {
+      useDataView.getState().setAvailable(true)
+      await renderEditor()
+      const table = createTable('order_items')
+      useEditorStore.getState().commitAll([
+        { type: 'table/create', table, position: { x: 0, y: 0 } },
+        { type: 'column/add', tableId: table.id, column: createColumn({ id: 'c1', physicalName: 'qty', dataType: 'INT' }) },
+      ])
+      const node = (await screen.findByLabelText('컬럼 물리명 — qty')).closest('[data-nodekind="table"]') as HTMLElement
+      fireEvent.contextMenu(node)
+
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+      fireEvent.click(await screen.findByRole('menuitem', { name: '이 테이블의 데이터 보기' }))
+      expect(openSpy).not.toHaveBeenCalled()
+      openSpy.mockRestore()
+
+      expect(useDataView.getState().open).toBe(true)
+      // 데이터 브라우저가 올라오면 요청한 테이블을 고른다 — 에디터 주소가 아니라 스토어에 둔다
+      await waitFor(() => expect(useDataView.getState().object).toBe('order_items'))
+      expect(useDataView.getState().tab).toBe('data')
+      expect(await screen.findByTestId('data-browser')).toBeInTheDocument()
+    })
+
+    it('탭이 없는 화면에서는 테이블 우클릭 메뉴에 데이터 보기가 없다', async () => {
+      await renderEditor()
+      const table = createTable('order_items')
+      useEditorStore.getState().commitAll([
+        { type: 'table/create', table, position: { x: 0, y: 0 } },
+        { type: 'column/add', tableId: table.id, column: createColumn({ id: 'c1', physicalName: 'qty', dataType: 'INT' }) },
+      ])
+      const node = (await screen.findByLabelText('컬럼 물리명 — qty')).closest('[data-nodekind="table"]') as HTMLElement
+      fireEvent.contextMenu(node)
+      await screen.findByRole('menuitem', { name: '테이블 정보' })
+      expect(screen.queryByRole('menuitem', { name: '이 테이블의 데이터 보기' })).toBeNull()
+    })
+
+    it('원천 커넥션이 없는 문서 — 탭에서 데이터베이스 연결을 안내하고 연결 다이얼로그를 연다', async () => {
+      useDataView.getState().setAvailable(true)
+      renderWithProviders(<EditorShell model={modelFixture({ sourceConnectionId: null })} canEdit />, { wrapRoutes: false })
+      await waitFor(() => expect(useEditorStore.getState().modelId).toBe('501'))
+      act(() => useDataView.getState().show())
+
+      const view = await screen.findByTestId('editor-data-view')
+      expect(within(view).getByText('이 문서는 데이터베이스에 연결되어 있지 않습니다')).toBeVisible()
+      expect(screen.queryByTestId('data-browser')).toBeNull()
+      fireEvent.click(within(view).getByRole('button', { name: '데이터베이스 연결' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
   })
 
   it('읽기 전용(편집 권한 없음)에서는 DB 동기화를 노출하지 않는다 — 도메인 타입(보기)과 버전 기록만 남는다', async () => {

@@ -181,3 +181,39 @@ export function deployModel(workspaceId: string, modelId: string, connectionId: 
     { connectionId },
   )
 }
+
+/** 요구사항 한 개정의 내용 — 테이블은 물리명 (08-core/17-model-edit.md §2.4) */
+export interface RequirementSnapshot {
+  title: string
+  description: string
+  status: string
+  tables: string[]
+  criteria: { text: string }[]
+}
+
+/** 반영 대기 요구사항의 바뀐 내용 — before는 마지막으로 반영한 개정의 내용(버전 기록에서 찾는다) */
+export interface RequirementChanges {
+  appliedRevision: number
+  revision: number
+  /** 반영한 적이 없다(appliedRevision 0) */
+  isNew: boolean
+  /** 이전 내용을 찾았다 — 그 버전이 보존 정책으로 지워졌으면 false */
+  beforeKnown: boolean
+  before: RequirementSnapshot | null
+  after: RequirementSnapshot
+}
+
+/** 문서 개요(§3.1)에서 요구사항 패널이 쓰는 부분만 — 다른 필드는 읽지 않는다 */
+export interface ModelOutline {
+  version: number
+  requirements: { code: string; state: string; changes?: RequirementChanges | null }[]
+}
+
+/** 문서 개요(17-model-edit §3.1) — 반영 대기 요구사항의 바뀐 내용(changes)을 읽는다 */
+export function fetchModelOutline(
+  workspaceId: string,
+  modelId: string,
+  signal?: AbortSignal,
+): Promise<ModelOutline | undefined> {
+  return apiGet<ModelOutline>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/outline`, undefined, signal)
+}

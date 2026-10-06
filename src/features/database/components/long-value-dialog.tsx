@@ -33,15 +33,26 @@ export interface LongValueDialogProps {
   onSave: (value: EditValue, original: EditValue) => void
 }
 
-export function LongValueDialog({ workspaceId, connectionId, objectName, target, onClose, onSave }: LongValueDialogProps) {
+export function LongValueDialog({
+  workspaceId,
+  connectionId,
+  objectName,
+  target,
+  onClose,
+  onSave,
+}: LongValueDialogProps) {
   const { t } = useTranslation()
-  const cell = useCellValue(workspaceId, connectionId, objectName, { key: target.key, column: target.column })
+  const cell = useCellValue(workspaceId, connectionId, objectName, {
+    key: target.key,
+    column: target.column,
+  })
   const [draft, setDraft] = useState<string | null>(null)
   const loaded = cell.data
   const value = draft ?? loaded?.value ?? ''
 
   // 한도를 넘는 값 — 서버는 읽지 않고 전체 길이만 알려 준다(errors의 문구에 길이가 온다)
-  const tooLargeError = isApiError(cell.error) && cell.error.resultCode === 'VALUE_TOO_LARGE' ? cell.error : null
+  const tooLargeError =
+    isApiError(cell.error) && cell.error.resultCode === 'VALUE_TOO_LARGE' ? cell.error : null
   const tooLarge = tooLargeError !== null
   const tooLargeLength = Number(tooLargeError?.errors?.[0]?.message ?? 0)
 
@@ -51,7 +62,9 @@ export function LongValueDialog({ workspaceId, connectionId, objectName, target,
         <DialogHeader>
           <DialogTitle>{t('database.edit.longValue.title', { column: target.column })}</DialogTitle>
           <DialogDescription>
-            {loaded ? t('database.edit.longValue.length', { formatted: formatNumber(value.length) }) : ' '}
+            {loaded
+              ? t('database.edit.longValue.length', { formatted: formatNumber(value.length) })
+              : ' '}
           </DialogDescription>
         </DialogHeader>
 
@@ -87,7 +100,11 @@ export function LongValueDialog({ workspaceId, connectionId, objectName, target,
             </Button>
           ) : null}
           {loaded ? (
-            <Button type="button" disabled={draft === null || draft === loaded.value} onClick={() => onSave(value, loaded.value)}>
+            <Button
+              type="button"
+              disabled={draft === null || draft === loaded.value}
+              onClick={() => onSave(value, loaded.value)}
+            >
               {t('database.edit.longValue.save')}
             </Button>
           ) : null}

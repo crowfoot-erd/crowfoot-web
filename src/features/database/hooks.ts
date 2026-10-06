@@ -38,20 +38,31 @@ export function useDatabaseObjects(workspaceId: string, connectionId: string, en
   })
 }
 
-export function useObjectStructure(workspaceId: string, connectionId: string, objectName: string | null) {
+export function useObjectStructure(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string | null,
+) {
   return useQuery({
     queryKey: databaseKeys.structure(workspaceId, connectionId, objectName ?? ''),
-    queryFn: ({ signal }) => fetchObjectStructure(workspaceId, connectionId, objectName ?? '', signal),
+    queryFn: ({ signal }) =>
+      fetchObjectStructure(workspaceId, connectionId, objectName ?? '', signal),
     enabled: objectName !== null,
     retry: false,
     refetchOnWindowFocus: false,
   })
 }
 
-export function useObjectRows(workspaceId: string, connectionId: string, objectName: string | null, query: RowsQuery) {
+export function useObjectRows(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string | null,
+  query: RowsQuery,
+) {
   return useQuery({
     queryKey: databaseKeys.rows(workspaceId, connectionId, objectName ?? '', query),
-    queryFn: ({ signal }) => fetchObjectRows(workspaceId, connectionId, objectName ?? '', query, signal),
+    queryFn: ({ signal }) =>
+      fetchObjectRows(workspaceId, connectionId, objectName ?? '', query, signal),
     enabled: objectName !== null,
     retry: false,
     refetchOnWindowFocus: false,
@@ -63,7 +74,8 @@ export function useObjectRows(workspaceId: string, connectionId: string, objectN
 /** 정확한 행 수 — 사용자가 눌렀을 때만 센다(큰 테이블에서 느리다) */
 export function useCountRows(workspaceId: string, connectionId: string, objectName: string) {
   return useMutation({
-    mutationFn: (filters: RowFilter[]) => countObjectRows(workspaceId, connectionId, objectName, filters),
+    mutationFn: (filters: RowFilter[]) =>
+      countObjectRows(workspaceId, connectionId, objectName, filters),
   })
 }
 
@@ -79,7 +91,8 @@ export function useRunQuery(workspaceId: string, connectionId: string) {
 /** 행 편집 적용 — 자동으로 다시 시도하지 않는다(같은 변경이 두 번 들어가면 안 된다) */
 export function useApplyRowChanges(workspaceId: string, connectionId: string, objectName: string) {
   return useMutation({
-    mutationFn: (changes: RowChange[]) => applyRowChanges(workspaceId, connectionId, objectName, changes),
+    mutationFn: (changes: RowChange[]) =>
+      applyRowChanges(workspaceId, connectionId, objectName, changes),
     retry: false,
   })
 }
@@ -94,7 +107,14 @@ export function useCellValue(
   return useQuery({
     queryKey: ['database', workspaceId, connectionId, 'cell', objectName, target] as const,
     queryFn: ({ signal }) =>
-      fetchCellValue(workspaceId, connectionId, objectName, target?.key ?? {}, target?.column ?? '', signal),
+      fetchCellValue(
+        workspaceId,
+        connectionId,
+        objectName,
+        target?.key ?? {},
+        target?.column ?? '',
+        signal,
+      ),
     enabled: target !== null,
     retry: false,
     refetchOnWindowFocus: false,

@@ -129,6 +129,7 @@
       "MANAGED_INSTANCE_UNREACHABLE": "인스턴스에 접속할 수 없습니다. 자격·주소를 확인해 주세요.",
       "MANAGED_INSTANCE_IN_USE": "발급이 남아 있는 인스턴스는 삭제할 수 없습니다. 발급을 먼저 철회해 주세요.",
       "MANAGED_LIMIT_EXCEEDED": "발급 한도에 도달했습니다. 철회 후 다시 시도하거나 관리자에게 문의해 주세요.",
+      "MANAGED_CONNECTION_REVOKE_REQUIRED": "서비스 제공 DB의 커넥션은 발급 철회로 정리합니다. 위쪽 서비스 제공 DB 표에서 철회해 주세요.",
       "MANAGED_PROVISION_FAILED": "발급 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
       "MANAGED_DATABASE_NOT_FOUND": "발급을 찾을 수 없습니다.",
       "SHARE_NOT_FOUND": "공유 링크를 찾을 수 없습니다.",
@@ -1453,7 +1454,7 @@
         "expressionRequired": "식을 입력하세요"
       }
     },
-  "requirements": {"criteria": {"title": "수용 기준", "count": "기준 {{done}}/{{total}}", "hint": "한 줄에 하나씩 적습니다. 요구사항이 제대로 반영됐는지 확인할 항목입니다"}, "search": "코드·제목·내용·테이블 찾기", "progress": "반영 {{applied}}/{{total}}", "domains": {"label": "도메인", "all": "전체", "noRequirements": "이 도메인에는 요구사항이 아직 없습니다", "showOnCanvas": "캔버스에서 보기"}, "export": {"button": "내보내기", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "요구사항 명세", "columns": {"code": "코드", "domain": "도메인", "state": "상태", "title": "제목", "description": "내용", "tables": "테이블"}}, "title": "요구사항", "add": "추가", "filterLabel": "상태 필터", "state": {"APPLIED": "반영됨", "PENDING": "반영 대기", "UNLINKED": "연결 끊김", "LEFTOVER": "정리 필요", "DRAFT": "검토 중", "DROPPED": "제외"}, "stateHint": {"APPLIED": "확정된 요구사항이 ERD에 반영되어 있습니다", "PENDING": "확정됐지만 ERD가 최신 내용을 아직 반영하지 않았습니다", "UNLINKED": "반영했다고 표시했지만 연결된 테이블이 없습니다", "LEFTOVER": "제외한 요구사항에 테이블이 아직 연결되어 있습니다", "DRAFT": "아직 확정하지 않은 요구사항입니다", "DROPPED": "더 이상 다루지 않는 요구사항입니다"}, "status": {"draft": "검토 중", "confirmed": "확정", "dropped": "제외"}, "scope": {"tables": "기능", "document": "공통"}, "group": {"unassigned": "미분류", "document": "공통"}, "empty": "요구사항이 없습니다", "emptyDetail": "Claude가 MCP로 등록하거나 직접 추가할 수 있습니다", "emptyFiltered": "조건에 맞는 요구사항이 없습니다", "tableCount": "테이블 {{count}}", "noDescription": "내용 없음", "linkedTables": "연결된 테이블", "noTables": "연결된 테이블이 없습니다", "markApplied": "반영함으로 표시", "revision": "개정 {{revision}}", "removeConfirm": "잘못 등록한 항목만 삭제하세요", "limit": "요구사항은 문서당 {{max}}개까지 등록할 수 있습니다", "tableInfo": "요구사항", "untraced": {"title": "근거 없는 테이블", "hint": "어떤 요구사항에도 연결되지 않은 테이블입니다"}, "dialog": {"createTitle": "요구사항 추가", "editTitle": "요구사항 수정", "title": "제목", "titleRequired": "제목을 입력하세요", "description": "내용", "revisionHint": "제목이나 내용을 고치면 반영 대기가 됩니다", "scope": "범위", "status": "상태", "area": "도메인(그룹)", "tables": "연결할 테이블", "documentHint": "공통 요구사항은 문서 전체에 적용되며 테이블에 연결하지 않습니다"}},
+  "requirements": { "changes": {"show": "바뀐 내용 보기", "hide": "바뀐 내용 접기", "revision": "반영한 개정 {{from}} → 지금 개정 {{to}}", "isNew": "새 요구사항", "isNewHint": "아직 반영한 적이 없습니다. 지금 내용 전체를 반영합니다.", "unknown": "이전 내용을 찾을 수 없습니다(오래된 버전이 정리됨)", "loading": "바뀐 내용을 읽는 중…", "failed": "바뀐 내용을 읽지 못했습니다", "notSaved": "저장한 뒤에 바뀐 내용을 볼 수 있습니다", "savedOnly": "저장된 문서 기준입니다. 저장하지 않은 편집은 저장한 뒤에 보입니다.", "title": "제목", "status": "상태", "description": "내용", "criteria": "수용 기준", "tables": "연결된 테이블", "added": "추가", "removed": "삭제", "none": "없음"}, "steps": {"title": "반영 단계", "tablesHint": "1. ERD에서 연결된 테이블을 고칩니다", "tables": "테이블로 이동", "databaseHint": "2. 고친 문서를 저장하고 연결된 데이터베이스에 반영합니다", "database": "DB에 반영", "markHint": "3. 다 반영했으면 표시합니다", "markHintNoDatabase": "2. 다 반영했으면 표시합니다"},"criteria": {"title": "수용 기준", "count": "기준 {{done}}/{{total}}", "hint": "한 줄에 하나씩 적습니다. 요구사항이 제대로 반영됐는지 확인할 항목입니다"}, "search": "코드·제목·내용·테이블 찾기", "progress": "반영 {{applied}}/{{total}}", "domains": {"label": "도메인", "all": "전체", "noRequirements": "이 도메인에는 요구사항이 아직 없습니다", "showOnCanvas": "캔버스에서 보기"}, "export": {"button": "내보내기", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "요구사항 명세", "columns": {"code": "코드", "domain": "도메인", "state": "상태", "title": "제목", "description": "내용", "tables": "테이블"}}, "title": "요구사항", "add": "추가", "filterLabel": "상태 필터", "state": {"APPLIED": "반영됨", "PENDING": "반영 대기", "UNLINKED": "연결 끊김", "LEFTOVER": "정리 필요", "DRAFT": "검토 중", "DROPPED": "제외"}, "stateHint": {"APPLIED": "확정된 요구사항이 ERD에 반영되어 있습니다", "PENDING": "확정됐지만 ERD가 최신 내용을 아직 반영하지 않았습니다", "UNLINKED": "반영했다고 표시했지만 연결된 테이블이 없습니다", "LEFTOVER": "제외한 요구사항에 테이블이 아직 연결되어 있습니다", "DRAFT": "아직 확정하지 않은 요구사항입니다", "DROPPED": "더 이상 다루지 않는 요구사항입니다"}, "status": {"draft": "검토 중", "confirmed": "확정", "dropped": "제외"}, "scope": {"tables": "기능", "document": "공통"}, "group": {"unassigned": "미분류", "document": "공통"}, "empty": "요구사항이 없습니다", "emptyDetail": "Claude가 MCP로 등록하거나 직접 추가할 수 있습니다", "emptyFiltered": "조건에 맞는 요구사항이 없습니다", "tableCount": "테이블 {{count}}", "noDescription": "내용 없음", "linkedTables": "연결된 테이블", "noTables": "연결된 테이블이 없습니다", "markApplied": "반영함으로 표시", "revision": "개정 {{revision}}", "removeConfirm": "잘못 등록한 항목만 삭제하세요", "limit": "요구사항은 문서당 {{max}}개까지 등록할 수 있습니다", "tableInfo": "요구사항", "untraced": {"title": "근거 없는 테이블", "hint": "어떤 요구사항에도 연결되지 않은 테이블입니다"}, "dialog": {"createTitle": "요구사항 추가", "editTitle": "요구사항 수정", "title": "제목", "titleRequired": "제목을 입력하세요", "description": "내용", "revisionHint": "제목이나 내용을 고치면 반영 대기가 됩니다", "scope": "범위", "status": "상태", "area": "도메인(그룹)", "tables": "연결할 테이블", "documentHint": "공통 요구사항은 문서 전체에 적용되며 테이블에 연결하지 않습니다"}},
   "validation": {
     "toggle": "검증",
     "title": "설계 검증",
@@ -1546,6 +1547,7 @@
       "label": "화면 전환",
       "erd": "ERD",
       "requirements": "요구사항",
+      "data": "데이터 보기",
       "comments": "댓글"
     }
   },
@@ -1659,6 +1661,7 @@
     "delete": {
       "title": "{{name}} 커넥션 삭제",
       "description": "'{{name}}' 커넥션을 삭제합니다. 이 커넥션으로 만든 문서는 유지됩니다.",
+      "managedNotice": "'{{name}}'은 서비스 제공 DB의 커넥션이라 발급을 철회해야 지워집니다.",
       "successToast": "커넥션을 삭제했습니다"
     }
   },
@@ -2008,6 +2011,16 @@
     "open": "{{name}} 데이터 보기",
     "openShort": "데이터 보기",
     "close": "창 닫기",
+    "embedded": {
+      "noSource": {
+        "title": "이 문서는 데이터베이스에 연결되어 있지 않습니다",
+        "description": "데이터베이스를 연결하면 이 탭에서 테이블의 데이터를 보고 고칠 수 있습니다."
+      },
+      "sourceMissing": {
+        "title": "이 문서의 커넥션이 삭제되었습니다",
+        "description": "워크스페이스의 데이터베이스 탭에서 커넥션을 확인하세요."
+      }
+    },
     "noPermission": {
       "title": "데이터를 볼 권한이 없습니다",
       "description": "편집자 이상만 데이터 브라우저를 쓸 수 있습니다."
@@ -2021,7 +2034,9 @@
       "noMatch": "일치하는 객체가 없습니다",
       "refresh": "목록 새로 고침",
       "estimatedRows": "약 {{formatted}}",
-      "select": "왼쪽에서 테이블이나 뷰를 고르세요"
+      "select": "왼쪽에서 테이블이나 뷰를 고르세요",
+      "ungrouped": "그룹 없음",
+      "notInDocument": "문서에 없는 테이블"
     },
     "tabs": {
       "data": "데이터",
@@ -2078,6 +2093,8 @@
       "readOnlyView": "뷰는 편집할 수 없습니다",
       "readOnlyNoPk": "기본 키가 없는 테이블은 편집할 수 없습니다",
       "downloadCsv": "CSV 내려받기",
+      "resizeColumn": "{{column}} 열 너비",
+      "resizeHint": "끌어서 열 너비를 바꿉니다. 두 번 누르면 기본 너비로 돌아갑니다",
       "op": {
         "EQ": "=",
         "NEQ": "≠",
@@ -2103,6 +2120,8 @@
       "openLongValue": "{{column}} 전체 값 보기",
       "setNull": "NULL",
       "defaultPlaceholder": "기본값",
+      "generatedPlaceholder": "자동 계산",
+      "generatedCell": "생성 컬럼 — 데이터베이스가 계산합니다. 값을 넣거나 고칠 수 없습니다",
       "pending": "변경 {{count}}건",
       "summary": "추가 {{inserted}} · 수정 {{updated}} · 삭제 {{deleted}}",
       "apply": "적용",
@@ -2122,6 +2141,26 @@
         "tooLarge": "값이 너무 커서 읽을 수 없습니다(전체 {{formatted}}자)"
       }
     },
+    "follow": {
+      "parent": "{{object}}의 이 행 열기",
+      "references": "이 행을 참조하는 행 보기",
+      "notFound": "{{object}} 테이블을 이 데이터베이스에서 찾을 수 없습니다"
+    },
+    "compare": {
+      "title": "문서와 다른 점",
+      "run": "문서와 비교",
+      "again": "다시 비교",
+      "hint": "이 테이블의 실제 구조와 ERD 문서를 비교합니다.",
+      "same": "문서와 같습니다",
+      "legend": "DB에만 있음은 문서로 가져오고, 문서에만 있음은 DB에 반영해 맞춥니다.",
+      "item": {
+        "add": "{{kind}} — DB에만 있음",
+        "update": "{{kind}} — 다름",
+        "remove": "{{kind}} — 문서에만 있음"
+      },
+      "toDocument": "문서로 가져오기",
+      "toDatabase": "DB에 반영"
+    },
     "structure": {
       "columns": "컬럼",
       "name": "이름",
@@ -2131,9 +2170,11 @@
       "comment": "코멘트",
       "primaryKey": "기본 키",
       "autoIncrement": "자동 증가",
+      "generated": "생성",
       "indexes": "인덱스",
       "unique": "유니크",
       "foreignKeys": "외래 키",
+      "referencedBy": "참조하는 외래 키",
       "none": "없음",
       "editInErd": "구조는 여기서 고칠 수 없습니다. ERD에서 고친 뒤 마이그레이션 DDL로 반영하세요."
     },

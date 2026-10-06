@@ -11,10 +11,13 @@
  * - 내보내기 — 요구사항 명세를 Markdown이나 CSV로 받는다.
  * - 편집(Editor 이상)은 다이얼로그에서 한다. 요구사항 변경은 문서 편집이라 되돌리기·자동 저장·협업이 같이 동작한다.
  * - 탭이 열릴 때만 마운트된다. 테이블 이름을 누르면 ERD 탭으로 돌아가 그 테이블로 간다.
+ * - 반영 대기 요구사항(v1.35, §21.1): "바뀐 내용 보기"로 마지막으로 반영한 내용과
+ *   지금 내용을 비교하고(저장된 문서의 개요 — 08-core/17-model-edit.md §2.4), 반영 단계(테이블로 이동 →
+ *   DB에 반영 → 반영함으로 표시)를 잇는다. DB에 반영은 DB 동기화의 마이그레이션 다이얼로그와 같다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { ChevronDown, ChevronRight, ClipboardList, Download, LocateFixed, Pencil, Plus, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardList, Database, Download, GitCompare, LocateFixed, Pencil, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -42,8 +45,13 @@ import {
 } from '@/features/editor/model/requirements'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 import { useEditorStore } from '@/features/editor/store/editor-store'
+import { useConnections } from '@/features/connections/hooks'
+import type { RequirementChanges } from '@/features/editor/api'
+import { useRequirementChanges } from '@/features/editor/hooks'
 import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 import { downloadTextFile, safeFilename } from '@/lib/download'
+import { MigrationDdlDialog } from './MigrationDdlDialog'
+import { RequirementChangesView } from './RequirementChangesView'
 import { RequirementDialog } from './RequirementDialog'
 
 /** 포커스 클램프용 extent·줌 하한 — 익스플로러·검증 패널과 같은 값 */
@@ -70,12 +78,17 @@ export interface RequirementsPanelProps {
   canEdit: boolean
   /** 문서 이름 — 내보내는 파일의 이름과 제목에 쓴다 */
   documentName?: string
+  /** 워크스페이스·문서 — 바뀐 내용(개요)과 DB에 반영의 경로. 공개 뷰어·버전 뷰어는 주지 않는다(워크스페이스 API를 못 쓴다) */
+  workspaceId?: string
+  modelId?: string
+  /** 문서가 연결된 커넥션 — 있으면 반영 대기 요구사항에 "DB에 반영"을 둔다 */
+  sourceConnectionId?: string | null
 }
 
-export function RequirementsPanel({ canEdit, documentName }: RequirementsPanelProps) {
+export function RequirementsPanel(props: RequirementsPanelProps) {
   const open = useRequirementsPanel((s) => s.open)
   if (!open) return null
-  return <PanelBody canEdit={canEdit} documentName={documentName} />
+  return <PanelBody {...props} />
 }
 
 /** 진행 막대 — 다루는 요구사항 가운데 반영된 비율 */
@@ -105,7 +118,7 @@ function DomainDot({ domain }: { domain: RequirementDomain }) {
   )
 }
 
-function PanelBody({ canEdit, documentName }: RequirementsPanelProps) {
+function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sourceConnectionId = null }: RequirementsPanelProps) {
   const { t } = useTranslation()
   const rf = useReactFlow()
   const present = useEditorStore((s) => s.present)
@@ -124,6 +137,16 @@ function PanelBody({ canEdit, documentName }: RequirementsPanelProps) {
 
   const requirements = present.diagram.requirements
   const counts = useMemo(() => countRequirementStates(requirements), [requirements])
+
+  /* ---------- 반영 대기 요구사항 — 바뀐 내용(저장된 문서 기준)과 DB에 반영 ---------- */
+  const baseVersion = useEditorStore((s) => s.baseVersion)
+  const dirty = useEditorStore((s) => s.past.length !== s.savedDepth)
+  const changesAvailable = workspaceId.length > 0 && modelId.length > 0
+  const changes = useRequirementChanges(workspaceId, modelId, baseVersion, changesAvailable && counts.PENDING > 0)
+  // DB에 반영 — 도구 메뉴의 DB 동기화와 같은 조건(편집 권한, 원천 커넥션이 살아 있음)
+  const connections = useConnections(changesAvailable && canEdit && sourceConnectionId ? workspaceId : '')
+  const sourceConnection = (connections.data?.items ?? []).find((item) => item.connectionId === sourceConnectionId)
+  const [migrationOpen, setMigrationOpen] = useState(false)
   const tableName = useMemo(() => new Map(present.model.tables.map((table) => [table.id, table.physicalName])), [present.model.tables])
   /** 도메인 — 요구사항도 테이블도 없는 빈 그룹은 뺀다 */
   const domains = useMemo(
@@ -509,6 +532,8 @@ function PanelBody({ canEdit, documentName }: RequirementsPanelProps) {
                                         },
                                       })
                                     }
+                                    changes={changesAvailable ? { query: changes, item: changes.data?.get(requirement.code), dirty } : null}
+                                    onApplyToDatabase={sourceConnection ? () => setMigrationOpen(true) : undefined}
                                     onMarkApplied={() =>
                                       commit({
                                         type: 'requirement/patch',
@@ -588,6 +613,16 @@ function PanelBody({ canEdit, documentName }: RequirementsPanelProps) {
           onPatch={(requirementId, patch) => commit({ type: 'requirement/patch', requirementId, patch })}
           onRemove={(requirementId) => commit({ type: 'requirement/remove', requirementId })}
         />
+        {/* DB에 반영 — 저장된 문서와 연결된 데이터베이스의 차이를 ALTER 문으로 보여 주고 실행한다(DB 동기화와 같은 다이얼로그) */}
+        {sourceConnection && sourceConnectionId ? (
+          <MigrationDdlDialog
+            open={migrationOpen}
+            onOpenChange={setMigrationOpen}
+            modelName={documentName ?? ''}
+            connectionName={sourceConnection.name}
+            mode={{ kind: 'connection', workspaceId, modelId, connectionId: sourceConnectionId }}
+          />
+        ) : null}
       </div>
     </section>
   )
@@ -652,6 +687,8 @@ function RequirementRow({
   onEdit,
   onToggleCriterion,
   onMarkApplied,
+  changes,
+  onApplyToDatabase,
   rowRef,
 }: {
   requirement: ErdRequirement
@@ -666,10 +703,20 @@ function RequirementRow({
   onToggleCriterion: (criterionId: string, done: boolean) => void
   onEdit: () => void
   onMarkApplied: () => void
+  /** 바뀐 내용 — 개요를 읽을 수 없는 화면(공개·버전 뷰어)은 null */
+  changes: {
+    query: { isPending: boolean; isError: boolean; isFetching: boolean }
+    item: RequirementChanges | undefined
+    dirty: boolean
+  } | null
+  /** DB에 반영 — 원천 커넥션이 있고 편집할 수 있을 때만 */
+  onApplyToDatabase?: () => void
   rowRef: (element: HTMLLIElement | null) => void
 }) {
   const { t } = useTranslation()
+  const [showChanges, setShowChanges] = useState(false)
   const state = requirementState(requirement)
+  const pending = state === 'PENDING'
   const criteria = requirement.criteria ?? []
   const criteriaDone = criteria.filter((criterion) => criterion.done).length
   return (
@@ -765,16 +812,66 @@ function RequirementRow({
               <p className="text-muted-foreground">{t('model.requirements.noTables')}</p>
             )
           ) : null}
+          {/* 반영 대기 — 바뀐 내용 보기와 반영 단계(§21). 바뀐 내용은 저장된 문서의 개요에서 읽는다 */}
+          {pending && changes ? (
+            <div className="grid gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-fit gap-1 px-2 text-xs"
+                aria-expanded={showChanges}
+                data-testid="requirement-changes-toggle"
+                onClick={() => setShowChanges((value) => !value)}
+              >
+                <GitCompare aria-hidden className="size-3" />
+                {showChanges ? t('model.requirements.changes.hide') : t('model.requirements.changes.show')}
+              </Button>
+              {showChanges ? (
+                <RequirementChangesView
+                  changes={changes.item}
+                  loading={changes.query.isPending}
+                  failed={changes.query.isError}
+                  dirty={changes.dirty}
+                />
+              ) : null}
+            </div>
+          ) : null}
+          {pending && canEdit ? (
+            <ol className="grid gap-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs" aria-label={t('model.requirements.steps.title')} data-testid="requirement-steps">
+              <li className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground">{t('model.requirements.steps.tablesHint')}</span>
+                {requirement.scope === 'tables' && requirement.tableIds.length > 0 ? (
+                  <Button type="button" variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" data-testid="requirement-step-tables" onClick={onFocusTables}>
+                    <LocateFixed aria-hidden className="size-3" />
+                    {t('model.requirements.steps.tables')}
+                  </Button>
+                ) : null}
+              </li>
+              {onApplyToDatabase ? (
+                <li className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground">{t('model.requirements.steps.databaseHint')}</span>
+                  <Button type="button" variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" data-testid="requirement-step-database" onClick={onApplyToDatabase}>
+                    <Database aria-hidden className="size-3" />
+                    {t('model.requirements.steps.database')}
+                  </Button>
+                </li>
+              ) : null}
+              <li className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground">
+                  {onApplyToDatabase ? t('model.requirements.steps.markHint') : t('model.requirements.steps.markHintNoDatabase')}
+                </span>
+                <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" data-testid="requirement-mark-applied" onClick={onMarkApplied}>
+                  {t('model.requirements.markApplied')}
+                </Button>
+              </li>
+            </ol>
+          ) : null}
           <div className="flex flex-wrap items-center gap-1">
-            {requirement.scope === 'tables' && requirement.tableIds.length > 0 ? (
+            {requirement.scope === 'tables' && requirement.tableIds.length > 0 && !(pending && canEdit) ? (
               <Button type="button" variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" data-testid="requirement-show-on-canvas" onClick={onFocusTables}>
                 <LocateFixed aria-hidden className="size-3" />
                 {t('model.requirements.domains.showOnCanvas')}
-              </Button>
-            ) : null}
-            {canEdit && state === 'PENDING' ? (
-              <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" data-testid="requirement-mark-applied" onClick={onMarkApplied}>
-                {t('model.requirements.markApplied')}
               </Button>
             ) : null}
             {canEdit ? (

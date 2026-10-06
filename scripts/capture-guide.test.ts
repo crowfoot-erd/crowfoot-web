@@ -37,6 +37,8 @@ type Json = Record<string, unknown>
 
 const WS = '101'
 const MODEL = '501'
+/** 예시 문서의 원천 커넥션(개발 PG) — 데이터 보기 탭과 데이터 브라우저 장면이 쓴다 */
+const DB_CONNECTION = '301'
 const HEADER = { isSuccessful: true, resultCode: 'OK', resultMessage: 'OK' }
 const ok = (body: Json) => ({ header: HEADER, ...body })
 
@@ -53,10 +55,10 @@ function translator(lang: Lang) {
 
 /** 예시 데이터의 언어별 이름 */
 const NAMES: Record<Lang, Record<string, string>> = {
-  ko: { user: '김개발', model: '온라인 쇼핑몰 ERD', workspace: '쇼핑몰 개발', users: '회원', products: '상품', orders: '주문', order_items: '주문 상품', payments: '결제', reviews: '리뷰', member: '회원', catalog: '상품', order: '주문', email: '이메일', amount: '금액', createdAt: '생성 일시', id: '번호', name: '이름', status: '상태', memo: '결제 금액은 부가세 포함입니다.' },
-  en: { user: 'Alex Kim', model: 'Online Store ERD', workspace: 'Store Dev', users: 'Users', products: 'Products', orders: 'Orders', order_items: 'Order items', payments: 'Payments', reviews: 'Reviews', member: 'Members', catalog: 'Catalog', order: 'Orders', email: 'Email', amount: 'Amount', createdAt: 'Created at', id: 'ID', name: 'Name', status: 'Status', memo: 'Amounts include VAT.' },
-  ja: { user: 'キム・ゲバル', model: 'オンラインストア ERD', workspace: 'ストア開発', users: '会員', products: '商品', orders: '注文', order_items: '注文商品', payments: '決済', reviews: 'レビュー', member: '会員', catalog: '商品', order: '注文', email: 'メール', amount: '金額', createdAt: '作成日時', id: '番号', name: '名前', status: '状態', memo: '金額は税込みです。' },
-  zh: { user: '金开发', model: '在线商城 ERD', workspace: '商城开发', users: '会员', products: '商品', orders: '订单', order_items: '订单商品', payments: '支付', reviews: '评价', member: '会员', catalog: '商品', order: '订单', email: '邮箱', amount: '金额', createdAt: '创建时间', id: '编号', name: '名称', status: '状态', memo: '金额含税。' },
+  ko: { user: '김개발', model: '온라인 쇼핑몰 ERD', workspace: '쇼핑몰 개발', users: '회원', products: '상품', orders: '주문', order_items: '주문 상품', payments: '결제', reviews: '리뷰', member: '회원', catalog: '상품', order: '주문', email: '이메일', amount: '금액', createdAt: '생성 일시', id: '번호', name: '이름', status: '상태', deliveryMemo: '배송 메모', memo: '결제 금액은 부가세 포함입니다.' },
+  en: { user: 'Alex Kim', model: 'Online Store ERD', workspace: 'Store Dev', users: 'Users', products: 'Products', orders: 'Orders', order_items: 'Order items', payments: 'Payments', reviews: 'Reviews', member: 'Members', catalog: 'Catalog', order: 'Orders', email: 'Email', amount: 'Amount', createdAt: 'Created at', id: 'ID', name: 'Name', status: 'Status', deliveryMemo: 'Delivery memo', memo: 'Amounts include VAT.' },
+  ja: { user: 'キム・ゲバル', model: 'オンラインストア ERD', workspace: 'ストア開発', users: '会員', products: '商品', orders: '注文', order_items: '注文商品', payments: '決済', reviews: 'レビュー', member: '会員', catalog: '商品', order: '注文', email: 'メール', amount: '金額', createdAt: '作成日時', id: '番号', name: '名前', status: '状態', deliveryMemo: '配送メモ', memo: '金額は税込みです。' },
+  zh: { user: '金开发', model: '在线商城 ERD', workspace: '商城开发', users: '会员', products: '商品', orders: '订单', order_items: '订单商品', payments: '支付', reviews: '评价', member: '会员', catalog: '商品', order: '订单', email: '邮箱', amount: '金额', createdAt: '创建时间', id: '编号', name: '名称', status: '状态', deliveryMemo: '配送备注', memo: '金额含税。' },
 }
 
 /** 예시 도메인 타입 */
@@ -119,7 +121,7 @@ const REQUIREMENTS: Record<Lang, [string, string][]> = {
 }
 
 /** 예시 문서 — 온라인 쇼핑몰(테이블 6·관계 6·그룹 3·메모 1·요구사항 5). 도메인 타입을 쓰는 컬럼이 있다 */
-function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean } = {}): EditorDocument {
+function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean; deliveryMemo?: boolean } = {}): EditorDocument {
   const n = NAMES[lang]
   const col = (table: string, name: string, dataType: string, extra: Partial<Parameters<typeof createColumn>[0] & object> = {}) =>
     createColumn({ id: `${table}.${name}`, physicalName: name, logicalName: name, dataType, nullable: false, ...extra })
@@ -150,6 +152,8 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
   }
   // CHECK 제약(v1.34) — 테이블 노드 키 영역의 CK 행
   const orders = tables.find((t) => t.physicalName === 'orders')!
+  // 문서와 다른 점 장면 — ERD에만 더하고 아직 DB에 반영하지 않은 컬럼
+  if (options.deliveryMemo) orders.columns.push(col('orders', 'delivery_memo', 'VARCHAR', { length: 200, nullable: true, logicalName: n.deliveryMemo }))
   orders.checks = [{ id: 'ck_orders_total_amount', name: 'ck_orders_total_amount', expression: 'total_amount >= 0' }]
   const positions: Record<string, { x: number; y: number }> = {
     users: { x: 60, y: 60 }, orders: { x: 640, y: 60 }, payments: { x: 1220, y: 60 },
@@ -515,6 +519,18 @@ const openTool = async (s: Session, key: string) => {
   await s.page.getByRole('menuitem', { name: s.t(key), exact: true }).click()
 }
 
+/** 에디터 맨 아래의 데이터 보기 탭을 열고 테이블을 고른다 */
+const openDataTab = async (s: Session, object: string) => {
+  await openEditor(s)
+  await s.page.getByRole('tab', { name: s.t('shareViewer.tab.data'), exact: true }).click()
+  const browser = s.page.getByTestId('data-browser')
+  await browser.waitFor()
+  await browser.getByRole('button', { name: new RegExp(`^${object} `) }).first().click()
+  await browser.locator('tbody tr').first().waitFor()
+  await s.page.waitForTimeout(500)
+  return browser
+}
+
 /** 에디터 장면(1440×860) */
 const EDITOR_SCENES: Scene[] = [
   {
@@ -755,6 +771,12 @@ const EDITOR_SCENES: Scene[] = [
       await panel.locator('[data-testid="requirement-row"][data-state="PENDING"] > button').click()
       await s.page.waitForTimeout(500)
       await s.shot('editor-requirements')
+      // 바뀐 내용 보기(v1.35) — 마지막으로 반영한 내용과 지금 내용
+      const row = panel.locator('[data-testid="requirement-row"][data-state="PENDING"]')
+      await row.getByTestId('requirement-changes-toggle').click()
+      await row.getByTestId('requirement-changes').waitFor()
+      await s.page.waitForTimeout(400)
+      await s.shot('editor-requirement-changes', { locator: row })
       await panel.getByTestId('requirement-edit').click()
       await dialog(s).waitFor()
       await s.page.waitForTimeout(400)
@@ -788,6 +810,53 @@ const EDITOR_SCENES: Scene[] = [
     },
   },
   {
+    // 데이터 보기 탭(v1.35) — 에디터 맨 아래 탭에서 데이터 브라우저를 연다. 왼쪽 목록이 문서 그룹으로 나뉘고,
+    // 커넥션은 도구 줄 오른쪽 끝에 붙는다. 외래 키 값(users_id) 옆에 따라가기 단추가 있다
+    name: 'data-tab',
+    run: async (s) => {
+      await openDataTab(s, 'orders')
+      await s.shot('data-tab')
+    },
+  },
+  {
+    // 외래 키 따라가기(v1.35) — 행 앞의 단추로 이 행을 참조하는 테이블을 고르면 그 값으로 걸러 연다
+    name: 'data-follow',
+    run: async (s) => {
+      const browser = await openDataTab(s, 'orders')
+      const row = browser.locator('tbody tr').first()
+      const trigger = row.getByRole('button', { name: s.t('database.follow.references'), exact: true })
+      const rowBox = await row.boundingBox()
+      await trigger.click()
+      const menu = s.page.getByRole('menu').last()
+      await menu.waitFor()
+      await s.page.waitForTimeout(300)
+      await s.shot('data-follow-menu', { clip: union(s.page, [rowBox, await menu.boundingBox()], 20) })
+      await menu.getByRole('menuitem', { name: /^payments/ }).click()
+      await browser.locator('tbody tr').first().waitFor()
+      await s.page.waitForTimeout(700)
+      await s.shot('data-follow')
+    },
+  },
+  {
+    // 구조 탭의 문서와 다른 점(v1.35) — ERD에만 더한 컬럼, DB에만 있는 컬럼, 길이가 다른 컬럼
+    name: 'data-compare',
+    run: async (s) => {
+      s.overrides.set(`/models/${MODEL}`, (method) => (method === 'GET' ? { json: ok({ response: modelResponse(s.lang, shopDocument(s.lang, { deliveryMemo: true })) }) } : null))
+      try {
+        const browser = await openDataTab(s, 'orders')
+        await browser.getByRole('tab', { name: s.t('database.tabs.structure'), exact: true }).click()
+        const panel = s.page.getByTestId('data-view-document-diff')
+        await panel.waitFor()
+        await panel.getByRole('button', { name: s.t('database.compare.run'), exact: true }).click()
+        await panel.getByTestId('compare-items').waitFor()
+        await s.page.waitForTimeout(500)
+        await s.shot('data-compare')
+      } finally {
+        installEditorOverrides(s)
+      }
+    },
+  },
+  {
     name: 'editor-shortcuts',
     run: async (s) => {
       await openEditor(s)
@@ -798,26 +867,33 @@ const EDITOR_SCENES: Scene[] = [
   },
 ]
 
-const BROWSER_PATH = `/workspaces/${WS}/connections/302/data`
-/** 데이터 브라우저 장면(1200×720) */
+const BROWSER_PATH = `/workspaces/${WS}/connections/${DB_CONNECTION}/data`
+/** 데이터 브라우저 장면(1200×720) — 커넥션의 데이터 보기 버튼으로 연 새 창 */
 const BROWSER_SCENES: Scene[] = [
   {
-    name: 'data-tab',
+    // 새 창 — 맨 위에 커넥션 이름·DBMS·주소와 창 닫기. 문서와 함께 열어 목록이 그룹으로 나뉜다
+    name: 'data-browser',
     run: async (s) => {
-      await goto(s, `${BROWSER_PATH}?object=orders`)
-      await s.page.locator('table').waitFor()
-      await s.shot('data-tab')
+      await goto(s, `${BROWSER_PATH}?object=orders&model=${MODEL}`)
+      await s.page.locator('tbody tr').first().waitFor()
+      await s.page.waitForTimeout(500)
+      await s.shot('data-browser')
     },
   },
   {
+    // 행 고치기 — 값 고치기, 행 삭제, 새 행(생성 컬럼 line_amount는 "자동 계산")
     name: 'data-edit',
     run: async (s) => {
-      await goto(s, `${BROWSER_PATH}?object=orders`)
-      await s.page.locator('table').waitFor()
+      // 생성 컬럼(맨 오른쪽)까지 담도록 이 장면만 넓게 찍는다
+      await s.page.setViewportSize({ width: 1440, height: 720 })
+      await goto(s, `${BROWSER_PATH}?object=order_items&model=${MODEL}`)
+      await s.page.locator('tbody tr').first().waitFor()
       const rows = s.page.locator('tbody tr')
-      await rows.nth(0).locator('td').nth(2).dblclick()
+      const quantity = s.page.locator('thead th').filter({ hasText: 'quantity' })
+      const index = await quantity.evaluate((th) => Array.from(th.parentElement!.children).indexOf(th))
+      await rows.nth(0).locator('td').nth(index).dblclick()
       await s.page.keyboard.press('ControlOrMeta+A')
-      await s.page.keyboard.type('SHIPPED')
+      await s.page.keyboard.type('2')
       await s.page.keyboard.press('Enter')
       await rows.nth(4).getByRole('button', { name: s.t('database.edit.deleteRow') }).click()
       await button(s, 'database.edit.addRow').click()
@@ -829,17 +905,19 @@ const BROWSER_SCENES: Scene[] = [
     },
   },
   {
+    // 구조 탭 — 생성 컬럼 표시, 외래 키
     name: 'data-structure',
     run: async (s) => {
-      await goto(s, `${BROWSER_PATH}?object=orders&tab=structure`)
-      await s.page.waitForTimeout(600)
+      await goto(s, `${BROWSER_PATH}?object=order_items&tab=structure&model=${MODEL}`)
+      await s.page.getByRole('region', { name: s.t('database.structure.columns') }).waitFor()
+      await s.page.waitForTimeout(500)
       await s.shot('data-structure')
     },
   },
   {
     name: 'data-sql',
     run: async (s) => {
-      await goto(s, `${BROWSER_PATH}?tab=sql`)
+      await goto(s, `/workspaces/${WS}/connections/302/data?tab=sql`)
       await s.page.locator('.cm-content').click()
       await s.page.keyboard.type("SELECT status, COUNT(*) AS orders\nFROM orders\nWHERE ordered_at >= '2026-09-01'\nGROUP BY status;", { delay: 4 })
       await s.page.keyboard.press('Escape')
@@ -870,6 +948,215 @@ function installEditorOverrides(s: Session) {
   s.overrides.set(`/models/${MODEL}`, (method) => (method === 'GET' ? { json: ok({ response: modelResponse(s.lang, shopDocument(s.lang)) }) } : null))
   s.overrides.set('/domain-types', (method) => (method === 'GET' ? { json: ok({ responses: domainTypes(s.lang), totalCount: 3 }) } : null))
   s.overrides.set(`/workspaces/${WS}/terms`, (method) => (method === 'GET' ? { json: ok({ responses: terms(s.lang), totalCount: 8 }) } : null))
+  // 반영 대기 요구사항(REQ-003)의 바뀐 내용 — 카드 한 번 결제에서 여러 수단으로 나누어 결제로 바뀌었다
+  const [title, description] = REQUIREMENTS[s.lang][2]
+  s.overrides.set(`/models/${MODEL}/outline`, (method) =>
+    method === 'GET'
+      ? {
+          json: ok({
+            response: {
+              version: 12,
+              requirements: [{
+                code: 'REQ-003', state: 'PENDING',
+                changes: {
+                  appliedRevision: 1, revision: 2, isNew: false, beforeKnown: true,
+                  before: { title: REQUIREMENT_BEFORE[s.lang][0], description: REQUIREMENT_BEFORE[s.lang][1], status: 'confirmed', tables: ['orders'], criteria: [] },
+                  after: { title, description, status: 'confirmed', tables: ['payments'], criteria: [] },
+                },
+              }],
+            },
+          }),
+        }
+      : null,
+  )
+}
+
+/** REQ-003의 이전(반영한) 내용 — [제목, 내용] */
+const REQUIREMENT_BEFORE: Record<Lang, [string, string]> = {
+  ko: ['주문을 카드로 결제한다', '주문마다 카드 결제 한 건을 남긴다.'],
+  en: ['Pay for an order by card', 'Each order keeps one card payment.'],
+  ja: ['注文をカードで決済する', '注文ごとにカード決済を1件残す。'],
+  zh: ['用银行卡支付订单', '每笔订单保留一笔银行卡支付。'],
+}
+
+/**
+ * 예시 데이터베이스(v1.35) — 예시 문서와 같은 테이블에 예시 행을 담는다. 문서와 다른 점 장면을 위해
+ * orders만 문서와 조금 다르다(DB에만 있는 coupon_code, 길이가 다른 status). 문서에 없는 audit_logs도 하나 둔다.
+ * 공용 가짜 서버(database-handlers)는 단위 테스트가 쓰므로 고치지 않고 촬영에서만 덮어쓴다
+ */
+function shopDatabase(lang: Lang) {
+  const base = shopDocument(lang)
+  const db: EditorDocument = structuredClone({ model: base.model, diagram: base.diagram })
+  const dbOrders = db.model.tables.find((t) => t.physicalName === 'orders')!
+  dbOrders.columns = dbOrders.columns.map((c) => (c.physicalName === 'status' ? { ...c, length: 30 } : c))
+  dbOrders.columns.push(createColumn({ id: 'orders.coupon_code', physicalName: 'coupon_code', logicalName: 'coupon_code', dataType: 'VARCHAR', length: 20, nullable: true }))
+
+  const people: Record<Lang, string[]> = {
+    ko: ['김하늘', '이도윤', '박서연', '최민준', '정하은'],
+    en: ['Sky Kim', 'Doyun Lee', 'Seoyeon Park', 'Minjun Choi', 'Haeun Jung'],
+    ja: ['キム・ハヌル', 'イ・ドユン', 'パク・ソヨン', 'チェ・ミンジュン', 'チョン・ハウン'],
+    zh: ['金天空', '李道允', '朴瑞妍', '崔敏俊', '郑夏恩'],
+  }
+  const goods: Record<Lang, string[]> = {
+    ko: ['무선 키보드', '기계식 마우스', '27인치 모니터', 'USB-C 허브'],
+    en: ['Wireless keyboard', 'Mechanical mouse', '27-inch monitor', 'USB-C hub'],
+    ja: ['ワイヤレスキーボード', 'メカニカルマウス', '27インチモニター', 'USB-C ハブ'],
+    zh: ['无线键盘', '机械鼠标', '27 英寸显示器', 'USB-C 扩展坞'],
+  }
+  const comments: Record<Lang, (string | null)[]> = {
+    ko: ['배송이 빨라요', '손에 잘 맞습니다', null],
+    en: ['Fast delivery', 'Fits my hand well', null],
+    ja: ['配送が早いです', '手になじみます', null],
+    zh: ['发货很快', '手感很好', null],
+  }
+  const day = (d: number, h = 10) => `2026-09-${String(d).padStart(2, '0')} ${String(h).padStart(2, '0')}:12:30`
+  const items: [number, number, number, number, number][] = [
+    // id, orders_id, products_id, quantity, unit_price
+    [1, 101, 1, 1, 59000], [2, 101, 2, 2, 34000], [3, 102, 3, 1, 289000], [4, 103, 4, 3, 25000],
+    [5, 104, 1, 1, 59000], [6, 104, 4, 1, 25000], [7, 105, 2, 1, 34000], [8, 106, 3, 2, 289000],
+  ]
+  const orderTotal = (id: number) => items.filter((i) => i[1] === id).reduce((sum, i) => sum + i[3] * i[4], 0)
+  const money = (v: number) => `${v}.00`
+  /** 테이블 → 컬럼 이름 → 행마다의 값 */
+  const values: Record<string, Record<string, (string | null)[]>> = {
+    users: {
+      id: ['1', '2', '3', '4', '5'],
+      email: ['sky@example.com', 'doyun@example.com', 'seoyeon@example.com', 'minjun@example.com', 'haeun@example.com'],
+      name: people[lang],
+      created_at: [day(1, 9), day(2, 14), day(3, 11), day(5, 20), day(8, 16)],
+    },
+    orders: {
+      id: ['101', '102', '103', '104', '105', '106'],
+      users_id: ['1', '2', '3', '1', '5', '3'],
+      status: ['PAID', 'SHIPPED', 'PAID', 'READY', 'CANCELLED', 'PAID'],
+      total_amount: [101, 102, 103, 104, 105, 106].map((id) => money(orderTotal(id))),
+      ordered_at: [day(10, 9), day(11, 13), day(12, 18), day(14, 8), day(15, 21), day(17, 12)],
+      coupon_code: ['WELCOME10', null, null, 'AUTUMN5', null, null],
+    },
+    order_items: {
+      id: items.map((i) => String(i[0])),
+      orders_id: items.map((i) => String(i[1])),
+      products_id: items.map((i) => String(i[2])),
+      quantity: items.map((i) => String(i[3])),
+      unit_price: items.map((i) => money(i[4])),
+      line_amount: items.map((i) => money(i[3] * i[4])),
+    },
+    payments: {
+      id: ['1', '2', '3', '4', '5', '6'],
+      orders_id: ['101', '101', '102', '103', '104', '106'],
+      method: ['CARD', 'POINT', 'CARD', 'TRANSFER', 'CARD', 'CARD'],
+      amount: [money(100000), money(27000), money(289000), money(75000), money(84000), money(578000)],
+      paid_at: [day(10, 9), day(10, 9), day(11, 13), day(12, 18), null, day(17, 12)],
+    },
+    products: {
+      id: ['1', '2', '3', '4'],
+      name: goods[lang],
+      price: [money(59000), money(34000), money(289000), money(25000)],
+      stock: ['120', '48', '15', '300'],
+    },
+    reviews: {
+      id: ['1', '2', '3'],
+      rating: ['5', '4', '5'],
+      content: comments[lang],
+      users_id: ['1', '2', '3'],
+      products_id: ['1', '2', '3'],
+    },
+  }
+
+  const typeOf = (c: (typeof db.model.tables)[number]['columns'][number]) => {
+    const t = c.dataType.toUpperCase()
+    const size = c.length ? `(${c.length})` : c.precision ? `(${c.precision}${c.scale !== null ? `,${c.scale}` : ''})` : ''
+    const category = /INT/.test(t) ? 'integer' : t === 'DECIMAL' ? 'decimal' : t === 'TEXT' ? 'text' : /DATE|TIME/.test(t) ? 'datetime' : 'character'
+    return { typeName: `${t === 'DATETIME' ? 'TIMESTAMP' : t}${size}`, category }
+  }
+  const tableName = (id: string) => db.model.tables.find((t) => t.id === id)!.physicalName
+  const columnName = (id: string) => db.model.tables.flatMap((t) => t.columns).find((c) => c.id === id)!.physicalName
+  const structures: Record<string, Json> = {}
+  const rows: Record<string, (string | null)[][]> = {}
+  for (const table of db.model.tables) {
+    const pk = new Set(table.primaryKey?.columnIds ?? [])
+    const columns = table.columns.map((c) => ({
+      name: c.physicalName, ...typeOf(c), nullable: c.nullable, primaryKey: pk.has(c.id), generated: c.generated ? true : undefined,
+      defaultValue: c.generated ? null : c.defaultValue, autoIncrement: c.autoIncrement, comment: c.logicalName && c.logicalName !== c.physicalName ? c.logicalName : null,
+    }))
+    const outgoing = db.model.relationships.filter((r) => r.childTableId === table.id)
+    const incoming = db.model.relationships.filter((r) => r.parentTableId === table.id)
+    structures[table.physicalName] = {
+      name: table.physicalName, kind: 'TABLE', comment: table.logicalName ?? null, editable: true, columns,
+      primaryKey: columns.filter((c) => c.primaryKey).map((c) => c.name),
+      indexes: outgoing.map((r) => ({ name: `idx_${table.physicalName}_${columnName(r.columnMappings[0].childColumnId)}`, unique: false, columns: r.columnMappings.map((m) => columnName(m.childColumnId)) })),
+      foreignKeys: outgoing.map((r) => ({ name: r.fkName, columns: r.columnMappings.map((m) => columnName(m.childColumnId)), referencedObject: tableName(r.parentTableId), referencedColumns: r.columnMappings.map((m) => columnName(m.parentColumnId)) })),
+      referencedBy: incoming.map((r) => ({ name: r.fkName, object: tableName(r.childTableId), columns: r.columnMappings.map((m) => columnName(m.childColumnId)), referencedColumns: r.columnMappings.map((m) => columnName(m.parentColumnId)) })),
+    }
+    const source = values[table.physicalName] ?? {}
+    const count = Math.max(0, ...Object.values(source).map((list) => list.length))
+    rows[table.physicalName] = Array.from({ length: count }, (_, index) => table.columns.map((c) => source[c.physicalName]?.[index] ?? null))
+  }
+  // 문서에 없는 테이블 — 목록의 "문서에 없는 테이블" 묶음
+  structures.audit_logs = {
+    name: 'audit_logs', kind: 'TABLE', comment: null, editable: true, primaryKey: ['id'], indexes: [], foreignKeys: [], referencedBy: [],
+    columns: [
+      { name: 'id', typeName: 'BIGINT', category: 'integer', nullable: false, primaryKey: true, defaultValue: null, autoIncrement: true, comment: null },
+      { name: 'action', typeName: 'VARCHAR(40)', category: 'character', nullable: false, primaryKey: false, defaultValue: null, autoIncrement: false, comment: null },
+      { name: 'logged_at', typeName: 'TIMESTAMP', category: 'datetime', nullable: false, primaryKey: false, defaultValue: null, autoIncrement: false, comment: null },
+    ],
+  }
+  rows.audit_logs = [['1', 'LOGIN', day(20, 9)], ['2', 'EXPORT', day(20, 10)]]
+  const objects = Object.keys(structures).sort().map((name) => ({
+    name, kind: 'TABLE', estimatedRows: rows[name].length, editable: true, comment: (structures[name].comment as string | null) ?? null,
+  }))
+  return { db, structures, rows, objects }
+}
+
+/** 데이터 브라우저 덮어쓰기 — 원천 커넥션의 목록·구조·행·행 수와 문서 동기화용 스키마 */
+function installDatabaseOverrides(s: Session) {
+  const { db, structures, rows, objects } = shopDatabase(s.lang)
+  const prefix = `/connections/${DB_CONNECTION}`
+  s.overrides.set(`${prefix}/objects`, () => ({ json: ok({ response: { dbmsType: 'postgresql', schema: 'sales', objects } }) }))
+  type Filter = { column: string; op: string; value?: string | string[] }
+  const filtered = (name: string, filters: Filter[]) => {
+    const columns = (structures[name].columns as { name: string }[]).map((c) => c.name)
+    return rows[name].filter((row) =>
+      filters.every((f) => {
+        const cell = row[columns.indexOf(f.column)]
+        const text = cell ?? ''
+        const value = String(f.value ?? '')
+        switch (f.op) {
+          case 'IS_NULL': return cell === null
+          case 'IS_NOT_NULL': return cell !== null
+          case 'EQ': return cell !== null && text === value
+          case 'NEQ': return text !== value
+          case 'CONTAINS': return text.includes(value)
+          case 'STARTS_WITH': return text.startsWith(value)
+          default: return true
+        }
+      }),
+    )
+  }
+  for (const name of Object.keys(structures)) {
+    s.overrides.set(`${prefix}/objects/${name}/structure`, () => ({ json: ok({ response: structures[name] }) }))
+    s.overrides.set(`${prefix}/objects/${name}/rows`, (_method, body) => {
+      const query = JSON.parse(body ?? '{}') as { page: number; size: number; filters?: Filter[]; sort?: { column: string; direction: string }[] }
+      const meta = (structures[name].columns as Json[]).map(({ name: column, typeName, category, nullable, primaryKey, generated }) => ({ name: column, typeName, category, nullable, primaryKey, generated }))
+      let list = filtered(name, query.filters ?? [])
+      const sort = query.sort?.[0]
+      if (sort) {
+        const index = meta.findIndex((c) => c.name === sort.column)
+        list = [...list].sort((a, b) => String(a[index] ?? '').localeCompare(String(b[index] ?? ''), undefined, { numeric: true }))
+        if (sort.direction === 'DESC') list.reverse()
+      }
+      const start = (query.page - 1) * query.size
+      return { json: ok({ response: { columns: meta, rows: list.slice(start, start + query.size), page: query.page, size: query.size, hasNext: false, truncated: false, elapsedMs: 9 } }) }
+    })
+    s.overrides.set(`${prefix}/objects/${name}/count`, (_method, body) => {
+      const query = JSON.parse(body ?? '{}') as { filters?: Filter[] }
+      return { json: ok({ response: { count: String(filtered(name, query.filters ?? []).length), elapsedMs: 4 } }) }
+    })
+  }
+  // 문서와 다른 점·DB 동기화가 읽는 실제 구조
+  s.overrides.set(`${prefix}/schema`, () => ({
+    json: ok({ response: { content: serializeContent({ schemaVersion: 1, model: db.model, diagram: db.diagram }), tableCount: db.model.tables.length, relationshipCount: db.model.relationships.length, skipped: [] } }),
+  }))
 }
 
 /** 앱 화면 공통 덮어쓰기 — 기본 가짜 서버에 없는 상세 응답 */
@@ -921,8 +1208,8 @@ describe.skipIf(!process.env.GUIDE_CAPTURE)('사용 가이드 스크린샷', () 
     const groups: { scenes: Scene[]; viewport: { width: number; height: number }; guest?: boolean; setup: (s: Session) => void }[] = [
       { scenes: GUEST_SCENES, viewport: { width: 1120, height: 700 }, guest: true, setup: () => {} },
       { scenes: APP_SCENES, viewport: { width: 1120, height: 700 }, setup: installAppOverrides },
-      { scenes: EDITOR_SCENES, viewport: { width: 1440, height: 860 }, setup: (s) => { installAppOverrides(s); installEditorOverrides(s) } },
-      { scenes: BROWSER_SCENES, viewport: { width: 1200, height: 720 }, setup: installAppOverrides },
+      { scenes: EDITOR_SCENES, viewport: { width: 1440, height: 860 }, setup: (s) => { installAppOverrides(s); installEditorOverrides(s); installDatabaseOverrides(s) } },
+      { scenes: BROWSER_SCENES, viewport: { width: 1200, height: 720 }, setup: (s) => { installAppOverrides(s); installEditorOverrides(s); installDatabaseOverrides(s) } },
     ]
     try {
       for (const lang of LANGS) {

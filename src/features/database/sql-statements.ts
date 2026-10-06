@@ -59,12 +59,19 @@ export function statementRanges(sql: string, mysql: boolean): StatementRange[] {
  * 실행할 문장 — 선택 영역이 있으면 그 글자, 없으면 커서가 놓인 문장.
  * 커서가 세미콜론 바로 뒤(문장 끝)에 있으면 앞 문장을 고른다. 내용이 없으면 빈 문자열이다.
  */
-export function statementToRun(sql: string, selectionStart: number, selectionEnd: number, mysql: boolean): string {
+export function statementToRun(
+  sql: string,
+  selectionStart: number,
+  selectionEnd: number,
+  mysql: boolean,
+): string {
   if (selectionEnd > selectionStart) {
     return sql.slice(selectionStart, selectionEnd).trim()
   }
   const ranges = statementRanges(sql, mysql)
-  let index = ranges.findIndex((range) => selectionStart >= range.start && selectionStart <= range.end)
+  let index = ranges.findIndex(
+    (range) => selectionStart >= range.start && selectionStart <= range.end,
+  )
   if (index < 0) index = ranges.length - 1
   // 커서가 빈 구간(마지막 세미콜론 뒤 등)에 있으면 내용이 있는 앞 문장으로 물러선다
   while (index > 0 && sql.slice(ranges[index].start, ranges[index].end).trim() === '') index--

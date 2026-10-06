@@ -13,7 +13,9 @@ import type * as SqlEditorModule from '@/features/database/components/sql-editor
 import type { SqlEditorHandle, SqlEditorProps } from '@/features/database/components/sql-editor'
 
 vi.unmock('@/features/database/components/sql-editor')
-const { SqlEditor } = await vi.importActual<typeof SqlEditorModule>('@/features/database/components/sql-editor')
+const { SqlEditor } = await vi.importActual<typeof SqlEditorModule>(
+  '@/features/database/components/sql-editor',
+)
 
 function renderEditor(overrides: Partial<SqlEditorProps> = {}) {
   const ref = createRef<SqlEditorHandle>()
@@ -37,13 +39,16 @@ function renderEditor(overrides: Partial<SqlEditorProps> = {}) {
 
 describe('SqlEditor', () => {
   it('입력 칸에 이름이 붙고, 처음 값과 문법 강조가 보인다', () => {
-    const { content } = renderEditor({ value: "SELECT * FROM orders WHERE status = 'PAID' -- 메모" })
+    const { content } = renderEditor({
+      value: "SELECT * FROM orders WHERE status = 'PAID' -- 메모",
+    })
 
     expect(content).toHaveAttribute('aria-label', 'SQL 입력')
     expect(content).toHaveTextContent("SELECT * FROM orders WHERE status = 'PAID' -- 메모")
     // 키워드·문자열·주석이 서로 다른 강조 클래스로 나뉜다
     const classOf = (text: string) =>
-      [...content.querySelectorAll('span')].find((span) => span.textContent === text)?.className ?? ''
+      [...content.querySelectorAll('span')].find((span) => span.textContent === text)?.className ??
+      ''
     expect(classOf('SELECT')).not.toBe('')
     expect(classOf("'PAID'")).not.toBe('')
     expect(new Set([classOf('SELECT'), classOf("'PAID'"), classOf('-- 메모')]).size).toBe(3)
@@ -73,7 +78,14 @@ describe('SqlEditor', () => {
   it('Ctrl+Enter는 실행이고 줄을 바꾸지 않는다', () => {
     const { content, props, editor } = renderEditor({ value: 'SELECT 1' })
 
-    content.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }))
+    content.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
 
     expect(props.onRun).toHaveBeenCalledTimes(1)
     expect(editor.state.doc.toString()).toBe('SELECT 1')

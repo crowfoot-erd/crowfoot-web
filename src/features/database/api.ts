@@ -29,8 +29,17 @@ export interface DatabaseObjects {
 }
 
 export type ColumnCategory =
-  | 'integer' | 'decimal' | 'float' | 'character' | 'text' | 'boolean'
-  | 'datetime' | 'json' | 'uuid' | 'binary' | 'other'
+  | 'integer'
+  | 'decimal'
+  | 'float'
+  | 'character'
+  | 'text'
+  | 'boolean'
+  | 'datetime'
+  | 'json'
+  | 'uuid'
+  | 'binary'
+  | 'other'
 
 export interface ColumnMeta {
   name: string
@@ -38,6 +47,8 @@ export interface ColumnMeta {
   category: ColumnCategory
   nullable: boolean
   primaryKey: boolean
+  /** 생성 컬럼(계산 컬럼) — 값을 넣거나 고칠 수 없다(§5.9). 질의 결과 열에는 없다 */
+  generated?: boolean
 }
 
 export interface StructureColumn extends ColumnMeta {
@@ -54,7 +65,14 @@ export interface ObjectStructure {
   columns: StructureColumn[]
   primaryKey: string[]
   indexes: { name: string; unique: boolean; columns: string[] }[]
-  foreignKeys: { name: string; columns: string[]; referencedObject: string; referencedColumns: string[] }[]
+  foreignKeys: {
+    name: string
+    columns: string[]
+    referencedObject: string
+    referencedColumns: string[]
+  }[]
+  /** 이 테이블을 참조하는 외래 키 — object의 columns가 이 테이블의 referencedColumns를 가리킨다(§5.9) */
+  referencedBy?: { name: string; object: string; columns: string[]; referencedColumns: string[] }[]
 }
 
 /** 잘린 문자 값 — text는 앞부분, length는 전체 글자 수 */
@@ -79,8 +97,17 @@ export const isBinaryCell = (cell: CellValue): cell is BinaryCell =>
   typeof cell === 'object' && cell !== null && 'binary' in cell
 
 export type FilterOp =
-  | 'EQ' | 'NEQ' | 'LT' | 'LTE' | 'GT' | 'GTE'
-  | 'CONTAINS' | 'STARTS_WITH' | 'IN' | 'IS_NULL' | 'IS_NOT_NULL'
+  | 'EQ'
+  | 'NEQ'
+  | 'LT'
+  | 'LTE'
+  | 'GT'
+  | 'GTE'
+  | 'CONTAINS'
+  | 'STARTS_WITH'
+  | 'IN'
+  | 'IS_NULL'
+  | 'IS_NOT_NULL'
 
 export interface RowFilter {
   column: string
@@ -113,12 +140,25 @@ export interface RowsPage {
   elapsedMs: number
 }
 
-export function fetchDatabaseObjects(workspaceId: string, connectionId: string, signal?: AbortSignal) {
+export function fetchDatabaseObjects(
+  workspaceId: string,
+  connectionId: string,
+  signal?: AbortSignal,
+) {
   return apiPost<DatabaseObjects>(`${base(workspaceId, connectionId)}/objects`, undefined, signal)
 }
 
-export function fetchObjectStructure(workspaceId: string, connectionId: string, objectName: string, signal?: AbortSignal) {
-  return apiPost<ObjectStructure>(`${objectBase(workspaceId, connectionId, objectName)}/structure`, undefined, signal)
+export function fetchObjectStructure(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string,
+  signal?: AbortSignal,
+) {
+  return apiPost<ObjectStructure>(
+    `${objectBase(workspaceId, connectionId, objectName)}/structure`,
+    undefined,
+    signal,
+  )
 }
 
 export function fetchObjectRows(
@@ -128,11 +168,20 @@ export function fetchObjectRows(
   query: RowsQuery,
   signal?: AbortSignal,
 ) {
-  return apiPost<RowsPage>(`${objectBase(workspaceId, connectionId, objectName)}/rows`, query, signal)
+  return apiPost<RowsPage>(
+    `${objectBase(workspaceId, connectionId, objectName)}/rows`,
+    query,
+    signal,
+  )
 }
 
 /** 정확한 행 수 — 수도 문자열로 온다 */
-export function countObjectRows(workspaceId: string, connectionId: string, objectName: string, filters: RowFilter[]) {
+export function countObjectRows(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string,
+  filters: RowFilter[],
+) {
   return apiPost<{ count: string; elapsedMs: number }>(
     `${objectBase(workspaceId, connectionId, objectName)}/count`,
     { filters },
@@ -156,7 +205,12 @@ export interface QueryResult {
 }
 
 /** SQL 한 문장 실행 — 쓰기·구조 문장은 confirmed 없이 보내면 CONFIRMATION_REQUIRED(errors[0].code = 종류)로 돌아온다 */
-export function runQuery(workspaceId: string, connectionId: string, sql: string, confirmed: boolean) {
+export function runQuery(
+  workspaceId: string,
+  connectionId: string,
+  sql: string,
+  confirmed: boolean,
+) {
   return apiPost<QueryResult>(`${base(workspaceId, connectionId)}/queries`, { sql, confirmed })
 }
 
@@ -171,8 +225,15 @@ export interface ChangesResult {
 }
 
 /** 모아 둔 변경을 한 번에 적용한다 — 요청 하나가 트랜잭션 하나다. 하나라도 실패하면 전부 되돌린다 */
-export function applyRowChanges(workspaceId: string, connectionId: string, objectName: string, changes: unknown[]) {
-  return apiPost<ChangesResult>(`${objectBase(workspaceId, connectionId, objectName)}/changes`, { changes })
+export function applyRowChanges(
+  workspaceId: string,
+  connectionId: string,
+  objectName: string,
+  changes: unknown[],
+) {
+  return apiPost<ChangesResult>(`${objectBase(workspaceId, connectionId, objectName)}/changes`, {
+    changes,
+  })
 }
 
 /** 긴 값 읽기(§3.7) — 잘려 내려온 문자 값 하나를 통째로 읽는다. NULL이면 value가 null이다 */

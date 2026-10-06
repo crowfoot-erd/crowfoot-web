@@ -129,6 +129,7 @@
       "MANAGED_INSTANCE_UNREACHABLE": "Cannot reach the instance. Check the credentials and address.",
       "MANAGED_INSTANCE_IN_USE": "This instance still has issued databases. Revoke them first.",
       "MANAGED_LIMIT_EXCEEDED": "You have reached the issue limit. Revoke one or contact the administrator.",
+      "MANAGED_CONNECTION_REVOKE_REQUIRED": "Connections of service-provided databases are removed by revoking the database. Revoke it in the service-provided database table above.",
       "MANAGED_PROVISION_FAILED": "Provisioning failed. Please try again shortly.",
       "MANAGED_DATABASE_NOT_FOUND": "Issued database not found.",
       "SHARE_NOT_FOUND": "Share link not found.",
@@ -1453,7 +1454,7 @@
         "expressionRequired": "Enter an expression"
       }
     },
-  "requirements": {"criteria": {"title": "Acceptance criteria", "count": "{{done}}/{{total}} criteria", "hint": "One per line. These are the checks that show the requirement is properly reflected"}, "search": "Search code, title, text, table", "progress": "{{applied}}/{{total}} applied", "domains": {"label": "Domains", "all": "All", "noRequirements": "This domain has no requirements yet", "showOnCanvas": "Show on canvas"}, "export": {"button": "Export", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "Requirements specification", "columns": {"code": "Code", "domain": "Domain", "state": "State", "title": "Title", "description": "Description", "tables": "Tables"}}, "title": "Requirements", "add": "Add", "filterLabel": "Status filter", "state": {"APPLIED": "Applied", "PENDING": "Pending", "UNLINKED": "Unlinked", "LEFTOVER": "Needs cleanup", "DRAFT": "In review", "DROPPED": "Dropped"}, "stateHint": {"APPLIED": "The confirmed requirement is reflected in the ERD", "PENDING": "Confirmed, but the ERD does not reflect the latest text yet", "UNLINKED": "Marked as applied, but no table is linked", "LEFTOVER": "A dropped requirement still has tables linked", "DRAFT": "Not confirmed yet", "DROPPED": "No longer in scope"}, "status": {"draft": "In review", "confirmed": "Confirmed", "dropped": "Dropped"}, "scope": {"tables": "Feature", "document": "Common"}, "group": {"unassigned": "Unassigned", "document": "Common"}, "empty": "No requirements", "emptyDetail": "Claude can register them over MCP, or you can add them yourself", "emptyFiltered": "No requirements match the filter", "tableCount": "{{count}} tables", "noDescription": "No description", "linkedTables": "Linked tables", "noTables": "No linked tables", "markApplied": "Mark as applied", "revision": "Revision {{revision}}", "removeConfirm": "Delete only entries added by mistake", "limit": "A document can hold up to {{max}} requirements", "tableInfo": "Requirements", "untraced": {"title": "Tables without a requirement", "hint": "Tables not linked to any requirement"}, "dialog": {"createTitle": "Add requirement", "editTitle": "Edit requirement", "title": "Title", "titleRequired": "Enter a title", "description": "Description", "revisionHint": "Changing the title or description sets the requirement to pending", "scope": "Scope", "status": "Status", "area": "Domain (group)", "tables": "Tables to link", "documentHint": "A common requirement applies to the whole document and is not linked to tables"}},
+  "requirements": { "changes": {"show": "Show changes", "hide": "Hide changes", "revision": "Applied revision {{from}} → current revision {{to}}", "isNew": "New requirement", "isNewHint": "It has never been applied. Apply the whole current content.", "unknown": "The previous content could not be found (old versions were pruned)", "loading": "Loading changes…", "failed": "Could not load the changes", "notSaved": "Save the document to see the changes", "savedOnly": "Based on the saved document. Unsaved edits appear after you save.", "title": "Title", "status": "Status", "description": "Description", "criteria": "Acceptance criteria", "tables": "Linked tables", "added": "Added", "removed": "Removed", "none": "None"}, "steps": {"title": "Steps to apply", "tablesHint": "1. Change the linked tables in the ERD", "tables": "Go to tables", "databaseHint": "2. Save the document and apply it to the connected database", "database": "Apply to DB", "markHint": "3. Mark it when everything is applied", "markHintNoDatabase": "2. Mark it when everything is applied"},"criteria": {"title": "Acceptance criteria", "count": "{{done}}/{{total}} criteria", "hint": "One per line. These are the checks that show the requirement is properly reflected"}, "search": "Search code, title, text, table", "progress": "{{applied}}/{{total}} applied", "domains": {"label": "Domains", "all": "All", "noRequirements": "This domain has no requirements yet", "showOnCanvas": "Show on canvas"}, "export": {"button": "Export", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "Requirements specification", "columns": {"code": "Code", "domain": "Domain", "state": "State", "title": "Title", "description": "Description", "tables": "Tables"}}, "title": "Requirements", "add": "Add", "filterLabel": "Status filter", "state": {"APPLIED": "Applied", "PENDING": "Pending", "UNLINKED": "Unlinked", "LEFTOVER": "Needs cleanup", "DRAFT": "In review", "DROPPED": "Dropped"}, "stateHint": {"APPLIED": "The confirmed requirement is reflected in the ERD", "PENDING": "Confirmed, but the ERD does not reflect the latest text yet", "UNLINKED": "Marked as applied, but no table is linked", "LEFTOVER": "A dropped requirement still has tables linked", "DRAFT": "Not confirmed yet", "DROPPED": "No longer in scope"}, "status": {"draft": "In review", "confirmed": "Confirmed", "dropped": "Dropped"}, "scope": {"tables": "Feature", "document": "Common"}, "group": {"unassigned": "Unassigned", "document": "Common"}, "empty": "No requirements", "emptyDetail": "Claude can register them over MCP, or you can add them yourself", "emptyFiltered": "No requirements match the filter", "tableCount": "{{count}} tables", "noDescription": "No description", "linkedTables": "Linked tables", "noTables": "No linked tables", "markApplied": "Mark as applied", "revision": "Revision {{revision}}", "removeConfirm": "Delete only entries added by mistake", "limit": "A document can hold up to {{max}} requirements", "tableInfo": "Requirements", "untraced": {"title": "Tables without a requirement", "hint": "Tables not linked to any requirement"}, "dialog": {"createTitle": "Add requirement", "editTitle": "Edit requirement", "title": "Title", "titleRequired": "Enter a title", "description": "Description", "revisionHint": "Changing the title or description sets the requirement to pending", "scope": "Scope", "status": "Status", "area": "Domain (group)", "tables": "Tables to link", "documentHint": "A common requirement applies to the whole document and is not linked to tables"}},
   "validation": {
     "toggle": "Validation",
     "title": "Design validation",
@@ -1546,6 +1547,7 @@
       "label": "View switch",
       "erd": "ERD",
       "requirements": "Requirements",
+      "data": "Data",
       "comments": "Comments"
     }
   },
@@ -1659,6 +1661,7 @@
     "delete": {
       "title": "Delete connection {{name}}",
       "description": "Delete connection '{{name}}'? Documents created from it are kept.",
+      "managedNotice": "'{{name}}' belongs to a service-provided database, so it is removed by revoking the database.",
       "successToast": "Connection deleted"
     }
   },
@@ -2008,6 +2011,16 @@
     "open": "Browse data of {{name}}",
     "openShort": "Browse data",
     "close": "Close window",
+    "embedded": {
+      "noSource": {
+        "title": "This document is not connected to a database",
+        "description": "Connect a database to view and edit table data in this tab."
+      },
+      "sourceMissing": {
+        "title": "The connection of this document was deleted",
+        "description": "Check the connections in the workspace Database tab."
+      }
+    },
     "noPermission": {
       "title": "You don't have permission to view data",
       "description": "Only editors and owners can use the data browser."
@@ -2021,7 +2034,9 @@
       "noMatch": "No matching objects",
       "refresh": "Refresh list",
       "estimatedRows": "~{{formatted}}",
-      "select": "Pick a table or view on the left"
+      "select": "Pick a table or view on the left",
+      "ungrouped": "No group",
+      "notInDocument": "Not in this document"
     },
     "tabs": {
       "data": "Data",
@@ -2078,6 +2093,8 @@
       "readOnlyView": "Views cannot be edited",
       "readOnlyNoPk": "Tables without a primary key cannot be edited",
       "downloadCsv": "Download CSV",
+      "resizeColumn": "{{column}} column width",
+      "resizeHint": "Drag to change the column width. Double-click to reset it",
       "op": {
         "EQ": "=",
         "NEQ": "≠",
@@ -2103,6 +2120,8 @@
       "openLongValue": "View the full value of {{column}}",
       "setNull": "NULL",
       "defaultPlaceholder": "default",
+      "generatedPlaceholder": "Computed",
+      "generatedCell": "Generated column — computed by the database. It cannot be set or edited",
       "pending": "{{count}} pending changes",
       "summary": "{{inserted}} added · {{updated}} edited · {{deleted}} deleted",
       "apply": "Apply",
@@ -2122,6 +2141,26 @@
         "tooLarge": "The value is too large to read ({{formatted}} characters in total)"
       }
     },
+    "follow": {
+      "parent": "Open this row in {{object}}",
+      "references": "View rows that reference this row",
+      "notFound": "Table {{object}} was not found in this database"
+    },
+    "compare": {
+      "title": "Differences from the document",
+      "run": "Compare with document",
+      "again": "Compare again",
+      "hint": "Compare the actual structure of this table with the ERD document.",
+      "same": "Matches the document",
+      "legend": "Bring \"only in DB\" items into the document, and apply \"only in document\" items to the DB.",
+      "item": {
+        "add": "{{kind}} — only in DB",
+        "update": "{{kind}} — differs",
+        "remove": "{{kind}} — only in document"
+      },
+      "toDocument": "Bring into document",
+      "toDatabase": "Apply to DB"
+    },
     "structure": {
       "columns": "Columns",
       "name": "Name",
@@ -2131,9 +2170,11 @@
       "comment": "Comment",
       "primaryKey": "Primary key",
       "autoIncrement": "Auto increment",
+      "generated": "Generated",
       "indexes": "Indexes",
       "unique": "Unique",
       "foreignKeys": "Foreign keys",
+      "referencedBy": "Referenced by",
       "none": "None",
       "editInErd": "The structure cannot be changed here. Change it in the ERD and apply it with migration DDL."
     },

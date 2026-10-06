@@ -21,7 +21,9 @@ export function readSqlHistory(connectionId: string): SqlHistoryEntry[] {
     if (!Array.isArray(parsed)) return []
     return parsed.filter(
       (entry): entry is SqlHistoryEntry =>
-        typeof entry === 'object' && entry !== null && typeof (entry as SqlHistoryEntry).sql === 'string',
+        typeof entry === 'object' &&
+        entry !== null &&
+        typeof (entry as SqlHistoryEntry).sql === 'string',
     )
   } catch {
     return []
@@ -31,7 +33,10 @@ export function readSqlHistory(connectionId: string): SqlHistoryEntry[] {
 /** 맨 앞에 넣는다 — 바로 앞과 같은 문장은 시각만 갱신한다 */
 export function pushSqlHistory(connectionId: string, entry: SqlHistoryEntry): SqlHistoryEntry[] {
   const previous = readSqlHistory(connectionId)
-  const next = [entry, ...(previous[0]?.sql === entry.sql ? previous.slice(1) : previous)].slice(0, HISTORY_MAX)
+  const next = [entry, ...(previous[0]?.sql === entry.sql ? previous.slice(1) : previous)].slice(
+    0,
+    HISTORY_MAX,
+  )
   try {
     window.localStorage.setItem(key(connectionId), JSON.stringify(next))
   } catch {

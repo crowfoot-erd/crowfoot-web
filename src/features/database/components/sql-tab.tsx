@@ -19,7 +19,11 @@ import { ResultTable, toCsv } from '@/features/database/components/result-table'
 import type { SqlEditorHandle } from '@/features/database/components/sql-editor'
 import { databaseErrorMessage } from '@/features/database/errors'
 import { databaseKeys, useRunQuery } from '@/features/database/hooks'
-import { pushSqlHistory, readSqlHistory, type SqlHistoryEntry } from '@/features/database/sql-history'
+import {
+  pushSqlHistory,
+  readSqlHistory,
+  type SqlHistoryEntry,
+} from '@/features/database/sql-history'
 import { statementToRun } from '@/features/database/sql-statements'
 import { downloadTextFile } from '@/lib/download'
 import { formatDateTime, formatNumber } from '@/lib/format'
@@ -37,7 +41,13 @@ export interface SqlTabProps {
   objectNames: readonly string[]
 }
 
-export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, objectNames }: SqlTabProps) {
+export function SqlTab({
+  workspaceId,
+  connectionId,
+  connectionName,
+  dbmsType,
+  objectNames,
+}: SqlTabProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const run = useRunQuery(workspaceId, connectionId)
@@ -59,10 +69,18 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
           if (!data) return
           setResult(data)
           setPending(null)
-          setHistory(pushSqlHistory(connectionId, { sql: statement, at: new Date().toISOString(), ok: data.ok }))
+          setHistory(
+            pushSqlHistory(connectionId, {
+              sql: statement,
+              at: new Date().toISOString(),
+              ok: data.ok,
+            }),
+          )
           // 구조 문장이 성공하면 객체 목록이 달라졌을 수 있다 — 다시 읽는다
           if (data.kind === 'DDL' && data.ok) {
-            void queryClient.invalidateQueries({ queryKey: databaseKeys.objects(workspaceId, connectionId) })
+            void queryClient.invalidateQueries({
+              queryKey: databaseKeys.objects(workspaceId, connectionId),
+            })
           }
         },
         onError: (error) => {
@@ -107,8 +125,17 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
           />
         </Suspense>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" onClick={runCurrent} disabled={run.isPending || sql.trim() === ''}>
-            {run.isPending ? <Loader2 aria-hidden className="animate-spin" /> : <Play aria-hidden />}
+          <Button
+            type="button"
+            size="sm"
+            onClick={runCurrent}
+            disabled={run.isPending || sql.trim() === ''}
+          >
+            {run.isPending ? (
+              <Loader2 aria-hidden className="animate-spin" />
+            ) : (
+              <Play aria-hidden />
+            )}
             {t('database.sql.run')}
           </Button>
           <span className="text-xs text-muted-foreground">{t('database.sql.runHint')}</span>
@@ -126,7 +153,10 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
           </Button>
         </div>
         {historyOpen && history.length > 0 ? (
-          <ul aria-label={t('database.sql.historyLabel')} className="max-h-40 overflow-y-auto rounded-md border text-sm">
+          <ul
+            aria-label={t('database.sql.historyLabel')}
+            className="max-h-40 overflow-y-auto rounded-md border text-sm"
+          >
             {history.map((entry) => (
               <li key={`${entry.at}:${entry.sql}`} className="border-b last:border-b-0">
                 <button
@@ -144,7 +174,9 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
                     <CircleX aria-hidden className="size-3.5 shrink-0 text-destructive" />
                   )}
                   <code className="min-w-0 flex-1 truncate text-xs">{entry.sql}</code>
-                  <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(entry.at)}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatDateTime(entry.at)}
+                  </span>
                 </button>
               </li>
             ))}
@@ -175,9 +207,13 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
                 {t('database.sql.truncated', { count: result.rows.length })}
               </p>
             ) : null}
-            {result.columns.length > 0 ? <ResultTable columns={result.columns} rows={result.rows} /> : null}
+            {result.columns.length > 0 ? (
+              <ResultTable columns={result.columns} rows={result.rows} />
+            ) : null}
             {result.rows.length === 0 ? (
-              <p className="p-6 text-center text-sm text-muted-foreground">{t('database.data.empty')}</p>
+              <p className="p-6 text-center text-sm text-muted-foreground">
+                {t('database.data.empty')}
+              </p>
             ) : null}
           </>
         ) : (
@@ -187,7 +223,9 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
                 ? t('database.sql.affected', { formatted: formatNumber(result.affectedRows) })
                 : t('database.sql.done')}
             </p>
-            {result.kind === 'DDL' ? <p className="text-muted-foreground">{t('database.sql.ddlNotice')}</p> : null}
+            {result.kind === 'DDL' ? (
+              <p className="text-muted-foreground">{t('database.sql.ddlNotice')}</p>
+            ) : null}
           </div>
         )}
       </div>
@@ -195,7 +233,9 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
       {/* 아래 줄 — 행 수·실행 시간·CSV */}
       {result ? (
         <div className="flex flex-wrap items-center gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
-          {result.ok && result.rows ? <span>{t('database.data.rowsShown', { count: result.rows.length })}</span> : null}
+          {result.ok && result.rows ? (
+            <span>{t('database.data.rowsShown', { count: result.rows.length })}</span>
+          ) : null}
           <span>{t('database.data.elapsed', { ms: result.elapsedMs })}</span>
           <div className="flex-1" />
           {result.ok && result.columns && result.rows && result.rows.length > 0 ? (
@@ -205,7 +245,11 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
               size="sm"
               onClick={() => {
                 if (result.columns && result.rows) {
-                  downloadTextFile('query-result.csv', toCsv(result.columns, result.rows), 'text/csv')
+                  downloadTextFile(
+                    'query-result.csv',
+                    toCsv(result.columns, result.rows),
+                    'text/csv',
+                  )
                 }
               }}
             >
@@ -221,14 +265,20 @@ export function SqlTab({ workspaceId, connectionId, connectionName, dbmsType, ob
         onOpenChange={(open) => {
           if (!open) setPending(null)
         }}
-        title={pending?.kind === 'DDL' ? t('database.sql.confirm.titleDdl') : t('database.sql.confirm.titleWrite')}
+        title={
+          pending?.kind === 'DDL'
+            ? t('database.sql.confirm.titleDdl')
+            : t('database.sql.confirm.titleWrite')
+        }
         description={
           <span className="grid gap-2">
             <span>{t('database.sql.confirm.target', { name: connectionName })}</span>
             <code className="block max-h-40 overflow-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">
               {pending?.sql}
             </code>
-            <span className="font-medium text-destructive">{t('database.sql.confirm.irreversible')}</span>
+            <span className="font-medium text-destructive">
+              {t('database.sql.confirm.irreversible')}
+            </span>
           </span>
         }
         confirmLabel={t('database.sql.confirm.run')}

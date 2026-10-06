@@ -46,7 +46,11 @@ describe('셀 고치기', () => {
   it('고치면 값과 편집 전 값을 함께 기억한다', () => {
     const edits = setCell(EMPTY_EDITS, ROW_KEY, KEY, 'status', 'PAID', 'READY')
 
-    expect(edits.updates[ROW_KEY]).toEqual({ key: KEY, values: { status: 'PAID' }, original: { status: 'READY' } })
+    expect(edits.updates[ROW_KEY]).toEqual({
+      key: KEY,
+      values: { status: 'PAID' },
+      original: { status: 'READY' },
+    })
     expect(countEdits(edits)).toEqual({ inserted: 0, updated: 1, deleted: 0, total: 1 })
   })
 
@@ -65,7 +69,10 @@ describe('셀 고치기', () => {
     expect(toNull.updates[ROW_KEY].values).toEqual({ memo: null })
 
     const toEmpty = setCell(EMPTY_EDITS, ROW_KEY, KEY, 'memo', '', null)
-    expect(toEmpty.updates[ROW_KEY]).toMatchObject({ values: { memo: '' }, original: { memo: null } })
+    expect(toEmpty.updates[ROW_KEY]).toMatchObject({
+      values: { memo: '' },
+      original: { memo: null },
+    })
   })
 })
 

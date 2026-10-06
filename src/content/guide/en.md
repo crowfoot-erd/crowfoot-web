@@ -8,7 +8,7 @@ Crowfoot has three kinds of screens.
 |---|---|---|
 | App | Opens when you sign in | Workspaces, document lists, members, databases, teams, community |
 | Editor | Click a document in the document list; it opens in a new window | Draw ERDs, manage standards, generate SQL, share, version history |
-| Data browser | Click the Browse data button on a connection; it opens in a new window | View real data, edit rows, run SQL |
+| Data browser | Click the Browse data button on a connection; it opens in a new window. In the editor, it opens in the **{{shareViewer.tab.data}}** tab at the bottom | View real data, edit rows, run SQL |
 
 ### 1.1 The top menu of the app
 
@@ -51,20 +51,22 @@ The left sidebar changes depending on what you select in the top menu.
 | Toolbar | Explorer, term dictionary, validation, undo, save, auto layout, generate SQL, share, export, tools, view, zoom in and out |
 | Center | The canvas, which holds tables, relationship lines, notes, and groups |
 | Bottom right | The minimap and the document chat button |
-| Bottom | The **ERD**, **{{shareViewer.tab.requirements}}**, and **{{shareViewer.tab.comments}}** tabs |
+| Bottom | The **ERD**, **{{shareViewer.tab.requirements}}**, **{{shareViewer.tab.data}}**, and **{{shareViewer.tab.comments}}** tabs |
 
 Section 5 describes each toolbar button.
 
 ### 1.4 The data browser window
 
-![The data browser](/guide-assets/en/data-tab.webp)
+![The data browser](/guide-assets/en/data-browser.webp)
 
 | Position | Contents |
 |---|---|
 | Top | Connection name, DBMS, host address, theme and language, **{{database.close}}** |
-| Left | List of tables and views, search box, refresh |
+| Left | List of tables and views, search box, refresh. When opened with an ERD document, tables are split by the document's groups |
 | Top right | The name of the selected table and the **{{database.tabs.data}}**, **{{database.tabs.structure}}**, and **{{database.tabs.sql}}** tabs |
 | Right | The contents of the tab |
+
+In the **{{shareViewer.tab.data}}** tab of the editor, there is no top bar. The connection name, DBMS, and address appear at the right end of the top-right bar.
 
 ## 2. Getting started
 
@@ -311,7 +313,7 @@ Click the button to rearrange the tables in the selected mode. Click the arrow t
 |---|---|---|
 | **{{model.editor.toolbar.logicalNames}}** | Fills in empty logical names from the dictionary | Section 9.7 |
 | **{{model.editor.toolbar.sync}}** | Compares the document with the connected database and syncs them. Shown only for connected documents | Section 10.4 |
-| **{{database.openShort}}** | Opens the data browser of the connected database in a new window | Section 11 |
+| **{{database.openShort}}** | Switches to the **{{shareViewer.tab.data}}** tab at the bottom and shows the data browser of the connected database | Section 11 |
 | **{{model.editor.toolbar.dbmsConvert}}** | Creates a new document that differs only in its target DBMS | Section 10.5 |
 | **{{model.editor.domainType.menu}}** | Opens the list of domain types | Section 9.3 |
 | **{{model.editor.toolbar.history}}** | Views, compares, and restores saved versions | Section 14 |
@@ -486,7 +488,7 @@ Groups organize tables by topic. A table in a group shows the group color in its
 | Item | Description |
 |---|---|
 | **{{model.editor.contextMenu.tableInfo}}** | Opens the table info dialog |
-| **{{model.editor.contextMenu.viewTableData}}** | Shows the data of this table in the connected database. Shown only for connected documents |
+| **{{model.editor.contextMenu.viewTableData}}** | Switches to the **{{shareViewer.tab.data}}** tab and shows the data of this table. Shown only for connected documents |
 | **{{model.editor.contextMenu.copy}}** | Copies the selected objects |
 | **{{model.editor.contextMenu.duplicate}}** | Makes a copy right next to the original |
 | **{{model.editor.contextMenu.createGroup}}**, **{{model.editor.contextMenu.addToGroup}}**, **{{model.editor.contextMenu.removeFromGroup}}**, **{{model.editor.contextMenu.editGroup}}** | Manage groups |
@@ -629,7 +631,8 @@ The **{{workspace.detail.tabs.database}}** tab of a workspace has two parts.
 * Each database gets its own dedicated account, which can access only its own schema.
 * Click the key icon to see the host address, user, and password. You can use them directly in an external tool such as DBeaver. Only the person who created the database can see these credentials.
 * The trash icon revokes the database. The schema and all the data in it are deleted, and this cannot be undone. Only the person who created the database can revoke it.
-* A connection created this way can only be renamed. You cannot edit its connection details or delete it; to remove it, revoke the database.
+* A connection created this way can only be renamed. You cannot edit its connection details.
+* In the connection list, clicking delete on such a connection opens the revoke confirmation. Revoking removes the connection and the schema together.
 
 **Connection list** — Register the connection details of your own databases.
 
@@ -680,6 +683,8 @@ Use this when the document and the real database are out of sync. Open it with *
 
 * When the document is updated, document-only properties such as table colors, positions, and notes are kept. A single undo puts everything back.
 * Running migration DDL on a database cannot be undone. Statements that drop a column or a table are not run by default; only additions and changes are applied. To run them too, turn on **{{model.editor.migration.destructiveToggle}}**. If you link a new document to a database that is already in use, every existing table missing from the document shows up as a deletion, so check carefully.
+* When you rename a table or column in the document, migration DDL creates a rename statement (RENAME). It does not drop and recreate it, so the data is kept.
+* Indexes added to existing tables are also included in migration DDL.
 
 To connect an unconnected document, use **{{model.list.menu.connect}}** in its row menu in the document list.
 
@@ -703,6 +708,12 @@ The data browser is a window for viewing and editing the real data of a connecti
 * **{{model.editor.toolbar.tools}}** › **{{database.openShort}}** in the editor
 * Right-click a table in the editor › **{{model.editor.contextMenu.viewTableData}}**
 
+The two editor entries do not open a new window. They switch to the **{{shareViewer.tab.data}}** tab at the bottom of the editor and show the document's connection. The tabs are in the order **ERD**, **{{shareViewer.tab.requirements}}**, **{{shareViewer.tab.data}}**, **{{shareViewer.tab.comments}}**. The selected table and filters stay when you switch to another tab. For a document without a database, the tab shows the **{{model.connect.toolbar}}** button.
+
+In the tab, the connection name, DBMS, and address appear at the right end of the bar with the table name and the **{{database.tabs.data}}**, **{{database.tabs.structure}}**, and **{{database.tabs.sql}}** tabs. There is no separate top bar.
+
+When opened with an ERD document, the list on the left splits the tables by the document's groups. Groups appear in document order, with the same colors as in the editor. Tables in no group go under **{{database.objects.ungrouped}}**, and tables missing from the document go under **{{database.objects.notInDocument}}**. Click a group name to collapse it. While you search, groups with no matching table are hidden.
+
 You need the Editor role or higher; Viewers and Commenters do not see the browse data buttons. What you can actually do depends on the permissions of the database account registered in the connection. If the account has no write permission, row edits and write statements fail.
 
 Each statement must finish within 8 seconds. After 8 seconds it is canceled, so narrow the conditions and run it again. Each person can run up to two requests at the same time.
@@ -717,11 +728,29 @@ Each statement must finish within 8 seconds. After 8 seconds it is canceled, so 
 * Click a column header to sort by that column. Click it again to reverse the order.
 * Rows are shown 100 per page; move between pages at the bottom. Until you click **{{database.data.countExact}}**, an estimated row count is shown; click it to count the exact total number of rows.
 * **{{database.data.downloadCsv}}** downloads the rows currently shown on screen as a CSV file. Rows on other pages are not included.
-* If an ERD document is linked to the connection, the column headers also show the logical names from that document.
+* If an ERD document is linked to the connection, the column headers also show the logical names from that document. A description added to a logical name after `-----` appears when you hover over the header.
+* Columns start at a width that fits the header and type. Drag the right edge of a header to change the width, and double-click it to reset.
+* You can also change the width with the keyboard. Focus the right edge of a header and press `←` or `→`. Hold `Shift` for bigger steps, and press `Enter` to reset.
+* Changed widths are remembered per connection and table in this browser.
 * Long values are truncated, with their full character count shown at the end. Click a cell to see the whole value.
 * NULL appears as a dimmed `NULL`, and an empty string appears as an empty cell. For binary values, only the size is shown.
 
-### 11.2 The Data tab — editing rows
+### 11.2 Following foreign keys
+
+![View rows referencing this row](/guide-assets/en/data-follow-menu.webp)
+
+You can open rows linked by a foreign key directly.
+
+* A small arrow button sits next to each foreign key value. Click it to open the parent table showing only the row with that value.
+* In a table that other tables reference, each row has a **{{database.follow.references}}** button on the left. Click it to list the referencing tables as "table (foreign key columns)". Choose one to open that table showing only the rows that point to this row.
+* The filter appears in the filter row. Edit or remove it and click **{{database.data.apply}}** to query again.
+* Foreign keys made of several columns can be followed too.
+* A value that is NULL, truncated, or binary cannot be followed. In that case the button does not appear or cannot be clicked.
+* If the target table is not in the list on the left, a notice says it cannot be found.
+
+![A table opened by following a foreign key](/guide-assets/en/data-follow.webp)
+
+### 11.3 The Data tab — editing rows
 
 ![Editing rows](/guide-assets/en/data-edit.webp)
 
@@ -743,19 +772,35 @@ The bar at the bottom shows how many rows are added, edited, and deleted. Click 
 * A warning appears if the batch includes deletions. Changes cannot be undone once applied.
 * The data of views and tables without a primary key cannot be edited. In that case, the reason is shown above the tab.
 * Cells left blank in a new row get the database's default value.
+* Generated columns are calculated by the database. In a new row they show **{{database.edit.generatedPlaceholder}}**, and you cannot enter or edit their values.
 * Clearing a cell sets it to an empty string. To set NULL, use the **{{database.edit.setNull}}** button.
 * A cell changed back to its original value is dropped from the changes.
 * Up to 100 changes can be applied at once.
 * If applying fails, the changes stay on screen, and the failed rows show the database's error message.
 * If you move to another table or tab, or close the window, with unapplied changes, a confirmation dialog appears.
 
-### 11.3 The Structure tab
+### 11.4 The Structure tab
 
 ![The Structure tab](/guide-assets/en/data-structure.webp)
 
-Shows the columns (name, type, nullability, default value, comment), indexes, and foreign keys of the selected table. The structure cannot be edited here. Edit it in the ERD and then apply it with migration DDL.
+Shows the columns (name, type, nullability, default value, comment), indexes, foreign keys, and **{{database.structure.referencedBy}}** of the selected table. The structure cannot be edited here. Edit it in the ERD and then apply it with migration DDL.
 
-### 11.4 The SQL tab
+* Comments also show only the part before `-----`; hover to see the description.
+* Auto-increment columns are marked **{{database.structure.autoIncrement}}**, and generated columns are marked **{{database.structure.generated}}**.
+* **{{database.structure.referencedBy}}** lists the foreign keys in other tables that point to this table.
+
+![Differences from the document](/guide-assets/en/data-compare.webp)
+
+In the **{{shareViewer.tab.data}}** tab of the editor, **{{database.compare.title}}** appears at the top of the Structure tab. Only editors and above see it. It is not in the data browser opened in a new window.
+
+* Click **{{database.compare.run}}** to compare the actual structure of the selected table with the ERD document. To read it again, click **{{database.compare.again}}**.
+* Each difference appears on its own line, per table, column, primary key, unique key, or relationship. It is labeled "only in DB" if it exists only in the database, "only in document" if it exists only in the document, and "differs" if both have it but they differ.
+* If there are no differences, **{{database.compare.same}}** appears.
+* When you edit the document, the list updates right away. Unsaved edits are included.
+* **{{database.compare.toDocument}}** opens the Sync DB dialog. Use it to bring the database structure into the document (section 10.4).
+* **{{database.compare.toDatabase}}** opens the migration DDL dialog. Use it to apply the document structure to the database (section 10.4).
+
+### 11.5 The SQL tab
 
 ![The SQL tab](/guide-assets/en/data-sql.webp)
 
@@ -1009,7 +1054,7 @@ Start Claude Code or Codex in the folder where you ran the registration command,
 | Create and edit ERDs | Creates and edits tables, columns, keys, indexes, relationships, and groups, following the workspace's terms and domain types |
 | Validation and SQL | Gets the design validation result and the SQL script |
 | Import SQL | Creates a new document from a CREATE TABLE script |
-| Apply to a database | Issues a service-provided database and deploys a document or applies only what changed (section 20.4) |
+| Apply to a database | Issues a service-provided database and deploys a document or applies only what changed. It can also bring structure changes in the database into the document (section 20.4) |
 | Sample data | Creates sample data that fits the table structure and inserts it into the deployed database (section 20.4) |
 
 * Every change Claude makes is saved as a version. If you do not like it, restore an earlier version (section 14).
@@ -1045,10 +1090,13 @@ Click the **{{shareViewer.tab.requirements}}** tab at the bottom of the editor t
 Users with the Editor role or higher can add and edit requirements directly.
 
 * Click **{{model.requirements.add}}** at the top of the panel, or the edit button in an expanded row. Set the title, description, scope, status, group, and tables to link. The code (such as REQ-001) is assigned automatically.
-* Click **{{model.requirements.markApplied}}** on a pending row to change it to applied.
+* Expand a pending row and click **{{model.requirements.changes.show}}** to compare the last applied content with the current one. It shows the changed title, lines added to the description (green +) and removed (red −), and the differences in acceptance criteria and linked tables. The comparison uses the saved document, so unsaved edits appear after you save. A requirement that was never applied shows **{{model.requirements.changes.isNew}}**.
+* Follow the **{{model.requirements.steps.title}}** on the same row. Use **{{model.requirements.steps.tables}}** to change the linked tables. If the document is connected to a database, save it and click **{{model.requirements.steps.database}}** to run the changed structure on the database. This button opens the migration DDL window of DB sync. Finally, click **{{model.requirements.markApplied}}** to change it to applied. This mark is a document edit, so you can undo it.
 * **{{model.requirements.criteria.title}}** are the checks that show a requirement is properly reflected. Write one per line in the edit dialog and check them off in the expanded row.
 * For a requirement that is no longer needed, change its status to **{{model.requirements.status.dropped}}** instead of deleting it. Delete only entries added by mistake.
 * A document can hold up to 500 requirements.
+
+![Changes and the steps to apply them](/guide-assets/en/editor-requirement-changes.webp)
 
 ### 20.4 Applying to a database
 
@@ -1059,7 +1107,7 @@ For Claude to change the structure of a database, the connection must allow it.
 * Claude shows the SQL first and runs only the plan you confirmed. If the document or the database has changed since the plan was shown, Claude does not run it and makes a new plan.
 * Claude first inserts sample data in a trial run and rolls it back to check for constraint violations, then inserts only the data you confirm. It only inserts rows; it never updates or deletes them. Each request can cover up to 20 tables and 1,000 rows.
 * The first deployment is made only to an empty database. For a database that already has tables, only what changed is applied.
-* Renaming the physical name of a table or column shows up in the change plan as a deletion and an addition. Running it as is loses that column's data, so make sure the plan reflects a rename you intended.
+* Renaming the physical name of a table or column shows up in the change plan as a rename statement (RENAME). The data is kept.
 * Statements that delete run only after separate approval. Without approval, only additions and changes are run.
 * For a connection that does not allow it, Claude only shows the SQL. Run it yourself with Deploy (section 10.3) or migration DDL (section 14.3) in the editor.
 
@@ -1084,7 +1132,7 @@ No. When you open a document, Crowfoot tells you about the change and lets you c
 Yes. You can simply draw an ERD and use the generated SQL script elsewhere. To try running it, issue a service-provided database in the Database tab.
 
 **Can I change the structure in the data browser?**
-Not in the Data tab or the Structure tab. Edit it in the ERD and then apply it with migration DDL.
+Not in the Data tab or the Structure tab. Edit it in the ERD and then apply it with migration DDL. In the **{{shareViewer.tab.data}}** tab of the editor, **{{database.compare.toDatabase}}** on the Structure tab takes you there directly.
 
 **Can someone with a share link edit the document?**
 No. To edit together, add them as a workspace member and give them the Editor role.

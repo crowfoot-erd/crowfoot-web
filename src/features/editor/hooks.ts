@@ -8,6 +8,7 @@ import {
   deployModel,
   fetchConnectionMigrationDdl,
   fetchModelDdl,
+  fetchModelOutline,
   fetchShareDdl,
   fetchModelVersion,
   fetchVersionMigrationDdl,
@@ -141,6 +142,22 @@ export function useModelVersion(workspaceId: string, modelId: string, enabled = 
     refetchInterval: VERSION_POLL_MS,
     staleTime: 0,
     gcTime: 15_000,
+    retry: false,
+  })
+}
+
+/** 반영 대기 요구사항의 바뀐 내용(08-core/17-model-edit.md §2.4) — 저장된 문서의 개요에서 읽는다.
+ *  키가 ['workspaces', ws, 'models', ...] 아래라 저장 성공의 invalidate에 함께 걸린다.
+ *  저장 버전을 키에 넣어 남이 저장해 버전이 오른 경우에도 다시 읽는다 */
+export function useRequirementChanges(workspaceId: string, modelId: string, version: number, enabled: boolean) {
+  return useQuery({
+    queryKey: [...modelKeys.detail(workspaceId, modelId), 'outline', version],
+    queryFn: async ({ signal }) => {
+      const outline = await fetchModelOutline(workspaceId, modelId, signal)
+      return new Map((outline?.requirements ?? []).flatMap((item) => (item.changes ? [[item.code, item.changes] as const] : [])))
+    },
+    enabled: enabled && workspaceId.length > 0 && modelId.length > 0,
+    staleTime: 0,
     retry: false,
   })
 }

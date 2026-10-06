@@ -129,6 +129,7 @@
       "MANAGED_INSTANCE_UNREACHABLE": "无法连接实例。请检查凭据和地址。",
       "MANAGED_INSTANCE_IN_USE": "该实例仍有已发放的数据库。请先撤销发放。",
       "MANAGED_LIMIT_EXCEEDED": "已达到发放上限。请先撤销一个，或联系管理员。",
+      "MANAGED_CONNECTION_REVOKE_REQUIRED": "服务提供数据库的连接需通过撤销发放来删除。请在上方的服务提供数据库表中撤销。",
       "MANAGED_PROVISION_FAILED": "发放失败。请稍后重试。",
       "MANAGED_DATABASE_NOT_FOUND": "未找到已发放的数据库。",
       "SHARE_NOT_FOUND": "未找到共享链接。",
@@ -1453,7 +1454,7 @@
         "expressionRequired": "请输入表达式"
       }
     },
-  "requirements": {"criteria": {"title": "验收标准", "count": "标准 {{done}}/{{total}}", "hint": "每行写一条，用来确认需求是否已正确体现"}, "search": "查找编号、标题、内容、表", "progress": "已体现 {{applied}}/{{total}}", "domains": {"label": "领域", "all": "全部", "noRequirements": "该领域还没有需求", "showOnCanvas": "在画布中查看"}, "export": {"button": "导出", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "需求规格", "columns": {"code": "编号", "domain": "领域", "state": "状态", "title": "标题", "description": "内容", "tables": "表"}}, "title": "需求", "add": "添加", "filterLabel": "状态筛选", "state": {"APPLIED": "已反映", "PENDING": "待反映", "UNLINKED": "链接断开", "LEFTOVER": "需要清理", "DRAFT": "评审中", "DROPPED": "已排除"}, "stateHint": {"APPLIED": "已确认的需求已反映到 ERD", "PENDING": "已确认，但 ERD 尚未反映最新内容", "UNLINKED": "已标记为已反映，但没有链接的表", "LEFTOVER": "已排除的需求仍链接着表", "DRAFT": "尚未确认的需求", "DROPPED": "不再处理的需求"}, "status": {"draft": "评审中", "confirmed": "已确认", "dropped": "已排除"}, "scope": {"tables": "功能", "document": "通用"}, "group": {"unassigned": "未分类", "document": "通用"}, "empty": "没有需求", "emptyDetail": "可以由 Claude 通过 MCP 登记，也可以自己添加", "emptyFiltered": "没有符合条件的需求", "tableCount": "表 {{count}}", "noDescription": "无内容", "linkedTables": "链接的表", "noTables": "没有链接的表", "markApplied": "标记为已反映", "revision": "修订 {{revision}}", "removeConfirm": "只删除登记错误的条目", "limit": "每个文档最多登记 {{max}} 条需求", "tableInfo": "需求", "untraced": {"title": "没有依据的表", "hint": "未链接到任何需求的表"}, "dialog": {"createTitle": "添加需求", "editTitle": "编辑需求", "title": "标题", "titleRequired": "请输入标题", "description": "内容", "revisionHint": "修改标题或内容后会变为待反映", "scope": "范围", "status": "状态", "area": "领域(分组)", "tables": "要链接的表", "documentHint": "通用需求适用于整个文档，不链接到表"}},
+  "requirements": { "changes": {"show": "查看变更内容", "hide": "收起变更内容", "revision": "已反映修订 {{from}} → 当前修订 {{to}}", "isNew": "新需求", "isNewHint": "尚未反映过。将反映当前的全部内容。", "unknown": "找不到之前的内容(旧版本已被清理)", "loading": "正在读取变更内容…", "failed": "无法读取变更内容", "notSaved": "保存后即可查看变更内容", "savedOnly": "以已保存的文档为准。未保存的编辑在保存后显示。", "title": "标题", "status": "状态", "description": "内容", "criteria": "验收标准", "tables": "关联的表", "added": "新增", "removed": "删除", "none": "无"}, "steps": {"title": "反映步骤", "tablesHint": "1. 在 ERD 中修改关联的表", "tables": "前往表", "databaseHint": "2. 保存文档并反映到已连接的数据库", "database": "反映到数据库", "markHint": "3. 全部反映后进行标记", "markHintNoDatabase": "2. 全部反映后进行标记"},"criteria": {"title": "验收标准", "count": "标准 {{done}}/{{total}}", "hint": "每行写一条，用来确认需求是否已正确体现"}, "search": "查找编号、标题、内容、表", "progress": "已体现 {{applied}}/{{total}}", "domains": {"label": "领域", "all": "全部", "noRequirements": "该领域还没有需求", "showOnCanvas": "在画布中查看"}, "export": {"button": "导出", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "需求规格", "columns": {"code": "编号", "domain": "领域", "state": "状态", "title": "标题", "description": "内容", "tables": "表"}}, "title": "需求", "add": "添加", "filterLabel": "状态筛选", "state": {"APPLIED": "已反映", "PENDING": "待反映", "UNLINKED": "链接断开", "LEFTOVER": "需要清理", "DRAFT": "评审中", "DROPPED": "已排除"}, "stateHint": {"APPLIED": "已确认的需求已反映到 ERD", "PENDING": "已确认，但 ERD 尚未反映最新内容", "UNLINKED": "已标记为已反映，但没有链接的表", "LEFTOVER": "已排除的需求仍链接着表", "DRAFT": "尚未确认的需求", "DROPPED": "不再处理的需求"}, "status": {"draft": "评审中", "confirmed": "已确认", "dropped": "已排除"}, "scope": {"tables": "功能", "document": "通用"}, "group": {"unassigned": "未分类", "document": "通用"}, "empty": "没有需求", "emptyDetail": "可以由 Claude 通过 MCP 登记，也可以自己添加", "emptyFiltered": "没有符合条件的需求", "tableCount": "表 {{count}}", "noDescription": "无内容", "linkedTables": "链接的表", "noTables": "没有链接的表", "markApplied": "标记为已反映", "revision": "修订 {{revision}}", "removeConfirm": "只删除登记错误的条目", "limit": "每个文档最多登记 {{max}} 条需求", "tableInfo": "需求", "untraced": {"title": "没有依据的表", "hint": "未链接到任何需求的表"}, "dialog": {"createTitle": "添加需求", "editTitle": "编辑需求", "title": "标题", "titleRequired": "请输入标题", "description": "内容", "revisionHint": "修改标题或内容后会变为待反映", "scope": "范围", "status": "状态", "area": "领域(分组)", "tables": "要链接的表", "documentHint": "通用需求适用于整个文档，不链接到表"}},
   "validation": {
     "toggle": "校验",
     "title": "设计校验",
@@ -1546,6 +1547,7 @@
       "label": "视图切换",
       "erd": "ERD",
       "requirements": "需求",
+      "data": "数据",
       "comments": "评论"
     }
   },
@@ -1659,6 +1661,7 @@
     "delete": {
       "title": "删除连接 {{name}}",
       "description": "删除连接“{{name}}”？由它创建的文档会保留。",
+      "managedNotice": "「{{name}}」是服务提供数据库的连接，需撤销发放才会删除。",
       "successToast": "连接已删除"
     }
   },
@@ -2008,6 +2011,16 @@
     "open": "查看 {{name}} 的数据",
     "openShort": "查看数据",
     "close": "关闭窗口",
+    "embedded": {
+      "noSource": {
+        "title": "此文档尚未连接数据库",
+        "description": "连接数据库后，可在此标签页中查看和编辑表数据。"
+      },
+      "sourceMissing": {
+        "title": "此文档的连接已被删除",
+        "description": "请在工作区的数据库标签页中查看连接。"
+      }
+    },
     "noPermission": {
       "title": "没有查看数据的权限",
       "description": "只有编辑者及以上角色可以使用数据浏览器。"
@@ -2021,7 +2034,9 @@
       "noMatch": "没有匹配的对象",
       "refresh": "刷新列表",
       "estimatedRows": "约 {{formatted}}",
-      "select": "请在左侧选择表或视图"
+      "select": "请在左侧选择表或视图",
+      "ungrouped": "无分组",
+      "notInDocument": "文档中没有的表"
     },
     "tabs": {
       "data": "数据",
@@ -2078,6 +2093,8 @@
       "readOnlyView": "视图不可编辑",
       "readOnlyNoPk": "没有主键的表不可编辑",
       "downloadCsv": "下载 CSV",
+      "resizeColumn": "{{column}} 列宽",
+      "resizeHint": "拖动以更改列宽。双击恢复默认列宽",
       "op": {
         "EQ": "=",
         "NEQ": "≠",
@@ -2103,6 +2120,8 @@
       "openLongValue": "查看 {{column}} 的完整值",
       "setNull": "NULL",
       "defaultPlaceholder": "默认值",
+      "generatedPlaceholder": "自动计算",
+      "generatedCell": "生成列 — 由数据库计算，不能写入或修改",
       "pending": "{{count}} 项更改",
       "summary": "添加 {{inserted}} · 修改 {{updated}} · 删除 {{deleted}}",
       "apply": "应用",
@@ -2122,6 +2141,26 @@
         "tooLarge": "值过大，无法读取（共 {{formatted}} 个字符）"
       }
     },
+    "follow": {
+      "parent": "打开 {{object}} 中的这一行",
+      "references": "查看引用此行的行",
+      "notFound": "在此数据库中找不到表 {{object}}"
+    },
+    "compare": {
+      "title": "与文档的差异",
+      "run": "与文档比较",
+      "again": "重新比较",
+      "hint": "将此表的实际结构与 ERD 文档进行比较。",
+      "same": "与文档一致",
+      "legend": "仅在数据库中的项导入文档，仅在文档中的项应用到数据库。",
+      "item": {
+        "add": "{{kind}} — 仅在数据库中",
+        "update": "{{kind}} — 不同",
+        "remove": "{{kind}} — 仅在文档中"
+      },
+      "toDocument": "导入文档",
+      "toDatabase": "应用到数据库"
+    },
     "structure": {
       "columns": "列",
       "name": "名称",
@@ -2131,9 +2170,11 @@
       "comment": "注释",
       "primaryKey": "主键",
       "autoIncrement": "自增",
+      "generated": "生成",
       "indexes": "索引",
       "unique": "唯一",
       "foreignKeys": "外键",
+      "referencedBy": "引用此表的外键",
       "none": "无",
       "editInErd": "此处不能修改结构。请在 ERD 中修改后通过迁移 DDL 应用。"
     },

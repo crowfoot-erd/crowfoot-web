@@ -5,14 +5,15 @@
  * - 상세(1.3)로 메아를 로드: 이름·DB 종류·캔버스·버전·생성자·최근 수정
  * - 본체는 EditorShell(에디터 1차 — 캔버스·인라인 편집·관계·메모·저장)
  * - 권한: 내 역할(OWNER/EDITOR)만 편집, Viewer·Commenter는 읽기 전용 캔버스
- * - 화면은 공개 뷰어와 같은 **하단 탭 바(ERD 기본 · 댓글)** (v1.21 후속 — 동일 UX).
+ * - 화면은 공개 뷰어와 같은 **하단 탭 바(ERD 기본 · 요구사항 · 데이터 보기 · 댓글)** (v1.21 후속 — 동일 UX).
+ *   데이터 보기 탭(05-editor/02-ui.md §22)은 Editor 이상에게만 있다 — 데이터 브라우저의 권한과 같다
  *   댓글 탭은 문서 단위 멤버 경로(§1.10.7)로 좋아요·댓글을 바로 보여준다(#261) —
  *   공유 링크가 없어도 되고, 스레드는 공개 뷰어와 같다(활성 링크가 있으면 같은 댓글).
  *   댓글 등록은 Commenter 이상, 답글은 문서 작성자만
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { ClipboardList, Loader2, MessageSquare, Table2, X } from 'lucide-react'
+import { ClipboardList, Loader2, MessageSquare, Rows3, Table2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +23,7 @@ import { dbmsLabel } from '@/features/editor/model/dbms'
 import { ErrorState } from '@/components/error-state'
 import { ViewerTabButton } from '@/components/viewer-tab-button'
 import { requirementState } from '@/features/editor/model/requirements'
+import { useDataView } from '@/features/editor/store/data-view-store'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
 import { formatDateTime } from '@/lib/format'
@@ -47,6 +49,9 @@ export function ModelViewerPage() {
   const requirementsOpen = useRequirementsPanel((state) => state.open)
   const showRequirements = useRequirementsPanel((state) => state.show)
   const hideRequirements = useRequirementsPanel((state) => state.hide)
+  const dataOpen = useDataView((state) => state.open)
+  const showData = useDataView((state) => state.show)
+  const hideData = useDataView((state) => state.hide)
   const pendingRequirements = useEditorStore(
     (state) => state.present.diagram.requirements.filter((requirement) => requirementState(requirement) === 'PENDING').length,
   )
@@ -58,6 +63,12 @@ export function ModelViewerPage() {
   const canEdit = myRole === 'OWNER' || myRole === 'EDITOR'
   // 댓글 등록은 Commenter 이상(Viewer는 읽기 전용), 답글은 문서 작성자만
   const canComment = myRole === 'OWNER' || myRole === 'EDITOR' || myRole === 'COMMENTER'
+  // 데이터 보기 탭 — 툴바의 「데이터 보기」와 같은 권한(Editor 이상). 탭이 있는 화면이라고 에디터에 알린다
+  const setDataAvailable = useDataView((state) => state.setAvailable)
+  useEffect(() => {
+    setDataAvailable(canEdit)
+    return () => setDataAvailable(false)
+  }, [canEdit, setDataAvailable])
   const isOwner = me.data != null && me.data.userId === model.data?.createdBy?.userId
   // 댓글 수 — 공개 뷰어와 같은 규칙(좋아요 합산은 2026-09-27 2차 보고로 철회)
   const commentCount = feedback.data?.comments.length ?? 0
@@ -124,10 +135,11 @@ export function ModelViewerPage() {
             className="flex h-12 shrink-0 items-center gap-1 border-t bg-background px-3"
           >
             <ViewerTabButton
-              active={tab === 'erd' && !requirementsOpen}
+              active={tab === 'erd' && !requirementsOpen && !(canEdit && dataOpen)}
               onClick={() => {
                 setTab('erd')
                 hideRequirements()
+                hideData()
               }}
               icon={<Table2 aria-hidden className="size-4" />}
               label={t('shareViewer.tab.erd')}
@@ -137,16 +149,30 @@ export function ModelViewerPage() {
               active={tab === 'erd' && requirementsOpen}
               onClick={() => {
                 setTab('erd')
+                hideData()
                 showRequirements()
               }}
               icon={<ClipboardList aria-hidden className="size-4" />}
               label={t('shareViewer.tab.requirements')}
               badge={pendingRequirements > 0 ? pendingRequirements : undefined}
             />
+            {/* 데이터 보기 — 원천 커넥션의 데이터 브라우저를 에디터 안에서 연다(§22). 에디터는 감추기만 한다 */}
+            {canEdit ? (
+              <ViewerTabButton
+                active={tab === 'erd' && dataOpen}
+                onClick={() => {
+                  setTab('erd')
+                  showData()
+                }}
+                icon={<Rows3 aria-hidden className="size-4" />}
+                label={t('shareViewer.tab.data')}
+              />
+            ) : null}
             <ViewerTabButton
               active={tab === 'comments'}
               onClick={() => {
                 hideRequirements()
+                hideData()
                 setTab('comments')
               }}
               icon={<MessageSquare aria-hidden className="size-4" />}

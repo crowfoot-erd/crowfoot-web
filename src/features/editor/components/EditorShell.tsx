@@ -60,6 +60,7 @@ import { AreaDialog } from './AreaDialog'
 import { ChatDock, chatPreview } from './ChatDock'
 import { ConflictResolverDialog, type ConflictRecord } from './ConflictResolverDialog'
 import { ErdCanvas } from './ErdCanvas'
+import { EditorDataView } from './EditorDataView'
 import { EditorToolbar } from './EditorToolbar'
 import { ModelExplorerPanel } from './ModelExplorerPanel'
 import { ShortcutsDialog } from './ShortcutsDialog'
@@ -67,6 +68,7 @@ import { TermDictionaryPanel, type TermPanelTab } from './TermDictionaryPanel'
 import { useAppUpdateAvailable } from '@/lib/app-update'
 import { RequirementsPanel } from './RequirementsPanel'
 import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
+import { useDataView } from '@/features/editor/store/data-view-store'
 import { ValidationPanel } from './ValidationPanel'
 import { ValidationHighlightContext } from './canvas/validation-context'
 import { useValidationIssues } from '@/features/editor/model/use-validation'
@@ -620,6 +622,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return
       // 요구사항 탭에서는 캔버스가 보이지 않는다 — 되돌리기·다시 실행·저장만 받는다(보이지 않는 선택을 지우지 않게)
       if (useRequirementsPanel.getState().open && !(mod && ['z', 'y', 's'].includes(key))) return
+      // 데이터 보기 탭은 문서 편집 화면이 아니다 — 저장만 받는다(보이지 않는 ERD를 되돌리지 않게, §22)
+      if (useDataView.getState().open && !(mod && key === 's')) return
 
       // Esc — 선택 해제(보기 동작이라 읽기 전용도 동작)
       if (key === 'escape') {
@@ -841,18 +845,47 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
   // 문서 대상 DBMS — 문서 생성 시점의 모델 메타(코드 테이블)로 고정. 에디터에서 전환하지 않는다
   const dbmsId = templateIdForDatabase(model.databaseType)
   const requirementsView = useRequirementsPanel((state) => state.open)
+  const dataViewAvailable = useDataView((state) => state.available)
+  const dataView = useDataView((state) => state.open)
+  const dataViewMounted = useDataView((state) => state.mounted)
   // 문서를 열 때는 늘 ERD 탭에서 시작한다
   useEffect(() => {
     useRequirementsPanel.getState().hide()
-    return () => useRequirementsPanel.getState().hide()
+    useDataView.getState().enter(model.modelId)
+    return () => {
+      useRequirementsPanel.getState().hide()
+      useDataView.getState().hide()
+    }
   }, [model.modelId])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 요구사항 탭(화면 맨 아래) — 문서에 속한 내용이라 공개 뷰어도 읽기 전용으로 본다(02-ui.md §17).
           에디터는 감추기만 하고 내리지 않는다 — 자동 저장과 협업 채널이 요구사항 편집에도 그대로 동작한다 */}
-      <RequirementsPanel canEdit={editable} documentName={model.name} />
-      <div className={cn('flex min-h-0 flex-1 flex-col', requirementsView && 'hidden')} data-testid="editor-canvas-area">
+      <RequirementsPanel
+        canEdit={editable}
+        documentName={model.name}
+        workspaceId={publicView ? undefined : model.workspaceId}
+        modelId={publicView ? undefined : model.modelId}
+        sourceConnectionId={publicView ? null : model.sourceConnectionId}
+      />
+      {/* 데이터 보기 탭(화면 맨 아래, §22) — 처음 열 때 마운트하고, 다른 탭으로 옮기면 감추기만 한다.
+          공개 뷰어·버전 뷰어에는 탭이 없다(available은 문서 열기 화면이 켠다) */}
+      {dataViewAvailable && dataViewMounted && !publicView ? (
+        <EditorDataView
+          hidden={!dataView}
+          workspaceId={model.workspaceId}
+          modelId={model.modelId}
+          modelName={model.name}
+          databaseType={model.databaseType}
+          sourceConnectionId={model.sourceConnectionId}
+          canEdit={canEdit}
+        />
+      ) : null}
+      <div
+        className={cn('flex min-h-0 flex-1 flex-col', (requirementsView || (dataView && dataViewAvailable)) && 'hidden')}
+        data-testid="editor-canvas-area"
+      >
       <EditorToolbar
         canEdit={editable}
         saving={saveMutation.isPending}

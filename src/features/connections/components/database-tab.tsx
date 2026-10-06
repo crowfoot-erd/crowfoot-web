@@ -28,6 +28,7 @@ import { ConnectionDialog } from '@/features/connections/components/connection-d
 import { ReverseDialog } from '@/features/connections/components/reverse-dialog'
 import { databaseBrowserPath } from '@/features/database'
 import { ManagedSection } from '@/features/managed/components/managed-section'
+import { useManagedDatabases, useRevokeManagedDatabase } from '@/features/managed/hooks'
 import { formatDate } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
 
@@ -41,6 +42,9 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
   const connections = useConnections(workspaceId)
   const deleteMutation = useDeleteConnection(workspaceId)
   const testMutation = useTestConnection(workspaceId)
+  // 서비스 제공 DB의 커넥션은 커넥션만 지우지 않는다 — 삭제를 발급 철회로 잇는다(08-core/06-connection.md Section 2.1)
+  const managedDatabases = useManagedDatabases(workspaceId)
+  const revokeMutation = useRevokeManagedDatabase(workspaceId)
 
   const [editing, setEditing] = useState<DbConnection | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -68,8 +72,23 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
     setReverseOpen(true)
   }
 
+  /** 삭제하려는 커넥션이 서비스 제공 DB의 것이면 그 발급 — 확인창과 실행이 발급 철회가 된다 */
+  const deletingManaged = deleting?.managed
+    ? (managedDatabases.data?.items.find((database) => database.connectionId === deleting.connectionId) ?? null)
+    : null
+
   const handleDelete = () => {
     if (!deleting) return
+    if (deletingManaged) {
+      revokeMutation.mutate(deletingManaged.databaseId, {
+        onSuccess: () => {
+          setDeleting(null)
+          toast.success(t('managed.revokeSuccessToast', { schema: deletingManaged.schemaName }))
+        },
+        onError: (error) => toast.error(errorMessage(error)),
+      })
+      return
+    }
     deleteMutation.mutate(deleting.connectionId, {
       onSuccess: () => {
         setDeleting(null)
@@ -306,11 +325,19 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={t('connection.delete.title', { name: deleting?.name ?? '' })}
-        description={t('connection.delete.description', { name: deleting?.name ?? '' })}
-        confirmLabel={t('common.delete')}
+        title={
+          deletingManaged
+            ? t('managed.revokeTitle', { schema: deletingManaged.schemaName })
+            : t('connection.delete.title', { name: deleting?.name ?? '' })
+        }
+        description={
+          deletingManaged
+            ? `${t('connection.delete.managedNotice', { name: deleting?.name ?? '' })} ${t('managed.revokeDescription', { schema: deletingManaged.schemaName })}`
+            : t('connection.delete.description', { name: deleting?.name ?? '' })
+        }
+        confirmLabel={deletingManaged ? t('managed.revokeConfirm') : t('common.delete')}
         destructive
-        confirming={deleteMutation.isPending}
+        confirming={deleteMutation.isPending || revokeMutation.isPending}
         onConfirm={handleDelete}
       />
       <ReverseDialog

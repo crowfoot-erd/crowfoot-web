@@ -129,6 +129,7 @@
       "MANAGED_INSTANCE_UNREACHABLE": "インスタンスに接続できません。認証情報とアドレスを確認してください。",
       "MANAGED_INSTANCE_IN_USE": "このインスタンスには発行済みのデータベースが残っています。先に取り消してください。",
       "MANAGED_LIMIT_EXCEEDED": "発行上限に達しました。1つ取り消すか、管理者にお問い合わせください。",
+      "MANAGED_CONNECTION_REVOKE_REQUIRED": "サービス提供DBの接続は発行の取り消しで削除します。上のサービス提供DBの表から取り消してください。",
       "MANAGED_PROVISION_FAILED": "プロビジョニングに失敗しました。しばらくしてからもう一度お試しください。",
       "MANAGED_DATABASE_NOT_FOUND": "発行済みデータベースが見つかりません。",
       "SHARE_NOT_FOUND": "共有リンクが見つかりません。",
@@ -1453,7 +1454,7 @@
         "expressionRequired": "式を入力してください"
       }
     },
-  "requirements": {"criteria": {"title": "受け入れ基準", "count": "基準 {{done}}/{{total}}", "hint": "1 行に 1 つ書きます。要件が正しく反映されたかを確認する項目です"}, "search": "コード・タイトル・内容・テーブルを検索", "progress": "反映 {{applied}}/{{total}}", "domains": {"label": "ドメイン", "all": "すべて", "noRequirements": "このドメインにはまだ要件がありません", "showOnCanvas": "キャンバスで見る"}, "export": {"button": "エクスポート", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "要件仕様", "columns": {"code": "コード", "domain": "ドメイン", "state": "状態", "title": "タイトル", "description": "内容", "tables": "テーブル"}}, "title": "要件", "add": "追加", "filterLabel": "状態フィルター", "state": {"APPLIED": "反映済み", "PENDING": "反映待ち", "UNLINKED": "リンク切れ", "LEFTOVER": "要整理", "DRAFT": "検討中", "DROPPED": "除外"}, "stateHint": {"APPLIED": "確定した要件がERDに反映されています", "PENDING": "確定しましたが、ERDが最新の内容をまだ反映していません", "UNLINKED": "反映済みと表示しましたが、リンクされたテーブルがありません", "LEFTOVER": "除外した要件にテーブルがまだリンクされています", "DRAFT": "まだ確定していない要件です", "DROPPED": "対象外になった要件です"}, "status": {"draft": "検討中", "confirmed": "確定", "dropped": "除外"}, "scope": {"tables": "機能", "document": "共通"}, "group": {"unassigned": "未分類", "document": "共通"}, "empty": "要件がありません", "emptyDetail": "ClaudeがMCPで登録するか、自分で追加できます", "emptyFiltered": "条件に合う要件がありません", "tableCount": "テーブル {{count}}", "noDescription": "内容なし", "linkedTables": "リンクされたテーブル", "noTables": "リンクされたテーブルがありません", "markApplied": "反映済みにする", "revision": "改訂 {{revision}}", "removeConfirm": "誤って登録した項目だけを削除してください", "limit": "要件はドキュメントごとに{{max}}件まで登録できます", "tableInfo": "要件", "untraced": {"title": "根拠のないテーブル", "hint": "どの要件にもリンクされていないテーブルです"}, "dialog": {"createTitle": "要件を追加", "editTitle": "要件を編集", "title": "タイトル", "titleRequired": "タイトルを入力してください", "description": "内容", "revisionHint": "タイトルや内容を変更すると反映待ちになります", "scope": "範囲", "status": "状態", "area": "ドメイン(グループ)", "tables": "リンクするテーブル", "documentHint": "共通要件はドキュメント全体に適用され、テーブルにはリンクしません"}},
+  "requirements": { "changes": {"show": "変更内容を見る", "hide": "変更内容を閉じる", "revision": "反映した改訂 {{from}} → 現在の改訂 {{to}}", "isNew": "新しい要件", "isNewHint": "まだ反映したことがありません。現在の内容をすべて反映します。", "unknown": "以前の内容が見つかりません(古いバージョンが整理されました)", "loading": "変更内容を読み込み中…", "failed": "変更内容を読み込めませんでした", "notSaved": "保存すると変更内容を確認できます", "savedOnly": "保存されたドキュメント基準です。保存していない編集は保存後に表示されます。", "title": "タイトル", "status": "状態", "description": "内容", "criteria": "受け入れ基準", "tables": "関連テーブル", "added": "追加", "removed": "削除", "none": "なし"}, "steps": {"title": "反映の手順", "tablesHint": "1. ERDで関連テーブルを修正します", "tables": "テーブルへ移動", "databaseHint": "2. ドキュメントを保存し、接続されたデータベースに反映します", "database": "DBに反映", "markHint": "3. すべて反映したら印を付けます", "markHintNoDatabase": "2. すべて反映したら印を付けます"},"criteria": {"title": "受け入れ基準", "count": "基準 {{done}}/{{total}}", "hint": "1 行に 1 つ書きます。要件が正しく反映されたかを確認する項目です"}, "search": "コード・タイトル・内容・テーブルを検索", "progress": "反映 {{applied}}/{{total}}", "domains": {"label": "ドメイン", "all": "すべて", "noRequirements": "このドメインにはまだ要件がありません", "showOnCanvas": "キャンバスで見る"}, "export": {"button": "エクスポート", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "要件仕様", "columns": {"code": "コード", "domain": "ドメイン", "state": "状態", "title": "タイトル", "description": "内容", "tables": "テーブル"}}, "title": "要件", "add": "追加", "filterLabel": "状態フィルター", "state": {"APPLIED": "反映済み", "PENDING": "反映待ち", "UNLINKED": "リンク切れ", "LEFTOVER": "要整理", "DRAFT": "検討中", "DROPPED": "除外"}, "stateHint": {"APPLIED": "確定した要件がERDに反映されています", "PENDING": "確定しましたが、ERDが最新の内容をまだ反映していません", "UNLINKED": "反映済みと表示しましたが、リンクされたテーブルがありません", "LEFTOVER": "除外した要件にテーブルがまだリンクされています", "DRAFT": "まだ確定していない要件です", "DROPPED": "対象外になった要件です"}, "status": {"draft": "検討中", "confirmed": "確定", "dropped": "除外"}, "scope": {"tables": "機能", "document": "共通"}, "group": {"unassigned": "未分類", "document": "共通"}, "empty": "要件がありません", "emptyDetail": "ClaudeがMCPで登録するか、自分で追加できます", "emptyFiltered": "条件に合う要件がありません", "tableCount": "テーブル {{count}}", "noDescription": "内容なし", "linkedTables": "リンクされたテーブル", "noTables": "リンクされたテーブルがありません", "markApplied": "反映済みにする", "revision": "改訂 {{revision}}", "removeConfirm": "誤って登録した項目だけを削除してください", "limit": "要件はドキュメントごとに{{max}}件まで登録できます", "tableInfo": "要件", "untraced": {"title": "根拠のないテーブル", "hint": "どの要件にもリンクされていないテーブルです"}, "dialog": {"createTitle": "要件を追加", "editTitle": "要件を編集", "title": "タイトル", "titleRequired": "タイトルを入力してください", "description": "内容", "revisionHint": "タイトルや内容を変更すると反映待ちになります", "scope": "範囲", "status": "状態", "area": "ドメイン(グループ)", "tables": "リンクするテーブル", "documentHint": "共通要件はドキュメント全体に適用され、テーブルにはリンクしません"}},
   "validation": {
     "toggle": "検証",
     "title": "設計検証",
@@ -1546,6 +1547,7 @@
       "label": "画面切替",
       "erd": "ERD",
       "requirements": "要件",
+      "data": "データ",
       "comments": "コメント"
     }
   },
@@ -1659,6 +1661,7 @@
     "delete": {
       "title": "接続{{name}}を削除",
       "description": "接続「{{name}}」を削除しますか? この接続で作成したドキュメントは保持されます。",
+      "managedNotice": "「{{name}}」はサービス提供DBの接続のため、発行を取り消すと削除されます。",
       "successToast": "接続を削除しました"
     }
   },
@@ -2008,6 +2011,16 @@
     "open": "{{name}}のデータを見る",
     "openShort": "データを見る",
     "close": "ウィンドウを閉じる",
+    "embedded": {
+      "noSource": {
+        "title": "このドキュメントはデータベースに接続されていません",
+        "description": "データベースを接続すると、このタブでテーブルのデータを表示・編集できます。"
+      },
+      "sourceMissing": {
+        "title": "このドキュメントのコネクションは削除されました",
+        "description": "ワークスペースのデータベースタブでコネクションを確認してください。"
+      }
+    },
     "noPermission": {
       "title": "データを見る権限がありません",
       "description": "データブラウザを使えるのは編集者以上です。"
@@ -2021,7 +2034,9 @@
       "noMatch": "一致するオブジェクトがありません",
       "refresh": "一覧を再読み込み",
       "estimatedRows": "約{{formatted}}",
-      "select": "左からテーブルかビューを選んでください"
+      "select": "左からテーブルかビューを選んでください",
+      "ungrouped": "グループなし",
+      "notInDocument": "ドキュメントにないテーブル"
     },
     "tabs": {
       "data": "データ",
@@ -2078,6 +2093,8 @@
       "readOnlyView": "ビューは編集できません",
       "readOnlyNoPk": "主キーのないテーブルは編集できません",
       "downloadCsv": "CSVをダウンロード",
+      "resizeColumn": "{{column}} 列の幅",
+      "resizeHint": "ドラッグで列の幅を変えます。ダブルクリックで既定の幅に戻ります",
       "op": {
         "EQ": "=",
         "NEQ": "≠",
@@ -2103,6 +2120,8 @@
       "openLongValue": "{{column}}の値全体を見る",
       "setNull": "NULL",
       "defaultPlaceholder": "デフォルト値",
+      "generatedPlaceholder": "自動計算",
+      "generatedCell": "生成カラム — データベースが計算します。値を入れたり変更したりできません",
       "pending": "変更 {{count}}件",
       "summary": "追加 {{inserted}} · 編集 {{updated}} · 削除 {{deleted}}",
       "apply": "適用",
@@ -2122,6 +2141,26 @@
         "tooLarge": "値が大きすぎて読み込めません(全{{formatted}}文字)"
       }
     },
+    "follow": {
+      "parent": "{{object}} のこの行を開く",
+      "references": "この行を参照している行を見る",
+      "notFound": "テーブル {{object}} がこのデータベースに見つかりません"
+    },
+    "compare": {
+      "title": "ドキュメントとの違い",
+      "run": "ドキュメントと比較",
+      "again": "再比較",
+      "hint": "このテーブルの実際の構造と ERD ドキュメントを比較します。",
+      "same": "ドキュメントと同じです",
+      "legend": "DB にだけあるものはドキュメントに取り込み、ドキュメントにだけあるものは DB に反映して揃えます。",
+      "item": {
+        "add": "{{kind}} — DB にだけある",
+        "update": "{{kind}} — 異なる",
+        "remove": "{{kind}} — ドキュメントにだけある"
+      },
+      "toDocument": "ドキュメントに取り込む",
+      "toDatabase": "DB に反映"
+    },
     "structure": {
       "columns": "カラム",
       "name": "名前",
@@ -2131,9 +2170,11 @@
       "comment": "コメント",
       "primaryKey": "主キー",
       "autoIncrement": "自動採番",
+      "generated": "生成",
       "indexes": "インデックス",
       "unique": "ユニーク",
       "foreignKeys": "外部キー",
+      "referencedBy": "参照している外部キー",
       "none": "なし",
       "editInErd": "構造はここでは変更できません。ERDで変更してからマイグレーションDDLで反映してください。"
     },

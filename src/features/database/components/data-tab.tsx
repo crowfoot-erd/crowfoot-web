@@ -6,8 +6,11 @@
  *
  * 편집(기본 키가 있는 테이블만): 고친 내용은 화면에 모아 두고 [적용]을 눌러야 한 번에 보낸다.
  * 적용은 한 트랜잭션이다 — 하나라도 실패하면 전부 되돌리고, 변경은 화면에 그대로 남는다.
+ *
+ * 외래 키 값 옆의 단추는 부모 행으로, 행 앞의 단추는 이 행을 참조하는 행으로 간다(§5.9).
+ * 따라가서 연 표는 그 값의 조건이 걸린 채로 시작한다.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Download, Loader2, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -20,25 +23,53 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/error-state'
 import {
+  type CellValue,
   type DatabaseObject,
   type FilterOp,
+  type ObjectStructure,
   type RowFilter,
   type RowSort,
   type RowsQuery,
 } from '@/features/database/api'
+import { columnWidthKey } from '@/features/database/column-widths'
 import { EditableTable, type LongValueTarget } from '@/features/database/components/editable-table'
 import { LongValueDialog } from '@/features/database/components/long-value-dialog'
 import { ResultTable, toCsv } from '@/features/database/components/result-table'
 import { databaseErrorMessage } from '@/features/database/errors'
+import {
+  childTarget,
+  foreignKeyByColumn,
+  parentTarget,
+  type FollowTarget,
+} from '@/features/database/foreign-keys'
 import { useApplyRowChanges, useCountRows, useObjectRows } from '@/features/database/hooks'
-import { EMPTY_EDITS, addInsert, buildChanges, countEdits, setCell, type RowEdits } from '@/features/database/row-edits'
+import {
+  EMPTY_EDITS,
+  addInsert,
+  buildChanges,
+  countEdits,
+  setCell,
+  type RowEdits,
+} from '@/features/database/row-edits'
 import { downloadTextFile, safeFilename } from '@/lib/download'
 import { formatNumber } from '@/lib/format'
 
 const PAGE_SIZE = 100
 /** 한 번에 걸 수 있는 조건 수 — 서버 한도와 같다(§2.3) */
 const FILTERS_MAX = 10
-const OPS: FilterOp[] = ['EQ', 'NEQ', 'GT', 'GTE', 'LT', 'LTE', 'CONTAINS', 'STARTS_WITH', 'IN', 'IS_NULL', 'IS_NOT_NULL']
+const OPS: FilterOp[] = [
+  'EQ',
+  'NEQ',
+  'GT',
+  'GTE',
+  'LT',
+  'LTE',
+  'CONTAINS',
+  'STARTS_WITH',
+  'IN',
+  'IS_NULL',
+  'IS_NOT_NULL',
+]
 const VALUELESS: ReadonlySet<FilterOp> = new Set<FilterOp>(['IS_NULL', 'IS_NOT_NULL'])
 
 /** 편집 중인 조건 한 줄 — 값은 입력 칸의 문자열 그대로 */
@@ -57,7 +88,10 @@ function toFilters(drafts: FilterDraft[]): RowFilter[] {
     if (VALUELESS.has(draft.op)) {
       filters.push({ column: draft.column, op: draft.op })
     } else if (draft.op === 'IN') {
-      const values = draft.value.split(',').map((value) => value.trim()).filter((value) => value !== '')
+      const values = draft.value
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value) => value !== '')
       if (values.length > 0) filters.push({ column: draft.column, op: 'IN', value: values })
     } else if (draft.value !== '') {
       filters.push({ column: draft.column, op: draft.op, value: draft.value })
@@ -76,21 +110,78 @@ export interface DataTabProps {
   columnLabels?: Record<string, string>
   /** 적용하지 않은 변경이 있는지 — 부모가 다른 객체로 옮기기 전에 확인을 받는 데 쓴다 */
   onDirtyChange?: (dirty: boolean) => void
+  /** 이 객체의 구조 — 외래 키와 참조하는 쪽을 여기서 읽는다(§5.9) */
+  structure?: ObjectStructure
+  /** 처음 걸어 둘 조건 — 외래 키를 따라 왔을 때 */
+  initialFilters?: RowFilter[]
+  /** 외래 키를 따라간다 — 고를 객체와 조건 */
+  onFollow?: (target: FollowTarget) => void
 }
 
-export function DataTab({ workspaceId, connectionId, connectionName, object, columnLabels, onDirtyChange }: DataTabProps) {
+/** 처음 조건 → 입력 줄. 따라온 조건은 모두 같음(EQ)이다 */
+function draftsOf(filters: readonly RowFilter[]): FilterDraft[] {
+  return filters.map((filter, index) => ({
+    id: index + 1,
+    column: filter.column,
+    op: filter.op,
+    value: Array.isArray(filter.value) ? filter.value.join(', ') : (filter.value ?? ''),
+  }))
+}
+
+export function DataTab({
+  workspaceId,
+  connectionId,
+  connectionName,
+  object,
+  columnLabels,
+  onDirtyChange,
+  structure,
+  initialFilters = [],
+  onFollow,
+}: DataTabProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<RowSort[]>([])
-  const [drafts, setDrafts] = useState<FilterDraft[]>([])
-  const [applied, setApplied] = useState<RowFilter[]>([])
-  const [nextDraftId, setNextDraftId] = useState(1)
+  const [drafts, setDrafts] = useState<FilterDraft[]>(() => draftsOf(initialFilters))
+  const [applied, setApplied] = useState<RowFilter[]>(initialFilters)
+  const [nextDraftId, setNextDraftId] = useState(initialFilters.length + 1)
 
   const query: RowsQuery = { page, size: PAGE_SIZE, filters: applied, sort }
   const rows = useObjectRows(workspaceId, connectionId, object.name, query)
   const count = useCountRows(workspaceId, connectionId, object.name)
   const columns = rows.data?.columns ?? []
+
+  // 외래 키 따라가기(§5.9) — 부모로는 외래 키 컬럼 셀에서, 자식으로는 행 앞의 단추에서
+  const byColumn = useMemo(() => foreignKeyByColumn(structure?.foreignKeys), [structure])
+  const references = structure?.referencedBy ?? []
+  const followOf = onFollow
+    ? (columnIndex: number, row: CellValue[]) => {
+        const column = columns[columnIndex]
+        const foreignKey = column ? byColumn.get(column.name.toLowerCase()) : undefined
+        const target = foreignKey ? parentTarget(foreignKey, columns, row) : null
+        if (!target) return undefined
+        return {
+          label: t('database.follow.parent', { object: target.object }),
+          onFollow: () => onFollow(target),
+        }
+      }
+    : undefined
+  const referencesOf =
+    onFollow && references.length > 0
+      ? (row: CellValue[]) =>
+          references.flatMap((reference) => {
+            const target = childTarget(reference, columns, row)
+            return target
+              ? [
+                  {
+                    label: `${reference.object} (${reference.columns.join(', ')})`,
+                    onFollow: () => onFollow(target),
+                  },
+                ]
+              : []
+          })
+      : undefined
 
   // 편집 — 모아 둔 변경, 실패 위치, 열어 둔 긴 값
   const apply = useApplyRowChanges(workspaceId, connectionId, object.name)
@@ -130,7 +221,9 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
         setRowErrors({})
         setApplyError(null)
         count.reset()
-        void queryClient.invalidateQueries({ queryKey: ['database', workspaceId, connectionId, 'rows', object.name] })
+        void queryClient.invalidateQueries({
+          queryKey: ['database', workspaceId, connectionId, 'rows', object.name],
+        })
       },
       onError: (error) => {
         setConfirming(false)
@@ -163,7 +256,13 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
   /** 머리글을 누를 때마다 오름차순 → 내림차순 → 정렬 없음(기본 키 순) */
   const toggleSort = (column: string) => {
     const current = sort[0]?.column === column ? sort[0].direction : null
-    setSort(current === null ? [{ column, direction: 'ASC' }] : current === 'ASC' ? [{ column, direction: 'DESC' }] : [])
+    setSort(
+      current === null
+        ? [{ column, direction: 'ASC' }]
+        : current === 'ASC'
+          ? [{ column, direction: 'DESC' }]
+          : [],
+    )
     setPage(1)
   }
 
@@ -220,7 +319,9 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
               <Input
                 value={draft.value}
                 onChange={(event) => patchDraft(draft.id, { value: event.target.value })}
-                placeholder={draft.op === 'IN' ? t('database.data.inPlaceholder') : t('database.data.value')}
+                placeholder={
+                  draft.op === 'IN' ? t('database.data.inPlaceholder') : t('database.data.value')
+                }
                 aria-label={t('database.data.value')}
                 className="h-8 w-56"
               />
@@ -273,7 +374,9 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
           <div className="flex-1" />
           {!object.editable ? (
             <span className="text-xs text-muted-foreground">
-              {object.kind === 'VIEW' ? t('database.data.readOnlyView') : t('database.data.readOnlyNoPk')}
+              {object.kind === 'VIEW'
+                ? t('database.data.readOnlyView')
+                : t('database.data.readOnlyNoPk')}
             </span>
           ) : null}
           <Button
@@ -283,7 +386,11 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
             disabled={!rows.data || rows.data.rows.length === 0}
             onClick={() => {
               if (!rows.data) return
-              downloadTextFile(`${safeFilename(object.name)}.csv`, toCsv(rows.data.columns, rows.data.rows), 'text/csv')
+              downloadTextFile(
+                `${safeFilename(object.name)}.csv`,
+                toCsv(rows.data.columns, rows.data.rows),
+                'text/csv',
+              )
             }}
           >
             <Download aria-hidden />
@@ -302,32 +409,38 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
           </div>
         ) : rows.isError || !rows.data ? (
           <div className="p-6">
-            <ErrorState message={databaseErrorMessage(rows.error)} onRetry={() => void rows.refetch()} />
+            <ErrorState
+              message={databaseErrorMessage(rows.error)}
+              onRetry={() => void rows.refetch()}
+            />
           </div>
+        ) : object.editable ? (
+          <EditableTable
+            columns={rows.data.columns}
+            rows={rows.data.rows}
+            sort={sort[0] ?? null}
+            onSort={toggleSort}
+            dimmed={rows.isPlaceholderData}
+            columnLabels={columnLabels}
+            widthKey={columnWidthKey(connectionId, object.name)}
+            edits={edits}
+            onEditsChange={changeEdits}
+            onOpenLongValue={setLongValue}
+            rowErrors={rowErrors}
+            followOf={followOf}
+            referencesOf={referencesOf}
+          />
         ) : (
-          object.editable ? (
-            <EditableTable
-              columns={rows.data.columns}
-              rows={rows.data.rows}
-              sort={sort[0] ?? null}
-              onSort={toggleSort}
-              dimmed={rows.isPlaceholderData}
-              columnLabels={columnLabels}
-              edits={edits}
-              onEditsChange={changeEdits}
-              onOpenLongValue={setLongValue}
-              rowErrors={rowErrors}
-            />
-          ) : (
-            <ResultTable
-              columns={rows.data.columns}
-              rows={rows.data.rows}
-              sort={sort[0] ?? null}
-              onSort={toggleSort}
-              dimmed={rows.isPlaceholderData}
-              columnLabels={columnLabels}
-            />
-          )
+          <ResultTable
+            columns={rows.data.columns}
+            rows={rows.data.rows}
+            sort={sort[0] ?? null}
+            onSort={toggleSort}
+            dimmed={rows.isPlaceholderData}
+            columnLabels={columnLabels}
+            widthKey={columnWidthKey(connectionId, object.name)}
+            followOf={followOf}
+          />
         )}
         {rows.data && rows.data.rows.length === 0 && edits.inserts.length === 0 && !rows.isError ? (
           <p className="p-6 text-center text-sm text-muted-foreground">
@@ -338,10 +451,17 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
 
       {/* 모아 둔 변경 — 적용하기 전에는 서버에 가지 않는다 */}
       {dirty ? (
-        <div className="flex flex-wrap items-center gap-3 border-t bg-amber-500/10 px-3 py-2 text-sm" role="status">
+        <div
+          className="flex flex-wrap items-center gap-3 border-t bg-amber-500/10 px-3 py-2 text-sm"
+          role="status"
+        >
           <span className="font-medium">{t('database.edit.pending', { count: counts.total })}</span>
           <span className="text-xs text-muted-foreground">
-            {t('database.edit.summary', { inserted: counts.inserted, updated: counts.updated, deleted: counts.deleted })}
+            {t('database.edit.summary', {
+              inserted: counts.inserted,
+              updated: counts.updated,
+              deleted: counts.deleted,
+            })}
           </span>
           {applyError ? (
             <span role="alert" className="text-xs text-destructive">
@@ -349,10 +469,21 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
             </span>
           ) : null}
           <div className="flex-1" />
-          <Button type="button" variant="ghost" size="sm" onClick={() => changeEdits(EMPTY_EDITS)} disabled={apply.isPending}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => changeEdits(EMPTY_EDITS)}
+            disabled={apply.isPending}
+          >
             {t('database.edit.discard')}
           </Button>
-          <Button type="button" size="sm" onClick={() => setConfirming(true)} disabled={apply.isPending}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setConfirming(true)}
+            disabled={apply.isPending}
+          >
             {t('database.edit.apply')}
           </Button>
         </div>
@@ -387,7 +518,9 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
             <span>{t('database.data.rowsShown', { count: rows.data.rows.length })}</span>
             <span>{t('database.data.elapsed', { ms: rows.data.elapsedMs })}</span>
             {rows.data.truncated ? (
-              <span className="text-amber-600 dark:text-amber-500">{t('database.data.truncated')}</span>
+              <span className="text-amber-600 dark:text-amber-500">
+                {t('database.data.truncated')}
+              </span>
             ) : null}
           </>
         ) : null}
@@ -399,9 +532,17 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
         ) : count.isError ? (
           <span className="text-destructive">{databaseErrorMessage(count.error)}</span>
         ) : applied.length === 0 && object.estimatedRows !== null ? (
-          <span>{t('database.data.estimated', { formatted: formatNumber(object.estimatedRows) })}</span>
+          <span>
+            {t('database.data.estimated', { formatted: formatNumber(object.estimatedRows) })}
+          </span>
         ) : null}
-        <Button type="button" variant="ghost" size="sm" onClick={() => count.mutate(applied)} disabled={count.isPending}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => count.mutate(applied)}
+          disabled={count.isPending}
+        >
           {count.isPending ? t('database.data.counting') : t('database.data.countExact')}
         </Button>
       </div>
@@ -413,12 +554,20 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
         title={t('database.edit.confirm.title', { count: counts.total })}
         description={
           <span className="grid gap-1">
-            <span>{t('database.edit.confirm.target', { name: connectionName, object: object.name })}</span>
             <span>
-              {t('database.edit.summary', { inserted: counts.inserted, updated: counts.updated, deleted: counts.deleted })}
+              {t('database.edit.confirm.target', { name: connectionName, object: object.name })}
+            </span>
+            <span>
+              {t('database.edit.summary', {
+                inserted: counts.inserted,
+                updated: counts.updated,
+                deleted: counts.deleted,
+              })}
             </span>
             {counts.deleted > 0 ? (
-              <span className="font-medium text-destructive">{t('database.edit.confirm.deleteWarning', { count: counts.deleted })}</span>
+              <span className="font-medium text-destructive">
+                {t('database.edit.confirm.deleteWarning', { count: counts.deleted })}
+              </span>
             ) : null}
           </span>
         }
@@ -433,10 +582,23 @@ export function DataTab({ workspaceId, connectionId, connectionName, object, col
           workspaceId={workspaceId}
           connectionId={connectionId}
           objectName={object.name}
-          target={{ key: longValue.key, column: longValue.column.name, nullable: longValue.column.nullable }}
+          target={{
+            key: longValue.key,
+            column: longValue.column.name,
+            nullable: longValue.column.nullable,
+          }}
           onClose={() => setLongValue(null)}
           onSave={(value, original) => {
-            changeEdits(setCell(edits, longValue.rowKey, longValue.key, longValue.column.name, value, original))
+            changeEdits(
+              setCell(
+                edits,
+                longValue.rowKey,
+                longValue.key,
+                longValue.column.name,
+                value,
+                original,
+              ),
+            )
             setLongValue(null)
           }}
         />

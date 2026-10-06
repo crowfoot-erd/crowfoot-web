@@ -267,8 +267,8 @@ function DiffPreview({ diff }: { diff: SyncDiff }) {
   )
 }
 
-/** 항목 행 마커 — [+]/[~]/[-] */
-function ActionMarker({ action }: { action: SyncDiffItem['action'] }) {
+/** 항목 행 마커 — [+]/[~]/[-] (데이터 보기 구조 탭의 문서 비교도 쓴다) */
+export function ActionMarker({ action }: { action: SyncDiffItem['action'] }) {
   const label = { add: '+', update: '~', remove: '−' }[action]
   const tone =
     action === 'add'

@@ -7,7 +7,12 @@
  * 색은 index.css의 `--sql-*` 변수에서 온다 — 밝은 테마와 어두운 테마가 같은 코드를 쓴다.
  */
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react'
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { MySQL, PostgreSQL, StandardSQL, sql } from '@codemirror/lang-sql'
 import { HighlightStyle, bracketMatching, syntaxHighlighting } from '@codemirror/language'
@@ -47,10 +52,15 @@ const highlightStyle = HighlightStyle.define([
 const theme = EditorView.theme({
   '&': { fontSize: '0.875rem', backgroundColor: 'var(--background)', color: 'var(--foreground)' },
   '&.cm-focused': { outline: 'none' },
-  '.cm-scroller': { fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)', lineHeight: '1.25rem' },
+  '.cm-scroller': {
+    fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
+    lineHeight: '1.25rem',
+  },
   '.cm-content': { padding: '0.5rem', minHeight: '10rem', caretColor: 'var(--foreground)' },
   '.cm-cursor': { borderLeftColor: 'var(--foreground)' },
-  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': { backgroundColor: 'var(--sql-selection)' },
+  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
+    backgroundColor: 'var(--sql-selection)',
+  },
   '.cm-placeholder': { color: 'var(--muted-foreground)' },
   '.cm-matchingBracket': { backgroundColor: 'var(--sql-selection)', outline: 'none' },
   '.cm-tooltip': {
@@ -59,16 +69,37 @@ const theme = EditorView.theme({
     border: '1px solid var(--border)',
     borderRadius: '0.375rem',
   },
-  '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': {
+    backgroundColor: 'var(--accent)',
+    color: 'var(--accent-foreground)',
+  },
 })
 
 function language(dbmsType: string, objectNames: readonly string[]) {
   const code = dbmsType.trim().toLowerCase()
-  const dialect = code === 'mysql' || code === 'mariadb' ? MySQL : code === 'postgresql' ? PostgreSQL : StandardSQL
-  return sql({ dialect, schema: Object.fromEntries(objectNames.map((name) => [name, []])), upperCaseKeywords: true })
+  const dialect =
+    code === 'mysql' || code === 'mariadb'
+      ? MySQL
+      : code === 'postgresql'
+        ? PostgreSQL
+        : StandardSQL
+  return sql({
+    dialect,
+    schema: Object.fromEntries(objectNames.map((name) => [name, []])),
+    upperCaseKeywords: true,
+  })
 }
 
-export function SqlEditor({ value, onChange, onRun, dbmsType, objectNames, ariaLabel, placeholder, ref }: SqlEditorProps) {
+export function SqlEditor({
+  value,
+  onChange,
+  onRun,
+  dbmsType,
+  objectNames,
+  ariaLabel,
+  placeholder,
+  ref,
+}: SqlEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const languageRef = useRef(new Compartment())
@@ -101,7 +132,12 @@ export function SqlEditor({ value, onChange, onRun, dbmsType, objectNames, ariaL
           closeBrackets(),
           bracketMatching(),
           autocompletion(),
-          keymap.of([...closeBracketsKeymap, ...completionKeymap, ...historyKeymap, ...defaultKeymap]),
+          keymap.of([
+            ...closeBracketsKeymap,
+            ...completionKeymap,
+            ...historyKeymap,
+            ...defaultKeymap,
+          ]),
           languageRef.current.of(language(dbmsType, objectNames)),
           syntaxHighlighting(highlightStyle),
           theme,
@@ -131,7 +167,9 @@ export function SqlEditor({ value, onChange, onRun, dbmsType, objectNames, ariaL
 
   const objectNamesKey = objectNames.join('\n')
   useEffect(() => {
-    viewRef.current?.dispatch({ effects: languageRef.current.reconfigure(language(dbmsType, objectNames)) })
+    viewRef.current?.dispatch({
+      effects: languageRef.current.reconfigure(language(dbmsType, objectNames)),
+    })
     // 이름 목록은 내용으로 비교한다(배열은 렌더마다 새로 만들어진다)
   }, [dbmsType, objectNamesKey])
 

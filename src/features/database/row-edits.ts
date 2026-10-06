@@ -5,7 +5,12 @@
  * 수정은 고치는 순간의 편집 전 값(original)을 함께 기억한다 — 페이지를 넘기거나 정렬을 바꿔도
  * 충돌 검사에 쓸 값이 남아 있어야 하기 때문이다.
  */
-import { isBinaryCell, isTruncatedCell, type CellValue, type ColumnMeta } from '@/features/database/api'
+import {
+  isBinaryCell,
+  isTruncatedCell,
+  type CellValue,
+  type ColumnMeta,
+} from '@/features/database/api'
 
 /** 셀에 넣을 값 — 문자열 또는 NULL */
 export type EditValue = string | null
@@ -40,14 +45,22 @@ export const EMPTY_EDITS: RowEdits = { updates: {}, deletes: {}, inserts: [], ne
 /** 서버에 보내는 변경 한 건(§3.5) */
 export type RowChange =
   | { op: 'INSERT'; values: Record<string, EditValue> }
-  | { op: 'UPDATE'; key: Record<string, string>; values: Record<string, EditValue>; original: Record<string, EditValue> }
+  | {
+      op: 'UPDATE'
+      key: Record<string, string>
+      values: Record<string, EditValue>
+      original: Record<string, EditValue>
+    }
   | { op: 'DELETE'; key: Record<string, string> }
 
 /** 변경 번호 → 화면의 어느 행인지 — 서버가 알려 준 실패 위치를 행에 붙이는 데 쓴다 */
 export type ChangeTarget = { kind: 'row'; rowKey: string } | { kind: 'insert'; id: number }
 
 /** 행의 기본 키 — 기본 키 컬럼의 셀이 모두 문자열일 때만 있다 */
-export function primaryKeyOf(columns: ColumnMeta[], row: CellValue[]): Record<string, string> | null {
+export function primaryKeyOf(
+  columns: ColumnMeta[],
+  row: CellValue[],
+): Record<string, string> | null {
   const key: Record<string, string> = {}
   let found = false
   for (let index = 0; index < columns.length; index++) {
@@ -105,7 +118,11 @@ export function setCell(
 }
 
 /** 삭제 표시를 켜거나 끈다 */
-export function toggleDelete(edits: RowEdits, rowKey: string, key: Record<string, string>): RowEdits {
+export function toggleDelete(
+  edits: RowEdits,
+  rowKey: string,
+  key: Record<string, string>,
+): RowEdits {
   const deletes = { ...edits.deletes }
   if (rowKey in deletes) delete deletes[rowKey]
   else deletes[rowKey] = key
@@ -121,7 +138,12 @@ export function addInsert(edits: RowEdits): RowEdits {
 }
 
 /** 추가할 행의 칸을 채운다 — undefined면 그 컬럼을 비운다(데이터베이스 기본값) */
-export function setInsertCell(edits: RowEdits, id: number, column: string, value: EditValue | undefined): RowEdits {
+export function setInsertCell(
+  edits: RowEdits,
+  id: number,
+  column: string,
+  value: EditValue | undefined,
+): RowEdits {
   return {
     ...edits,
     inserts: edits.inserts.map((insert) => {
@@ -163,7 +185,12 @@ export function buildChanges(edits: RowEdits): { changes: RowChange[]; targets: 
   }
   for (const [rowKey, update] of Object.entries(edits.updates)) {
     if (rowKey in edits.deletes) continue
-    changes.push({ op: 'UPDATE', key: update.key, values: update.values, original: update.original })
+    changes.push({
+      op: 'UPDATE',
+      key: update.key,
+      values: update.values,
+      original: update.original,
+    })
     targets.push({ kind: 'row', rowKey })
   }
   // 화면에는 새 행이 위에 쌓인다 — 추가한 순서대로 보낸다

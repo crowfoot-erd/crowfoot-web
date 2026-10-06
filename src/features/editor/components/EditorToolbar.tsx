@@ -15,7 +15,41 @@
  */
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowRight, BookMarked, BookOpenText, ChevronDown, CircleHelp, CopyPlus, Heart, History, Keyboard, Link2, Lock, Eye, FileCode2, FileDown, ImageDown, Loader2, Maximize, Network, Orbit, PanelLeft, Redo2, RefreshCw, Rows3, Save, Shapes, Share2, ShieldCheck, Undo2, Waypoints, Wrench, ZoomIn, ZoomOut } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowRight,
+  BookMarked,
+  BookOpenText,
+  ChevronDown,
+  CircleHelp,
+  CopyPlus,
+  Heart,
+  History,
+  Keyboard,
+  Link2,
+  Lock,
+  Eye,
+  FileCode2,
+  FileDown,
+  ImageDown,
+  Loader2,
+  Maximize,
+  Network,
+  Orbit,
+  PanelLeft,
+  Redo2,
+  RefreshCw,
+  Rows3,
+  Save,
+  Shapes,
+  Share2,
+  ShieldCheck,
+  Undo2,
+  Waypoints,
+  Wrench,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react'
 import { useStore, useReactFlow } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -26,7 +60,6 @@ import { Button } from '@/components/ui/button'
 import { DbmsIcon } from '@/components/dbms-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useConnections } from '@/features/connections/hooks'
-import { databaseBrowserPath } from '@/features/database'
 import { ConnectDatabaseDialog } from '@/features/models/components/connect-database-dialog'
 import { ShareDialog } from '@/features/models/components/share-dialog'
 import { modelKeys, useShareFeedback, useToggleShareReaction } from '@/features/models/hooks'
@@ -57,13 +90,26 @@ import {
 import { buildCrownFile } from '@/features/editor/model/crown-io'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
-import { captureErdPng, captureErdViewportPng, nodesBoundingBox, resolveCanvasBackground, waitForPaint } from '@/features/editor/model/export-image'
-import { selectCanRedo, selectCanUndo, selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
+import {
+  captureErdPng,
+  captureErdViewportPng,
+  nodesBoundingBox,
+  resolveCanvasBackground,
+  waitForPaint,
+} from '@/features/editor/model/export-image'
+import { useDataView } from '@/features/editor/store/data-view-store'
+import {
+  selectCanRedo,
+  selectCanUndo,
+  selectDirty,
+  useEditorStore,
+} from '@/features/editor/store/editor-store'
 import type { ColumnDisplayMode, NameDisplayMode } from './canvas/editor-context'
 import { ConvertDbmsDialog } from './ConvertDbmsDialog'
 import { LogicalNamesDialog } from './LogicalNamesDialog'
 import { useAreaViewFit } from './ModelExplorerPanel'
 import { SqlPreviewDialog } from './SqlPreviewDialog'
+import { MigrationDdlDialog } from './MigrationDdlDialog'
 import { SyncDialog } from './SyncDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
 
@@ -158,7 +204,11 @@ export function EditorToolbar({
 
   return (
     <div className="flex h-10 items-center gap-1 border-b bg-background px-2">
-      {!canEdit ? <Badge variant="secondary" className="mr-1">{t('model.editor.toolbar.readOnly')}</Badge> : null}
+      {!canEdit ? (
+        <Badge variant="secondary" className="mr-1">
+          {t('model.editor.toolbar.readOnly')}
+        </Badge>
+      ) : null}
 
       {/* 패널 토글 — 아이콘만이 아니라 메뉴명과 함께(무엇을 여는지 알 수 있게) */}
       <Button
@@ -225,10 +275,26 @@ export function EditorToolbar({
         </Button>
       ) : null}
 
-      <Button type="button" variant="ghost" size="icon" onClick={undo} disabled={!canEdit || !canUndo} aria-label={t('model.editor.toolbar.undo')} title={t('model.editor.toolbar.undo')}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={undo}
+        disabled={!canEdit || !canUndo}
+        aria-label={t('model.editor.toolbar.undo')}
+        title={t('model.editor.toolbar.undo')}
+      >
         <Undo2 aria-hidden />
       </Button>
-      <Button type="button" variant="ghost" size="icon" onClick={redo} disabled={!canEdit || !canRedo} aria-label={t('model.editor.toolbar.redo')} title={t('model.editor.toolbar.redo')}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={redo}
+        disabled={!canEdit || !canRedo}
+        aria-label={t('model.editor.toolbar.redo')}
+        title={t('model.editor.toolbar.redo')}
+      >
         <Redo2 aria-hidden />
       </Button>
 
@@ -314,7 +380,13 @@ export function EditorToolbar({
       </Button>
       {/* 사용 가이드 — 도구 모음에 따로 둔다(메뉴 안에 넣으면 찾기 어렵다). 새 창으로 연다(공개 문서 /guide) */}
       <Button asChild variant="ghost" size="icon">
-        <a href="/guide" target="_blank" rel="noopener noreferrer" aria-label={t('guide.title')} title={t('guide.title')}>
+        <a
+          href="/guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t('guide.title')}
+          title={t('guide.title')}
+        >
           <CircleHelp aria-hidden />
         </a>
       </Button>
@@ -332,7 +404,12 @@ function DbmsIndicator({
 }: {
   dbmsId: string
   /** 다른 DBMS로 복제에 필요한 원본 메타 — 없으면 표시 전용 배지 */
-  convert?: { workspaceId: string; modelName: string; modelDescription: string | null; databaseType: string }
+  convert?: {
+    workspaceId: string
+    modelName: string
+    modelDescription: string | null
+    databaseType: string
+  }
 }) {
   const { t } = useTranslation()
   const template = dbmsTemplate(dbmsId)
@@ -403,7 +480,13 @@ function ViewMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" className="mr-1 h-7 gap-1 px-2" aria-label={t('model.editor.toolbar.view')}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mr-1 h-7 gap-1 px-2"
+          aria-label={t('model.editor.toolbar.view')}
+        >
           <Eye aria-hidden className="size-3.5" />
           {t('model.editor.toolbar.view')}
           <ChevronDown aria-hidden className="size-3" />
@@ -415,9 +498,15 @@ function ViewMenu({
           value={nameDisplay}
           onValueChange={(value) => onNameDisplayChange(value as NameDisplayMode)}
         >
-          <DropdownMenuRadioItem value="physical">{t('model.editor.toolbar.nameMode.physical')}</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="logical">{t('model.editor.toolbar.nameMode.logical')}</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="both">{t('model.editor.toolbar.nameMode.both')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="physical">
+            {t('model.editor.toolbar.nameMode.physical')}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="logical">
+            {t('model.editor.toolbar.nameMode.logical')}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="both">
+            {t('model.editor.toolbar.nameMode.both')}
+          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t('model.editor.toolbar.columnMode.label')}</DropdownMenuLabel>
@@ -425,8 +514,12 @@ function ViewMenu({
           value={columnDisplay}
           onValueChange={(value) => onColumnDisplayChange(value as ColumnDisplayMode)}
         >
-          <DropdownMenuRadioItem value="all">{t('model.editor.toolbar.columnMode.all')}</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="keys">{t('model.editor.toolbar.columnMode.keys')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="all">
+            {t('model.editor.toolbar.columnMode.all')}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="keys">
+            {t('model.editor.toolbar.columnMode.keys')}
+          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         {areas.length > 0 ? (
           <>
@@ -444,7 +537,9 @@ function ViewMenu({
                 fitArea(value)
               }}
             >
-              <DropdownMenuRadioItem value={AREA_FILTER_ALL}>{t('model.editor.toolbar.areaFilter.all')}</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value={AREA_FILTER_ALL}>
+                {t('model.editor.toolbar.areaFilter.all')}
+              </DropdownMenuRadioItem>
               {areas.map((area) => (
                 <DropdownMenuRadioItem key={area.id} value={area.id}>
                   {area.name}
@@ -533,7 +628,8 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       const sizes: TableSizes = {}
       for (const node of getNodes()) {
         const m = node.measured
-        if (m?.width !== undefined && m.height !== undefined) sizes[node.id] = { w: m.width, h: m.height }
+        if (m?.width !== undefined && m.height !== undefined)
+          sizes[node.id] = { w: m.width, h: m.height }
       }
       // 허브·하이브리드는 순수 동기 계산(전략만 다름), 계층형은 elkjs 비동기 —
       // 이후 파이프라인(FK 정렬·노트·fit)은 공통
@@ -558,7 +654,8 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       }
     } catch (error) {
       // 취소는 실패가 아니다 — 문서는 바뀌지 않았다
-      if (!(error instanceof LayoutCancelledError)) toast.error(t('model.editor.toolbar.autoLayoutFailed'))
+      if (!(error instanceof LayoutCancelledError))
+        toast.error(t('model.editor.toolbar.autoLayoutFailed'))
     } finally {
       setRunning(false)
     }
@@ -663,7 +760,13 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
             >
               <Loader2 aria-hidden className="size-4 animate-spin" />
               {t('model.editor.toolbar.autoLayoutRunning', { seconds: elapsed })}
-              <Button type="button" variant="outline" size="sm" className="h-7" onClick={cancelLayout}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={cancelLayout}
+              >
                 {t('model.editor.toolbar.autoLayoutCancel')}
               </Button>
             </div>,
@@ -761,9 +864,7 @@ function ShareLikeButton({ token }: { token: string }) {
       type="button"
       variant="ghost"
       size="sm"
-      className={
-        reacted ? 'h-7 gap-1 px-2 text-red-500 hover:text-red-500' : 'h-7 gap-1 px-2'
-      }
+      className={reacted ? 'h-7 gap-1 px-2 text-red-500 hover:text-red-500' : 'h-7 gap-1 px-2'}
       onClick={react}
       disabled={toggleReaction.isPending || feedback.isPending}
       aria-pressed={reacted}
@@ -821,7 +922,7 @@ function ShareButton({
  *  · 다른 DBMS로 복제(§3.5 — 편집 권한) · 도메인 타입(§16 — 멤버 전체, 쓰기는 편집 권한)
  *  · 버전 기록(08-core/02-model.md §1.11 — 멤버 전체)
  *  항목은 어느 다이얼로그를 열지만 정하고, 다이얼로그는 메뉴 밖에서 렌더한다. */
-type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'convert' | 'history'
+type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'migration' | 'convert' | 'history'
 
 function ToolsMenu({
   canEdit,
@@ -847,12 +948,24 @@ function ToolsMenu({
   const close = (open: boolean) => {
     if (!open) setActive(null)
   }
+  // 데이터 보기 구조 탭의 문서 비교가 여는 다이얼로그(05-editor/02-ui.md §22) — 요청마다 한 번
+  const toolRequest = useDataView((state) => state.toolRequest)
+  useEffect(() => {
+    if (toolRequest && canEdit && sourceConnectionId) setActive(toolRequest.tool)
+    // 요청 번호가 바뀔 때만 연다
+  }, [toolRequest?.seq])
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2" aria-label={t('model.editor.toolbar.tools')}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 px-2"
+            aria-label={t('model.editor.toolbar.tools')}
+          >
             <Wrench aria-hidden className="size-3.5" />
             {t('model.editor.toolbar.tools')}
             <ChevronDown aria-hidden className="size-3" />
@@ -876,7 +989,6 @@ function ToolsMenu({
           {canEdit && sourceConnectionId ? (
             <SyncMenuItem
               workspaceId={workspaceId}
-              modelId={modelId}
               sourceConnectionId={sourceConnectionId}
               onSelect={() => setActive('sync')}
             />
@@ -899,11 +1011,14 @@ function ToolsMenu({
             <History aria-hidden />
             {t('model.editor.toolbar.history')}
           </DropdownMenuItem>
-
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <LogicalNamesDialog open={active === 'logicalNames'} onOpenChange={close} workspaceId={workspaceId} />
+      <LogicalNamesDialog
+        open={active === 'logicalNames'}
+        onOpenChange={close}
+        workspaceId={workspaceId}
+      />
       {active === 'connect' ? (
         <ConnectDatabaseDialog
           open
@@ -920,6 +1035,15 @@ function ToolsMenu({
           modelName={modelName}
           sourceConnectionId={sourceConnectionId}
           canEdit={canEdit}
+        />
+      ) : null}
+      {sourceConnectionId && active === 'migration' ? (
+        <SourceMigrationDialog
+          onOpenChange={close}
+          workspaceId={workspaceId}
+          modelId={modelId}
+          modelName={modelName}
+          sourceConnectionId={sourceConnectionId}
         />
       ) : null}
       <ConvertDbmsDialog
@@ -947,16 +1071,15 @@ function ToolsMenu({
  *  커넥션 목록은 메뉴를 열 때 조회한다(항목이 메뉴 내용 안에서 마운트된다). */
 function SyncMenuItem({
   workspaceId,
-  modelId,
   sourceConnectionId,
   onSelect,
 }: {
   workspaceId: string
-  modelId: string
   sourceConnectionId: string
   onSelect: () => void
 }) {
   const { t } = useTranslation()
+  const dataViewAvailable = useDataView((state) => state.available)
   const connections = useConnections(workspaceId)
   const exists = (connections.data?.items ?? []).some(
     (connection) => connection.connectionId === sourceConnectionId,
@@ -969,15 +1092,14 @@ function SyncMenuItem({
         <RefreshCw aria-hidden />
         {t('model.editor.toolbar.sync')}
       </DropdownMenuItem>
-      {/* 데이터 보기 — 원천 커넥션의 데이터 브라우저를 새 창으로 연다(09-database-manager/00-data-browser.md §5.1) */}
-      <DropdownMenuItem
-        onSelect={() =>
-          window.open(databaseBrowserPath(workspaceId, sourceConnectionId, { modelId }), '_blank', 'noopener,noreferrer')
-        }
-      >
-        <Rows3 aria-hidden />
-        {t('database.openShort')}
-      </DropdownMenuItem>
+      {/* 데이터 보기 — 하단의 데이터 보기 탭으로 옮긴다(05-editor/02-ui.md §22, 09-database-manager/00-data-browser.md §5.1).
+          탭이 없는 화면(공개·버전 뷰어)에서는 숨긴다 */}
+      {dataViewAvailable ? (
+        <DropdownMenuItem onSelect={() => useDataView.getState().show()}>
+          <Rows3 aria-hidden />
+          {t('database.openShort')}
+        </DropdownMenuItem>
+      ) : null}
     </>
   )
 }
@@ -1003,7 +1125,10 @@ function ExportMenu({
   )
   /** 진행 표시 — 범위 계산(prepare) → 렌더링(render, 제일 김) → 파일 저장(save).
    *  단계마다 waitForPaint로 커밋·페인트를 기다린 뒤 무거운 작업을 시작한다(오버레이가 먼저 보여야 한다) */
-  const [progress, setProgress] = useState<{ mode: 'viewport' | 'document'; phase: 'prepare' | 'render' | 'save' } | null>(null)
+  const [progress, setProgress] = useState<{
+    mode: 'viewport' | 'document'
+    phase: 'prepare' | 'render' | 'save'
+  } | null>(null)
   const running = progress !== null
 
   const runImage = async (mode: 'viewport' | 'document') => {
@@ -1065,7 +1190,11 @@ function ExportMenu({
             disabled={running}
             aria-label={t('model.editor.toolbar.export')}
           >
-            {running ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <FileDown aria-hidden className="size-3.5" />}
+            {running ? (
+              <Loader2 aria-hidden className="size-3.5 animate-spin" />
+            ) : (
+              <FileDown aria-hidden className="size-3.5" />
+            )}
             {t('model.editor.toolbar.export')}
             <ChevronDown aria-hidden className="size-3" />
           </Button>
@@ -1105,7 +1234,9 @@ function ExportMenu({
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div className="h-full w-full origin-left rounded-full bg-primary [animation:image-export-progress_20s_ease-out_forwards]" />
             </div>
-            <p className="text-xs text-muted-foreground">{t(`model.editor.image.progress.${progress.phase}`)}</p>
+            <p className="text-xs text-muted-foreground">
+              {t(`model.editor.image.progress.${progress.phase}`)}
+            </p>
           </div>
         </div>
       ) : null}
@@ -1127,16 +1258,68 @@ function ZoomControls() {
 
   return (
     <div className="flex items-center gap-0.5">
-      <Button type="button" variant="ghost" size="icon" onClick={() => stepZoom(-1)} aria-label={t('model.editor.toolbar.zoomOut')} title={t('model.editor.toolbar.zoomOut')}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => stepZoom(-1)}
+        aria-label={t('model.editor.toolbar.zoomOut')}
+        title={t('model.editor.toolbar.zoomOut')}
+      >
         <ZoomOut aria-hidden />
       </Button>
-      <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
-      <Button type="button" variant="ghost" size="icon" onClick={() => stepZoom(1)} aria-label={t('model.editor.toolbar.zoomIn')} title={t('model.editor.toolbar.zoomIn')}>
+      <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">
+        {Math.round(zoom * 100)}%
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => stepZoom(1)}
+        aria-label={t('model.editor.toolbar.zoomIn')}
+        title={t('model.editor.toolbar.zoomIn')}
+      >
         <ZoomIn aria-hidden />
       </Button>
-      <Button type="button" variant="ghost" size="icon" onClick={() => void fitView({ padding: 0.25, duration: 200 })} aria-label={t('model.editor.toolbar.fit')} title={t('model.editor.toolbar.fit')}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => void fitView({ padding: 0.25, duration: 200 })}
+        aria-label={t('model.editor.toolbar.fit')}
+        title={t('model.editor.toolbar.fit')}
+      >
         <Maximize aria-hidden />
       </Button>
     </div>
+  )
+}
+
+/** 문서 ↔ 원천 커넥션 마이그레이션 DDL — 데이터 보기 구조 탭의 "DB에 반영"이 바로 연다(05-editor/02-ui.md §22) */
+function SourceMigrationDialog({
+  onOpenChange,
+  workspaceId,
+  modelId,
+  modelName,
+  sourceConnectionId,
+}: {
+  onOpenChange: (open: boolean) => void
+  workspaceId: string
+  modelId: string
+  modelName: string
+  sourceConnectionId: string
+}) {
+  const connections = useConnections(workspaceId)
+  const connection = connections.data?.items.find(
+    (item) => item.connectionId === sourceConnectionId,
+  )
+  return (
+    <MigrationDdlDialog
+      open
+      onOpenChange={onOpenChange}
+      modelName={modelName}
+      connectionName={connection?.name ?? sourceConnectionId}
+      mode={{ kind: 'connection', workspaceId, modelId, connectionId: sourceConnectionId }}
+    />
   )
 }
