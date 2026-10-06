@@ -734,6 +734,9 @@ Crowfoot 的界面大致分为三类。
 * 改变的宽度会按连接和表记忆在此浏览器中。
 * 较长的值会省略显示，并在末尾附上总字符数。点击单元格可以查看完整内容。
 * NULL 以浅色的 `NULL` 显示，空字符串显示为空白单元格。二进制值只显示大小。
+* 按没有索引的列排序或筛选，或者使用{{database.data.op.CONTAINS}}、{{database.data.op.STARTS_WITH}}条件时，条件栏下方会出现橙色提示。表示在大表上查询可能较慢，查询仍会照常执行。改用主键或索引的第一列后提示会消失。
+
+![可能较慢的提示](/guide-assets/zh/data-slow-hint.webp)
 
 ### 11.2 跟随外键
 
@@ -1051,6 +1054,8 @@ Crowfoot 的界面大致分为三类。
 |---|---|
 | 查看工作区 | 读取文档列表、术语词典、域类型和设计规则 |
 | 整理需求 | 把对话中提到的需求登记到文档中并进行修改（见 20.3 节） |
+| 同步需求列表 | 把从会议记录或策划文档整理出的完整需求列表与文档比较。先列出要新增、修改和缺少的项，确认后一次性应用。缺少的需求不会删除，而是改为已排除 |
+| 用数据确认验收标准 | 为验收标准附上确认 SQL，在已连接的数据库中执行，并告诉你每条标准是否通过（见 20.3 节） |
 | 创建和修改 ERD | 创建和修改表、列、键、索引、关系和分组，并遵循工作区的术语和域类型 |
 | 校验和 SQL | 获取设计校验结果和 SQL 脚本 |
 | 导入 SQL | 用 CREATE TABLE 脚本创建新文档 |
@@ -1092,11 +1097,24 @@ Crowfoot 的界面大致分为三类。
 * 点击面板上方的 **{{model.requirements.add}}** 或展开行中的编辑按钮，设置标题、内容、范围、状态、分组和要链接的表。编号（REQ-001）会自动生成。
 * 展开待反映的行并点击 **{{model.requirements.changes.show}}**，即可比较最后一次反映的内容和当前内容。会显示变更的标题、内容中新增的行(绿色 +)和删除的行(红色 −)，以及验收标准和关联表的差异。比较以已保存的文档为准，未保存的编辑在保存后显示。从未反映过的需求显示为 **{{model.requirements.changes.isNew}}**。
 * 按同一行中的 **{{model.requirements.steps.title}}** 依次操作。用 **{{model.requirements.steps.tables}}** 修改关联的表；如果文档已连接数据库，保存后点击 **{{model.requirements.steps.database}}**，在数据库上执行变更后的结构。此按钮会打开数据库同步的迁移 DDL 窗口。最后点击 **{{model.requirements.markApplied}}**，状态即变为已反映。此标记也是文档编辑，可以撤销。
-* **{{model.requirements.criteria.title}}** 是用来确认需求是否已正确体现的检查项。在编辑窗口中每行填写一条，并在展开的行中勾选。
+* **{{model.requirements.criteria.title}}** 是用来确认需求是否已正确体现的检查项。在编辑窗口中每行填写一条，并在展开的行中勾选。也可以为每条标准附上确认 SQL，用数据确认（见下文）。
 * 不再需要的需求请勿删除，而是将状态改为 **{{model.requirements.status.dropped}}**。删除仅用于登记错误的条目。
 * 每个文档最多登记 500 条。
 
 ![变更内容和应用步骤](/guide-assets/zh/editor-requirement-changes.webp)
+
+![验收标准的确认 SQL](/guide-assets/zh/editor-requirement-check-dialog.webp)
+
+已连接数据库的文档可以用实际数据确认验收标准。
+
+* 在编辑窗口的 **{{model.requirements.checks.dialog.title}}** 中展开标准，填写返回单个值的 SELECT 语句和 **{{model.requirements.checks.dialog.expect}}**。期望值留空即为 0。例如“没有邮箱为空的会员”可以写 `SELECT COUNT(*) FROM users WHERE email IS NULL`。SQL 留空则不确认。
+* 确认 SQL 跟随标准的文字。修改了文字的行需要重新填写确认 SQL。修改标准或确认 SQL 不会使需求变为待反映。
+* 每条需求最多 20 条验收标准，每条最多 200 个字符。确认 SQL 最多 4,000 个字符。
+* 有带确认 SQL 的标准时，面板上方会出现 **{{model.requirements.checks.run}}** 按钮。点击后会在已连接的数据库中以只读方式执行确认 SQL，并把结果与期望值比较。展开行中的 **{{model.requirements.checks.runOne}}** 只确认该需求。需要编辑者以上的角色，已排除的需求不会确认。
+* 每条标准会标上 **{{model.requirements.checks.PASSED}}**、**{{model.requirements.checks.FAILED}}** 或 **{{model.requirements.checks.ERROR}}**，按钮旁显示数量。未通过时显示实际值和期望值，错误时显示无法执行的原因和数据库返回的信息。确认 SQL 只能是一条 SELECT 语句。
+* 结果不会保存到文档中。修改确认 SQL 后，该标准的结果会消失。也可以请 Claude“用数据确认验收标准”，效果相同。
+
+![用数据确认的结果](/guide-assets/zh/editor-requirement-checks.webp)
 
 ### 20.4 应用到数据库
 

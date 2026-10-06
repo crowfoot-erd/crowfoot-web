@@ -284,11 +284,20 @@ export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number]
 export const REQUIREMENT_SCOPES = ['tables', 'document'] as const
 export type RequirementScope = (typeof REQUIREMENT_SCOPES)[number]
 
+/** 수용 기준의 데이터 확인(v1.36) — sql은 한 값을 돌려주는 SELECT, expect는 기대값(기본 "0") */
+export const criterionCheckSchema = z.object({
+  sql: z.string(),
+  expect: z.string().default('0'),
+})
+export type ErdCriterionCheck = z.infer<typeof criterionCheckSchema>
+
 /** 수용 기준 한 항목 — 요구사항이 제대로 반영됐는지 확인하는 체크 항목(v1.32) */
 export const requirementCriterionSchema = z.object({
   id: z.string().min(1),
   text: z.string(),
   done: z.boolean().default(false),
+  /** 없는 기준에는 키를 두지 않는다 — 문서 편집 API·MCP가 만든 본체와 같게 */
+  check: criterionCheckSchema.optional(),
 })
 export type ErdRequirementCriterion = z.infer<typeof requirementCriterionSchema>
 

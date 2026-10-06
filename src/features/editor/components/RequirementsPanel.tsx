@@ -14,10 +14,13 @@
  * - 반영 대기 요구사항(v1.35, §21.1): "바뀐 내용 보기"로 마지막으로 반영한 내용과
  *   지금 내용을 비교하고(저장된 문서의 개요 — 08-core/17-model-edit.md §2.4), 반영 단계(테이블로 이동 →
  *   DB에 반영 → 반영함으로 표시)를 잇는다. DB에 반영은 DB 동기화의 마이그레이션 다이얼로그와 같다.
+ * - 수용 기준을 데이터로 확인(v1.36): 확인 SQL이 있는 기준을 연결된 데이터베이스에서 읽기 전용으로 실행해
+ *   기대값과 비교한다(DB 매니저 checks). 편집 권한과 원천 커넥션이 있을 때만. 결과는 이번 세션에만 두고
+ *   문서에 저장하지 않는다(requirements-panel-store).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { ChevronDown, ChevronRight, ClipboardList, Database, Download, GitCompare, LocateFixed, Pencil, Plus, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardList, Database, DatabaseZap, Download, GitCompare, LocateFixed, Pencil, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -46,9 +49,16 @@ import {
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { useConnections } from '@/features/connections/hooks'
+import type { CheckResult, CriterionCheckRequest } from '@/features/database/api'
+import { databaseErrorMessage } from '@/features/database/errors'
+import { useRunCriterionChecks } from '@/features/database/hooks'
 import type { RequirementChanges } from '@/features/editor/api'
 import { useRequirementChanges } from '@/features/editor/hooks'
-import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
+import {
+  criterionCheckKey,
+  useRequirementsPanel,
+  type CriterionCheckRun,
+} from '@/features/editor/store/requirements-panel-store'
 import { downloadTextFile, safeFilename } from '@/lib/download'
 import { MigrationDdlDialog } from './MigrationDdlDialog'
 import { RequirementChangesView } from './RequirementChangesView'
@@ -71,6 +81,28 @@ const STATE_CLASS: Record<RequirementState, string> = {
   LEFTOVER: 'border-destructive/40 text-destructive',
   DRAFT: 'border-border text-muted-foreground',
   DROPPED: 'border-border text-muted-foreground line-through',
+}
+
+/** 한 요청에 보내는 확인 수의 상한(DB 매니저와 같은 값) — 넘으면 나눠 보낸다 */
+const CHECKS_PER_REQUEST = 50
+
+const CHECK_CLASS: Record<CheckResult['status'], string> = {
+  PASSED: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  FAILED: 'border-destructive/40 bg-destructive/10 text-destructive',
+  ERROR: 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+}
+
+/** 데이터로 확인할 기준 — 확인 SQL이 있는 기준. 제외한 요구사항은 확인하지 않는다 */
+function checkTargets(requirements: readonly ErdRequirement[]): CriterionCheckRequest[] {
+  return requirements
+    .filter((requirement) => requirement.status !== 'dropped')
+    .flatMap((requirement) =>
+      (requirement.criteria ?? []).flatMap((criterion) =>
+        criterion.check && criterion.check.sql.trim().length > 0
+          ? [{ key: criterionCheckKey(requirement.code, criterion.id), sql: criterion.check.sql, expect: criterion.check.expect }]
+          : [],
+      ),
+    )
 }
 
 export interface RequirementsPanelProps {
@@ -147,6 +179,40 @@ function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sour
   const connections = useConnections(changesAvailable && canEdit && sourceConnectionId ? workspaceId : '')
   const sourceConnection = (connections.data?.items ?? []).find((item) => item.connectionId === sourceConnectionId)
   const [migrationOpen, setMigrationOpen] = useState(false)
+
+  /* ---------- 수용 기준을 데이터로 확인 — 편집 권한과 원천 커넥션이 있고, 확인 SQL이 있는 기준이 있을 때 ---------- */
+  const runChecks = useRunCriterionChecks(workspaceId, sourceConnectionId ?? '')
+  const addCheckResults = useRequirementsPanel((s) => s.addCheckResults)
+  const checkState = useRequirementsPanel((s) => (s.checks?.modelId === modelId ? s.checks : null))
+  const allChecks = useMemo(() => checkTargets(requirements), [requirements])
+  const canCheck = canEdit && sourceConnection !== undefined && allChecks.length > 0
+  /** 돌리고 있는 범위 — 'all'이거나 요구사항 id */
+  const [checking, setChecking] = useState<string | null>(null)
+  const [checkError, setCheckError] = useState<string | null>(null)
+  const check = async (scope: string, targets: CriterionCheckRequest[]) => {
+    if (targets.length === 0 || checking) return
+    setChecking(scope)
+    setCheckError(null)
+    const runs: CriterionCheckRun[] = []
+    const summary = { passed: 0, failed: 0, errors: 0 }
+    try {
+      for (let start = 0; start < targets.length; start += CHECKS_PER_REQUEST) {
+        const chunk = targets.slice(start, start + CHECKS_PER_REQUEST)
+        const data = await runChecks.mutateAsync(chunk)
+        if (!data) continue
+        const sqlOf = new Map(chunk.map((target) => [target.key, target.sql]))
+        runs.push(...data.results.map((result) => ({ ...result, sql: sqlOf.get(result.key) ?? '' })))
+        summary.passed += data.passed
+        summary.failed += data.failed
+        summary.errors += data.errors
+      }
+      addCheckResults(modelId, runs, summary)
+    } catch (error) {
+      setCheckError(databaseErrorMessage(error))
+    } finally {
+      setChecking(null)
+    }
+  }
   const tableName = useMemo(() => new Map(present.model.tables.map((table) => [table.id, table.physicalName])), [present.model.tables])
   /** 도메인 — 요구사항도 테이블도 없는 빈 그룹은 뺀다 */
   const domains = useMemo(
@@ -320,6 +386,40 @@ function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sour
             </div>
           ) : null}
           <div className="ml-auto flex items-center gap-1">
+            {canCheck ? (
+              <>
+                {checkError ? (
+                  <span className="max-w-xs truncate text-xs text-destructive" title={checkError} data-testid="requirement-checks-error">
+                    {checkError}
+                  </span>
+                ) : checkState && checking === null ? (
+                  <span className="text-xs tabular-nums" data-testid="requirement-checks-summary">
+                    <span className="text-emerald-700 dark:text-emerald-400">{t('model.requirements.checks.PASSED')} {checkState.summary.passed}</span>
+                    {' · '}
+                    <span className={cn(checkState.summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                      {t('model.requirements.checks.FAILED')} {checkState.summary.failed}
+                    </span>
+                    {' · '}
+                    <span className={cn(checkState.summary.errors > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>
+                      {t('model.requirements.checks.ERROR')} {checkState.summary.errors}
+                    </span>
+                  </span>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 px-2"
+                  data-testid="requirement-checks-run"
+                  title={t('model.requirements.checks.runHint')}
+                  disabled={checking !== null}
+                  onClick={() => void check('all', allChecks)}
+                >
+                  <DatabaseZap aria-hidden className="size-3.5" />
+                  {checking === 'all' ? t('model.requirements.checks.running') : t('model.requirements.checks.run')}
+                </Button>
+              </>
+            ) : null}
             {requirements.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -541,6 +641,14 @@ function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sour
                                         patch: { appliedRevision: requirement.revision },
                                       })
                                     }
+                                    checks={{
+                                      results: checkState?.results ?? null,
+                                      running: checking === requirement.id || checking === 'all',
+                                      onRun:
+                                        canCheck && checking === null && checkTargets([requirement]).length > 0
+                                          ? () => void check(requirement.id, checkTargets([requirement]))
+                                          : undefined,
+                                    }}
                                     rowRef={(element) => {
                                       if (element) rowRefs.current.set(requirement.id, element)
                                       else rowRefs.current.delete(requirement.id)
@@ -689,6 +797,7 @@ function RequirementRow({
   onMarkApplied,
   changes,
   onApplyToDatabase,
+  checks,
   rowRef,
 }: {
   requirement: ErdRequirement
@@ -711,6 +820,12 @@ function RequirementRow({
   } | null
   /** DB에 반영 — 원천 커넥션이 있고 편집할 수 있을 때만 */
   onApplyToDatabase?: () => void
+  /** 데이터로 확인 — 결과(이번 세션)와 이 요구사항만 확인하기. onRun은 확인할 수 있을 때만 */
+  checks?: {
+    results: Readonly<Record<string, CriterionCheckRun>> | null
+    running: boolean
+    onRun?: () => void
+  }
   rowRef: (element: HTMLLIElement | null) => void
 }) {
   const { t } = useTranslation()
@@ -782,7 +897,20 @@ function RequirementRow({
                       onCheckedChange={(checked) => onToggleCriterion(criterion.id, checked === true)}
                     />
                     <span className={cn('break-words', criterion.done && 'text-muted-foreground line-through')}>{criterion.text}</span>
+                    {criterion.check ? (
+                      <Database
+                        aria-label={t('model.requirements.checks.hasCheck')}
+                        data-testid="requirement-criterion-has-check"
+                        className="mt-1 size-3 shrink-0 text-sky-600 dark:text-sky-400"
+                      />
+                    ) : null}
                   </label>
+                  {(() => {
+                    const run = checks?.results?.[criterionCheckKey(requirement.code, criterion.id)]
+                    // 기준의 SQL·기대값을 고쳤으면 옛 결과는 보이지 않는다
+                    if (!run || !criterion.check || run.sql !== criterion.check.sql || run.expect !== criterion.check.expect) return null
+                    return <CriterionCheckBadge run={run} />
+                  })()}
                 </li>
               ))}
             </ul>
@@ -874,6 +1002,20 @@ function RequirementRow({
                 {t('model.requirements.domains.showOnCanvas')}
               </Button>
             ) : null}
+            {checks?.onRun || checks?.running ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 gap-1 px-2 text-xs"
+                data-testid="requirement-checks-run-one"
+                disabled={!checks.onRun}
+                onClick={checks.onRun}
+              >
+                <DatabaseZap aria-hidden className="size-3" />
+                {checks.running ? t('model.requirements.checks.running') : t('model.requirements.checks.runOne')}
+              </Button>
+            ) : null}
             {canEdit ? (
               <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" data-testid="requirement-edit" onClick={onEdit}>
                 <Pencil aria-hidden className="size-3" />
@@ -884,6 +1026,38 @@ function RequirementRow({
         </div>
       ) : null}
     </li>
+  )
+}
+
+/**
+ * 수용 기준 확인 결과 — 통과(초록), 실패(빨강, 실제 값과 기대값), 오류(주황, 까닭).
+ * 데이터베이스가 거부한 경우(QUERY_FAILED)는 그 문구를 아래에 보여 준다(길면 마우스를 올리면 다 보인다).
+ */
+function CriterionCheckBadge({ run }: { run: CriterionCheckRun }) {
+  const { t } = useTranslation()
+  const detail =
+    run.status === 'FAILED'
+      ? t('model.requirements.checks.actual', { value: run.value ?? t('model.requirements.checks.null'), expect: run.expect })
+      : run.status === 'ERROR' && run.errorCode
+        ? `${t(`model.requirements.checks.errorCode.${run.errorCode}`)}${run.errorCode === 'UNSUPPORTED_STATEMENT' && run.message ? ` (${run.message})` : ''}`
+        : null
+  return (
+    <div className="ml-6 mt-0.5 grid gap-0.5" data-testid="requirement-criterion-result" data-status={run.status}>
+      <span className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span
+          className={cn('rounded border px-1.5 font-medium leading-5', CHECK_CLASS[run.status])}
+          title={run.errorCode === 'QUERY_FAILED' && run.message ? run.message : undefined}
+        >
+          {t(`model.requirements.checks.${run.status}`)}
+        </span>
+        {detail ? <span className="text-muted-foreground">{detail}</span> : null}
+      </span>
+      {run.errorCode === 'QUERY_FAILED' && run.message ? (
+        <span className="line-clamp-2 break-all font-mono text-[11px] text-muted-foreground" title={run.message} data-testid="requirement-criterion-message">
+          {run.message}
+        </span>
+      ) : null}
+    </div>
   )
 }
 

@@ -4,7 +4,9 @@
  *
  * 기본(성공) 시나리오만 정의한다. 행 조회는 요청 본문의 정렬·조건·페이지를 실제로 적용해
  * 화면이 보낸 요청이 결과에 드러나게 한다(EQ·CONTAINS·IS_NULL만 — 테스트가 쓰는 범위).
+ * 기본 키(id) 순서면 키 기준 페이지 넘김(after·before — §5.11)도 서버처럼 처리한다.
  * SQL 콘솔은 첫 키워드로 종류를 나눠 계약 형태(읽기 결과·확인 요청·영향 행 수·거부)만 흉내 낸다.
+ * 수용 기준 데이터 확인(checks)도 SQL 문구로 결과를 정한다.
  */
 import { HttpResponse, http } from 'msw'
 
@@ -96,17 +98,49 @@ export const databaseHandlers = [
       rows = [...rows].sort((a, b) => String(a[index] ?? '').localeCompare(String(b[index] ?? '')))
       if (sort.direction === 'DESC') rows.reverse()
     }
-    const start = (query.page - 1) * query.size
+    // 키 기준 페이지 넘김 — 정렬이 없거나 기본 키(id) 하나일 때만. 그 밖에 after·before가 오면 400
+    const keyset = !sort || (query.sort.length === 1 && sort.column === 'id')
+    if ((query.after || query.before) && (!keyset || (query.after && query.before))) {
+      return fail('INVALID_REQUEST', 400)
+    }
+    const descending = sort?.direction === 'DESC'
+    const idOf = (row: CellValue[]) => Number(row[0])
+    let page: CellValue[][]
+    let hasNext: boolean
+    let hasPrevious: boolean
+    if (query.after) {
+      const key = Number(query.after.id)
+      const rest = rows.filter((row) => (descending ? idOf(row) < key : idOf(row) > key))
+      page = rest.slice(0, query.size)
+      hasNext = rest.length > query.size
+      hasPrevious = true
+    } else if (query.before) {
+      const key = Number(query.before.id)
+      const ahead = rows.filter((row) => (descending ? idOf(row) > key : idOf(row) < key))
+      page = ahead.slice(Math.max(0, ahead.length - query.size))
+      hasNext = true
+      hasPrevious = ahead.length > query.size
+    } else {
+      const start = (query.page - 1) * query.size
+      page = rows.slice(start, start + query.size)
+      hasNext = rows.length > start + query.size
+      hasPrevious = query.page > 1
+    }
+    const keyOf = (row: CellValue[] | undefined) => (row ? { id: String(row[0]) } : null)
     return HttpResponse.json(
       ok({
         response: {
           columns,
-          rows: rows.slice(start, start + query.size),
+          rows: page,
           page: query.page,
           size: query.size,
-          hasNext: rows.length > start + query.size,
+          hasNext,
           truncated: false,
           elapsedMs: 12,
+          hasPrevious,
+          keyset,
+          firstKey: keyset ? keyOf(page[0]) : null,
+          lastKey: keyset ? keyOf(page.at(-1)) : null,
         },
       }),
     )
@@ -174,6 +208,33 @@ export const databaseHandlers = [
           elapsedMs: 21,
         },
       }),
+    )
+  }),
+
+  /**
+   * 수용 기준 데이터 확인(v1.36) — SQL을 실행하지 않고 문구로 결과를 정한다.
+   * 둘째 문장이 있으면 MULTIPLE_STATEMENTS, SELECT·WITH가 아니면 UNSUPPORTED_STATEMENT(첫 키워드),
+   * no_such_table이면 QUERY_FAILED(데이터베이스 문구), SLEEP이면 QUERY_TIMEOUT, "WHERE 1 = 0"이면 NO_RESULT.
+   * 그 밖에는 값을 "0"으로 돌려준다 — 단 IS NULL이 있으면 "3"(실패를 흉내 낸다).
+   */
+  http.post(`${BASE}/checks`, async ({ request }) => {
+    const body = (await request.json()) as { checks: { key: string; sql: string; expect?: string }[] }
+    const results = body.checks.map(({ key, sql, expect = '0' }) => {
+      const text = sql.trim().replace(/;\s*$/, '')
+      const keyword = text.split(/\s+/)[0].toUpperCase()
+      const error = (errorCode: string, message: string | null = null) =>
+        ({ key, status: 'ERROR', value: null, expect, errorCode, message, elapsedMs: 3 }) as const
+      if (text.includes(';')) return error('MULTIPLE_STATEMENTS')
+      if (keyword !== 'SELECT' && keyword !== 'WITH') return error('UNSUPPORTED_STATEMENT', keyword)
+      if (text.includes('no_such_table')) return error('QUERY_FAILED', "Table 'members.no_such_table' doesn't exist")
+      if (/sleep/i.test(text)) return error('QUERY_TIMEOUT')
+      if (/where\s+1\s*=\s*0/i.test(text)) return error('NO_RESULT')
+      const value = /is\s+null/i.test(text) ? '3' : '0'
+      return { key, status: value === expect ? 'PASSED' : 'FAILED', value, expect, errorCode: null, message: null, elapsedMs: 7 }
+    })
+    const count = (status: string) => results.filter((result) => result.status === status).length
+    return HttpResponse.json(
+      ok({ response: { results, passed: count('PASSED'), failed: count('FAILED'), errors: count('ERROR'), elapsedMs: 24 } }),
     )
   }),
 

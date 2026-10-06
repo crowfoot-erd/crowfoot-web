@@ -13,7 +13,9 @@ import {
   fetchDatabaseObjects,
   fetchObjectRows,
   fetchObjectStructure,
+  runCriterionChecks,
   runQuery,
+  type CriterionCheckRequest,
   type RowFilter,
   type RowsQuery,
 } from '@/features/database/api'
@@ -93,6 +95,14 @@ export function useApplyRowChanges(workspaceId: string, connectionId: string, ob
   return useMutation({
     mutationFn: (changes: RowChange[]) =>
       applyRowChanges(workspaceId, connectionId, objectName, changes),
+    retry: false,
+  })
+}
+
+/** 수용 기준 데이터 확인 — 읽기만 하지만 대상 DB에 부하를 되풀이하지 않게 다시 시도하지 않는다 */
+export function useRunCriterionChecks(workspaceId: string, connectionId: string) {
+  return useMutation({
+    mutationFn: (checks: CriterionCheckRequest[]) => runCriterionChecks(workspaceId, connectionId, checks),
     retry: false,
   })
 }

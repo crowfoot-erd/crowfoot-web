@@ -11,7 +11,7 @@ import { createColumn, createTable } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdRequirement } from '@/features/editor/model/content-schema'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { useRequirementsPanel } from '@/features/editor/store/requirements-panel-store'
-import { ok } from '@/api/mocks/handlers'
+import { fail, ok } from '@/api/mocks/handlers'
 import { server } from '@/api/mocks/server'
 import type { RequirementChanges } from '@/features/editor/api'
 import { diffItems, diffLines } from '@/features/editor/model/requirement-diff'
@@ -546,5 +546,178 @@ describe('요구사항 패널 — 반영 대기 요구사항 반영하기 (§21,
     fireEvent.click(screen.getByText('주문을 만든다'))
     expect(screen.queryByTestId('requirement-changes-toggle')).toBeNull()
     expect(calls.count).toBe(0)
+  })
+})
+
+describe('요구사항 패널 — 수용 기준을 데이터로 확인 (v1.36)', () => {
+  /** 확인 SQL이 붙은 기준 셋 — 통과·실패·오류가 하나씩 나오게(MSW checks 핸들러가 SQL 문구로 정한다) */
+  function checkedFixture(): EditorDocument {
+    const doc = fixture()
+    doc.diagram.requirements[0] = {
+      ...doc.diagram.requirements[0],
+      criteria: [
+        { id: 'k1', text: '이메일은 비어 있지 않다', done: false, check: { sql: 'SELECT COUNT(*) FROM users WHERE email IS NULL', expect: '0' } },
+        { id: 'k2', text: '중복 이메일이 없다', done: false, check: { sql: 'SELECT COUNT(*) FROM users GROUP BY email HAVING COUNT(*) > 1', expect: '0' } },
+        { id: 'k3', text: '탈퇴 회원은 따로 둔다', done: false, check: { sql: 'SELECT COUNT(*) FROM no_such_table', expect: '0' } },
+        { id: 'k4', text: '가입 시각을 남긴다', done: true },
+      ],
+    }
+    return doc
+  }
+  function renderChecked(options: { canEdit?: boolean; sourceConnectionId?: string | null; document?: EditorDocument } = {}) {
+    asAuthenticated()
+    useEditorStore.getState().hydrate({ modelId: '501', baseVersion: 3, document: options.document ?? checkedFixture(), databaseType: 'mysql' })
+    useRequirementsPanel.setState({ open: true, focusId: null, checks: null })
+    return renderWithProviders(
+      <ReactFlowProvider>
+        <RequirementsPanel
+          canEdit={options.canEdit ?? true}
+          documentName="주문 서비스"
+          workspaceId="101"
+          modelId="501"
+          sourceConnectionId={options.sourceConnectionId === undefined ? '301' : options.sourceConnectionId}
+        />
+      </ReactFlowProvider>,
+      { wrapRoutes: false },
+    )
+  }
+  afterEach(() => useRequirementsPanel.setState({ checks: null }))
+
+  it('다이얼로그 — 기준마다 확인 SQL을 붙이고, 문구가 같은 줄은 확인 SQL을 이어받고, SQL을 비우면 뗀다', () => {
+    renderPanel()
+    fireEvent.click(screen.getByText('이메일로 가입한다'))
+    fireEvent.click(screen.getByTestId('requirement-edit'))
+    fireEvent.change(screen.getByRole('textbox', { name: '수용 기준' }), { target: { value: '이메일은 비어 있지 않다\n가입 시각을 남긴다' } })
+    const [first] = screen.getAllByTestId('requirement-criterion-check-toggle')
+    fireEvent.click(first)
+    fireEvent.change(screen.getByTestId('requirement-criterion-sql'), { target: { value: '  SELECT COUNT(*) FROM users WHERE email IS NULL  ' } })
+    fireEvent.change(screen.getByTestId('requirement-criterion-expect'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    const saved = () => requirements().find((r) => r.id === 'r1')!
+    expect(saved().criteria).toEqual([
+      { id: expect.any(String), text: '이메일은 비어 있지 않다', done: false, check: { sql: 'SELECT COUNT(*) FROM users WHERE email IS NULL', expect: '0' } },
+      { id: expect.any(String), text: '가입 시각을 남긴다', done: false },
+    ])
+    // 기준만 고쳤으니 개정 번호가 오르지 않는다
+    expect(saved().revision).toBe(1)
+    const firstId = saved().criteria![0].id
+
+    // 순서를 바꾸고 줄을 더해도 같은 문구는 id·확인 SQL을 이어받는다
+    fireEvent.click(screen.getByTestId('requirement-edit'))
+    fireEvent.change(screen.getByRole('textbox', { name: '수용 기준' }), { target: { value: '새 기준\n이메일은 비어 있지 않다' } })
+    expect(within(screen.getAllByTestId('requirement-criterion-check')[1]).getByText('SQL 있음')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(saved().criteria![1]).toEqual({
+      id: firstId,
+      text: '이메일은 비어 있지 않다',
+      done: false,
+      check: { sql: 'SELECT COUNT(*) FROM users WHERE email IS NULL', expect: '0' },
+    })
+
+    // SQL을 비우면 확인을 뗀다(check 키가 없다)
+    fireEvent.click(screen.getByTestId('requirement-edit'))
+    fireEvent.click(screen.getAllByTestId('requirement-criterion-check-toggle')[1])
+    fireEvent.change(screen.getByTestId('requirement-criterion-sql'), { target: { value: '   ' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(saved().criteria![1]).toEqual({ id: firstId, text: '이메일은 비어 있지 않다', done: false })
+  })
+
+  it('다이얼로그 — 기준이 20개를 넘거나 한 줄이 200자를 넘으면 저장하지 않는다', () => {
+    renderPanel()
+    fireEvent.click(screen.getByText('이메일로 가입한다'))
+    fireEvent.click(screen.getByTestId('requirement-edit'))
+    const many = Array.from({ length: 21 }, (_, index) => `기준 ${index + 1}`).join('\n')
+    fireEvent.change(screen.getByRole('textbox', { name: '수용 기준' }), { target: { value: many } })
+    expect(screen.getByTestId('requirement-criteria-error')).toHaveTextContent('수용 기준은 20개까지')
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(screen.getByTestId('requirement-dialog')).toBeInTheDocument()
+    expect(requirements().find((r) => r.id === 'r1')?.criteria).toBeUndefined()
+
+    fireEvent.change(screen.getByRole('textbox', { name: '수용 기준' }), { target: { value: 'ㄱ'.repeat(201) } })
+    expect(screen.getByTestId('requirement-criteria-error')).toHaveTextContent('200자까지')
+  })
+
+  it('데이터로 확인 버튼 — 편집 권한, 원천 커넥션, 확인 SQL이 있는 기준이 모두 있을 때만 보인다', async () => {
+    const first = renderChecked()
+    // 커넥션 목록(301 존재)을 읽은 뒤에 나타난다
+    expect(await screen.findByTestId('requirement-checks-run')).toHaveTextContent('데이터로 확인')
+    first.unmount()
+
+    const noConnection = renderChecked({ sourceConnectionId: null })
+    expect(screen.queryByTestId('requirement-checks-run')).toBeNull()
+    noConnection.unmount()
+
+    // 문서가 가리키는 커넥션이 워크스페이스에 없다(삭제됨)
+    const missing = renderChecked({ sourceConnectionId: '999' })
+    await waitFor(() => expect(screen.getByTestId('requirements-panel')).toBeInTheDocument())
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByTestId('requirement-checks-run')).toBeNull()
+    missing.unmount()
+
+    const readOnly = renderChecked({ canEdit: false })
+    expect(screen.queryByTestId('requirement-checks-run')).toBeNull()
+    // 확인 SQL이 있다는 표시는 읽기 전용에서도 보인다
+    fireEvent.click(screen.getByText('이메일로 가입한다'))
+    expect(screen.getAllByTestId('requirement-criterion-has-check')).toHaveLength(3)
+    readOnly.unmount()
+
+    renderChecked({ document: fixture() })
+    await waitFor(() => expect(screen.getByTestId('requirements-panel')).toBeInTheDocument())
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByTestId('requirement-checks-run')).toBeNull()
+  })
+
+  it('실행 — 한 번에 보내고 요약과 기준마다 통과·실패·오류를 보여 준다. 결과는 문서에 저장하지 않는다', async () => {
+    let sent: { checks: { key: string; sql: string; expect: string }[] } | null = null
+    server.events.on('request:start', async ({ request }) => {
+      if (request.url.endsWith('/checks')) sent = (await request.clone().json()) as typeof sent
+    })
+    renderChecked()
+    fireEvent.click(screen.getByText('이메일로 가입한다'))
+    fireEvent.click(await screen.findByTestId('requirement-checks-run'))
+
+    expect(await screen.findByTestId('requirement-checks-summary')).toHaveTextContent('통과 1 · 실패 1 · 오류 1')
+    server.events.removeAllListeners()
+    expect(sent!.checks.map((item) => item.key)).toEqual(['REQ-001/k1', 'REQ-001/k2', 'REQ-001/k3'])
+
+    const results = screen.getAllByTestId('requirement-criterion-result')
+    expect(results.map((result) => result.dataset.status)).toEqual(['FAILED', 'PASSED', 'ERROR'])
+    expect(results[0]).toHaveTextContent('실패실제 값 3 · 기대 0')
+    expect(results[2]).toHaveTextContent('오류실행하지 못했습니다')
+    expect(within(results[2]).getByTestId('requirement-criterion-message')).toHaveTextContent("Table 'members.no_such_table' doesn't exist")
+    expect(requirements()[0].criteria!.every((criterion) => !('result' in criterion))).toBe(true)
+
+    // 기준의 SQL을 고치면 옛 결과는 사라진다
+    act(() =>
+      useEditorStore.getState().commit({
+        type: 'requirement/patch',
+        requirementId: 'r1',
+        patch: {
+          criteria: requirements()[0].criteria!.map((criterion) =>
+            criterion.id === 'k1' ? { ...criterion, check: { sql: 'SELECT 0', expect: '0' } } : criterion,
+          ),
+        },
+      }),
+    )
+    expect(screen.getAllByTestId('requirement-criterion-result').map((result) => result.dataset.status)).toEqual(['PASSED', 'ERROR'])
+
+    // 이 요구사항만 다시 확인
+    fireEvent.click(screen.getByTestId('requirement-checks-run-one'))
+    await waitFor(() =>
+      expect(screen.getAllByTestId('requirement-criterion-result').map((result) => result.dataset.status)).toEqual(['PASSED', 'PASSED', 'ERROR']),
+    )
+  })
+
+  it('요청이 실패하면 데이터베이스 오류 문구를 보여 준다', async () => {
+    server.use(
+      http.post('/api/v1/database-manager/workspaces/:workspaceId/connections/:connectionId/checks', () =>
+        fail('CONNECTION_UNREACHABLE', 502),
+      ),
+    )
+    renderChecked()
+    fireEvent.click(await screen.findByTestId('requirement-checks-run'))
+    expect(await screen.findByTestId('requirement-checks-error')).toHaveTextContent('데이터베이스에 접속할 수 없습니다')
+    expect(screen.queryByTestId('requirement-checks-summary')).toBeNull()
   })
 })

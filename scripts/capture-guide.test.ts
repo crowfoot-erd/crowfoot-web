@@ -121,7 +121,7 @@ const REQUIREMENTS: Record<Lang, [string, string][]> = {
 }
 
 /** 예시 문서 — 온라인 쇼핑몰(테이블 6·관계 6·그룹 3·메모 1·요구사항 5). 도메인 타입을 쓰는 컬럼이 있다 */
-function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean; deliveryMemo?: boolean } = {}): EditorDocument {
+function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean; deliveryMemo?: boolean; checks?: boolean } = {}): EditorDocument {
   const n = NAMES[lang]
   const col = (table: string, name: string, dataType: string, extra: Partial<Parameters<typeof createColumn>[0] & object> = {}) =>
     createColumn({ id: `${table}.${name}`, physicalName: name, logicalName: name, dataType, nullable: false, ...extra })
@@ -178,7 +178,7 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
     { type: 'area/create', area: createArea(n.catalog, { id: 'a_catalog', color: 'green', tableIds: ['t_products', 't_reviews'] }) },
   ])
   // 요구사항 — 반영됨 셋, 반영 대기 하나(내용이 바뀐 뒤 아직 반영하지 않았다), 공통 하나
-  const requirement = (index: number, extra: { areaId?: string | null; scope?: 'tables' | 'document'; revision?: number; appliedRevision?: number; tableIds?: string[] }) => ({
+  const requirement = (index: number, extra: { areaId?: string | null; scope?: 'tables' | 'document'; revision?: number; appliedRevision?: number; tableIds?: string[]; criteria?: ReturnType<typeof checkedCriteria> }) => ({
     id: `req_${index + 1}`,
     code: `REQ-00${index + 1}`,
     areaId: null,
@@ -192,7 +192,7 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
     ...extra,
   })
   doc = applyChanges(doc, [
-    { type: 'requirement/create', requirement: requirement(0, { areaId: 'a_member', tableIds: ['t_users'] }) },
+    { type: 'requirement/create', requirement: requirement(0, { areaId: 'a_member', tableIds: ['t_users'], ...(options.checks ? { criteria: checkedCriteria(lang) } : {}) }) },
     { type: 'requirement/create', requirement: requirement(1, { areaId: 'a_order', tableIds: ['t_orders', 't_order_items', 't_products'] }) },
     { type: 'requirement/create', requirement: requirement(2, { areaId: 'a_order', revision: 2, appliedRevision: 1, tableIds: ['t_payments'] }) },
     { type: 'requirement/create', requirement: requirement(3, { areaId: 'a_catalog', tableIds: ['t_reviews'] }) },
@@ -205,6 +205,32 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
   }
   return { ...doc, diagram: { ...doc.diagram, viewport: { x: 70, y: 20, zoom: 0.7 } } }
 }
+
+/**
+ * 수용 기준을 데이터로 확인(v1.36) — REQ-001의 기준 넷과 확인 SQL. 결과는 통과·실패·통과·오류가 되게 촬영에서 덮어쓴다
+ * (CRITERION_RESULTS). 공용 가짜 서버의 checks 핸들러는 단위 테스트가 쓰므로 고치지 않는다
+ */
+const CRITERIA: Record<Lang, string[]> = {
+  ko: ['이메일이 비어 있는 회원이 없다', '같은 이메일로 가입한 회원이 없다', '모든 회원에 가입 시각이 있다', '탈퇴한 회원은 따로 보관한다'],
+  en: ['No member has an empty email', 'No two members share an email', 'Every member has a sign-up time', 'Withdrawn members are kept separately'],
+  ja: ['メールが空の会員はいない', '同じメールで登録した会員はいない', 'すべての会員に登録日時がある', '退会した会員は別に保管する'],
+  zh: ['没有邮箱为空的会员', '没有用同一邮箱注册的会员', '所有会员都有注册时间', '已注销的会员单独保存'],
+}
+const CRITERION_SQL = [
+  'SELECT COUNT(*) FROM users WHERE email IS NULL',
+  'SELECT COUNT(*) FROM (SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1) d',
+  'SELECT COUNT(*) FROM users WHERE created_at IS NULL',
+  'SELECT COUNT(*) FROM withdrawn_users',
+]
+function checkedCriteria(lang: Lang) {
+  return CRITERIA[lang].map((text, index) => ({ id: `crit_${index + 1}`, text, done: index === 2, check: { sql: CRITERION_SQL[index], expect: '0' } }))
+}
+const CRITERION_RESULTS = [
+  { status: 'PASSED', value: '0', errorCode: null, message: null },
+  { status: 'FAILED', value: '2', errorCode: null, message: null },
+  { status: 'PASSED', value: '0', errorCode: null, message: null },
+  { status: 'ERROR', value: null, errorCode: 'QUERY_FAILED', message: 'ERROR: relation "withdrawn_users" does not exist' },
+]
 
 /** 시스템 사전 — 예시 문서의 컬럼 이름 조각을 덮는다(논리명 자동 추론 장면) */
 const SYSTEM_TERMS: [string, string, string, string, string][] = [
@@ -784,6 +810,47 @@ const EDITOR_SCENES: Scene[] = [
     },
   },
   {
+    // 수용 기준을 데이터로 확인(v1.36) — 확인 SQL이 붙은 기준을 연결된 DB에서 실행해 통과·실패·오류를 보여 준다
+    name: 'editor-requirement-checks',
+    run: async (s) => {
+      s.overrides.set(`/models/${MODEL}`, (method) => (method === 'GET' ? { json: ok({ response: modelResponse(s.lang, shopDocument(s.lang, { checks: true })) }) } : null))
+      s.overrides.set(`/connections/${DB_CONNECTION}/checks`, (_method, body) => {
+        const { checks } = JSON.parse(body ?? '{}') as { checks: { key: string; expect: string }[] }
+        const results = checks.map((check) => {
+          const index = Number(check.key.split('/crit_')[1] ?? 1) - 1
+          return { key: check.key, expect: check.expect, elapsedMs: 6 + index, ...CRITERION_RESULTS[index] }
+        })
+        const count = (status: string) => results.filter((result) => result.status === status).length
+        return { json: ok({ response: { results, passed: count('PASSED'), failed: count('FAILED'), errors: count('ERROR'), elapsedMs: 31 } }) }
+      })
+      try {
+        await openEditor(s)
+        await s.page.getByRole('tab', { name: s.t('shareViewer.tab.requirements') }).click()
+        const panel = s.page.getByTestId('requirements-panel')
+        await panel.waitFor()
+        const row = panel.locator('[data-testid="requirement-row"]').first()
+        await row.locator(':scope > button').click()
+        await panel.getByTestId('requirement-checks-run').click()
+        await panel.getByTestId('requirement-checks-summary').waitFor()
+        await s.page.waitForTimeout(500)
+        const header = panel.locator(':scope > div > div').first()
+        await s.shot('editor-requirement-checks', { clip: union(s.page, [await header.boundingBox(), await row.boundingBox()], 12) })
+        await row.getByTestId('requirement-edit').click()
+        await dialog(s).waitFor()
+        await dialog(s).getByTestId('requirement-criterion-check-toggle').nth(1).click()
+        // 창이 길어 위아래가 잘린다 — 수용 기준 칸부터 확인 SQL 목록까지만 찍는다
+        const checks = dialog(s).getByTestId('requirement-criterion-checks')
+        await checks.scrollIntoViewIfNeeded()
+        await s.page.waitForTimeout(400)
+        const criteria = dialog(s).getByRole('textbox', { name: s.t('model.requirements.criteria.title'), exact: true })
+        await s.shot('editor-requirement-check-dialog', { clip: union(s.page, [await criteria.locator('..').boundingBox()], 16) })
+      } finally {
+        s.overrides.delete(`/connections/${DB_CONNECTION}/checks`)
+        installEditorOverrides(s)
+      }
+    },
+  },
+  {
     name: 'editor-validation',
     run: async (s) => {
       s.overrides.set(`/models/${MODEL}`, (method) => (method === 'GET' ? { json: ok({ response: modelResponse(s.lang, shopDocument(s.lang, { flawed: true })) }) } : null))
@@ -816,6 +883,19 @@ const EDITOR_SCENES: Scene[] = [
     run: async (s) => {
       await openDataTab(s, 'orders')
       await s.shot('data-tab')
+    },
+  },
+  {
+    // 조회 부하 안내(v1.36) — 인덱스 없는 컬럼(status)으로 정렬하면 조건 줄 아래에 주황 안내가 나온다
+    name: 'data-slow-hint',
+    run: async (s) => {
+      const browser = await openDataTab(s, 'orders')
+      await browser.getByRole('button', { name: s.t('database.data.sortBy', { column: 'status' }), exact: true }).click()
+      const hint = browser.getByTestId('slow-query-hint')
+      await hint.waitFor()
+      await s.page.waitForTimeout(500)
+      const form = browser.locator('form').first()
+      await s.shot('data-slow-hint', { clip: union(s.page, [await form.boundingBox(), await hint.boundingBox(), await browser.locator('tbody tr').nth(2).boundingBox()], 8) })
     },
   },
   {

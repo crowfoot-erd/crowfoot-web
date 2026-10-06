@@ -9,10 +9,13 @@
  *
  * 외래 키 값 옆의 단추는 부모 행으로, 행 앞의 단추는 이 행을 참조하는 행으로 간다(§5.9).
  * 따라가서 연 표는 그 값의 조건이 걸린 채로 시작한다.
+ *
+ * 조회 부하(§5.11): 기본 키 순서로 볼 때 [다음]·[이전]은 OFFSET 대신 기본 키 값(after·before)으로 읽는다.
+ * 쪽 번호는 화면이 센다. 인덱스를 타기 어려운 정렬·조건은 조건 줄 아래에 느릴 수 있다고 알린다.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Download, Loader2, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Loader2, Plus, TriangleAlert, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -28,6 +31,7 @@ import {
   type FilterOp,
   type ObjectStructure,
   type RowFilter,
+  type RowKey,
   type RowSort,
   type RowsQuery,
 } from '@/features/database/api'
@@ -43,6 +47,7 @@ import {
   type FollowTarget,
 } from '@/features/database/foreign-keys'
 import { useApplyRowChanges, useCountRows, useObjectRows } from '@/features/database/hooks'
+import { indexHints } from '@/features/database/index-hints'
 import {
   EMPTY_EDITS,
   addInsert,
@@ -71,6 +76,9 @@ const OPS: FilterOp[] = [
   'IS_NOT_NULL',
 ]
 const VALUELESS: ReadonlySet<FilterOp> = new Set<FilterOp>(['IS_NULL', 'IS_NOT_NULL'])
+
+/** 키 기준 페이지 넘김의 기준 — 없으면 쪽 번호로(OFFSET) 읽는다(§5.11) */
+type PageCursor = { after: RowKey } | { before: RowKey } | null
 
 /** 편집 중인 조건 한 줄 — 값은 입력 칸의 문자열 그대로 */
 interface FilterDraft {
@@ -142,15 +150,46 @@ export function DataTab({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
+  const [cursor, setCursor] = useState<PageCursor>(null)
   const [sort, setSort] = useState<RowSort[]>([])
   const [drafts, setDrafts] = useState<FilterDraft[]>(() => draftsOf(initialFilters))
   const [applied, setApplied] = useState<RowFilter[]>(initialFilters)
   const [nextDraftId, setNextDraftId] = useState(initialFilters.length + 1)
 
-  const query: RowsQuery = { page, size: PAGE_SIZE, filters: applied, sort }
+  const query: RowsQuery = { page, size: PAGE_SIZE, filters: applied, sort, ...cursor }
   const rows = useObjectRows(workspaceId, connectionId, object.name, query)
   const count = useCountRows(workspaceId, connectionId, object.name)
   const columns = rows.data?.columns ?? []
+  const hints = useMemo(() => indexHints(structure, applied, sort), [structure, applied, sort])
+
+  /** 첫 쪽으로 — 정렬·조건이 바뀌면 키 기준도 버린다 */
+  const firstPage = () => {
+    setPage(1)
+    setCursor(null)
+  }
+
+  /** [다음] — 서버가 키 기준을 쓸 수 있다고 하면 마지막 행의 기본 키 다음부터, 아니면 다음 쪽 번호로 */
+  const nextPage = () => {
+    const lastKey = rows.data?.keyset ? rows.data.lastKey : null
+    setCursor(lastKey ? { after: lastKey } : null)
+    setPage(page + 1)
+  }
+
+  // 키 기준으로 거꾸로 읽다가 맨 앞에 닿았다(그사이 앞 행이 지워졌다) — 쪽 번호를 첫 쪽으로 맞춘다
+  const reachedStart =
+    page > 1 && rows.data?.hasPrevious === false && !rows.isPlaceholderData && !rows.isFetching
+  useEffect(() => {
+    if (!reachedStart) return
+    setPage(1)
+    setCursor(null)
+  }, [reachedStart])
+
+  /** [이전] — 첫 쪽은 쪽 번호로(가장 싸다), 그 밖에는 첫 행의 기본 키 앞에서 */
+  const previousPage = () => {
+    const firstKey = rows.data?.keyset ? rows.data.firstKey : null
+    setCursor(page > 2 && firstKey ? { before: firstKey } : null)
+    setPage(page - 1)
+  }
 
   // 외래 키 따라가기(§5.9) — 부모로는 외래 키 컬럼 셀에서, 자식으로는 행 앞의 단추에서
   const byColumn = useMemo(() => foreignKeyByColumn(structure?.foreignKeys), [structure])
@@ -242,14 +281,14 @@ export function DataTab({
 
   const applyFilters = () => {
     setApplied(toFilters(drafts))
-    setPage(1)
+    firstPage()
     count.reset()
   }
 
   const resetFilters = () => {
     setDrafts([])
     setApplied([])
-    setPage(1)
+    firstPage()
     count.reset()
   }
 
@@ -263,7 +302,7 @@ export function DataTab({
           ? [{ column, direction: 'DESC' }]
           : [],
     )
-    setPage(1)
+    firstPage()
   }
 
   const addDraft = () => {
@@ -399,6 +438,27 @@ export function DataTab({
         </div>
       </form>
 
+      {/* 조회 부하 안내(§5.11) — 막지 않는다 */}
+      {hints.unindexed.length > 0 || hints.pattern.length > 0 ? (
+        <div
+          className="grid gap-0.5 border-b px-3 py-1.5 text-xs text-amber-700 dark:text-amber-500"
+          data-testid="slow-query-hint"
+        >
+          {hints.unindexed.length > 0 ? (
+            <p className="flex items-center gap-1.5">
+              <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+              {t('database.data.slowHint', { columns: hints.unindexed.join(', ') })}
+            </p>
+          ) : null}
+          {hints.pattern.length > 0 ? (
+            <p className="flex items-center gap-1.5">
+              <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+              {t('database.data.slowPatternHint', { columns: hints.pattern.join(', ') })}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* 표 */}
       <div className="min-h-0 flex-1 overflow-auto">
         {rows.isPending ? (
@@ -495,8 +555,8 @@ export function DataTab({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setPage(page - 1)}
-          disabled={page <= 1 || rows.isFetching}
+          onClick={previousPage}
+          disabled={page <= 1 || rows.data?.hasPrevious === false || rows.isFetching}
         >
           <ChevronLeft aria-hidden />
           {t('database.data.prev')}
@@ -506,7 +566,7 @@ export function DataTab({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setPage(page + 1)}
+          onClick={nextPage}
           disabled={!rows.data?.hasNext || rows.isFetching}
         >
           {t('database.data.next')}

@@ -268,6 +268,143 @@ describe('데이터 브라우저 — 데이터 탭', () => {
   })
 })
 
+describe('데이터 브라우저 — 조회 부하 줄이기 (§5.11)', () => {
+  /** id 1~250의 orders — 기본 키 순서면 after·before를 서버처럼 처리하고, 그 밖의 정렬은 쪽 번호로 읽는다 */
+  function serveLargeOrders(queries: RowsQuery[]) {
+    const all = Array.from({ length: 250 }, (_, index) => index + 1)
+    server.use(
+      http.post(
+        '/api/v1/database-manager/workspaces/:w/connections/:c/objects/:o/rows',
+        async ({ request }) => {
+          const query = (await request.json()) as RowsQuery
+          queries.push(query)
+          const keyset = query.sort.length === 0
+          let ids: number[]
+          let hasNext: boolean
+          if (query.after) {
+            const rest = all.filter((id) => id > Number(query.after?.id))
+            ids = rest.slice(0, query.size)
+            hasNext = rest.length > query.size
+          } else if (query.before) {
+            const ahead = all.filter((id) => id < Number(query.before?.id))
+            ids = ahead.slice(-query.size)
+            hasNext = true
+          } else {
+            const ordered = keyset ? all : [...all].reverse()
+            ids = ordered.slice((query.page - 1) * query.size, query.page * query.size)
+            hasNext = ordered.length > query.page * query.size
+          }
+          const key = (id: number | undefined) => (keyset && id ? { id: String(id) } : null)
+          return HttpResponse.json(
+            ok({
+              response: {
+                columns: databaseFixtures.orderColumns,
+                rows: ids.map((id) => [String(id), 'PAID', null, null]),
+                page: query.page,
+                size: query.size,
+                hasNext,
+                truncated: false,
+                elapsedMs: 3,
+                hasPrevious: query.page > 1,
+                keyset,
+                firstKey: key(ids[0]),
+                lastKey: key(ids.at(-1)),
+              },
+            }),
+          )
+        },
+      ),
+    )
+  }
+
+  it('기본 키 순서면 [다음]은 after, [이전]은 before로 읽고 쪽 번호는 화면이 센다', async () => {
+    const queries: RowsQuery[] = []
+    serveLargeOrders(queries)
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await waitFor(() => expect(idsInTable()[0]).toBe('1'))
+    expect(queries.at(-1)).not.toHaveProperty('after')
+
+    await userEvent.click(screen.getByRole('button', { name: '다음' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('101'))
+    expect(queries.at(-1)).toMatchObject({ page: 2, after: { id: '100' } })
+    expect(screen.getByText('2쪽')).toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: '다음' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('201'))
+    expect(queries.at(-1)).toMatchObject({ page: 3, after: { id: '200' } })
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: '이전' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('101'))
+    expect(queries.at(-1)).toMatchObject({ page: 2, before: { id: '201' } })
+    expect(queries.at(-1)).not.toHaveProperty('after')
+    expect(screen.getByText('2쪽')).toBeVisible()
+
+    // 첫 쪽으로는 쪽 번호로 돌아간다
+    await userEvent.click(screen.getByRole('button', { name: '이전' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('1'))
+    expect(screen.getByText('1쪽')).toBeVisible()
+    expect(screen.getByRole('button', { name: '이전' })).toBeDisabled()
+  })
+
+  it('다른 컬럼으로 정렬하면 쪽 번호(OFFSET)로 읽는다 — 정렬을 바꾸면 첫 쪽부터', async () => {
+    const queries: RowsQuery[] = []
+    serveLargeOrders(queries)
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await waitFor(() => expect(idsInTable()[0]).toBe('1'))
+    await userEvent.click(screen.getByRole('button', { name: '다음' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('101'))
+
+    await userEvent.click(screen.getByRole('button', { name: 'status 기준 정렬' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('250'))
+    expect(queries.at(-1)).toMatchObject({ page: 1, sort: [{ column: 'status', direction: 'ASC' }] })
+    expect(queries.at(-1)).not.toHaveProperty('after')
+
+    await userEvent.click(screen.getByRole('button', { name: '다음' }))
+    await waitFor(() => expect(idsInTable()[0]).toBe('150'))
+    expect(queries.at(-1)).toMatchObject({ page: 2 })
+    expect(queries.at(-1)).not.toHaveProperty('after')
+    expect(queries.at(-1)).not.toHaveProperty('before')
+  })
+
+  it('인덱스 없는 컬럼의 정렬·조건과 포함 조건은 느릴 수 있다고 알린다 — 막지는 않는다', async () => {
+    renderBrowser('/workspaces/101/connections/302/data?object=orders')
+    await screen.findByRole('table')
+    // 기본 키 순서 — 안내 없음
+    expect(screen.queryByTestId('slow-query-hint')).not.toBeInTheDocument()
+
+    // status는 인덱스가 있다 — 안내 없음
+    await userEvent.click(screen.getByRole('button', { name: '조건 추가' }))
+    await userEvent.selectOptions(screen.getByLabelText('컬럼'), 'status')
+    await userEvent.type(screen.getByLabelText('값'), 'PAID')
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(idsInTable()).toEqual(['1', '2', '4']))
+    expect(screen.queryByTestId('slow-query-hint')).not.toBeInTheDocument()
+
+    // memo는 인덱스가 없고, 포함 조건이다
+    await userEvent.selectOptions(screen.getByLabelText('컬럼'), 'memo')
+    await userEvent.selectOptions(screen.getByLabelText('연산자'), 'CONTAINS')
+    await userEvent.clear(screen.getByLabelText('값'))
+    await userEvent.type(screen.getByLabelText('값'), '고객')
+    await userEvent.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(idsInTable()).toEqual(['5']))
+    const hint = screen.getByTestId('slow-query-hint')
+    expect(hint).toHaveTextContent('인덱스 없는 컬럼으로 정렬·조건을 걸어 느릴 수 있습니다: memo')
+    expect(hint).toHaveTextContent(
+      '포함·시작 조건은 값을 문자로 바꿔 비교하므로 인덱스가 있어도 느릴 수 있습니다: memo',
+    )
+
+    // 조건을 지우고 인덱스 없는 컬럼으로 정렬해도 알린다
+    await userEvent.click(screen.getByRole('button', { name: '초기화' }))
+    await waitFor(() => expect(screen.queryByTestId('slow-query-hint')).not.toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: 'memo 기준 정렬' }))
+    expect(await screen.findByTestId('slow-query-hint')).toHaveTextContent(
+      '인덱스 없는 컬럼으로 정렬·조건을 걸어 느릴 수 있습니다: memo',
+    )
+    expect(screen.getByTestId('slow-query-hint')).not.toHaveTextContent('포함·시작')
+  })
+})
+
 describe('데이터 브라우저 — 구조 탭·권한', () => {
   it('구조 탭은 컬럼·인덱스·외래 키를 읽기 전용으로 보여 준다', async () => {
     renderBrowser('/workspaces/101/connections/302/data?object=orders')

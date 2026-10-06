@@ -734,6 +734,9 @@ Each statement must finish within 8 seconds. After 8 seconds it is canceled, so 
 * Changed widths are remembered per connection and table in this browser.
 * Long values are truncated, with their full character count shown at the end. Click a cell to see the whole value.
 * NULL appears as a dimmed `NULL`, and an empty string appears as an empty cell. For binary values, only the size is shown.
+* If you sort or filter on a column without an index, or use a {{database.data.op.CONTAINS}} or {{database.data.op.STARTS_WITH}} condition, an orange notice appears under the condition bar. It means the query may be slow on a large table; the query still runs. The notice goes away when you use the primary key or the first column of an index.
+
+![Notice that the query may be slow](/guide-assets/en/data-slow-hint.webp)
 
 ### 11.2 Following foreign keys
 
@@ -1051,6 +1054,8 @@ Start Claude Code or Codex in the folder where you ran the registration command,
 |---|---|
 | Explore the workspace | Reads the document list, the term dictionary, domain types, and design rules |
 | Collect requirements | Registers and edits the requirements that come up in conversation (section 20.3) |
+| Sync the requirement list | Compares a whole requirement list, collected from meeting notes or a planning document, with the document. It first shows what to add, change, and what is missing, and applies everything at once after you confirm. Missing requirements are set to dropped, not deleted |
+| Check acceptance criteria with data | Adds check SQL to acceptance criteria, runs it on the connected database, and tells you whether each criterion passes (section 20.3) |
 | Create and edit ERDs | Creates and edits tables, columns, keys, indexes, relationships, and groups, following the workspace's terms and domain types |
 | Validation and SQL | Gets the design validation result and the SQL script |
 | Import SQL | Creates a new document from a CREATE TABLE script |
@@ -1092,11 +1097,24 @@ Users with the Editor role or higher can add and edit requirements directly.
 * Click **{{model.requirements.add}}** at the top of the panel, or the edit button in an expanded row. Set the title, description, scope, status, group, and tables to link. The code (such as REQ-001) is assigned automatically.
 * Expand a pending row and click **{{model.requirements.changes.show}}** to compare the last applied content with the current one. It shows the changed title, lines added to the description (green +) and removed (red −), and the differences in acceptance criteria and linked tables. The comparison uses the saved document, so unsaved edits appear after you save. A requirement that was never applied shows **{{model.requirements.changes.isNew}}**.
 * Follow the **{{model.requirements.steps.title}}** on the same row. Use **{{model.requirements.steps.tables}}** to change the linked tables. If the document is connected to a database, save it and click **{{model.requirements.steps.database}}** to run the changed structure on the database. This button opens the migration DDL window of DB sync. Finally, click **{{model.requirements.markApplied}}** to change it to applied. This mark is a document edit, so you can undo it.
-* **{{model.requirements.criteria.title}}** are the checks that show a requirement is properly reflected. Write one per line in the edit dialog and check them off in the expanded row.
+* **{{model.requirements.criteria.title}}** are the checks that show a requirement is properly reflected. Write one per line in the edit dialog and check them off in the expanded row. You can also attach check SQL to each criterion and check it with data (below).
 * For a requirement that is no longer needed, change its status to **{{model.requirements.status.dropped}}** instead of deleting it. Delete only entries added by mistake.
 * A document can hold up to 500 requirements.
 
 ![Changes and the steps to apply them](/guide-assets/en/editor-requirement-changes.webp)
+
+![Check SQL for acceptance criteria](/guide-assets/en/editor-requirement-check-dialog.webp)
+
+In a document connected to a database, you can check acceptance criteria against real data.
+
+* In the edit dialog, open a criterion under **{{model.requirements.checks.dialog.title}}** and enter a SELECT statement that returns one value, plus the **{{model.requirements.checks.dialog.expect}}** value. An empty expected value means 0. For example, for "No member has an empty email", enter `SELECT COUNT(*) FROM users WHERE email IS NULL`. Leave the SQL empty to skip the check.
+* Check SQL belongs to the criterion text. If you change the text of a line, enter its check SQL again. Changing criteria or check SQL does not make the requirement pending.
+* A requirement can have up to 20 acceptance criteria of up to 200 characters each. Check SQL can be up to 4,000 characters.
+* When a criterion has check SQL, the **{{model.requirements.checks.run}}** button appears at the top of the panel. It runs the check SQL read-only on the connected database and compares the results with the expected values. **{{model.requirements.checks.runOne}}** in an expanded row checks only that requirement. You need the editor role or higher, and dropped requirements are not checked.
+* Each criterion gets **{{model.requirements.checks.PASSED}}**, **{{model.requirements.checks.FAILED}}**, or **{{model.requirements.checks.ERROR}}**, and the counts appear next to the button. A failure shows the actual and expected values; an error shows why the SQL could not run and the message from the database. Check SQL must be a single SELECT statement.
+* Results are not saved in the document. When you change the check SQL, the result for that criterion disappears. You can also ask Claude to "check the acceptance criteria with data" for the same check.
+
+![Results of checking with data](/guide-assets/en/editor-requirement-checks.webp)
 
 ### 20.4 Applying to a database
 

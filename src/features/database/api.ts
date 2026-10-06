@@ -121,11 +121,19 @@ export interface RowSort {
   direction: 'ASC' | 'DESC'
 }
 
+/** 기본 키 컬럼 이름 → 값(문자열) — 키 기준 페이지 넘김에 쓴다(§5.11) */
+export type RowKey = Record<string, string>
+
 export interface RowsQuery {
+  /** 1부터. after·before와 함께 보내면 서버는 건너뛰는 데 쓰지 않고 그대로 돌려준다 */
   page: number
   size: number
   filters: RowFilter[]
   sort: RowSort[]
+  /** 이 기본 키 값 다음 행부터 — 앞 페이지 응답의 lastKey(§5.11) */
+  after?: RowKey
+  /** 이 기본 키 값 앞의 행 — 뒤 페이지 응답의 firstKey(§5.11). after와 함께 보내지 않는다 */
+  before?: RowKey
 }
 
 export interface RowsPage {
@@ -138,6 +146,13 @@ export interface RowsPage {
   /** 응답 크기 한도 때문에 이 페이지의 행을 줄였는지 */
   truncated: boolean
   elapsedMs: number
+  /** 이전 페이지가 있는지(v1.36) — 없으면 쪽 번호로 판단한다 */
+  hasPrevious?: boolean
+  /** 이 정렬에서 키 기준 페이지 넘김(after·before)을 쓸 수 있는지(v1.36) */
+  keyset?: boolean
+  /** keyset일 때 첫 행·마지막 행의 기본 키 값 — 행이 없으면 null */
+  firstKey?: RowKey | null
+  lastKey?: RowKey | null
 }
 
 export function fetchDatabaseObjects(
@@ -250,6 +265,51 @@ export function fetchCellValue(
     { key, column },
     signal,
   )
+}
+
+/** 수용 기준 데이터 확인 한 건(v1.36) — key는 요청이 정한다(요구사항 코드/기준 id) */
+export interface CriterionCheckRequest {
+  key: string
+  sql: string
+  expect: string
+}
+
+export type CheckStatus = 'PASSED' | 'FAILED' | 'ERROR'
+
+export type CheckErrorCode =
+  | 'MULTIPLE_STATEMENTS'
+  | 'UNSUPPORTED_STATEMENT'
+  | 'NO_RESULT'
+  | 'QUERY_TIMEOUT'
+  | 'QUERY_FAILED'
+
+export interface CheckResult {
+  key: string
+  status: CheckStatus
+  /** 첫 행 첫 열의 값(문자열) — 오류이거나 NULL이면 null */
+  value: string | null
+  expect: string
+  errorCode: CheckErrorCode | null
+  /** QUERY_FAILED는 데이터베이스 문구, UNSUPPORTED_STATEMENT는 첫 키워드 */
+  message: string | null
+  elapsedMs: number
+}
+
+export interface ChecksResult {
+  results: CheckResult[]
+  passed: number
+  failed: number
+  errors: number
+  elapsedMs: number
+}
+
+/** 수용 기준 데이터 확인 — 읽기 전용으로 SELECT를 하나씩 실행해 기대값과 비교한다(1~50건) */
+export function runCriterionChecks(
+  workspaceId: string,
+  connectionId: string,
+  checks: CriterionCheckRequest[],
+) {
+  return apiPost<ChecksResult>(`${base(workspaceId, connectionId)}/checks`, { checks })
 }
 
 /**
