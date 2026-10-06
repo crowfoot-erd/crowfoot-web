@@ -157,7 +157,7 @@ function RelationshipEdgeComponent({
         x: layout.x,
         y: layout.y,
         w: tableRenderWidth(layout.width ?? null, 0),
-        h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+        h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
       }
     },
     [tables, layouts, nodeLookup],

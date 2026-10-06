@@ -134,7 +134,9 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
     table('orders', [pk('orders'), col('orders', 'status', 'VARCHAR', { length: 20, logicalName: n.status }), col('orders', 'total_amount', 'DECIMAL', { precision: options.amountVersion ? 12 : 15, scale: 2, logicalName: `${n.order} ${n.amount}`, defaultValue: options.amountVersion ? null : '0', domain: amountLink }), col('orders', 'ordered_at', 'DATETIME')]),
     table('payments', [pk('payments'), col('payments', 'method', 'VARCHAR', { length: 20 }), col('payments', 'amount', 'DECIMAL', { precision: options.amountVersion ? 12 : 15, scale: 2, logicalName: n.amount, defaultValue: options.amountVersion ? null : '0', domain: amountLink }), col('payments', 'paid_at', 'DATETIME', { nullable: true })]),
     table('products', [pk('products'), col('products', 'name', 'VARCHAR', { length: 100, logicalName: n.name }), col('products', 'price', 'DECIMAL', { precision: 12, scale: 2 }), col('products', 'stock', 'INT')]),
-    table('order_items', [pk('order_items'), col('order_items', 'quantity', 'INT'), col('order_items', 'unit_price', 'DECIMAL', { precision: 12, scale: 2 })]),
+    table('order_items', [pk('order_items'), col('order_items', 'quantity', 'INT'), col('order_items', 'unit_price', 'DECIMAL', { precision: 12, scale: 2 }),
+      // 생성 컬럼(v1.34) — 노드의 ƒ 표시와 컬럼 정보의 생성식 장면
+      col('order_items', 'line_amount', 'DECIMAL', { precision: 14, scale: 2, generated: { expression: 'quantity * unit_price', stored: true } })]),
     table('reviews', [pk('reviews'), col('reviews', 'rating', 'SMALLINT'), col('reviews', 'content', 'TEXT', { nullable: true })]),
   ]
   // 검증 장면 — 규칙에 걸리는 테이블(기본 키 없음, 예약어 이름, 길이 없는 VARCHAR, 같은 이름의 컬럼)
@@ -146,6 +148,9 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
       }),
     )
   }
+  // CHECK 제약(v1.34) — 테이블 노드 키 영역의 CK 행
+  const orders = tables.find((t) => t.physicalName === 'orders')!
+  orders.checks = [{ id: 'ck_orders_total_amount', name: 'ck_orders_total_amount', expression: 'total_amount >= 0' }]
   const positions: Record<string, { x: number; y: number }> = {
     users: { x: 60, y: 60 }, orders: { x: 640, y: 60 }, payments: { x: 1220, y: 60 },
     reviews: { x: 60, y: 520 }, order_items: { x: 640, y: 520 }, products: { x: 1220, y: 520 }, order: { x: 1220, y: 930 },

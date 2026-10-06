@@ -36,7 +36,7 @@ function makeDoc(
 ): EditorDocument {
   return {
     model: { tables, relationships },
-    diagram: { nodes: diagram.nodes ?? {}, notes: diagram.notes ?? [], areas: diagram.areas ?? [], requirements: [], viewport: null },
+    diagram: { nodes: diagram.nodes ?? {}, notes: diagram.notes ?? [], areas: diagram.areas ?? [], requirements: [], validationExceptions: [], viewport: null },
   }
 }
 

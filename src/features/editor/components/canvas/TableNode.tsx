@@ -152,19 +152,21 @@ function toNumberOrNull(raw: string): number | null {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
 }
 
-/* ---------- 키(UK·인덱스) 한 행 ---------- */
+/* ---------- 키(UK·인덱스·CHECK) 한 행 ---------- */
 
 interface KeyRowProps {
-  kind: KeyKind
+  kind: KeyKind | 'check'
   name: string
-  /** 복합 키 컬럼 물리명 — 표시 순서 = 키 컬럼 순서 */
+  /** 복합 키 컬럼 물리명 — 표시 순서 = 키 컬럼 순서. CHECK는 식 원문 한 칸 */
   columnNames: string[]
+  /** 인덱스 종류 — BTREE가 아니면(FULLTEXT·SPATIAL) 배지를 붙인다 */
+  indexType?: string
   canEdit: boolean
   onEdit: () => void
   onRemove: () => void
 }
 
-function KeyRow({ kind, name, columnNames, canEdit, onEdit, onRemove }: KeyRowProps) {
+function KeyRow({ kind, name, columnNames, indexType, canEdit, onEdit, onRemove }: KeyRowProps) {
   const { t } = useTranslation()
   return (
     <div className="group/key flex items-center gap-1 border-t px-1 py-0.5 text-[10px] leading-5">
@@ -173,11 +175,18 @@ function KeyRow({ kind, name, columnNames, canEdit, onEdit, onRemove }: KeyRowPr
           'shrink-0 rounded-sm px-1 text-[9px] font-semibold',
           kind === 'unique'
             ? 'bg-violet-500/15 text-violet-600 dark:text-violet-400'
-            : 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
+            : kind === 'check'
+              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+              : 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
         )}
       >
-        {kind === 'unique' ? 'UK' : 'IX'}
+        {kind === 'unique' ? 'UK' : kind === 'check' ? 'CK' : 'IX'}
       </span>
+      {indexType && indexType !== 'BTREE' ? (
+        <span data-testid="index-type-badge" className="shrink-0 rounded-sm bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
+          {indexType === 'FULLTEXT' ? 'FT' : 'SP'}
+        </span>
+      ) : null}
       <button
         type="button"
         className="nodrag flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left hover:bg-accent disabled:pointer-events-none"
@@ -398,6 +407,18 @@ function ColumnRow({
                 FK
               </span>
             ) : null}
+            {column.generated ? (
+              // 생성 컬럼(v1.34) — 눈에 띄지 않게 ƒ 한 글자, 식은 툴팁으로
+              <span
+                className="shrink-0 px-0.5 text-[10px] italic text-muted-foreground"
+                data-testid="generated-badge"
+                title={t(column.generated.stored ? 'model.editor.table.generatedStored' : 'model.editor.table.generatedVirtual', {
+                  expression: column.generated.expression,
+                })}
+              >
+                ƒ
+              </span>
+            ) : null}
           </div>
           {nameDisplay === 'both' ? (
             <CommitInput
@@ -450,6 +471,19 @@ function ColumnRow({
             onCommit={(value) => patch({ scale: toNumberOrNull(value) })}
             ariaLabel={`${t('model.editor.table.scale')} — ${column.physicalName}`}
             placeholder="2" /* 예시 — DECIMAL(10,2) */
+            disabled={!canEdit}
+          />
+        </span>
+      ) : spec?.fraction ? (
+        // 날짜시간 소수 초 — DATETIME(6). 값은 precision에 둔다
+        <span className={cn('flex items-center px-1', SETTING_CELL_RULE)} onDoubleClick={openInfo}>
+          <CommitInput
+            className={SIZE_INPUT_RULE}
+            type="number"
+            value={toDisplay(column.precision)}
+            onCommit={(value) => patch({ precision: toNumberOrNull(value) })}
+            ariaLabel={`${t('model.editor.table.fraction')} — ${column.physicalName}`}
+            placeholder="0" /* 예시 — DATETIME(6) */
             disabled={!canEdit}
           />
         </span>
@@ -848,7 +882,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   const skin = tableSkin(color)
 
   const addColumn = () => {
-    const column = createColumn({ physicalName: nextColumnName(table.columns) })
+    // 새 컬럼은 VARCHAR(255)로 시작한다 — 길이 없는 VARCHAR는 MySQL DDL이 실패한다(MISSING_TYPE_LENGTH)
+    const column = createColumn({ physicalName: nextColumnName(table.columns), length: 255 })
     commit({ type: 'column/add', tableId: id, column })
     setLastAddedId(column.id)
   }
@@ -1064,7 +1099,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
 
         {/* 키 영역 — 유니크·인덱스(복합 포함). 행 클릭 = 편집 다이얼로그, X = 삭제.
             읽기 전용은 존재하는 행만 표시한다(추가 버튼 없음). */}
-        {canEdit || table.uniques.length > 0 || table.indexes.length > 0 ? (
+        {canEdit || table.uniques.length > 0 || table.indexes.length > 0 || table.checks.length > 0 ? (
           <div className="border-t bg-muted/30">
             {table.uniques.map((unique) => (
               <KeyRow
@@ -1084,11 +1119,30 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
                 key={index.id}
                 kind="index"
                 name={index.name}
-                columnNames={index.columns.map((entry) => `${columnById.get(entry.columnId)?.physicalName ?? '?'} ${entry.order}`)}
+                // 정렬은 BTREE에서만 의미가 있다 — FULLTEXT·SPATIAL은 컬럼 이름만
+                columnNames={index.columns.map((entry) =>
+                  index.type === 'BTREE'
+                    ? `${columnById.get(entry.columnId)?.physicalName ?? '?'} ${entry.order}`
+                    : (columnById.get(entry.columnId)?.physicalName ?? '?'),
+                )}
+                indexType={index.type}
                 canEdit={canEdit}
                 onEdit={() => openKeyInfo(id, index.id, 'index')}
                 onRemove={() =>
                   commit({ type: 'index/set', tableId: id, indexes: table.indexes.filter((i) => i.id !== index.id) })
+                }
+              />
+            ))}
+            {table.checks.map((check) => (
+              <KeyRow
+                key={check.id}
+                kind="check"
+                name={check.name}
+                columnNames={[check.expression]}
+                canEdit={canEdit}
+                onEdit={() => openKeyInfo(id, check.id, 'check')}
+                onRemove={() =>
+                  commit({ type: 'check/set', tableId: id, checks: table.checks.filter((c) => c.id !== check.id) })
                 }
               />
             ))}
@@ -1109,6 +1163,14 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
                 >
                   <Plus aria-hidden className="size-3" />
                   {t('model.editor.key.addIndex')}
+                </button>
+                <button
+                  type="button"
+                  className="nodrag flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => openKeyInfo(id, null, 'check')}
+                >
+                  <Plus aria-hidden className="size-3" />
+                  {t('model.editor.check.add')}
                 </button>
               </div>
             ) : null}

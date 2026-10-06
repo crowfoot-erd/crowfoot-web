@@ -39,7 +39,7 @@ export function objectRects(
     if (!layout) return []
     const size = sizeReports[table.id] ?? {
       w: tableRenderWidth(layout.width ?? null, 0),
-      h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+      h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
     }
     return [{ id: table.id, kind: 'table' as const, x: layout.x, y: layout.y, w: size.w, h: size.h }]
   })

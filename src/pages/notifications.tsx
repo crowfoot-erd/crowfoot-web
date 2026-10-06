@@ -5,6 +5,8 @@
  * 문구는 서버에 없다 — type별 i18n(shell.notifications.type.*)로 렌더한다.
  * v1.24부터 커뮤니티 좌측 메뉴 안(/community/notifications) — 구 /notifications는 리다이렉트.
  */
+import type { NotificationItem } from '@/api/types'
+import { notificationMessageValues, notificationTarget } from '@/layouts/components/notification-target'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -38,9 +40,9 @@ export function NotificationsPage() {
   }
 
   /** 행 클릭 — 읽음 처리 후 문서로. 타인 id·직전 삭제 404는 이동 없이 행을 그대로 둔다(조용히 무시) */
-  const openNotification = (item: { id: string; workspaceId: string; modelId: string }) => {
+  const openNotification = (item: NotificationItem) => {
     markRead.mutate(item.id, {
-      onSuccess: () => navigate(`/workspaces/${item.workspaceId}/models/${item.modelId}`),
+      onSuccess: () => navigate(notificationTarget(item).path),
     })
   }
 
@@ -107,17 +109,14 @@ export function NotificationsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {t(`shell.notifications.type.${item.type}`, {
-                        actor: item.actorDisplayName ?? '',
-                        model: item.modelName,
-                      })}
+                      {t(`shell.notifications.type.${item.type}`, notificationMessageValues(item))}
                     </TableCell>
                     <TableCell>
                       <Link
-                        to={`/workspaces/${item.workspaceId}/models/${item.modelId}`}
+                        to={notificationTarget(item).path}
                         className="underline-offset-3 hover:underline"
                       >
-                        {item.modelName}
+                        {notificationTarget(item).label}
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{timeAgo(item.createdAt)}</TableCell>

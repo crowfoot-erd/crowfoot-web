@@ -7,6 +7,7 @@
  * 포함한다 — DDL 생성 시 같은 스키마에서 충돌하지 않게.
  *
  * 기본 이름: `uk_테이블_컬럼…` / `idx_테이블_컬럼…` 소문자(복합은 선택 순서).
+ * CHECK 제약(v1.34)도 같은 네임스페이스다 — 기본 이름은 `ck_테이블_n`(n은 1부터, 겹치지 않는 첫 번호).
  * 충돌 시 `_1`, `_2` 접미 — FK 컬럼 이름 규칙(relationship.ts)과 같은 방식.
  */
 import type { ErdColumn, ErdModelData, ErdTable } from '@/features/editor/model/content-schema'
@@ -20,6 +21,7 @@ export function documentKeyNames(model: ErdModelData): Set<string> {
     if (table.primaryKey) names.add(table.primaryKey.name.toLowerCase())
     for (const unique of table.uniques) names.add(unique.name.toLowerCase())
     for (const index of table.indexes) names.add(index.name.toLowerCase())
+    for (const check of table.checks) names.add(check.name.toLowerCase())
   }
   for (const rel of model.relationships) names.add(rel.fkName.toLowerCase())
   return names
@@ -47,4 +49,28 @@ export function defaultKeyName(
     ...columns.map((column) => column.physicalName.toLowerCase() || 'column'),
   ]
   return nextName(documentKeyNames(model), parts.join('_'))
+}
+
+/** CHECK 제약 기본 이름 — `ck_테이블_n` 소문자. 식은 컬럼을 가리키지 않으므로 번호로 구분한다 */
+export function defaultCheckName(model: ErdModelData, table: ErdTable): string {
+  const existing = documentKeyNames(model)
+  const base = `ck_${table.physicalName.toLowerCase() || 'table'}`
+  for (let n = 1; ; n += 1) {
+    const candidate = `${base}_${n}`
+    if (!existing.has(candidate)) return candidate
+  }
+}
+
+/** 식의 바깥 괄호 한 겹을 벗긴다 — `(a > 0)`은 `a > 0`. `(a) OR (b)`처럼 괄호가 짝이 아니면 그대로 둔다 */
+export function stripOuterParens(raw: string): string {
+  const text = raw.trim()
+  if (!text.startsWith('(') || !text.endsWith(')')) return text
+  let depth = 0
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === '(') depth += 1
+    else if (text[i] === ')') depth -= 1
+    // 끝에 닿기 전에 바깥 괄호가 닫히면 한 겹이 아니다
+    if (depth === 0 && i < text.length - 1) return text
+  }
+  return text.slice(1, -1).trim()
 }

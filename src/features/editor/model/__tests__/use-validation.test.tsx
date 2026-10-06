@@ -26,6 +26,8 @@ const column = (id: string, physicalName: string) => ({
   defaultValue: null,
   autoIncrement: false,
   comment: null,
+  generated: null,
+  onUpdate: null,
 })
 
 /** 오류 2건(독립 규칙) 문서 — t1: PK·UK 이름 충돌(DUPLICATE_KEY_NAME),
@@ -43,13 +45,14 @@ function twoErrorDocument(): EditorDocument {
         ? [{ id: 'u1', name: 'k', columnIds: [columns[0].id] }]
         : [],
     indexes: [],
+    checks: [],
   })
   return {
     model: {
       tables: [table('t1', [column('t1:c1', 'code')]), table('t2', [column('t2:c1', 'code'), column('t2:c2', 'code')])],
       relationships: [],
     },
-    diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null },
   }
 }
 

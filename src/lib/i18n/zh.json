@@ -215,17 +215,21 @@
       "type": {
         "COMMENT_CREATED": "{{actor}}在{{model}}上留下了评论",
         "REACTION_ADDED": "{{actor}}赞了{{model}}",
-        "OWNER_REPLIED": "{{actor}}回复了你的评论"
+        "OWNER_REPLIED": "{{actor}}回复了你的评论",
+        "FEEDBACK_POST_CREATED": "{{actor}} 在反馈中发布了「{{title}}」",
+        "COMMUNITY_COMMENT_CREATED": "{{actor}} 评论了你的帖子「{{title}}」"
       },
       "typeBadge": {
         "COMMENT_CREATED": "评论",
         "REACTION_ADDED": "点赞",
-        "OWNER_REPLIED": "回复"
+        "OWNER_REPLIED": "回复",
+        "FEEDBACK_POST_CREATED": "新建议",
+        "COMMUNITY_COMMENT_CREATED": "帖子评论"
       },
       "table": {
         "type": "类型",
         "content": "内容",
-        "document": "文档",
+        "document": "对象",
         "createdAt": "时间"
       }
     }
@@ -875,6 +879,7 @@
           "dataType": "类型",
           "length": "长度",
           "precision": "精度",
+          "fraction": "小数秒位数",
           "scale": "小数位",
           "nullable": "允许 NULL",
           "defaultValue": "默认值",
@@ -1095,7 +1100,9 @@
           "note": "备注",
           "node": "节点",
           "area": "分组",
-          "requirement": "需求"
+          "requirement": "需求",
+          "check": "CHECK 约束",
+          "validationException": "校验例外"
         },
         "action": {
           "add": "新增",
@@ -1152,6 +1159,7 @@
         "dataType": "数据类型",
         "length": "长度",
         "precision": "精度",
+        "fraction": "小数秒位数",
         "scale": "小数位数",
         "primaryKey": "主键",
         "nullable": "NOT NULL",
@@ -1165,7 +1173,9 @@
         "columnLogicalName": "列逻辑名",
         "reorder": "调整列顺序——拖拽移动",
         "nnPkLocked": "主键列始终为 NOT NULL",
-        "nameDuplicate": "表名已存在：{{name}}"
+        "nameDuplicate": "表名已存在：{{name}}",
+        "generatedStored": "生成列(STORED): {{expression}}",
+        "generatedVirtual": "生成列(VIRTUAL): {{expression}}"
       },
       "note": {
         "placeholder": "写点备注…",
@@ -1307,9 +1317,19 @@
         "dataType": "类型",
         "length": "长度",
         "precision": "精度",
+        "fraction": "小数秒位数",
         "scale": "小数位数",
         "pkHint": "保存为 PK 后将强制 NOT NULL，并将该列移至顶部（PK 区块）。",
-        "aiHint": "自增仅适用于整数类型的主键（INT/BIGINT/SMALLINT）。"
+        "aiHint": "自增仅适用于整数类型的主键（INT/BIGINT/SMALLINT）。",
+        "onUpdate": "ON UPDATE",
+        "onUpdateHint": "更新行时自动写入的值(例如 CURRENT_TIMESTAMP(6))。仅在 MySQL 文档的 DDL 中输出。",
+        "generated": "生成列",
+        "generatedExpression": "生成表达式",
+        "generatedExpressionRequired": "请输入生成表达式",
+        "generatedKind": "存储方式",
+        "generatedStored": "STORED — 存储值",
+        "generatedVirtual": "VIRTUAL — 读取时计算",
+        "generatedHint": "生成列不能设置默认值、自增或 ON UPDATE。对于不支持 VIRTUAL 的 DBMS,DDL 会以 STORED 输出并给出警告。"
       },
       "key": {
         "unique": "唯一键",
@@ -1329,7 +1349,10 @@
         "noColumns": "此表没有列",
         "remove": "移除键",
         "order": "排序顺序",
-        "orderHint": "索引支持按列设置排序顺序（ASC/DESC）"
+        "orderHint": "索引支持按列设置排序顺序（ASC/DESC）",
+        "indexType": "索引类型",
+        "parser": "解析器(可选)",
+        "indexTypeHint": "FULLTEXT、SPATIAL 索引没有按列排序。解析器仅用于 MySQL 全文检索(例如 ngram)。"
       },
       "dbms": {
         "common": "通用（逻辑）"
@@ -1420,6 +1443,14 @@
         "tables": "成员表",
         "tablesHint": "勾选即可将其加入此分组",
         "noTables": "此文档中没有表"
+      },
+      "check": {
+        "add": "添加 CHECK",
+        "titleAdd": "添加 CHECK 约束",
+        "titleEdit": "编辑 CHECK 约束",
+        "expression": "表达式",
+        "expressionHint": "按原样填写括号内的表达式(例如 price >= 0)。表达式不会被解析,修改列名后需要自行修改表达式。",
+        "expressionRequired": "请输入表达式"
       }
     },
   "requirements": {"criteria": {"title": "验收标准", "count": "标准 {{done}}/{{total}}", "hint": "每行写一条，用来确认需求是否已正确体现"}, "search": "查找编号、标题、内容、表", "progress": "已体现 {{applied}}/{{total}}", "domains": {"label": "领域", "all": "全部", "noRequirements": "该领域还没有需求", "showOnCanvas": "在画布中查看"}, "export": {"button": "导出", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "需求规格", "columns": {"code": "编号", "domain": "领域", "state": "状态", "title": "标题", "description": "内容", "tables": "表"}}, "title": "需求", "add": "添加", "filterLabel": "状态筛选", "state": {"APPLIED": "已反映", "PENDING": "待反映", "UNLINKED": "链接断开", "LEFTOVER": "需要清理", "DRAFT": "评审中", "DROPPED": "已排除"}, "stateHint": {"APPLIED": "已确认的需求已反映到 ERD", "PENDING": "已确认，但 ERD 尚未反映最新内容", "UNLINKED": "已标记为已反映，但没有链接的表", "LEFTOVER": "已排除的需求仍链接着表", "DRAFT": "尚未确认的需求", "DROPPED": "不再处理的需求"}, "status": {"draft": "评审中", "confirmed": "已确认", "dropped": "已排除"}, "scope": {"tables": "功能", "document": "通用"}, "group": {"unassigned": "未分类", "document": "通用"}, "empty": "没有需求", "emptyDetail": "可以由 Claude 通过 MCP 登记，也可以自己添加", "emptyFiltered": "没有符合条件的需求", "tableCount": "表 {{count}}", "noDescription": "无内容", "linkedTables": "链接的表", "noTables": "没有链接的表", "markApplied": "标记为已反映", "revision": "修订 {{revision}}", "removeConfirm": "只删除登记错误的条目", "limit": "每个文档最多登记 {{max}} 条需求", "tableInfo": "需求", "untraced": {"title": "没有依据的表", "hint": "未链接到任何需求的表"}, "dialog": {"createTitle": "添加需求", "editTitle": "编辑需求", "title": "标题", "titleRequired": "请输入标题", "description": "内容", "revisionHint": "修改标题或内容后会变为待反映", "scope": "范围", "status": "状态", "area": "领域(分组)", "tables": "要链接的表", "documentHint": "通用需求适用于整个文档，不链接到表"}},
@@ -1444,6 +1475,8 @@
       "FK_NULLABILITY_MISMATCH": "外键可空性不一致",
       "ONE_TO_ONE_MISSING_UK": "1:1 关系缺少唯一键",
       "COMPOSITE_KEY_DUPLICATE_COLUMN": "复合键列重复",
+      "UNKNOWN_DATA_TYPE": "目录中没有的类型",
+      "MISSING_TYPE_LENGTH": "缺少长度的类型",
       "MISSING_PK": "缺少主键",
       "EMPTY_TABLE": "没有列的表",
       "FK_MAPPING_EMPTY": "外键列映射为空",
@@ -1453,6 +1486,17 @@
       "MISSING_LOGICAL_NAME": "缺少逻辑名",
       "FK_WITHOUT_INDEX": "外键首列无索引",
       "WIDE_TABLE": "列过多（超过 30）"
+    },
+    "exception": {
+      "chip": "例外",
+      "listLabel": "校验例外列表",
+      "stale": "不适用",
+      "meta": "{{author}} · {{date}}",
+      "remove": "解除例外",
+      "mark": "标记为有意的例外",
+      "reason": "例外原因",
+      "reasonPlaceholder": "用一行写下原因(200 字以内)",
+      "save": "保存"
     }
   },
     "import": {
@@ -1689,7 +1733,9 @@
     "submit": "创建文档",
     "fieldRequired": "必填",
     "successToast": "已创建“{{name}}”——{{tables}} 张表 · {{relationships}} 个关系",
-    "skippedToast": "已跳过的语句：{{skipped}}"
+    "skippedToast": "已跳过的语句：{{skipped}}",
+    "previewWarnings": "已读取但被缩减或舍弃的项目 {{count}} 个",
+    "warningsToast": "有 {{count}} 个项目已读取但被缩减或舍弃 — 请在预览中查看列表"
   },
   "landing": {
     "edge": {

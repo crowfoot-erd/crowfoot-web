@@ -54,6 +54,7 @@ function fixture(): EditorDocument {
         requirement({ id: 'r4', code: 'REQ-004', scope: 'document', title: '모든 테이블에 생성 시각을 둔다', status: 'confirmed' }),
         requirement({ id: 'r5', code: 'REQ-005', areaId: 'a-order', title: '선물하기', status: 'dropped' }),
       ],
+      validationExceptions: [],
       viewport: null,
     },
   }

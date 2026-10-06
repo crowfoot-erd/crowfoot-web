@@ -30,7 +30,7 @@ const ORIGIN = { x: 80, y: 80 }
 
 const sizeOf = (table: ErdTable, width: number | null) => ({
   w: tableRenderWidth(width, 0),
-  h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+  h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
 })
 
 const overlaps = (a: Box, b: Box, margin = 40): boolean =>

@@ -211,8 +211,9 @@ Crowfootの画面は大きく3種類あります。
 
 データベースに接続せずに、スクリプトだけでドキュメントを作成する方法です。
 
-* 読み取る文は`CREATE TABLE`と`ALTER TABLE ... ADD CONSTRAINT`です。カラム、型、NOT NULL、デフォルト値、自動採番、主キー、ユニークキー、外部キー、コメントを読み取ります。PostgreSQLの`COMMENT ON`も論理名として読み取ります。
-* `CREATE INDEX`、`CREATE VIEW`、`INSERT`など読み取れない文はスキップし、スキップした文をプレビューに表示します。
+* 読み取る文は`CREATE TABLE`、`ALTER TABLE ... ADD CONSTRAINT`、`CREATE [UNIQUE|FULLTEXT] INDEX`です。カラム、型（小数秒の桁数を含む）、NOT NULL、デフォルト値、自動採番、主キー、ユニークキー、インデックス（FULLTEXT・SPATIALを含む）、外部キー、CHECK制約、生成列、`ON UPDATE`、コメントを読み取ります。PostgreSQLの`COMMENT ON`も論理名として読み取ります。
+* `CREATE VIEW`、`INSERT`など読み取れない文はスキップし、スキップした文をプレビューに表示します。
+* 読み込んだが縮小・破棄した項目は、その下の「読み込んだが縮小・破棄した項目」の一覧に別に表示されます。たとえば Crowfoot の型に縮小した型、カタログにない型、破棄したカラム属性（`UNSIGNED`、`COLLATE`、`CHARACTER SET`など）、読み取らないセッション文（`SET FOREIGN_KEY_CHECKS`、`USE`）です。ドキュメントを作成する前にこの一覧を確認してください。
 * `CREATE TABLE`が1つもない場合は、ドキュメントを作成できません。
 * ドキュメント名を空欄のままにすると、「SQL ERD」という名前で作成されます。
 * この方法で作成したドキュメントは、データベースに接続されていません。DB同期を使うには、ドキュメント一覧で **{{model.list.menu.connect}}**を選びます。
@@ -359,7 +360,8 @@ Crowfootの画面は大きく3種類あります。
 | **D** | ドメインタイプを使用しているカラム（9.4節） |
 | × | カラムを削除します |
 | **{{model.editor.table.addColumn}}** | 末尾にカラムを追加します |
-| **{{model.editor.key.addUnique}}**、**{{model.editor.key.addIndex}}** | ユニークキーとインデックスを作成します（6.5節） |
+| **{{model.editor.key.addUnique}}**、**{{model.editor.key.addIndex}}**、**{{model.editor.check.add}}** | ユニークキー、インデックス、CHECK制約を作成します（6.5節） |
+| **ƒ** | 生成列です。マウスを乗せると生成式が表示されます（6.3節） |
 | 枠の点 | リレーションを作成するためのハンドル（7.1節） |
 
 主キーのカラムは常に先頭にまとめて表示されます。
@@ -380,6 +382,8 @@ Crowfootの画面は大きく3種類あります。
 | {{model.editor.domainType.label}} | ドメインタイプを選ぶと、型、長さ、NULL許可、デフォルト値がその値で設定されます（9.4節） |
 | {{model.editor.columnInfo.dataType}}、{{model.editor.columnInfo.length}} | 型に応じて、長さ、または精度とスケールの欄が表示されます |
 | {{model.editor.columnInfo.defaultValue}} | 例：`0`、`NOW()` |
+| {{model.editor.columnInfo.onUpdate}} | 行を更新するときに自動で入れる値です。例：`CURRENT_TIMESTAMP(6)`。MySQLのドキュメントでのみ表示されます |
+| {{model.editor.columnInfo.generated}} | オンにすると{{model.editor.columnInfo.generatedExpression}}を入力し、STORED（値を保存）とVIRTUAL（読み取り時に計算）から選びます。生成列にはデフォルト値、自動採番、ON UPDATEを設定できないため、それらの欄はオフになり空になります |
 | {{model.editor.columnInfo.comment}} | ドキュメント内でのみ使うカラムの説明。SQLのCOMMENTには含まれません |
 
 型の名前はDBMSに合わせて表示されます。たとえば日時の型は、PostgreSQLのドキュメントではTIMESTAMP、MySQLのドキュメントではDATETIMEと表示されます。
@@ -397,8 +401,11 @@ Crowfootの画面は大きく3種類あります。
 1. テーブルの下にある **{{model.editor.key.addUnique}}** または **{{model.editor.key.addIndex}}**を押します。
 2. 名前を入力してカラムを選びます。選んだ順番が複合キーのカラム順になります。順番は矢印で変更できます。
 3. インデックスでは、カラムごとに並び順（ASC、DESC）を指定できます。
+4. インデックスは **{{model.editor.key.indexType}}**をBTREE、FULLTEXT、SPATIALから選びます。FULLTEXTとSPATIALには並び順がありません。FULLTEXTではMySQLの全文検索パーサー（例：`ngram`）を指定できます。
 
-作成したキーは、テーブルの下に **UK**、**IX** の行として表示されます。行をクリックすると編集や削除ができます。リレーションを作成すると、外部キーカラムのインデックスが自動で作成されます。
+作成したキーは、テーブルの下に **UK**、**IX**、**CK** の行として表示されます。FULLTEXTインデックスには **FT**、SPATIALインデックスには **SP** が付きます。行をクリックすると編集や削除ができます。リレーションを作成すると、外部キーカラムのインデックスが自動で作成されます。
+
+**{{model.editor.check.add}}**を押すとCHECK制約を作成します。名前は`ck_テーブル_1`のように入力され、式は括弧の中の内容をそのまま書きます（例：`price >= 0`）。式は解釈しないため、カラム名を変えたら式も自分で直してください。カラムを削除してもCHECK制約は残ります。
 
 ## 7. リレーション
 
@@ -770,18 +777,22 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}**を押す
 * 項目をクリックすると、キャンバスがそのテーブルの位置に移動します。
 * パネルを開いている間は、問題のあるテーブルの枠にも深刻度の色が表示されます。参考はキャンバスには表示されません。
 * ツールバーの **{{model.validation.toggle}}**ボタンにはエラーの件数が、エラーがない場合は警告の件数が表示されます。パネルを閉じていても、件数は常に最新の状態に保たれます。
+* 警告と参考の項目は、意図したものであれば例外にできます。項目にマウスを乗せ、右側の目のアイコン（**{{model.validation.exception.mark}}**）を押し、理由を1行（200文字以内）で書いて保存します。エラーは例外にできません。
+* 例外にした項目は、ボタンの件数、深刻度ボタンの件数、キャンバスの枠の色から除かれます。上部の **{{model.validation.exception.chip}}** ボタンを押すと、例外の一覧が理由、作成者、日付とともに表示され、**{{model.validation.exception.remove}}**で元に戻せます。問題が直って表示されなくなった例外には **{{model.validation.exception.stale}}** が付きます。対象のテーブル、カラム、リレーションを削除すると例外も削除されます。例外はドキュメントに保存されるため、元に戻すや共同編集にも反映され、閲覧権限だけの人は見ることだけができます。
 * エラーがあっても保存は妨げられません。エラーはデータベースへの反映時に失敗する可能性のある問題なので、デプロイする前に修正してください。
 
 | 深刻度 | ルール | 意味 |
 |---|---|---|
 | エラー | {{model.validation.rules.DUPLICATE_TABLE_NAME}} | 同じ物理名のテーブルが2つ以上ある |
 | エラー | {{model.validation.rules.DUPLICATE_COLUMN_NAME}} | 1つのテーブルに同じ名前のカラムが2つ以上ある |
-| エラー | {{model.validation.rules.DUPLICATE_KEY_NAME}} | ユニークキーやインデックスの名前が重複している |
+| エラー | {{model.validation.rules.DUPLICATE_KEY_NAME}} | ユニークキー、インデックス、CHECK制約の名前が重複している |
 | エラー | {{model.validation.rules.COMPOSITE_KEY_DUPLICATE_COLUMN}} | 1つのキーに同じカラムが2回含まれている |
 | エラー | {{model.validation.rules.FK_TYPE_MISMATCH}} | 外部キーカラムと親カラムの型が異なる |
 | エラー | {{model.validation.rules.FK_TARGET_NOT_KEY}} | 外部キーが参照するカラムが主キーでもユニークキーでもない |
 | エラー | {{model.validation.rules.FK_NULLABILITY_MISMATCH}} | リレーションの多重度と外部キーのNULL許可が一致していない |
 | エラー | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | 1:1リレーションなのに外部キーにユニークキーがない |
+| エラー | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | カラムの型がCrowfootの型一覧にない |
+| エラー | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR、VARBINARYに長さがない（PostgreSQLのドキュメントは検査しない） |
 | 警告 | {{model.validation.rules.MISSING_PK}} | 主キーのないテーブル |
 | 警告 | {{model.validation.rules.EMPTY_TABLE}} | カラムのないテーブル |
 | 警告 | {{model.validation.rules.FK_MAPPING_EMPTY}} | リレーションに対応付けられたカラムがない |
@@ -900,11 +911,15 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}**を押す
 
 ![通知](/guide-assets/ja/shell-notifications.webp)
 
-ベルのアイコンを押すと、最近の通知が表示されます。通知には次の3種類があります。
+ベルのアイコンを押すと、最近の通知が表示されます。通知には次の5種類があります。
 
 * 自分のドキュメントにコメントが付いたとき
 * 自分のドキュメントにいいねが付いたとき
 * 自分のコメントにドキュメントの作成者が返信したとき
+* 自分がフィードバックに書いた投稿に他の人がコメントしたとき。自分のコメントは通知しません
+* （管理者のみ）他の人がフィードバックに新しい投稿をしたとき
+
+通知を押すと既読になり、そのドキュメントや投稿に移動します。コメントの通知はそのコメントまでスクロールし、しばらく強調して表示します。
 
 **{{shell.notifications.markAll}}**で通知をすべて既読にでき、**{{shell.notifications.viewAll}}**で通知一覧に移動します。
 

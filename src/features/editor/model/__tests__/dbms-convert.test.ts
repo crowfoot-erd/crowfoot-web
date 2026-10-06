@@ -145,7 +145,7 @@ describe('convertDocumentDbms — FK 인덱스 정책', () => {
         ...doc.model,
         tables: doc.model.tables.map((t) =>
           t.id === 'child'
-            ? { ...t, indexes: [{ id: 'ix1', name: 'idx_mine', columns: [{ columnId: 'c-fk', order: 'ASC' as const }] }] }
+            ? { ...t, indexes: [{ id: 'ix1', name: 'idx_mine', columns: [{ columnId: 'c-fk', order: 'ASC' as const }], type: 'BTREE', parser: null }] }
             : t,
         ),
       },
@@ -164,7 +164,7 @@ describe('convertDocumentDbms — FK 인덱스 정책', () => {
         ...doc.model,
         tables: doc.model.tables.map((t) =>
           t.id === 'child'
-            ? { ...t, indexes: [{ id: 'ix1', name: 'idx_orders_member_id', columns: [{ columnId: 'c-fk', order: 'ASC' as const }] }] }
+            ? { ...t, indexes: [{ id: 'ix1', name: 'idx_orders_member_id', columns: [{ columnId: 'c-fk', order: 'ASC' as const }], type: 'BTREE', parser: null }] }
             : t,
         ),
       },

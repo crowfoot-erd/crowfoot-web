@@ -215,17 +215,21 @@
       "type": {
         "COMMENT_CREATED": "{{actor}}님이 {{model}}에 댓글을 남겼습니다",
         "REACTION_ADDED": "{{actor}}님이 {{model}}을 좋아합니다",
-        "OWNER_REPLIED": "{{actor}}님이 내 댓글에 답했습니다"
+        "OWNER_REPLIED": "{{actor}}님이 내 댓글에 답했습니다",
+        "FEEDBACK_POST_CREATED": "{{actor}}님이 제안 및 신고에 새 글을 올렸습니다 — 「{{title}}」",
+        "COMMUNITY_COMMENT_CREATED": "{{actor}}님이 내 글 「{{title}}」에 댓글을 남겼습니다"
       },
       "typeBadge": {
         "COMMENT_CREATED": "댓글",
         "REACTION_ADDED": "좋아요",
-        "OWNER_REPLIED": "답글"
+        "OWNER_REPLIED": "답글",
+        "FEEDBACK_POST_CREATED": "새 제안",
+        "COMMUNITY_COMMENT_CREATED": "글 댓글"
       },
       "table": {
         "type": "유형",
         "content": "내용",
-        "document": "문서",
+        "document": "대상",
         "createdAt": "시각"
       }
     }
@@ -875,6 +879,7 @@
           "dataType": "타입",
           "length": "길이",
           "precision": "정밀도",
+          "fraction": "소수 초 자릿수",
           "scale": "스케일",
           "nullable": "NULL 허용",
           "defaultValue": "기본값",
@@ -1095,7 +1100,9 @@
           "note": "메모",
           "node": "노드",
           "area": "그룹",
-          "requirement": "요구사항"
+          "requirement": "요구사항",
+          "check": "CHECK 제약",
+          "validationException": "검증 예외"
         },
         "action": {
           "add": "추가",
@@ -1152,6 +1159,7 @@
         "dataType": "데이터 타입",
         "length": "길이",
         "precision": "정밀도",
+        "fraction": "소수 초 자릿수",
         "scale": "스케일",
         "primaryKey": "기본 키",
         "nullable": "NOT NULL",
@@ -1165,7 +1173,9 @@
         "columnLogicalName": "컬럼 논리명",
         "reorder": "컬럼 순서 변경 — 드래그하여 이동",
         "nnPkLocked": "기본 키 컬럼은 NOT NULL이 고정입니다",
-        "nameDuplicate": "이미 존재하는 테이블 물리명입니다: {{name}}"
+        "nameDuplicate": "이미 존재하는 테이블 물리명입니다: {{name}}",
+        "generatedStored": "생성 컬럼(STORED): {{expression}}",
+        "generatedVirtual": "생성 컬럼(VIRTUAL): {{expression}}"
       },
       "note": {
         "placeholder": "메모를 입력하세요",
@@ -1307,9 +1317,19 @@
         "dataType": "타입",
         "length": "길이",
         "precision": "정밀도",
+        "fraction": "소수 초 자릿수",
         "scale": "스케일",
         "pkHint": "PK로 저장하면 NOT NULL이 강제되고 컬럼이 최상단(PK 블록)으로 이동합니다.",
-        "aiHint": "자동 증가는 PK + 정수 타입(INT·BIGINT·SMALLINT)에서만 설정할 수 있습니다."
+        "aiHint": "자동 증가는 PK + 정수 타입(INT·BIGINT·SMALLINT)에서만 설정할 수 있습니다.",
+        "onUpdate": "ON UPDATE",
+        "onUpdateHint": "행을 고칠 때 자동으로 넣는 값입니다(예: CURRENT_TIMESTAMP(6)). MySQL 문서에서만 DDL에 실립니다.",
+        "generated": "생성 컬럼",
+        "generatedExpression": "생성식",
+        "generatedExpressionRequired": "생성식을 입력하세요",
+        "generatedKind": "저장 방식",
+        "generatedStored": "STORED — 값을 저장",
+        "generatedVirtual": "VIRTUAL — 읽을 때 계산",
+        "generatedHint": "생성 컬럼에는 기본값·자동 증가·ON UPDATE를 둘 수 없습니다. VIRTUAL을 지원하지 않는 DBMS의 DDL은 경고와 함께 STORED로 냅니다."
       },
       "key": {
         "unique": "유니크",
@@ -1329,7 +1349,10 @@
         "noColumns": "테이블에 컬럼이 없습니다",
         "remove": "키 삭제",
         "order": "정렬 순서",
-        "orderHint": "인덱스는 컬럼별 정렬(ASC/DESC)을 지정할 수 있어요"
+        "orderHint": "인덱스는 컬럼별 정렬(ASC/DESC)을 지정할 수 있어요",
+        "indexType": "인덱스 종류",
+        "parser": "파서(선택)",
+        "indexTypeHint": "FULLTEXT·SPATIAL 인덱스는 컬럼별 정렬을 두지 않습니다. 파서는 MySQL 전문 검색에만 쓰입니다(예: ngram)."
       },
       "dbms": {
         "common": "공용(논리)"
@@ -1420,6 +1443,14 @@
         "tables": "멤버 테이블",
         "tablesHint": "체크하면 이 그룹의 멤버가 됩니다",
         "noTables": "문서에 테이블이 없습니다"
+      },
+      "check": {
+        "add": "CHECK 추가",
+        "titleAdd": "CHECK 제약 추가",
+        "titleEdit": "CHECK 제약 편집",
+        "expression": "식",
+        "expressionHint": "괄호 안의 식을 그대로 적습니다(예: price >= 0). 식은 해석하지 않으므로 컬럼 이름을 바꾸면 식도 직접 고쳐야 합니다.",
+        "expressionRequired": "식을 입력하세요"
       }
     },
   "requirements": {"criteria": {"title": "수용 기준", "count": "기준 {{done}}/{{total}}", "hint": "한 줄에 하나씩 적습니다. 요구사항이 제대로 반영됐는지 확인할 항목입니다"}, "search": "코드·제목·내용·테이블 찾기", "progress": "반영 {{applied}}/{{total}}", "domains": {"label": "도메인", "all": "전체", "noRequirements": "이 도메인에는 요구사항이 아직 없습니다", "showOnCanvas": "캔버스에서 보기"}, "export": {"button": "내보내기", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "요구사항 명세", "columns": {"code": "코드", "domain": "도메인", "state": "상태", "title": "제목", "description": "내용", "tables": "테이블"}}, "title": "요구사항", "add": "추가", "filterLabel": "상태 필터", "state": {"APPLIED": "반영됨", "PENDING": "반영 대기", "UNLINKED": "연결 끊김", "LEFTOVER": "정리 필요", "DRAFT": "검토 중", "DROPPED": "제외"}, "stateHint": {"APPLIED": "확정된 요구사항이 ERD에 반영되어 있습니다", "PENDING": "확정됐지만 ERD가 최신 내용을 아직 반영하지 않았습니다", "UNLINKED": "반영했다고 표시했지만 연결된 테이블이 없습니다", "LEFTOVER": "제외한 요구사항에 테이블이 아직 연결되어 있습니다", "DRAFT": "아직 확정하지 않은 요구사항입니다", "DROPPED": "더 이상 다루지 않는 요구사항입니다"}, "status": {"draft": "검토 중", "confirmed": "확정", "dropped": "제외"}, "scope": {"tables": "기능", "document": "공통"}, "group": {"unassigned": "미분류", "document": "공통"}, "empty": "요구사항이 없습니다", "emptyDetail": "Claude가 MCP로 등록하거나 직접 추가할 수 있습니다", "emptyFiltered": "조건에 맞는 요구사항이 없습니다", "tableCount": "테이블 {{count}}", "noDescription": "내용 없음", "linkedTables": "연결된 테이블", "noTables": "연결된 테이블이 없습니다", "markApplied": "반영함으로 표시", "revision": "개정 {{revision}}", "removeConfirm": "잘못 등록한 항목만 삭제하세요", "limit": "요구사항은 문서당 {{max}}개까지 등록할 수 있습니다", "tableInfo": "요구사항", "untraced": {"title": "근거 없는 테이블", "hint": "어떤 요구사항에도 연결되지 않은 테이블입니다"}, "dialog": {"createTitle": "요구사항 추가", "editTitle": "요구사항 수정", "title": "제목", "titleRequired": "제목을 입력하세요", "description": "내용", "revisionHint": "제목이나 내용을 고치면 반영 대기가 됩니다", "scope": "범위", "status": "상태", "area": "도메인(그룹)", "tables": "연결할 테이블", "documentHint": "공통 요구사항은 문서 전체에 적용되며 테이블에 연결하지 않습니다"}},
@@ -1444,6 +1475,8 @@
       "FK_NULLABILITY_MISMATCH": "FK NULL 허용 불일치",
       "ONE_TO_ONE_MISSING_UK": "1:1 관계에 UK 없음",
       "COMPOSITE_KEY_DUPLICATE_COLUMN": "복합 키 컬럼 중복",
+      "UNKNOWN_DATA_TYPE": "카탈로그에 없는 타입",
+      "MISSING_TYPE_LENGTH": "길이가 없는 타입",
       "MISSING_PK": "기본키 없음",
       "EMPTY_TABLE": "컬럼 없는 테이블",
       "FK_MAPPING_EMPTY": "FK 컬럼 매핑 없음",
@@ -1453,6 +1486,17 @@
       "MISSING_LOGICAL_NAME": "논리명 없음",
       "FK_WITHOUT_INDEX": "FK 선두 컬럼 인덱스 없음",
       "WIDE_TABLE": "컬럼 과다(30 초과)"
+    },
+    "exception": {
+      "chip": "예외",
+      "listLabel": "검증 예외 목록",
+      "stale": "해당 없음",
+      "meta": "{{author}} · {{date}}",
+      "remove": "예외 해제",
+      "mark": "의도된 예외로 표시",
+      "reason": "예외 사유",
+      "reasonPlaceholder": "예외 사유를 한 줄로 적으세요 (200자 이내)",
+      "save": "저장"
     }
   },
     "import": {
@@ -1689,7 +1733,9 @@
     "submit": "문서 만들기",
     "fieldRequired": "필수 값입니다",
     "successToast": "'{{name}}' 문서를 만들었습니다 — 테이블 {{tables}}개 · 관계 {{relationships}}개",
-    "skippedToast": "읽지 못한 문장: {{skipped}}"
+    "skippedToast": "읽지 못한 문장: {{skipped}}",
+    "previewWarnings": "읽었지만 줄이거나 버린 항목 {{count}}건",
+    "warningsToast": "읽었지만 줄이거나 버린 항목이 {{count}}건 있습니다 — 미리보기에서 목록을 확인하세요"
   },
   "landing": {
     "edge": {

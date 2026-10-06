@@ -195,7 +195,7 @@ export function pasteFromClipboard(
     ...clipboard.payload.tables.map((table) => ({
       ...positionOf(table.id),
       w: MIN_WIDTH,
-      h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+      h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
     })),
     ...clipboard.payload.notes.map((note) => ({ x: note.x, y: note.y, w: note.width, h: NOTE_ESTIMATED_HEIGHT })),
   ]

@@ -50,7 +50,7 @@ import {
   type RelationshipType,
 } from '@/features/editor/model/content-schema'
 import { useEditLock } from '@/features/editor/collab-locks'
-import { dbmsAutoIndexesFk } from '@/features/editor/model/dbms'
+import { dbmsAutoIndexesFk, typeSizeSuffix } from '@/features/editor/model/dbms'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 
 export interface RelationshipDialogProps {
@@ -490,8 +490,7 @@ export function RelationshipDialog({
                       <span className="font-mono">{column.physicalName}</span>
                       <span className="text-muted-foreground">
                         {column.dataType}
-                        {column.length !== null ? `(${column.length})` : ''}
-                        {column.precision !== null ? `(${column.precision},${column.scale ?? 0})` : ''}
+                        {typeSizeSuffix(column)}
                         {column.nullable ? '' : ' · NOT NULL'}
                       </span>
                     </li>

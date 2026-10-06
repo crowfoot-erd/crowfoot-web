@@ -37,7 +37,7 @@ export type HubLayoutStrategy = 'ring' | 'tree'
 function estimateTableSize(table: ErdTable, width: number | null) {
   return {
     w: tableRenderWidth(width, 0),
-    h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+    h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
   }
 }
 

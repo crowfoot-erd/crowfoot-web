@@ -6,6 +6,7 @@
  * - [미리보기]는 선택 단계 — 만들어질 테이블 수·관계 수가 생성과 정확히 같은 경로로 계산된다.
  * - 성공 → 요약 토스트 + 문서 목록 갱신 + 리버스와 같은 elk 계층 배치 저장(실패 시 그리드 유지).
  * - 읽지 못한 문장(CREATE INDEX·VIEW…)은 skipped로 돌아온다 — 전체 실패가 아니다.
+ * - 읽었지만 줄이거나 버린 항목(타입 축소·버린 속성·세션 문장)은 warnings로 따로 돌아온다(v1.34).
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FileCode2, FileUp, Loader2, TriangleAlert } from 'lucide-react'
@@ -159,6 +160,10 @@ export function SqlImportDialog({ open, onOpenChange, workspaceId }: SqlImportDi
           )
           if (result.skipped.length > 0) {
             toast.warning(t('sqlImport.skippedToast', { skipped: result.skipped.join(', ') }))
+          }
+          // 읽었지만 줄이거나 버린 항목(v1.34) — 건수만 알린다(목록은 미리보기에서 본다)
+          if ((result.warnings ?? []).length > 0) {
+            toast.warning(t('sqlImport.warningsToast', { count: result.warnings.length }))
           }
           void applyAutoLayout(result)
         },
@@ -320,6 +325,20 @@ export function SqlImportDialog({ open, onOpenChange, workspaceId }: SqlImportDi
                       {t('sqlImport.previewSkipped')}: {preview.skipped.join(' · ')}
                     </span>
                   </p>
+                ) : null}
+                {/* 읽었지만 줄이거나 버린 항목(v1.34) — 읽지 못한 문장과 따로 보인다 */}
+                {(preview.warnings ?? []).length > 0 ? (
+                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-400" data-testid="sql-import-warnings">
+                    <p className="flex items-center gap-1.5 font-medium">
+                      <TriangleAlert aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                      {t('sqlImport.previewWarnings', { count: preview.warnings.length })}
+                    </p>
+                    <ul className="mt-1 grid max-h-32 list-disc gap-0.5 overflow-y-auto pl-5">
+                      {preview.warnings.map((warning, index) => (
+                        <li key={`${index}:${warning}`}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
               </div>
             ) : null}

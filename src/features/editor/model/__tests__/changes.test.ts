@@ -275,10 +275,10 @@ describe('applyChange — 키(UK·인덱스)·설정', () => {
     d = applyChange(d, {
       type: 'index/set',
       tableId: 'T1',
-      indexes: [{ id: 'i1', name: 'idx_orders_created', columns: [{ columnId: 'c2', order: 'DESC' }] }],
+      indexes: [{ id: 'i1', name: 'idx_orders_created', columns: [{ columnId: 'c2', order: 'DESC' }], type: 'BTREE', parser: null }],
     })
     expect(d.model.tables[0].uniques).toEqual([{ id: 'u1', name: 'uk_orders_email', columnIds: ['c1'] }])
-    expect(d.model.tables[0].indexes).toEqual([{ id: 'i1', name: 'idx_orders_created', columns: [{ columnId: 'c2', order: 'DESC' }] }])
+    expect(d.model.tables[0].indexes).toEqual([{ id: 'i1', name: 'idx_orders_created', columns: [{ columnId: 'c2', order: 'DESC' }], type: 'BTREE', parser: null }])
 
     // 교체 — 편집은 목록 전체를 한 번에
     d = applyChange(d, {
@@ -298,14 +298,14 @@ describe('applyChange — 키(UK·인덱스)·설정', () => {
         createColumn({ id: 'c2', physicalName: 'created_at' }),
       ],
       uniques: [{ id: 'u1', name: 'uk_orders', columnIds: ['c1', 'c2'] }],
-      indexes: [{ id: 'i1', name: 'idx_orders', columns: [{ columnId: 'c1', order: 'ASC' }, { columnId: 'c2', order: 'DESC' }] }],
+      indexes: [{ id: 'i1', name: 'idx_orders', columns: [{ columnId: 'c1', order: 'ASC' }, { columnId: 'c2', order: 'DESC' }], type: 'BTREE', parser: null }],
     })
     d = applyChange(d, { type: 'table/create', table, position: { x: 0, y: 0 } })
 
     // 복합 UK/IX에서 1개 제거 → 컬럼만 줄어든다(정렬 보존)
     d = applyChange(d, { type: 'column/remove', tableId: 'T1', columnId: 'c2' })
     expect(d.model.tables[0].uniques).toEqual([{ id: 'u1', name: 'uk_orders', columnIds: ['c1'] }])
-    expect(d.model.tables[0].indexes).toEqual([{ id: 'i1', name: 'idx_orders', columns: [{ columnId: 'c1', order: 'ASC' }] }])
+    expect(d.model.tables[0].indexes).toEqual([{ id: 'i1', name: 'idx_orders', columns: [{ columnId: 'c1', order: 'ASC' }], type: 'BTREE', parser: null }])
 
     // 마지막 컬럼 제거 → 키 자체가 사라진다
     d = applyChange(d, { type: 'column/remove', tableId: 'T1', columnId: 'c1' })
@@ -394,7 +394,7 @@ describe('applyChange — 관계 제약 동기화', () => {
     const { doc: d } = createRelation(setupDoc(), { type: 'ONE_TO_MANY', identifying: false })
     const fk = childOf(d).columns.find((c) => c.physicalName === 'users_id')
     expect(childOf(d).indexes).toEqual([
-      { id: expect.any(String), name: 'idx_orders_users_id', columns: [{ columnId: fk!.id, order: 'ASC' }] },
+      { id: expect.any(String), name: 'idx_orders_users_id', columns: [{ columnId: fk!.id, order: 'ASC' }], type: 'BTREE', parser: null },
     ])
     // 검증 연동 — 자동 인덱스가 선두 컬럼을 덮으므로 FK_WITHOUT_INDEX가 발화하지 않는다
     expect(validateModel(d.model).filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
@@ -456,7 +456,7 @@ describe('applyChange — 관계 제약 동기화', () => {
     const touched = applyChange(d, {
       type: 'index/set',
       tableId: 'CHILD',
-      indexes: [{ id: 'ix-custom', name: 'idx_orders_users_id', columns: [{ columnId: fk.id, order: 'ASC' }, { columnId: 'cc-1', order: 'ASC' }] }],
+      indexes: [{ id: 'ix-custom', name: 'idx_orders_users_id', columns: [{ columnId: fk.id, order: 'ASC' }, { columnId: 'cc-1', order: 'ASC' }], type: 'BTREE', parser: null }],
     })
     const after = applyChange(touched, { type: 'relationship/patch', relationshipId, patch: { identifying: true } })
     expect(childOf(after).indexes.map((ix) => ix.id)).toEqual(['ix-custom']) // 보존

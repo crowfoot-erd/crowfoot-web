@@ -8,7 +8,7 @@
  * 계약:
  * · 매칭은 객체 id 기준 — 두 문서는 같은 계보(하나의 문서의 두 시점)라 id가 안정적이다.
  * · defaultValue는 ''≡null로 정규화해 비교한다(sync-merge 규칙과 동일 — 드리프트 방지).
- * · model 항목(table·column·primaryKey·uniqueKey·index·relationship)이 하나라도 있으면
+ * · model 항목(table·column·primaryKey·uniqueKey·index·check·relationship)이 하나라도 있으면
  *   layoutOnly=false, diagram만(note·node·area·viewport) 바뀌었으면 layoutOnly=true.
  * · 항목은 50개 상한 — 넘치면 자르고 truncated=true(서버 상한 64KB의 실질 방어선).
  * · detail은 언어 중립(필드명·물리명·개수)로만 채운다 — 요약은 서버에 저장되고
@@ -17,12 +17,14 @@
 import type {
   EditorDocument,
   ErdArea,
+  ErdValidationException,
   ErdRequirement,
   ErdColumn,
   ErdNote,
   ErdRelationship,
   ErdTable,
 } from '@/features/editor/model/content-schema'
+import { typeSizeSuffix } from '@/features/editor/model/dbms'
 
 export type DocDiffKind =
   | 'table'
@@ -30,10 +32,12 @@ export type DocDiffKind =
   | 'primaryKey'
   | 'uniqueKey'
   | 'index'
+  | 'check'
   | 'relationship'
   | 'note'
   | 'area'
   | 'requirement'
+  | 'validationException'
   | 'node'
 export type DocDiffAction = 'add' | 'update' | 'remove' | 'move'
 
@@ -75,9 +79,7 @@ const normDefault = (v: string | null): string | null => (v == null || v === '' 
 
 /** 컬럼 타입 표기 — dataType(길이) / dataType(정밀도,스케일). 언어 중립 */
 function columnTypeLabel(c: ErdColumn): string {
-  if (c.length != null) return `${c.dataType}(${c.length})`
-  if (c.precision != null) return `${c.dataType}(${c.precision},${c.scale ?? 0})`
-  return c.dataType
+  return c.dataType + typeSizeSuffix(c)
 }
 
 /** 노트 표시 이름 — 제목 우선, 없으면 본문 첫 줄 */
@@ -119,6 +121,9 @@ function diffTable(from: ErdTable, to: ErdTable, items: DocDiffItem[]): void {
     if (c.precision !== next.precision) changed.push('precision')
     if (c.scale !== next.scale) changed.push('scale')
     if (normDefault(c.defaultValue) !== normDefault(next.defaultValue)) changed.push('defaultValue')
+    // 생성 컬럼·ON UPDATE(v1.34) — 생성식은 객체라 내용으로 비교한다
+    if (JSON.stringify(c.generated ?? null) !== JSON.stringify(next.generated ?? null)) changed.push('generated')
+    if ((c.onUpdate ?? null) !== (next.onUpdate ?? null)) changed.push('onUpdate')
     if (changed.length > 0) {
       items.push({ kind: 'column', action: 'update', table: to.physicalName, name: next.physicalName, detail: changed.join(', ') })
     }
@@ -157,7 +162,7 @@ function diffTable(from: ErdTable, to: ErdTable, items: DocDiffItem[]): void {
     items,
   })
 
-  // 인덱스 — id 매칭, columns는 컬럼·정렬 순서까지
+  // 인덱스 — id 매칭, columns는 컬럼·정렬 순서까지. 종류·파서(v1.34)도 비교하고 BTREE 아닌 종류는 상세에 붙인다
   diffKeyedArrays({
     from: from.indexes,
     to: to.indexes,
@@ -165,10 +170,26 @@ function diffTable(from: ErdTable, to: ErdTable, items: DocDiffItem[]): void {
     kind: 'index',
     same: (a, b) =>
       a.name === b.name &&
+      a.type === b.type &&
+      (a.parser ?? null) === (b.parser ?? null) &&
       a.columns.map((m) => `${m.columnId}:${m.order}`).join('\0') ===
         b.columns.map((m) => `${m.columnId}:${m.order}`).join('\0'),
     label: (i) => i.name,
-    columnDetail: (i) => i.columns.map((m) => physById.get(m.columnId) ?? m.columnId).join(', '),
+    columnDetail: (i) =>
+      (i.type && i.type !== 'BTREE' ? `${i.type} ` : '') +
+      i.columns.map((m) => physById.get(m.columnId) ?? m.columnId).join(', '),
+    items,
+  })
+
+  // CHECK 제약(v1.34) — id 매칭, 이름·식 비교. 상세는 식 원문
+  diffKeyedArrays({
+    from: from.checks ?? [],
+    to: to.checks ?? [],
+    table: to.physicalName,
+    kind: 'check',
+    same: (a, b) => a.name === b.name && a.expression === b.expression,
+    label: (c) => c.name,
+    columnDetail: (c) => c.expression,
     items,
   })
 }
@@ -325,6 +346,25 @@ function diffRequirements(from: ErdRequirement[], to: ErdRequirement[], items: D
   }
 }
 
+/** 검증 예외 차분(v1.34) — 이름은 규칙 코드, 상세는 사유. 설계 판단이라 레이아웃 변경으로 치지 않는다 */
+function diffValidationExceptions(from: ErdValidationException[], to: ErdValidationException[], items: DocDiffItem[]): void {
+  const toById = new Map(to.map((e) => [e.id, e]))
+  for (const prev of from) {
+    const next = toById.get(prev.id)
+    if (!next) {
+      items.push({ kind: 'validationException', action: 'remove', table: '', name: prev.ruleId, detail: prev.target })
+    } else if (prev.reason !== next.reason || prev.ruleId !== next.ruleId || prev.target !== next.target) {
+      items.push({ kind: 'validationException', action: 'update', table: '', name: next.ruleId, detail: next.reason })
+    }
+  }
+  const fromIds = new Set(from.map((e) => e.id))
+  for (const next of to) {
+    if (!fromIds.has(next.id)) {
+      items.push({ kind: 'validationException', action: 'add', table: '', name: next.ruleId, detail: next.reason })
+    }
+  }
+}
+
 /** 노드 레이아웃 차분 — 같은 테이블의 위치(x,y)=move, 폭·색=update. 신규/소멸 노드는 테이블 항목이 대신한다 */
 function diffNodes(from: EditorDocument, to: EditorDocument, items: DocDiffItem[]): void {
   const physOf = (tableId: string): string =>
@@ -385,6 +425,7 @@ export function diffDocuments(
   diffNotes(from.diagram.notes, to.diagram.notes, items)
   diffAreas(from.diagram.areas, to.diagram.areas, items)
   diffRequirements(from.diagram.requirements, to.diagram.requirements, items)
+  diffValidationExceptions(from.diagram.validationExceptions ?? [], to.diagram.validationExceptions ?? [], items)
   diffNodes(from, to, items)
 
   const viewportChanged =

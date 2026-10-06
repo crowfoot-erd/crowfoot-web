@@ -16,6 +16,7 @@ import {
   applyChanges,
   createArea,
   createColumn,
+  createIndex,
   createTable,
   newId,
   pkToggleChanges,
@@ -117,11 +118,10 @@ function runWithEditor(fixture: Fixture): EditorDocument {
             tableId: current.id,
             indexes: [
               ...current.indexes,
-              {
-                id: newId(),
+              createIndex({
                 name: index.name ?? defaultKeyName(doc.model, current, 'index', columns),
                 columns: index.columns.map((entry, i) => ({ columnId: columns[i].id, order: entry.order ?? 'ASC' })),
-              },
+              }),
             ],
           }, db)
         }

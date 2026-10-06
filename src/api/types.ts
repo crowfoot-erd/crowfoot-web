@@ -333,12 +333,18 @@ export interface MyShareReaction {
  *  actorDisplayName은 서버가 조립한 단일 표시명(회원 users.name / 게스트 별명 스냅샷). */
 export interface NotificationItem {
   id: string
-  type: 'COMMENT_CREATED' | 'REACTION_ADDED' | 'OWNER_REPLIED'
+  type: 'COMMENT_CREATED' | 'REACTION_ADDED' | 'OWNER_REPLIED' | 'COMMUNITY_COMMENT_CREATED' | 'FEEDBACK_POST_CREATED'
   actorUserId?: string
   actorDisplayName: string | null
-  modelId: string
-  modelName: string
-  workspaceId: string
+  /** 문서 알림만 — 게시글 알림(COMMUNITY_COMMENT_CREATED·FEEDBACK_POST_CREATED)은 생략된다 */
+  modelId?: string
+  modelName?: string
+  workspaceId?: string
+  /** 게시글 알림만 — 이벤트 시점 제목 스냅샷 */
+  postId?: string
+  postTitle?: string
+  /** 댓글 알림만 — 그 댓글로 바로 간다(지워진 댓글이면 생략) */
+  commentId?: string
   read: boolean
   createdAt: string
 }
@@ -561,6 +567,8 @@ export interface SqlImportPreviewResult {
   tables: SqlImportPreviewTable[]
   /** 읽지 못한 문장·제약 요약(CREATE INDEX·VIEW…) — 문서 생성은 가능한 만큼 진행된다 */
   skipped: string[]
+  /** 읽었지만 줄이거나 버린 항목(v1.34) — 타입 축소, 카탈로그 밖 타입, 버린 컬럼 속성, 세션 문장 */
+  warnings: string[]
 }
 
 /** SQL Import 생성 응답 — 리버스와 같은 뼈대. 커넥션 원천이 없어 DB 동기화 대상이 아니다 */
@@ -569,6 +577,8 @@ export interface SqlImportResult {
   tableCount: number
   relationshipCount: number
   skipped: string[]
+  /** 읽었지만 줄이거나 버린 항목(v1.34) — 미리보기와 같다 */
+  warnings: string[]
 }
 
 /** 스키마 조회 응답 — 리버스와 같은 규칙으로 조립된 content만 내린다(문서 생성 없음).

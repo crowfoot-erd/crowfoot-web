@@ -12,7 +12,7 @@
  *     (대상이 자동으로 만드는 DBMS면 기존 인덱스를 지우지 않는다)
  *  5. 그 밖의 내용은 그대로 복사한다
  */
-import { newId } from '@/features/editor/model/changes'
+import { createIndex } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdColumn, ErdRelationship, ErdTable } from '@/features/editor/model/content-schema'
 import {
   dataTypeSpec,
@@ -172,11 +172,10 @@ export function convertDocumentDbms(
               ...table,
               indexes: [
                 ...table.indexes,
-                {
-                  id: newId(),
+                createIndex({
                   name: indexName,
                   columns: fkColumns.map((column) => ({ columnId: column.id, order: 'ASC' as const })),
-                },
+                }),
               ],
             }
           : table,

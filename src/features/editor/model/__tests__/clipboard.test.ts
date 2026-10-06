@@ -19,7 +19,7 @@ function fixtureDoc(): EditorDocument {
     ],
     primaryKey: { name: 'pk_users', columnIds: ['col-id'] },
     uniques: [{ id: 'uk-1', name: 'uk_users_email', columnIds: ['col-email'] }],
-    indexes: [{ id: 'idx-1', name: 'idx_users_email', columns: [{ columnId: 'col-email', order: 'ASC' }] }],
+    indexes: [{ id: 'idx-1', name: 'idx_users_email', columns: [{ columnId: 'col-email', order: 'ASC' }], type: 'BTREE', parser: null }],
   })
   const orders = createTable('orders', {
     columns: [
@@ -54,7 +54,7 @@ function fixtureDoc(): EditorDocument {
         [orders.id]: { x: 500, y: 50, width: null, color: 'default' },
       },
       notes: [{ id: 'note-1', x: 0, y: 400, width: 200, text: '내용', title: '정책', color: 'yellow', linkedTableId: users.id }],
-      areas: [], requirements: [],
+      areas: [], requirements: [], validationExceptions: [],
       viewport: null,
     },
   }

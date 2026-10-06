@@ -26,7 +26,7 @@ function baseDoc(): EditorDocument {
     diagram: {
       nodes: { T1: { x: 10, y: 20, width: null, color: 'default' } },
       notes: [],
-      areas: [], requirements: [],
+      areas: [], requirements: [], validationExceptions: [],
       viewport: null,
     },
   }
@@ -86,7 +86,7 @@ describe('deriveChanges — 테이블·컬럼', () => {
     const to = baseDoc()
     to.model.tables[0].primaryKey = { name: 'member_pk2', columnIds: ['C1', 'C2'] }
     to.model.tables[0].uniques = [{ id: 'U1', name: 'uk_email', columnIds: ['C2'] }]
-    to.model.tables[0].indexes = [{ id: 'I1', name: 'ix_email', columns: [{ columnId: 'C2', order: 'ASC' }] }]
+    to.model.tables[0].indexes = [{ id: 'I1', name: 'ix_email', columns: [{ columnId: 'C2', order: 'ASC' }], type: 'BTREE', parser: null }]
 
     const changes = deriveChanges(from, to)
     expect(changes).toContainEqual({ type: 'primaryKey/set', tableId: 'T1', primaryKey: to.model.tables[0].primaryKey })

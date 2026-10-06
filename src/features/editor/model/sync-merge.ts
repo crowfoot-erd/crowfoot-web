@@ -111,6 +111,7 @@ function materializeTable(dbTable: ErdTable, doc: EditorDocument): ErdTable {
     primaryKey,
     uniques,
     indexes: [],
+    checks: [],
   }
 }
 
@@ -136,6 +137,9 @@ function columnPatch(cur: ErdColumn, db: ErdColumn): Partial<ErdColumn> | null {
   if (cur.nullable !== db.nullable) patch.nullable = db.nullable
   if (cur.autoIncrement !== db.autoIncrement) patch.autoIncrement = db.autoIncrement
   if (normDefault(cur.defaultValue) !== normDefault(db.defaultValue)) patch.defaultValue = normDefault(db.defaultValue)
+  // 생성식·ON UPDATE(v1.34) — 리버스가 DB에서 읽는 물리 속성이라 DB 값을 따른다
+  if (JSON.stringify(cur.generated ?? null) !== JSON.stringify(db.generated ?? null)) patch.generated = db.generated ?? null
+  if ((cur.onUpdate ?? null) !== (db.onUpdate ?? null)) patch.onUpdate = db.onUpdate ?? null
   // 논리명 — DB 코멘트가 있을 때만 덮어쓴다. 없으면 문서 값 보존
   if (hasDbComment(db) && cur.logicalName !== db.logicalName) patch.logicalName = db.logicalName
   return Object.keys(patch).length > 0 ? patch : null

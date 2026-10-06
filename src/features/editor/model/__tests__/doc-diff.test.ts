@@ -89,7 +89,7 @@ function makeDoc(
     diagram: {
       nodes: init.nodes ?? {},
       notes: init.notes ?? [],
-      areas: init.areas ?? [], requirements: [],
+      areas: init.areas ?? [], requirements: [], validationExceptions: [],
       viewport: init.viewport ?? null,
     },
   }
@@ -199,11 +199,15 @@ describe('diffDocuments', () => {
       id: 'i-1',
       name: 'ix_orders_status',
       columns: [{ columnId: 'c-status', order: 'ASC' as const }],
+      type: 'BTREE',
+      parser: null,
     }
     const idxAFlipped: ErdIndex = {
       id: 'i-1',
       name: 'ix_orders_status',
       columns: [{ columnId: 'c-status', order: 'DESC' as const }],
+      type: 'BTREE',
+      parser: null,
     }
 
     const from = makeDoc([makeTable({ columns: columns(), uniques: [ukA], indexes: [idxA] })])

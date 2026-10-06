@@ -194,7 +194,7 @@ function PanelBody({ canEdit, documentName }: RequirementsPanelProps) {
         const layout = state.present.diagram.nodes[tableId]
         if (!table || !layout) return []
         const w = tableRenderWidth(layout.width ?? null, 0)
-        const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
+        const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0))
         return [{ id: tableId, x: layout.x, y: layout.y, w, h }]
       })
       if (boxes.length === 0) return

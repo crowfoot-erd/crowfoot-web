@@ -215,17 +215,21 @@
       "type": {
         "COMMENT_CREATED": "{{actor}} left a comment on {{model}}",
         "REACTION_ADDED": "{{actor}} likes {{model}}",
-        "OWNER_REPLIED": "{{actor}} replied to your comment"
+        "OWNER_REPLIED": "{{actor}} replied to your comment",
+        "FEEDBACK_POST_CREATED": "{{actor}} posted \"{{title}}\" in Feedback",
+        "COMMUNITY_COMMENT_CREATED": "{{actor}} commented on your post \"{{title}}\""
       },
       "typeBadge": {
         "COMMENT_CREATED": "Comment",
         "REACTION_ADDED": "Like",
-        "OWNER_REPLIED": "Reply"
+        "OWNER_REPLIED": "Reply",
+        "FEEDBACK_POST_CREATED": "New report",
+        "COMMUNITY_COMMENT_CREATED": "Post comment"
       },
       "table": {
         "type": "Type",
         "content": "Content",
-        "document": "Document",
+        "document": "Target",
         "createdAt": "When"
       }
     }
@@ -875,6 +879,7 @@
           "dataType": "Type",
           "length": "Length",
           "precision": "Precision",
+          "fraction": "Fractional seconds",
           "scale": "Scale",
           "nullable": "Nullable",
           "defaultValue": "Default",
@@ -1095,7 +1100,9 @@
           "note": "Note",
           "node": "Node",
           "area": "Group",
-          "requirement": "Requirement"
+          "requirement": "Requirement",
+          "check": "CHECK constraint",
+          "validationException": "Validation exception"
         },
         "action": {
           "add": "added",
@@ -1152,6 +1159,7 @@
         "dataType": "Data type",
         "length": "Length",
         "precision": "Precision",
+        "fraction": "Fractional seconds",
         "scale": "Scale",
         "primaryKey": "Primary key",
         "nullable": "NOT NULL",
@@ -1165,7 +1173,9 @@
         "columnLogicalName": "Column logical name",
         "reorder": "Reorder column — drag to move",
         "nnPkLocked": "Primary key columns are always NOT NULL",
-        "nameDuplicate": "Table name already exists: {{name}}"
+        "nameDuplicate": "Table name already exists: {{name}}",
+        "generatedStored": "Generated column (STORED): {{expression}}",
+        "generatedVirtual": "Generated column (VIRTUAL): {{expression}}"
       },
       "note": {
         "placeholder": "Write a note…",
@@ -1307,9 +1317,19 @@
         "dataType": "Type",
         "length": "Length",
         "precision": "Precision",
+        "fraction": "Fractional seconds",
         "scale": "Scale",
         "pkHint": "Saving as PK forces NOT NULL and moves the column to the top (PK block).",
-        "aiHint": "Auto increment is available only for integer PK types (INT/BIGINT/SMALLINT)."
+        "aiHint": "Auto increment is available only for integer PK types (INT/BIGINT/SMALLINT).",
+        "onUpdate": "ON UPDATE",
+        "onUpdateHint": "Value set automatically when a row is updated (e.g. CURRENT_TIMESTAMP(6)). Included in DDL for MySQL documents only.",
+        "generated": "Generated column",
+        "generatedExpression": "Generation expression",
+        "generatedExpressionRequired": "Enter a generation expression",
+        "generatedKind": "Storage",
+        "generatedStored": "STORED — store the value",
+        "generatedVirtual": "VIRTUAL — compute on read",
+        "generatedHint": "A generated column cannot have a default value, auto increment, or ON UPDATE. For DBMSs without VIRTUAL support, the DDL uses STORED with a warning."
       },
       "key": {
         "unique": "Unique",
@@ -1329,7 +1349,10 @@
         "noColumns": "This table has no columns",
         "remove": "Remove key",
         "order": "Sort order",
-        "orderHint": "Indexes support per-column sort order (ASC/DESC)"
+        "orderHint": "Indexes support per-column sort order (ASC/DESC)",
+        "indexType": "Index type",
+        "parser": "Parser (optional)",
+        "indexTypeHint": "FULLTEXT and SPATIAL indexes have no per-column order. The parser is used only for MySQL full-text search (e.g. ngram)."
       },
       "dbms": {
         "common": "Common (logical)"
@@ -1420,6 +1443,14 @@
         "tables": "Member tables",
         "tablesHint": "Check to make it a member of this group",
         "noTables": "No tables in this document"
+      },
+      "check": {
+        "add": "Add CHECK",
+        "titleAdd": "Add CHECK constraint",
+        "titleEdit": "Edit CHECK constraint",
+        "expression": "Expression",
+        "expressionHint": "Write the expression inside the parentheses as is (e.g. price >= 0). The expression is not parsed, so update it yourself when you rename a column.",
+        "expressionRequired": "Enter an expression"
       }
     },
   "requirements": {"criteria": {"title": "Acceptance criteria", "count": "{{done}}/{{total}} criteria", "hint": "One per line. These are the checks that show the requirement is properly reflected"}, "search": "Search code, title, text, table", "progress": "{{applied}}/{{total}} applied", "domains": {"label": "Domains", "all": "All", "noRequirements": "This domain has no requirements yet", "showOnCanvas": "Show on canvas"}, "export": {"button": "Export", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "Requirements specification", "columns": {"code": "Code", "domain": "Domain", "state": "State", "title": "Title", "description": "Description", "tables": "Tables"}}, "title": "Requirements", "add": "Add", "filterLabel": "Status filter", "state": {"APPLIED": "Applied", "PENDING": "Pending", "UNLINKED": "Unlinked", "LEFTOVER": "Needs cleanup", "DRAFT": "In review", "DROPPED": "Dropped"}, "stateHint": {"APPLIED": "The confirmed requirement is reflected in the ERD", "PENDING": "Confirmed, but the ERD does not reflect the latest text yet", "UNLINKED": "Marked as applied, but no table is linked", "LEFTOVER": "A dropped requirement still has tables linked", "DRAFT": "Not confirmed yet", "DROPPED": "No longer in scope"}, "status": {"draft": "In review", "confirmed": "Confirmed", "dropped": "Dropped"}, "scope": {"tables": "Feature", "document": "Common"}, "group": {"unassigned": "Unassigned", "document": "Common"}, "empty": "No requirements", "emptyDetail": "Claude can register them over MCP, or you can add them yourself", "emptyFiltered": "No requirements match the filter", "tableCount": "{{count}} tables", "noDescription": "No description", "linkedTables": "Linked tables", "noTables": "No linked tables", "markApplied": "Mark as applied", "revision": "Revision {{revision}}", "removeConfirm": "Delete only entries added by mistake", "limit": "A document can hold up to {{max}} requirements", "tableInfo": "Requirements", "untraced": {"title": "Tables without a requirement", "hint": "Tables not linked to any requirement"}, "dialog": {"createTitle": "Add requirement", "editTitle": "Edit requirement", "title": "Title", "titleRequired": "Enter a title", "description": "Description", "revisionHint": "Changing the title or description sets the requirement to pending", "scope": "Scope", "status": "Status", "area": "Domain (group)", "tables": "Tables to link", "documentHint": "A common requirement applies to the whole document and is not linked to tables"}},
@@ -1444,6 +1475,8 @@
       "FK_NULLABILITY_MISMATCH": "FK nullability mismatch",
       "ONE_TO_ONE_MISSING_UK": "1:1 relationship missing a unique key",
       "COMPOSITE_KEY_DUPLICATE_COLUMN": "Duplicate column in composite key",
+      "UNKNOWN_DATA_TYPE": "Unknown data type",
+      "MISSING_TYPE_LENGTH": "Type without length",
       "MISSING_PK": "Missing primary key",
       "EMPTY_TABLE": "Table without columns",
       "FK_MAPPING_EMPTY": "FK column mapping empty",
@@ -1453,6 +1486,17 @@
       "MISSING_LOGICAL_NAME": "Missing logical name",
       "FK_WITHOUT_INDEX": "No index on leading FK column",
       "WIDE_TABLE": "Too many columns (over 30)"
+    },
+    "exception": {
+      "chip": "Exceptions",
+      "listLabel": "Validation exceptions",
+      "stale": "Not applicable",
+      "meta": "{{author}} · {{date}}",
+      "remove": "Remove exception",
+      "mark": "Mark as intended exception",
+      "reason": "Exception reason",
+      "reasonPlaceholder": "Write the reason in one line (up to 200 characters)",
+      "save": "Save"
     }
   },
     "import": {
@@ -1689,7 +1733,9 @@
     "submit": "Create document",
     "fieldRequired": "Required",
     "successToast": "Created '{{name}}' — {{tables}} tables · {{relationships}} relationships",
-    "skippedToast": "Skipped statements: {{skipped}}"
+    "skippedToast": "Skipped statements: {{skipped}}",
+    "previewWarnings": "{{count}} items read but reduced or dropped",
+    "warningsToast": "{{count}} items were read but reduced or dropped — check the list in the preview"
   },
   "landing": {
     "edge": {

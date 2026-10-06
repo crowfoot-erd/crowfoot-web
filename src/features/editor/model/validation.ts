@@ -8,8 +8,9 @@ import type {
   ErdModelData,
   ErdRelationship,
   ErdTable,
+  ErdValidationException,
 } from '@/features/editor/model/content-schema'
-import { dbmsAutoIndexesFk } from '@/features/editor/model/dbms'
+import { dataTypeSpec, dbmsAutoIndexesFk, templateIdForDatabase } from '@/features/editor/model/dbms'
 import { splitLogicalName } from '@/features/editor/model/logical-name'
 
 export type ValidationCode =
@@ -21,6 +22,8 @@ export type ValidationCode =
   | 'FK_NULLABILITY_MISMATCH'
   | 'ONE_TO_ONE_MISSING_UK'
   | 'COMPOSITE_KEY_DUPLICATE_COLUMN'
+  | 'UNKNOWN_DATA_TYPE'
+  | 'MISSING_TYPE_LENGTH'
   | 'MISSING_PK'
   | 'EMPTY_TABLE'
   | 'FK_MAPPING_EMPTY'
@@ -44,8 +47,61 @@ export interface ValidationIssue {
   relationshipId?: string
 }
 
+/* ---------- 검증 예외(v1.34, 05-editor/05-validation.md §4.4) ---------- */
+
+/** 예외 사유 상한 — 한 줄 */
+export const EXCEPTION_REASON_MAX = 200
+
+/** 예외로 둘 수 있는 결과인가 — 오류 등급은 무결성 위반이라 예외로 두지 않는다 */
+export function canExcept(issue: ValidationIssue): boolean {
+  return issue.level !== 'error'
+}
+
+/** 결과의 대상 키 — 예외 기록의 target. 관계 → 컬럼 → 테이블 순으로 가장 좁은 안정 식별자를 쓴다
+ *  (FK_WITHOUT_INDEX처럼 관계와 컬럼을 둘 다 싣는 규칙은 관계가 대상이다 — 관계가 지워지면 경고도 사라진다) */
+export function issueTargetKey(issue: ValidationIssue): string {
+  if (issue.relationshipId) return `relationship:${issue.relationshipId}`
+  if (issue.columnId) return `column:${issue.tableId ?? ''}:${issue.columnId}`
+  return `table:${issue.tableId ?? ''}`
+}
+
+/** 예외 목록의 한 줄 — 지금도 발화하는 결과가 있으면 issue, 없으면 null("해당 없음") */
+export interface ExceptedIssue {
+  exception: ErdValidationException
+  issue: ValidationIssue | null
+}
+
+/** 검증 결과를 예외 기록으로 가른다 — active는 배지·등급 칩·캔버스 링·목록의 재료,
+ *  excepted는 예외 기록마다 한 줄(같은 규칙·대상의 결과가 여러 번 나와도 기록 하나가 다 덮는다) */
+export function partitionByExceptions(
+  issues: readonly ValidationIssue[],
+  exceptions: readonly ErdValidationException[],
+): { active: ValidationIssue[]; excepted: ExceptedIssue[] } {
+  if (exceptions.length === 0) return { active: [...issues], excepted: [] }
+  const keyOf = (ruleId: string, target: string) => `${ruleId}\0${target}`
+  const byKey = new Map(exceptions.map((exception) => [keyOf(exception.ruleId, exception.target), exception] as const))
+  const matched = new Map<string, ValidationIssue>()
+  const active: ValidationIssue[] = []
+  for (const issue of issues) {
+    const exception = canExcept(issue) ? byKey.get(keyOf(issue.code, issueTargetKey(issue))) : undefined
+    if (!exception) {
+      active.push(issue)
+      continue
+    }
+    if (!matched.has(exception.id)) matched.set(exception.id, issue)
+  }
+  return {
+    active,
+    excepted: exceptions.map((exception) => ({ exception, issue: matched.get(exception.id) ?? null })),
+  }
+}
+
 /** 물리명 식별자 규칙 — 소문자 시작·소문자/숫자/밑줄·63자 상한 (NAMING_CONVENTION) */
 export const PHYSICAL_NAME_PATTERN = /^[a-z][a-z0-9_]{0,62}$/
+
+/** 길이 없이는 DDL이 실패하는 타입 (MISSING_TYPE_LENGTH — MySQL VARCHAR·VARBINARY).
+ *  PostgreSQL은 길이 없는 VARCHAR를 받고 VARBINARY는 BYTEA라 검사하지 않는다 */
+export const LENGTH_REQUIRED_TYPES: ReadonlySet<string> = new Set(['VARCHAR', 'VARBINARY'])
 
 /** WIDE_TABLE(info) 임계값 — 이 수를 "초과"하면 보고 */
 export const WIDE_TABLE_COLUMN_THRESHOLD = 30
@@ -183,7 +239,7 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
     tableById.get(tableId)?.columns.find((c) => c.id === columnId)
 
   // 키 이름 네임스페이스 — PK·UK·인덱스·FK 제약 이름까지 모은다(keys.ts와 같은 규칙).
-  // 중복 보고는 UK·인덱스에만 건다 — 그 둘이 이 규칙의 편집 대상이다.
+  // 중복 보고는 UK·인덱스·CHECK에만 건다 — 그 셋이 이 규칙의 편집 대상이다.
   const keyCounts = new Map<string, number>()
   const bump = (name: string) => {
     const key = name.toLowerCase()
@@ -193,6 +249,7 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
     if (table.primaryKey) bump(table.primaryKey.name)
     for (const unique of table.uniques) bump(unique.name)
     for (const index of table.indexes) bump(index.name)
+    for (const check of table.checks) bump(check.name)
   }
   for (const rel of model.relationships) bump(rel.fkName)
 
@@ -209,6 +266,7 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
     relatedTableIds.add(rel.childTableId)
   }
   const cycleTableIds = tablesInFkCycles(model)
+  const lengthRequired = templateIdForDatabase(databaseType) !== 'postgres'
 
   for (const table of model.tables) {
     if ((tableNames.get(table.physicalName.toLowerCase()) ?? 0) > 1) {
@@ -229,6 +287,14 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
           columnId: column.id,
         })
       }
+      // 타입 — 공용 카탈로그 밖의 코드(가져오기·편집 API가 넣은 값)와 길이가 빠진 가변 길이 타입.
+      // 서버 DDL 경고 ddl.unknown-type·ddl.length-required와 같은 기준
+      const typeCode = column.dataType.trim().toUpperCase()
+      if (!dataTypeSpec(typeCode)) {
+        issues.push({ level: 'error', code: 'UNKNOWN_DATA_TYPE', tableId: table.id, columnId: column.id })
+      } else if (lengthRequired && LENGTH_REQUIRED_TYPES.has(typeCode) && column.length == null) {
+        issues.push({ level: 'error', code: 'MISSING_TYPE_LENGTH', tableId: table.id, columnId: column.id })
+      }
     }
 
     for (const unique of table.uniques) {
@@ -238,6 +304,11 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
     }
     for (const index of table.indexes) {
       if ((keyCounts.get(index.name.toLowerCase()) ?? 0) > 1) {
+        issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id })
+      }
+    }
+    for (const check of table.checks) {
+      if ((keyCounts.get(check.name.toLowerCase()) ?? 0) > 1) {
         issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id })
       }
     }

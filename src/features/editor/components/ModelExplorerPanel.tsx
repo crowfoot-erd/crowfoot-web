@@ -186,7 +186,7 @@ function ExplorerBody({
       const layout = state.present.diagram.nodes[tableId]
       if (!table || !layout) return null
       const w = tableRenderWidth(layout.width ?? null, 0)
-      const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
+      const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0))
       return { x: layout.x + w / 2, y: layout.y + h / 2 }
     },
     [],

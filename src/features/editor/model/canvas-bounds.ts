@@ -44,7 +44,7 @@ export function contentBounds(
     if (!layout) continue
     const size = sizeReports[table.id] ?? {
       w: tableRenderWidth(layout.width ?? null, 0),
-      h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+      h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
     }
     minX = Math.min(minX, layout.x)
     minY = Math.min(minY, layout.y)

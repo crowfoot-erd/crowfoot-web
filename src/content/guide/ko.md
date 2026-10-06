@@ -211,8 +211,9 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 데이터베이스에 접속하지 않고 스크립트만으로 문서를 만드는 방법입니다.
 
-* 읽는 문장은 `CREATE TABLE`과 `ALTER TABLE ... ADD CONSTRAINT`입니다. 컬럼, 타입, NOT NULL, 기본값, 자동 증가, 기본 키, 유니크 키, 외래 키, 코멘트를 읽습니다. PostgreSQL의 `COMMENT ON`도 논리명으로 읽습니다.
-* `CREATE INDEX`, `CREATE VIEW`, `INSERT`처럼 읽지 못하는 문장은 건너뛰고, 건너뛴 문장을 미리보기에 보여 줍니다.
+* 읽는 문장은 `CREATE TABLE`, `ALTER TABLE ... ADD CONSTRAINT`, `CREATE [UNIQUE|FULLTEXT] INDEX`입니다. 컬럼, 타입(소수 초 자릿수 포함), NOT NULL, 기본값, 자동 증가, 기본 키, 유니크 키, 인덱스(FULLTEXT·SPATIAL 포함), 외래 키, CHECK 제약, 생성 컬럼, `ON UPDATE`, 코멘트를 읽습니다. PostgreSQL의 `COMMENT ON`도 논리명으로 읽습니다.
+* `CREATE VIEW`, `INSERT`처럼 읽지 못하는 문장은 건너뛰고, 건너뛴 문장을 미리보기에 보여 줍니다.
+* 읽었지만 줄이거나 버린 항목은 그 아래 "읽었지만 줄이거나 버린 항목" 목록에 따로 나옵니다. 예를 들어 Crowfoot 타입으로 줄인 타입, 카탈로그에 없는 타입, 버린 컬럼 속성(`UNSIGNED`, `COLLATE`, `CHARACTER SET` 등), 읽지 않는 세션 문장(`SET FOREIGN_KEY_CHECKS`, `USE`)입니다. 문서를 만들기 전에 이 목록을 확인하세요.
 * `CREATE TABLE`이 하나도 없으면 문서를 만들 수 없습니다.
 * 문서 이름을 비워 두면 "SQL ERD"로 만들어집니다.
 * 이렇게 만든 문서는 데이터베이스에 연결되어 있지 않습니다. DB 동기화를 쓰려면 문서 목록에서 **{{model.list.menu.connect}}**을 고릅니다.
@@ -359,7 +360,8 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **D** | 도메인 타입을 쓰는 컬럼입니다(9.4절) |
 | × | 컬럼을 삭제합니다 |
 | **{{model.editor.table.addColumn}}** | 맨 아래에 컬럼을 추가합니다 |
-| **{{model.editor.key.addUnique}}**, **{{model.editor.key.addIndex}}** | 유니크 키와 인덱스를 만듭니다(6.5절) |
+| **{{model.editor.key.addUnique}}**, **{{model.editor.key.addIndex}}**, **{{model.editor.check.add}}** | 유니크 키, 인덱스, CHECK 제약을 만듭니다(6.5절) |
+| **ƒ** | 생성 컬럼입니다. 마우스를 올리면 생성식이 보입니다(6.3절) |
 | 테두리의 점 | 관계를 시작하는 손잡이입니다(7.1절) |
 
 기본 키 컬럼은 항상 맨 위에 모입니다.
@@ -380,6 +382,8 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | {{model.editor.domainType.label}} | 도메인 타입을 고르면 타입, 길이, NULL 허용, 기본값이 그 값으로 채워집니다(9.4절) |
 | {{model.editor.columnInfo.dataType}}, {{model.editor.columnInfo.length}} | 타입에 따라 길이 또는 정밀도와 스케일 칸이 나옵니다 |
 | {{model.editor.columnInfo.defaultValue}} | 예: `0`, `NOW()` |
+| {{model.editor.columnInfo.onUpdate}} | 행을 고칠 때 자동으로 넣는 값입니다. 예: `CURRENT_TIMESTAMP(6)`. MySQL 문서에서만 보입니다 |
+| {{model.editor.columnInfo.generated}} | 켜면 {{model.editor.columnInfo.generatedExpression}}을 적고 STORED(값을 저장)와 VIRTUAL(읽을 때 계산) 가운데 고릅니다. 생성 컬럼에는 기본값, 자동 증가, ON UPDATE를 둘 수 없어 해당 칸이 꺼지고 비워집니다 |
 | {{model.editor.columnInfo.comment}} | 문서 안에서만 쓰는 컬럼 설명. SQL의 COMMENT에는 들어가지 않습니다 |
 
 타입 이름은 DBMS에 맞게 표시됩니다. 예를 들어 날짜·시각 타입은 PostgreSQL 문서에서는 TIMESTAMP, MySQL 문서에서는 DATETIME으로 표시됩니다.
@@ -397,8 +401,11 @@ Crowfoot의 화면은 크게 세 종류입니다.
 1. 테이블 아래의 **{{model.editor.key.addUnique}}** 또는 **{{model.editor.key.addIndex}}**를 누릅니다.
 2. 이름을 적고 컬럼을 고릅니다. 고른 순서가 복합 키의 컬럼 순서가 됩니다. 화살표로 순서를 바꿀 수 있습니다.
 3. 인덱스는 컬럼마다 정렬(ASC, DESC)을 정할 수 있습니다.
+4. 인덱스는 **{{model.editor.key.indexType}}**을 BTREE, FULLTEXT, SPATIAL 가운데 고릅니다. FULLTEXT와 SPATIAL은 정렬이 없습니다. FULLTEXT는 MySQL 전문 검색 파서(예: `ngram`)를 적을 수 있습니다.
 
-만든 키는 테이블 아래에 **UK**, **IX** 줄로 나옵니다. 줄을 누르면 고치거나 지울 수 있습니다. 관계를 만들면 외래 키 컬럼의 인덱스가 자동으로 생깁니다.
+만든 키는 테이블 아래에 **UK**, **IX**, **CK** 줄로 나옵니다. FULLTEXT 인덱스에는 **FT**, SPATIAL 인덱스에는 **SP**가 붙습니다. 줄을 누르면 고치거나 지울 수 있습니다. 관계를 만들면 외래 키 컬럼의 인덱스가 자동으로 생깁니다.
+
+**{{model.editor.check.add}}**를 누르면 CHECK 제약을 만듭니다. 이름은 `ck_테이블_1`처럼 채워지고, 식은 괄호 안의 내용을 그대로 적습니다(예: `price >= 0`). 식은 해석하지 않으므로 컬럼 이름을 바꾸면 식도 직접 고쳐야 합니다. 컬럼을 지워도 CHECK 제약은 남습니다.
 
 ## 7. 관계
 
@@ -770,18 +777,22 @@ SQL 스크립트 창에서 **{{model.editor.deploy.button}}**를 누르면 스�
 * 항목을 누르면 캔버스가 그 테이블 위치로 옮겨 갑니다.
 * 패널이 열려 있는 동안에는 문제가 있는 테이블의 테두리에도 등급 색이 표시됩니다. 참고 등급은 캔버스에 표시하지 않습니다.
 * 도구 모음의 **{{model.validation.toggle}}** 버튼에는 오류 수가, 오류가 없으면 경고 수가 붙습니다. 패널을 닫아 두어도 숫자는 최신으로 유지됩니다.
+* 경고와 참고 항목은 의도된 것이면 예외로 둘 수 있습니다. 항목에 마우스를 올리고 오른쪽 눈 아이콘(**{{model.validation.exception.mark}}**)을 누른 뒤 사유를 한 줄(200자 이내)로 적어 저장합니다. 오류는 예외로 둘 수 없습니다.
+* 예외로 둔 항목은 버튼의 숫자, 등급 버튼의 숫자, 캔버스 테두리 색에서 빠집니다. 위쪽의 **{{model.validation.exception.chip}}** 버튼을 누르면 예외 목록이 사유, 작성자, 날짜와 함께 나오고, **{{model.validation.exception.remove}}**로 되돌릴 수 있습니다. 문제가 고쳐져 더 이상 나오지 않는 예외에는 **{{model.validation.exception.stale}}**이 붙습니다. 대상 테이블, 컬럼, 관계를 지우면 예외도 함께 지워집니다. 예외는 문서에 저장되므로 되돌리기와 함께 편집하기에도 반영되고, 보기 권한만 있는 사람은 볼 수만 있습니다.
 * 오류가 있어도 저장은 막히지 않습니다. 오류는 데이터베이스에 반영할 때 실패할 수 있는 문제이므로, 배포하기 전에 고칩니다.
 
 | 등급 | 규칙 | 뜻 |
 |---|---|---|
 | 오류 | {{model.validation.rules.DUPLICATE_TABLE_NAME}} | 물리명이 같은 테이블이 둘 이상 있음 |
 | 오류 | {{model.validation.rules.DUPLICATE_COLUMN_NAME}} | 한 테이블에 이름이 같은 컬럼이 둘 이상 있음 |
-| 오류 | {{model.validation.rules.DUPLICATE_KEY_NAME}} | 유니크 키나 인덱스의 이름이 겹침 |
+| 오류 | {{model.validation.rules.DUPLICATE_KEY_NAME}} | 유니크 키, 인덱스, CHECK 제약의 이름이 겹침 |
 | 오류 | {{model.validation.rules.COMPOSITE_KEY_DUPLICATE_COLUMN}} | 키 하나에 같은 컬럼이 두 번 들어감 |
 | 오류 | {{model.validation.rules.FK_TYPE_MISMATCH}} | 외래 키 컬럼과 부모 컬럼의 타입이 다름 |
 | 오류 | {{model.validation.rules.FK_TARGET_NOT_KEY}} | 외래 키가 가리키는 컬럼이 기본 키나 유니크 키가 아님 |
 | 오류 | {{model.validation.rules.FK_NULLABILITY_MISMATCH}} | 관계의 기수와 외래 키의 NULL 허용이 맞지 않음 |
 | 오류 | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | 1:1 관계인데 외래 키에 유니크 키가 없음 |
+| 오류 | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | 컬럼 타입이 Crowfoot 타입 목록에 없음 |
+| 오류 | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR, VARBINARY에 길이가 없음(PostgreSQL 문서는 검사하지 않음) |
 | 경고 | {{model.validation.rules.MISSING_PK}} | 기본 키가 없는 테이블 |
 | 경고 | {{model.validation.rules.EMPTY_TABLE}} | 컬럼이 없는 테이블 |
 | 경고 | {{model.validation.rules.FK_MAPPING_EMPTY}} | 관계에 연결된 컬럼이 없음 |
@@ -900,11 +911,15 @@ SQL 스크립트 창에서 **{{model.editor.deploy.button}}**를 누르면 스�
 
 ![알림](/guide-assets/ko/shell-notifications.webp)
 
-종 모양 아이콘을 누르면 최근 알림이 나옵니다. 알림은 세 가지 경우에 옵니다.
+종 모양 아이콘을 누르면 최근 알림이 나옵니다. 알림은 다섯 가지 경우에 옵니다.
 
 * 내 문서에 댓글이 달렸을 때
 * 내 문서에 좋아요가 눌렸을 때
 * 내 댓글에 문서를 만든 사람이 답글을 달았을 때
+* 내가 쓴 제안 및 신고 글에 다른 사람이 댓글을 달았을 때. 내가 단 댓글은 알리지 않습니다
+* (관리자만) 다른 사람이 제안 및 신고에 새 글을 올렸을 때
+
+알림을 누르면 읽음으로 바뀌고 그 문서나 글로 이동합니다. 댓글 알림은 그 댓글까지 내려가 잠깐 강조해 보여 줍니다.
 
 **{{shell.notifications.markAll}}**으로 모든 알림을 읽음으로 표시하고, **{{shell.notifications.viewAll}}**로 전체 목록으로 갑니다.
 

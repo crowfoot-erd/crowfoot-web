@@ -78,6 +78,37 @@ describe('SQL Import 다이얼로그', () => {
     expect(screen.getByText(/CREATE INDEX idx_members_email/)).toBeVisible()
   })
 
+  it('미리보기 warnings는 읽지 못한 문장과 따로 목록으로 보인다(v1.34)', async () => {
+    server.use(
+      http.post('/api/v1/core/workspaces/101/models/sql-import/preview', () =>
+        HttpResponse.json(
+          ok({
+            response: {
+              databaseType: 'mysql',
+              tableCount: 1,
+              relationshipCount: 0,
+              tables: [{ name: 'members', comment: null, columnCount: 2, primaryKeyColumns: ['id'], foreignKeyCount: 0 }],
+              skipped: [],
+              warnings: ['members.age: UNSIGNED 속성을 버렸습니다', 'SET FOREIGN_KEY_CHECKS: 읽지 않음'],
+            },
+          }),
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSqlImportDialog()
+    await fillDdl(user)
+
+    await user.click(screen.getByRole('button', { name: '미리보기' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sql-import-warnings')).toBeVisible()
+    })
+    expect(screen.getByText('읽었지만 줄이거나 버린 항목 2건')).toBeVisible()
+    expect(screen.getByText('members.age: UNSIGNED 속성을 버렸습니다')).toBeVisible()
+    expect(screen.queryByText(/읽지 못한 문장/)).toBeNull()
+  })
+
   it('미리보기 CREATE TABLE 0개는 400 — 오류 토스트로 안내한다', async () => {
     server.use(
       http.post('/api/v1/core/workspaces/101/models/sql-import/preview', () =>

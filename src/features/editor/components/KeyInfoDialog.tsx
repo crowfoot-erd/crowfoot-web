@@ -5,6 +5,8 @@
  * 생성 모드에서는 선택 컬럼을 따르는 기본 이름(uk_/idx_ 접두)을 자동으로 채우고,
  * 사용자가 직접 고치면 더 이상 따라가지 않는다. 컬럼 선택은 체크(선택 순서 = 키 컬럼
  * 순서) + 화살표 재정렬로 편집한다. 확정은 목록 전체를 1커밋(uniqueKey/set·index/set).
+ * 인덱스(v1.34)는 종류(BTREE·FULLTEXT·SPATIAL)를 고른다. FULLTEXT는 파서(MySQL WITH PARSER — 예: ngram)를
+ * 적을 수 있고, FULLTEXT·SPATIAL은 컬럼별 정렬이 의미 없어 정렬 버튼을 숨긴다(저장은 ASC).
  * 협업(v1.17): 열려 있는 동안 소속 테이블의 Edit Session Lock을 잡는다(useEditLock).
  */
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -26,7 +28,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import type { KeyKind } from '@/features/editor/model/keys'
-import type { ErdColumn, ErdTable, IndexOrder } from '@/features/editor/model/content-schema'
+import { INDEX_TYPES, type ErdColumn, type ErdTable, type IndexOrder, type IndexType } from '@/features/editor/model/content-schema'
 import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface KeyInfoSubmit {
@@ -34,6 +36,10 @@ export interface KeyInfoSubmit {
   columnIds: string[]
   /** 인덱스 컬럼별 정렬(ASC/DESC) — 유니크는 순서·정렬이 의미 없어 무시한다 */
   orders: Record<string, IndexOrder>
+  /** 인덱스 종류 — 유니크는 무시한다 */
+  type: IndexType
+  /** 전문 검색 파서 — FULLTEXT일 때만 값이 있다 */
+  parser: string | null
 }
 
 export interface KeyInfoDialogProps {
@@ -41,7 +47,13 @@ export interface KeyInfoDialogProps {
   onOpenChange: (open: boolean) => void
   kind: KeyKind
   /** 편집 대상 키 — null이면 생성 */
-  target: { name: string; columnIds: string[]; orders?: Record<string, IndexOrder> } | null
+  target: {
+    name: string
+    columnIds: string[]
+    orders?: Record<string, IndexOrder>
+    type?: IndexType
+    parser?: string | null
+  } | null
   table: ErdTable | null
   /** 문서 전체 키 이름(소문자) — 중복 검증. 편집 대상 자기 이름은 제외된 상태로 전달된다 */
   existingNames: ReadonlySet<string>
@@ -88,14 +100,22 @@ export function KeyInfoDialog({
   const [nameEdited, setNameEdited] = useState(false)
   // 인덱스 컬럼별 정렬 — 선택 시 기본 ASC
   const [orders, setOrders] = useState<Record<string, IndexOrder>>({})
+  // 인덱스 종류·파서 — 생성 기본은 BTREE, 파서 없음
+  const [indexType, setIndexType] = useState<IndexType>('BTREE')
+  const [parser, setParser] = useState('')
 
   useEffect(() => {
     if (open) {
       form.reset({ name: target?.name ?? '', columnIds: target?.columnIds ?? [] })
       setNameEdited(target !== null)
       setOrders(target?.orders ?? {})
+      setIndexType(target?.type ?? 'BTREE')
+      setParser(target?.parser ?? '')
     }
   }, [open, target])
+
+  /** 정렬이 의미 있는 종류인가 — FULLTEXT·SPATIAL은 컬럼별 정렬을 두지 않는다 */
+  const orderable = kind === 'index' && indexType === 'BTREE'
 
   const columnIds = form.watch('columnIds')
 
@@ -131,7 +151,15 @@ export function KeyInfoDialog({
   const kindLabel = t(kind === 'unique' ? 'model.editor.key.unique' : 'model.editor.key.index')
 
   const handleSubmit = form.handleSubmit((values) => {
-    onConfirm({ name: values.name.trim(), columnIds: values.columnIds, orders })
+    const trimmedParser = parser.trim()
+    onConfirm({
+      name: values.name.trim(),
+      columnIds: values.columnIds,
+      // 정렬 없는 종류는 ASC로 저장한다 — DDL에 DESC가 실리지 않게
+      orders: orderable ? orders : {},
+      type: kind === 'index' ? indexType : 'BTREE',
+      parser: kind === 'index' && indexType === 'FULLTEXT' && trimmedParser !== '' ? trimmedParser : null,
+    })
     onOpenChange(false)
   })
 
@@ -170,6 +198,43 @@ export function KeyInfoDialog({
               )}
             />
 
+            {kind === 'index' ? (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="grid gap-1 text-sm font-medium">
+                  {t('model.editor.key.indexType')}
+                  <select
+                    data-testid="index-type"
+                    value={indexType}
+                    onChange={(event) => setIndexType(event.target.value as IndexType)}
+                    className="h-9 rounded-md border border-input bg-background px-2 text-sm font-normal"
+                  >
+                    {INDEX_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {indexType === 'FULLTEXT' ? (
+                  <label className="grid gap-1 text-sm font-medium">
+                    {t('model.editor.key.parser')}
+                    <Input
+                      data-testid="index-parser"
+                      value={parser}
+                      onChange={(event) => setParser(event.target.value)}
+                      placeholder="ngram"
+                      className="font-normal"
+                    />
+                  </label>
+                ) : (
+                  <span aria-hidden />
+                )}
+              </div>
+            ) : null}
+            {kind === 'index' && indexType !== 'BTREE' ? (
+              <p className="-mt-2 text-xs text-muted-foreground">{t('model.editor.key.indexTypeHint')}</p>
+            ) : null}
+
             <FormField
               control={form.control}
               name="columnIds"
@@ -196,7 +261,7 @@ export function KeyInfoDialog({
                               <span className="w-4" aria-hidden />
                             )}
                             <span className="min-w-0 flex-1 truncate">{column.physicalName}</span>
-                            {selected && kind === 'index' ? (
+                            {selected && orderable ? (
                               <button
                                 type="button"
                                 className="w-10 shrink-0 rounded-sm bg-muted px-1 text-[9px] font-semibold tabular-nums text-muted-foreground hover:bg-accent"
@@ -238,7 +303,7 @@ export function KeyInfoDialog({
                     </div>
                   </FormControl>
                   <p className="text-xs text-muted-foreground">{t('model.editor.key.columnsHint')}</p>
-                  {kind === 'index' ? (
+                  {orderable ? (
                     <p className="text-xs text-muted-foreground">{t('model.editor.key.orderHint')}</p>
                   ) : null}
                   <FormMessage />

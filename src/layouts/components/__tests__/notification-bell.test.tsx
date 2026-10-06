@@ -18,7 +18,7 @@ import { asAuthenticated, renderWithProviders } from '@/test/test-app'
 
 function LocationDisplay() {
   const location = useLocation()
-  return <div data-testid="location">{location.pathname}</div>
+  return <div data-testid="location">{location.pathname + location.hash}</div>
 }
 
 function renderBell() {
@@ -28,6 +28,7 @@ function renderBell() {
       <Route path="/" element={<NotificationBell />} />
       <Route path="/workspaces/:workspaceId/models/:modelId" element={<LocationDisplay />} />
       <Route path="/community/notifications" element={<div>전체 알림 페이지</div>} />
+      <Route path="/community/posts/:postId" element={<LocationDisplay />} />
     </>,
     { route: '/' },
   )
@@ -85,6 +86,30 @@ describe('알림 벨', () => {
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent('/workspaces/4/models/501'),
     )
+  })
+
+  it('게시글 알림 — 글 댓글·제안 및 신고 새 글 문구, 클릭하면 게시글로 이동한다', async () => {
+    server.use(
+      http.get('/api/v1/core/notifications', () =>
+        HttpResponse.json(
+          ok({
+            responses: [
+              { id: '71', type: 'COMMUNITY_COMMENT_CREATED', actorUserId: '2', actorDisplayName: 'marco', postId: '41', postTitle: '검색 필터 개선 제안', commentId: '88', read: false, createdAt: '2026-10-06T10:00:00Z' },
+              { id: '70', type: 'FEEDBACK_POST_CREATED', actorUserId: '9', actorDisplayName: '지나가던 DBA', postId: '42', postTitle: '배포 SQL 문법 오류', read: false, createdAt: '2026-10-06T09:00:00Z' },
+            ],
+            page: 1, size: 10, totalPages: 1, totalCount: 2,
+          }),
+        ),
+      ),
+      http.patch('/api/v1/core/notifications/:id/read', () => HttpResponse.json(ok({}))),
+    )
+    renderBell()
+
+    await userEvent.click(screen.getByRole('button', { name: '알림' }))
+    expect(await screen.findByText('지나가던 DBA님이 제안 및 신고에 새 글을 올렸습니다 — 「배포 SQL 문법 오류」')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('marco님이 내 글 「검색 필터 개선 제안」에 댓글을 남겼습니다'))
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/community/posts/41#comment-88'))
   })
 
   it('calls read-all from the dropdown — 모두 읽음', async () => {

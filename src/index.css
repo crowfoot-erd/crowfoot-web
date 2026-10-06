@@ -133,6 +133,21 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ERD 캔버스의 기본색 — v1.33에서 사이트 기본색(--primary)을 에메랄드로 바꾸면서 테이블 노드의 머리·테두리·
+   NN 배지까지 초록이 됐다. 캔버스 안에서만 v1.32의 무채색 값으로 되돌린다. 테이블 색은 그룹 색으로 고르므로
+   기본 상태는 색이 없어야 한다(v1.34 사용자 요청). 포털로 뜨는 다이얼로그·메뉴는 이 범위 밖이라 사이트 기본색을 쓴다 */
+.erd-canvas-palette {
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --ring: oklch(0.708 0 0);
+}
+
+.dark .erd-canvas-palette {
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --ring: oklch(0.556 0 0);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

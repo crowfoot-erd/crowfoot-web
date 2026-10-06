@@ -211,8 +211,9 @@ The words and terms used in the template are also added to the workspace diction
 
 This creates a document from the script alone; no database connection is needed.
 
-* The importer reads `CREATE TABLE` and `ALTER TABLE ... ADD CONSTRAINT` statements. It reads columns, types, NOT NULL, default values, auto increment, primary keys, unique keys, foreign keys, and comments. PostgreSQL `COMMENT ON` statements are also read as logical names.
-* Statements it cannot read, such as `CREATE INDEX`, `CREATE VIEW`, and `INSERT`, are skipped and listed in the preview.
+* The importer reads `CREATE TABLE`, `ALTER TABLE ... ADD CONSTRAINT`, and `CREATE [UNIQUE|FULLTEXT] INDEX` statements. It reads columns, types (including fractional seconds), NOT NULL, default values, auto increment, primary keys, unique keys, indexes (including FULLTEXT and SPATIAL), foreign keys, CHECK constraints, generated columns, `ON UPDATE`, and comments. PostgreSQL `COMMENT ON` statements are also read as logical names.
+* Statements it cannot read, such as `CREATE VIEW` and `INSERT`, are skipped and listed in the preview.
+* Items that were read but reduced or dropped are listed separately below, under "items read but reduced or dropped". Examples are types narrowed to a Crowfoot type, types outside the catalog, dropped column attributes (`UNSIGNED`, `COLLATE`, `CHARACTER SET`, and so on), and session statements that are not read (`SET FOREIGN_KEY_CHECKS`, `USE`). Check this list before creating the document.
 * If the script has no `CREATE TABLE` statement, no document can be created.
 * If you leave the document name empty, the document is named "SQL ERD".
 * A document created this way is not connected to a database. To use Sync DB, choose **{{model.list.menu.connect}}** in the document list.
@@ -359,7 +360,8 @@ Right-click an empty area of the canvas and choose **{{model.editor.contextMenu.
 | **D** | A column that uses a domain type (section 9.4) |
 | × | Deletes the column |
 | **{{model.editor.table.addColumn}}** | Adds a column at the bottom |
-| **{{model.editor.key.addUnique}}**, **{{model.editor.key.addIndex}}** | Create a unique key or an index (section 6.5) |
+| **{{model.editor.key.addUnique}}**, **{{model.editor.key.addIndex}}**, **{{model.editor.check.add}}** | Create a unique key, an index, or a CHECK constraint (section 6.5) |
+| **ƒ** | A generated column. Hover over it to see the expression (section 6.3) |
 | Dots on the border | Handles for starting a relationship (section 7.1) |
 
 Primary key columns always stay at the top.
@@ -380,6 +382,8 @@ Double-click a column name to open the **{{model.editor.columnInfo.title}}** dia
 | {{model.editor.domainType.label}} | Choosing a domain type fills in the type, length, nullability, and default value from it (section 9.4) |
 | {{model.editor.columnInfo.dataType}}, {{model.editor.columnInfo.length}} | Depending on the type, a length field or precision and scale fields appear |
 | {{model.editor.columnInfo.defaultValue}} | For example `0` or `NOW()` |
+| {{model.editor.columnInfo.onUpdate}} | A value set automatically when a row is updated, for example `CURRENT_TIMESTAMP(6)`. Shown only in MySQL documents |
+| {{model.editor.columnInfo.generated}} | When turned on, enter the {{model.editor.columnInfo.generatedExpression}} and choose STORED (store the value) or VIRTUAL (compute on read). A generated column cannot have a default value, auto increment, or ON UPDATE, so those fields are turned off and cleared |
 | {{model.editor.columnInfo.comment}} | A description of the column used only within the document. It is not included in the SQL COMMENT |
 
 Type names follow the notation of the target DBMS. For example, the date and time type appears as TIMESTAMP in a PostgreSQL document and as DATETIME in a MySQL document.
@@ -397,8 +401,11 @@ Click the ⓘ on a table, or choose **{{model.editor.contextMenu.tableInfo}}** f
 1. Click **{{model.editor.key.addUnique}}** or **{{model.editor.key.addIndex}}** at the bottom of the table.
 2. Enter a name and choose the columns. The order in which you select them becomes the column order of a composite key. Use the arrows to change the order.
 3. For an index, you can set the sort order (ASC, DESC) of each column.
+4. For an index, choose the **{{model.editor.key.indexType}}**: BTREE, FULLTEXT, or SPATIAL. FULLTEXT and SPATIAL have no sort order. For FULLTEXT, you can enter a MySQL full-text parser (for example `ngram`).
 
-The keys you create appear as **UK** and **IX** rows at the bottom of the table. Click a row to edit or delete it. When you create a relationship, an index on the foreign key column is created automatically.
+The keys you create appear as **UK**, **IX**, and **CK** rows at the bottom of the table. FULLTEXT indexes are marked **FT** and SPATIAL indexes **SP**. Click a row to edit or delete it. When you create a relationship, an index on the foreign key column is created automatically.
+
+Click **{{model.editor.check.add}}** to create a CHECK constraint. The name is filled in like `ck_table_1`, and you write the expression inside the parentheses as is (for example `price >= 0`). The expression is not parsed, so update it yourself when you rename a column. Deleting a column does not remove the CHECK constraint.
 
 ## 7. Relationships
 
@@ -770,18 +777,22 @@ Click **{{model.validation.toggle}}** on the toolbar to open the **{{model.valid
 * Click an item to jump to that table on the canvas.
 * While the panel is open, tables with issues also have their borders marked in the level's color on the canvas. Info-level issues are not marked on the canvas.
 * The **{{model.validation.toggle}}** button on the toolbar shows the number of errors, or the number of warnings if there are no errors. The count stays up to date even when the panel is closed.
+* Warnings and info items can be marked as intended exceptions. Hover over an item, click the eye icon on the right (**{{model.validation.exception.mark}}**), write a one-line reason (up to 200 characters), and save. Errors cannot be marked as exceptions.
+* Excepted items are left out of the button count, the level button counts, and the border colors on the canvas. Click the **{{model.validation.exception.chip}}** button at the top to see the exceptions with their reason, author, and date, and use **{{model.validation.exception.remove}}** to undo one. An exception whose issue no longer appears is marked **{{model.validation.exception.stale}}**. Deleting the target table, column, or relationship also deletes the exception. Exceptions are saved in the document, so they work with undo and collaborative editing; people with view-only access can see them but not change them.
 * Errors do not block saving. Errors are problems that can make applying the document to a database fail, so fix them before deploying.
 
 | Level | Rule | Meaning |
 |---|---|---|
 | Error | {{model.validation.rules.DUPLICATE_TABLE_NAME}} | Two or more tables have the same physical name |
 | Error | {{model.validation.rules.DUPLICATE_COLUMN_NAME}} | Two or more columns in one table have the same name |
-| Error | {{model.validation.rules.DUPLICATE_KEY_NAME}} | Unique keys or indexes share a name |
+| Error | {{model.validation.rules.DUPLICATE_KEY_NAME}} | Names of unique keys, indexes, or CHECK constraints overlap |
 | Error | {{model.validation.rules.COMPOSITE_KEY_DUPLICATE_COLUMN}} | The same column appears twice in one key |
 | Error | {{model.validation.rules.FK_TYPE_MISMATCH}} | The foreign key column and the parent column have different types |
 | Error | {{model.validation.rules.FK_TARGET_NOT_KEY}} | The column the foreign key points to is not a primary key or unique key |
 | Error | {{model.validation.rules.FK_NULLABILITY_MISMATCH}} | The multiplicity of the relationship and the nullability of the foreign key do not agree |
 | Error | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | A 1:1 relationship has no unique key on its foreign key |
+| Error | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | The column type is not in the Crowfoot type list |
+| Error | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR or VARBINARY has no length (not checked in PostgreSQL documents) |
 | Warning | {{model.validation.rules.MISSING_PK}} | A table has no primary key |
 | Warning | {{model.validation.rules.EMPTY_TABLE}} | A table has no columns |
 | Warning | {{model.validation.rules.FK_MAPPING_EMPTY}} | A relationship has no linked columns |
@@ -900,11 +911,15 @@ Use this board to suggest improvements and report bugs. Write a post with **{{co
 
 ![Notifications](/guide-assets/en/shell-notifications.webp)
 
-Click the bell icon to see your recent notifications. There are three kinds.
+Click the bell icon to see your recent notifications. There are five kinds.
 
 * Someone commented on your document
 * Someone liked your document
 * The person who created the document replied to your comment
+* Someone commented on your post in Feedback. Your own comments are not notified
+* (Administrators only) Someone posted in Feedback
+
+Clicking a notification marks it as read and takes you to the document or post. A comment notification scrolls to that comment and highlights it briefly.
 
 Use **{{shell.notifications.markAll}}** to mark them all as read, and **{{shell.notifications.viewAll}}** to go to the full list.
 

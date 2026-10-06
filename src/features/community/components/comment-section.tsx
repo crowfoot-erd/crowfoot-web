@@ -4,8 +4,9 @@
  * plain text 작성(Textarea) + 목록(오래된 순) + 인라인 수정 + 삭제 확인.
  * 수정·삭제 첨부는 작성자 본인 또는 관리자(me.admin)에게만 노출된다(서버가 최종 판정).
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Avatar } from '@/components/ui/avatar'
@@ -37,6 +38,20 @@ export function CommentSection({ postId }: { postId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // 알림에서 온 댓글(#comment-{id}) — 목록이 그려지면 그 댓글로 스크롤하고 잠깐 강조한다(08-core/11-notification.md Section 2.1)
+  const { hash } = useLocation()
+  const targetCommentId = hash.startsWith('#comment-') ? hash.slice('#comment-'.length) : null
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!targetCommentId || !comments.data) return
+    const element = document.getElementById(`comment-${targetCommentId}`)
+    if (!element) return
+    element.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    setHighlightedId(targetCommentId)
+    const timer = window.setTimeout(() => setHighlightedId(null), 2500)
+    return () => window.clearTimeout(timer)
+  }, [targetCommentId, comments.data])
 
   const userId = me.data?.userId
   const canMutate = (authorUserId: string) => userId === authorUserId || me.data?.admin === true
@@ -103,7 +118,13 @@ export function CommentSection({ postId }: { postId: string }) {
       ) : (
         <ul className="flex flex-col divide-y rounded-md border">
           {comments.data?.items.map((comment) => (
-            <li key={comment.commentId} className="flex flex-col gap-2 p-4" data-testid="comment-item">
+            <li
+              key={comment.commentId}
+              id={`comment-${comment.commentId}`}
+              className={`flex flex-col gap-2 p-4 transition-colors duration-700 ${highlightedId === comment.commentId ? 'bg-primary/10' : ''}`}
+              data-testid="comment-item"
+              data-highlighted={highlightedId === comment.commentId ? 'true' : undefined}
+            >
               <div className="flex items-center gap-2">
                 <Avatar name={comment.author.name} className="size-6 text-xs" />
                 <span className="text-sm font-medium">{comment.author.name}</span>

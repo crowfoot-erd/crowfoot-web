@@ -50,6 +50,7 @@ function doc(requirements: ErdRequirement[] = []): EditorDocument {
         { id: 'a-order', name: '주문', description: '', color: 'green', tableIds: ['t-orders'] },
       ],
       requirements,
+      validationExceptions: [],
       viewport: null,
     },
   }

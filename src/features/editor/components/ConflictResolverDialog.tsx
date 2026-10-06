@@ -137,6 +137,12 @@ function changeToRow(
       const next = change.indexes.length
       return { ...base, kind: 'index', action: setAction(prev, next), table: tableName(change.tableId), name: `${next}` }
     }
+    case 'check/set': {
+      const table = tablesById.get(change.tableId)
+      const prev = table?.checks.length ?? 0
+      const next = change.checks.length
+      return { ...base, kind: 'check', action: setAction(prev, next), table: tableName(change.tableId), name: `${next}` }
+    }
     case 'relationship/create':
       return { ...base, kind: 'relationship', action: 'add', table: tableName(change.relationship.childTableId), name: change.relationship.fkName }
     case 'relationship/patch': {
@@ -165,6 +171,10 @@ function changeToRow(
       return { ...base, kind: 'requirement', action: 'remove', table: '', name: requirementsById.get(change.requirementId)?.code ?? change.requirementId }
     case 'requirement/patch':
       return { ...base, kind: 'requirement', action: 'update', table: '', name: requirementsById.get(change.requirementId)?.code ?? change.requirementId, detail: keys(change.patch as Record<string, unknown>) }
+    case 'validationException/add':
+      return { ...base, kind: 'validationException', action: 'add', table: '', name: change.exception.ruleId, detail: change.exception.reason }
+    case 'validationException/remove':
+      return { ...base, kind: 'validationException', action: 'remove', table: '', name: change.exceptionId }
     case 'node/move': {
       const ids = Object.keys(change.positions)
       const label = ids.map((id) => tableName(id)).join(', ')

@@ -45,9 +45,9 @@ import {
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
 import { groupColorOf, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
-import { createArea, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
+import { createArea, createIndex, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
-import { defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
+import { defaultCheckName, defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
 import { DEFAULT_CHILD_MULTIPLICITY, type ErdColumn } from '@/features/editor/model/content-schema'
 import { isDuplicateRelationship, isDuplicateTableName } from '@/features/editor/model/validation'
 import { findNoteDropTarget } from '@/features/editor/model/note-link'
@@ -74,6 +74,7 @@ import {
   type PendingRelation,
   type RelationHandleId,
 } from './canvas/editor-context'
+import { CheckConstraintDialog } from './CheckConstraintDialog'
 import { ColumnInfoDialog } from './ColumnInfoDialog'
 import { KeyInfoDialog, type KeyInfoSubmit } from './KeyInfoDialog'
 import { NoteNode, type NoteNodeType } from './canvas/NoteNode'
@@ -184,14 +185,14 @@ function buildEdges(
       w: tableRenderWidth(childPos.width ?? null, 0),
       h: estimateTableHeight(
         childTable?.columns.length ?? 0,
-        childTable ? childTable.uniques.length + childTable.indexes.length : 0,
+        childTable ? childTable.uniques.length + childTable.indexes.length + (childTable.checks?.length ?? 0) : 0,
       ),
     }
     const parentSize = sizeReports[rel.parentTableId] ?? {
       w: tableRenderWidth(parentPos.width ?? null, 0),
       h: estimateTableHeight(
         parentTable?.columns.length ?? 0,
-        parentTable ? parentTable.uniques.length + parentTable.indexes.length : 0,
+        parentTable ? parentTable.uniques.length + parentTable.indexes.length + (parentTable.checks?.length ?? 0) : 0,
       ),
     }
     // 연결면은 항상 현재 배치에서 다시 계산한다 — 테이블을 옮기면 선이 가장 가까운 면으로 따라간다.
@@ -413,7 +414,7 @@ export function ErdCanvas({
 
   const [infoTableId, setInfoTableId] = useState<string | null>(null)
   const [infoColumnRef, setInfoColumnRef] = useState<{ tableId: string; columnId: string } | null>(null)
-  const [keyDialogRef, setKeyDialogRef] = useState<{ tableId: string; keyId: string | null; kind: KeyKind } | null>(null)
+  const [keyDialogRef, setKeyDialogRef] = useState<{ tableId: string; keyId: string | null; kind: KeyKind | 'check' } | null>(null)
   const [relDialog, setRelDialog] = useState<
     | { mode: 'create'; parentId: string; childId: string }
     | { mode: 'edit'; relationshipId: string }
@@ -632,7 +633,7 @@ export function ErdCanvas({
                     x: layout.x,
                     y: layout.y,
                     w: tableRenderWidth(layout.width ?? null, 0),
-                    h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length),
+                    h: estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0)),
                   },
                 },
               ]
@@ -843,7 +844,7 @@ export function ErdCanvas({
     const table = present.model.tables.find((tb) => tb.id === pendingRelation.parentId)
     const size = sizeReports[pendingRelation.parentId] ?? {
       w: tableRenderWidth(null, 0),
-      h: estimateTableHeight(table?.columns.length ?? 0, table ? table.uniques.length + table.indexes.length : 0),
+      h: estimateTableHeight(table?.columns.length ?? 0, table ? table.uniques.length + table.indexes.length + (table.checks?.length ?? 0) : 0),
     }
     const anchor = handleAnchors(pos, size)[pendingRelation.parentHandle]
     const rf = rfRef.current
@@ -1081,6 +1082,10 @@ export function ErdCanvas({
 
   const keyDialogTarget = useMemo(() => {
     if (!keyDialogRef?.keyId || !keyDialogTable) return null
+    if (keyDialogRef.kind === 'check') {
+      const found = keyDialogTable.checks.find((c) => c.id === keyDialogRef.keyId) ?? null
+      return found ? { name: found.name, columnIds: [], expression: found.expression } : null
+    }
     if (keyDialogRef.kind === 'unique') {
       const found = keyDialogTable.uniques.find((u) => u.id === keyDialogRef.keyId) ?? null
       return found ? { name: found.name, columnIds: found.columnIds } : null
@@ -1091,9 +1096,17 @@ export function ErdCanvas({
           name: found.name,
           columnIds: found.columns.map((entry) => entry.columnId),
           orders: Object.fromEntries(found.columns.map((entry) => [entry.columnId, entry.order])),
+          type: found.type,
+          parser: found.parser,
         }
       : null
   }, [keyDialogRef, keyDialogTable])
+
+  /** CHECK 생성 기본 이름 — `ck_테이블_n`(문서 키 네임스페이스에서 비어 있는 첫 번호) */
+  const defaultCheckNameForDialog = useMemo(() => {
+    if (keyDialogRef?.kind !== 'check' || !keyDialogTable) return ''
+    return defaultCheckName(present.model, keyDialogTable)
+  }, [keyDialogRef, keyDialogTable, present.model])
 
   /** 문서 전체 키 이름에서 편집 대상 자기 이름만 뺀다 — 중복 검증에 쓴다 */
   const keyExistingNames = useMemo(() => {
@@ -1109,12 +1122,23 @@ export function ErdCanvas({
       if (!ref) return ''
       const { present: doc } = useEditorStore.getState()
       const table = doc.model.tables.find((tb) => tb.id === ref.tableId)
-      return table ? defaultKeyName(doc.model, table, ref.kind, columns) : ''
+      return table && ref.kind !== 'check' ? defaultKeyName(doc.model, table, ref.kind, columns) : ''
     },
     [keyDialogRef],
   )
 
-  const handleKeyConfirm = ({ name, columnIds, orders }: KeyInfoSubmit) => {
+  const handleCheckConfirm = ({ name, expression }: { name: string; expression: string }) => {
+    const ref = keyDialogRef
+    if (!ref) return
+    const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === ref.tableId)
+    if (!table) return
+    const checks = ref.keyId
+      ? table.checks.map((c) => (c.id === ref.keyId ? { ...c, name, expression } : c))
+      : [...table.checks, { id: newId(), name, expression }]
+    commit({ type: 'check/set', tableId: ref.tableId, checks })
+  }
+
+  const handleKeyConfirm = ({ name, columnIds, orders, type, parser }: KeyInfoSubmit) => {
     const ref = keyDialogRef
     if (!ref) return
     const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === ref.tableId)
@@ -1127,8 +1151,8 @@ export function ErdCanvas({
     } else {
       const columns = columnIds.map((columnId) => ({ columnId, order: orders[columnId] ?? 'ASC' }))
       const indexes = ref.keyId
-        ? table.indexes.map((ix) => (ix.id === ref.keyId ? { ...ix, name, columns } : ix))
-        : [...table.indexes, { id: newId(), name, columns }]
+        ? table.indexes.map((ix) => (ix.id === ref.keyId ? { ...ix, name, columns, type, parser } : ix))
+        : [...table.indexes, createIndex({ name, columns, type, parser })]
       commit({ type: 'index/set', tableId: ref.tableId, indexes })
     }
   }
@@ -1184,7 +1208,7 @@ export function ErdCanvas({
   )
 
   const openKeyInfo = useCallback(
-    (tableId: string, keyId: string | null, kind: KeyKind) => {
+    (tableId: string, keyId: string | null, kind: KeyKind | 'check') => {
       if (canEdit) setKeyDialogRef({ tableId, keyId, kind })
     },
     [canEdit],
@@ -1256,7 +1280,8 @@ export function ErdCanvas({
   const flow = (
     <div
       ref={wrapperRef}
-      className={cn('relative h-full w-full', pendingRelation && 'cursor-crosshair')}
+      // erd-canvas-palette — 캔버스는 v1.32의 무채색 기본색을 쓴다(테이블 머리·테두리가 회색, 그룹 색이 그대로 보인다)
+      className={cn('erd-canvas-palette relative h-full w-full', pendingRelation && 'cursor-crosshair')}
       onMouseMove={handlePointerMove}
     >
       {/* 도메인 타입이 바뀐 컬럼이 있으면 전파할지 묻는다(§16) */}
@@ -1420,6 +1445,7 @@ export function ErdCanvas({
         isPk={infoColumnIsPk}
         pkCount={infoColumnPkCount}
         dbmsId={dbmsId}
+        showOnUpdate={dbmsId === 'mysql'}
         domainTypes={domainTypes.data?.items}
         isFk={infoColumnIsFk}
         terms={workspaceTerms.data?.items}
@@ -1441,16 +1467,28 @@ export function ErdCanvas({
       />
 
       <KeyInfoDialog
-        open={keyDialogRef !== null && keyDialogTable !== null}
+        open={keyDialogRef !== null && keyDialogRef.kind !== 'check' && keyDialogTable !== null}
         onOpenChange={(open) => {
           if (!open) setKeyDialogRef(null)
         }}
-        kind={keyDialogRef?.kind ?? 'unique'}
+        kind={keyDialogRef?.kind === 'index' ? 'index' : 'unique'}
         target={keyDialogTarget}
         table={keyDialogTable}
         existingNames={keyExistingNames}
         suggestName={suggestKeyName}
         onConfirm={handleKeyConfirm}
+      />
+
+      <CheckConstraintDialog
+        open={keyDialogRef?.kind === 'check' && keyDialogTable !== null}
+        onOpenChange={(open) => {
+          if (!open) setKeyDialogRef(null)
+        }}
+        target={keyDialogRef?.kind === 'check' && keyDialogTarget ? { name: keyDialogTarget.name, expression: keyDialogTarget.expression ?? '' } : null}
+        table={keyDialogTable}
+        existingNames={keyExistingNames}
+        defaultName={defaultCheckNameForDialog}
+        onConfirm={handleCheckConfirm}
       />
 
       <RelationshipDialog

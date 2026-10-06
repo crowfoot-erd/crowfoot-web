@@ -17,7 +17,7 @@ import { EditorToolbar } from '@/features/editor/components/EditorToolbar'
 import { ValidationPanel } from '@/features/editor/components/ValidationPanel'
 import { createColumn, createTable } from '@/features/editor/model/changes'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
-import { validateModel } from '@/features/editor/model/validation'
+import { partitionByExceptions, validateModel } from '@/features/editor/model/validation'
 import { resetEditorStore, useEditorStore } from '@/features/editor/store/editor-store'
 import { renderWithProviders, resetSessionState } from '@/test/test-app'
 
@@ -65,7 +65,7 @@ function issueDoc(): EditorDocument {
         't-orders': { x: 400, y: 0, width: null, color: 'default' },
       },
       notes: [],
-      areas: [], requirements: [],
+      areas: [], requirements: [], validationExceptions: [],
       viewport: null,
     },
   }
@@ -182,7 +182,7 @@ describe('ValidationPanel — 감사 전송(§5)', () => {
     renderPanel({ canReport: true })
 
     await waitFor(() => expect(validationPosts).toHaveLength(1))
-    expect(await validationPosts[0].json()).toEqual({ errorCount: 1, warningCount: 1, infoCount: 1 })
+    expect(await validationPosts[0].json()).toEqual({ exceptionCount: 0, errorCount: 1, warningCount: 1, infoCount: 1 })
   })
 
   it('재렌더(건수 변화)로 추가 전송하지 않는다 — 디바운스 재계산마다 보내지 않는다', async () => {
@@ -256,5 +256,77 @@ describe('EditorToolbar — 검증 토글 배지(§4.1)', () => {
   it('전부 0이면 배지가 없다', () => {
     renderToolbar(0, 0)
     expect(screen.queryByTestId('validation-badge')).toBeNull()
+  })
+})
+
+describe('ValidationPanel — 검증 예외(§4.4)', () => {
+  /** 셸과 같은 배선 — 스토어의 예외로 결과를 갈라 패널에 넘긴다 */
+  function ExceptionHarness({ canExceptEdit }: { canExceptEdit: boolean }) {
+    const doc = useEditorStore((s) => s.present)
+    const { active, excepted } = partitionByExceptions(validateModel(doc.model, DOC_DB), doc.diagram.validationExceptions)
+    return (
+      <ValidationPanel
+        open
+        issues={active}
+        excepted={excepted}
+        canExceptEdit={canExceptEdit}
+        userName="홍길동"
+        canReport={false}
+        workspaceId="101"
+        modelId="501"
+      />
+    )
+  }
+
+  function renderHarness(canExceptEdit = true) {
+    hydrate(issueDoc())
+    return renderWithProviders(
+      <ReactFlowProvider>
+        <ExceptionHarness canExceptEdit={canExceptEdit} />
+      </ReactFlowProvider>,
+      { wrapRoutes: false },
+    )
+  }
+
+  it('경고를 사유와 함께 예외로 두면 칩 건수에서 빠지고, 예외 목록에서 해제할 수 있다', () => {
+    renderHarness()
+    // 오류 행에는 예외 버튼이 없다 — 경고·참고 2행만
+    expect(screen.getAllByTestId('validation-except')).toHaveLength(2)
+
+    fireEvent.click(screen.getAllByTestId('validation-except')[0]) // 경고(기본키 없음)
+    expect(screen.getByTestId('validation-exception-save')).toBeDisabled() // 사유는 필수
+    fireEvent.change(screen.getByTestId('validation-exception-reason'), { target: { value: '적재용 임시 테이블' } })
+    fireEvent.click(screen.getByTestId('validation-exception-save'))
+
+    const saved = useEditorStore.getState().present.diagram.validationExceptions
+    expect(saved).toEqual([
+      expect.objectContaining({ ruleId: 'MISSING_PK', target: 'table:t-orders', reason: '적재용 임시 테이블', createdBy: '홍길동' }),
+    ])
+    expect(screen.getByTestId('validation-filter-warning')).toHaveTextContent('경고 0')
+    expect(screen.getByTestId('validation-filter-excepted')).toHaveTextContent('예외 1')
+
+    fireEvent.click(screen.getByTestId('validation-filter-excepted'))
+    expect(screen.getByTestId('validation-excepted')).toHaveTextContent('적재용 임시 테이블')
+    fireEvent.click(screen.getByTestId('validation-exception-remove'))
+    expect(useEditorStore.getState().present.diagram.validationExceptions).toEqual([])
+    expect(screen.getByTestId('validation-filter-warning')).toHaveTextContent('경고 1')
+  })
+
+  it('읽기 전용이면 예외를 볼 수만 있다 — 발화하지 않는 예외는 "해당 없음"', () => {
+    hydrate(issueDoc())
+    useEditorStore.getState().commit({
+      type: 'validationException/add',
+      exception: { id: 'x1', ruleId: 'ORPHAN_TABLE', target: 'table:t-users', reason: '지난 설계', createdBy: '김', createdAt: '2026-10-01T00:00:00.000Z' },
+    })
+    renderWithProviders(
+      <ReactFlowProvider>
+        <ExceptionHarness canExceptEdit={false} />
+      </ReactFlowProvider>,
+      { wrapRoutes: false },
+    )
+    expect(screen.queryAllByTestId('validation-except')).toHaveLength(0)
+    fireEvent.click(screen.getByTestId('validation-filter-excepted'))
+    expect(screen.getByTestId('validation-excepted-stale')).toHaveTextContent('해당 없음')
+    expect(screen.queryByTestId('validation-exception-remove')).toBeNull()
   })
 })

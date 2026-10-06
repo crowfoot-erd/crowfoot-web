@@ -135,7 +135,7 @@ describe('RelationshipDialog — 생성', () => {
     useEditorStore.getState().hydrate({
       modelId: '901',
       baseVersion: 0,
-      document: { model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null } },
+      document: { model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null } },
       databaseType: 'mysql',
     })
     renderCreateDialog(tableWithPk('members'), tableWithPk('orders'))

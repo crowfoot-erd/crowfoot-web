@@ -10,6 +10,7 @@ import type { WorkspaceTerm } from '@/api/types'
 import {
   coerceChildMultiplicity,
   type ErdArea,
+  type ErdCheck,
   type ErdNodeLayout,
   type ErdRequirement,
   type ErdColumn,
@@ -20,6 +21,7 @@ import {
   type ErdRelationship,
   type ErdTable,
   type ErdUniqueKey,
+  type ErdValidationException,
   type EditorDocument,
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
@@ -63,6 +65,8 @@ export type ErdChange =
   | { type: 'primaryKey/set'; tableId: string; primaryKey: ErdPrimaryKey | null }
   | { type: 'uniqueKey/set'; tableId: string; uniques: ErdUniqueKey[] }
   | { type: 'index/set'; tableId: string; indexes: ErdIndex[] }
+  /** CHECK 제약 목록 교체(v1.34) — 유니크·인덱스와 같은 절대값 배열 교체 */
+  | { type: 'check/set'; tableId: string; checks: ErdCheck[] }
   | { type: 'relationship/create'; relationship: ErdRelationship; fkColumns: ErdColumn[] }
   | { type: 'relationship/patch'; relationshipId: string; patch: RelationshipPatch }
   | { type: 'relationship/remove'; relationshipId: string }
@@ -75,6 +79,9 @@ export type ErdChange =
   | { type: 'requirement/create'; requirement: ErdRequirement }
   | { type: 'requirement/patch'; requirementId: string; patch: RequirementPatch }
   | { type: 'requirement/remove'; requirementId: string }
+  /** 검증 예외(v1.34) — 하나씩 더하고 지운다(협업에서 두 사람이 동시에 다른 예외를 둬도 서로 지우지 않게) */
+  | { type: 'validationException/add'; exception: ErdValidationException }
+  | { type: 'validationException/remove'; exceptionId: string }
   | { type: 'node/move'; positions: Record<string, { x: number; y: number }> }
   | { type: 'node/resize'; tableId: string; width: number | null }
   | { type: 'node/color'; tableId: string; color: TableColorValue }
@@ -115,6 +122,18 @@ export function createColumn(init: Partial<ErdColumn> = {}): ErdColumn {
     defaultValue: null,
     autoIncrement: false,
     comment: null,
+    generated: null,
+    onUpdate: null,
+    ...init,
+  }
+}
+
+/** 새 인덱스 — 종류는 BTREE, 파서 없음이 기본(문서 편집 API가 만드는 본체와 같은 기본값) */
+export function createIndex(init: Pick<ErdIndex, 'name' | 'columns'> & Partial<ErdIndex>): ErdIndex {
+  return {
+    id: newId(),
+    type: 'BTREE',
+    parser: null,
     ...init,
   }
 }
@@ -129,6 +148,7 @@ export function createTable(physicalName: string, init: Partial<ErdTable> = {}):
     primaryKey: null,
     uniques: [],
     indexes: [],
+    checks: [],
     ...init,
   }
 }
@@ -290,13 +310,26 @@ function removeColumnEverywhere(doc: EditorDocument, tableId: string, columnId: 
     // 원본 컬럼이 아직 살아 있으면(부모 쪽 PK 등 cascade가 지우지 않는 컬럼) 일반 정리로 마저 제거
     return removeColumnEverywhere(cascaded, tableId, columnId)
   }
-  return mapTable(doc, tableId, (table) => ({
+  // CHECK 제약은 컬럼 id에 묶이지 않는다(식은 원문) — 그대로 둔다
+  const removed = mapTable(doc, tableId, (table) => ({
     ...table,
     columns: table.columns.filter((c) => c.id !== columnId),
     primaryKey: primaryKeyWithoutColumn(table.primaryKey, columnId),
     uniques: uniquesWithoutColumn(table.uniques, columnId),
     indexes: indexesWithoutColumn(table.indexes, columnId),
   }))
+  return withoutExceptions(removed, (target) => target === `column:${tableId}:${columnId}`)
+}
+
+/** 검증 예외 정리 — 대상이 지워진 예외를 뺀다(그룹의 tableIds 정리와 같은 cascade).
+ *  지울 것이 없으면 원본을 그대로 돌려줘 구조 공유를 지킨다 */
+function withoutExceptions(doc: EditorDocument, gone: (target: string) => boolean): EditorDocument {
+  const exceptions = doc.diagram.validationExceptions
+  if (!exceptions.some((exception) => gone(exception.target))) return doc
+  return {
+    ...doc,
+    diagram: { ...doc.diagram, validationExceptions: exceptions.filter((exception) => !gone(exception.target)) },
+  }
 }
 
 /** 테이블 삭제 cascade — 붙은 관계 제거 + 관계 소유 FK 컬럼을 상대 테이블에서도 제거 + 노드 제거
@@ -330,6 +363,12 @@ function removeTableCascade(doc: EditorDocument, tableId: string): EditorDocumen
       ),
     },
   }
+  // 이 테이블·그 컬럼·붙어 있던 관계를 가리키던 검증 예외는 대상이 사라졌으니 함께 지운다
+  const attachedTargets = new Set(attached.map((rel) => `relationship:${rel.id}`))
+  next = withoutExceptions(
+    next,
+    (target) => target === `table:${tableId}` || target.startsWith(`column:${tableId}:`) || attachedTargets.has(target),
+  )
   // 관계 소유 FK 컬럼 정리 — 상대 테이블이 살아 있는 쪽에서 제거한다
   for (const rel of attached) {
     const otherTableId = rel.parentTableId === tableId ? rel.childTableId : rel.parentTableId
@@ -386,11 +425,10 @@ function applyRelationshipCreate(
       indexes: wantIndex
         ? [
             ...table.indexes,
-            {
-              id: newId(),
+            createIndex({
               name: defaultKeyName(doc.model, table, 'index', fkColumns),
               columns: fkIds.map((columnId) => ({ columnId, order: 'ASC' as const })),
-            },
+            }),
           ]
         : table.indexes,
     }
@@ -407,10 +445,13 @@ function applyRelationshipCreate(
 function removeRelationshipCascade(doc: EditorDocument, relationshipId: string): EditorDocument {
   const rel = doc.model.relationships.find((r) => r.id === relationshipId)
   if (!rel) return doc
-  let next: EditorDocument = {
-    ...doc,
-    model: { ...doc.model, relationships: doc.model.relationships.filter((r) => r.id !== relationshipId) },
-  }
+  let next: EditorDocument = withoutExceptions(
+    {
+      ...doc,
+      model: { ...doc.model, relationships: doc.model.relationships.filter((r) => r.id !== relationshipId) },
+    },
+    (target) => target === `relationship:${relationshipId}`,
+  )
   for (const mapping of rel.columnMappings) {
     const stillReferenced = next.model.relationships.some((r) =>
       r.columnMappings.some((m) => m.childColumnId === mapping.childColumnId && r.childTableId === rel.childTableId),
@@ -509,11 +550,10 @@ function rekeyForeignKey(
   ) {
     indexes = [
       ...indexes,
-      {
-        id: newId(),
+      createIndex({
         name: defaultKeyName(doc.model, working, 'index', fkColumns),
         columns: nextFkIds.map((columnId) => ({ columnId, order: 'ASC' as const })),
-      },
+      }),
     ]
   }
   return { ...table, columns, primaryKey, uniques, indexes }
@@ -603,7 +643,7 @@ function applyRelationshipPatch(
     if (wantIndex && !ownedIndex) {
       indexes = [
         ...indexes,
-        { id: newId(), name: defaultKeyName(merged.model, table, 'index', fkColumns), columns: fkIds.map((columnId) => ({ columnId, order: 'ASC' as const })) },
+        createIndex({ name: defaultKeyName(merged.model, table, 'index', fkColumns), columns: fkIds.map((columnId) => ({ columnId, order: 'ASC' as const })) }),
       ]
     } else if (!wantIndex && ownedIndex) {
       indexes = indexes.filter((ix) => ix !== ownedIndex)
@@ -657,6 +697,8 @@ export function applyChange(doc: EditorDocument, change: ErdChange, databaseType
       return mapTable(doc, change.tableId, (table) => ({ ...table, uniques: change.uniques }))
     case 'index/set':
       return mapTable(doc, change.tableId, (table) => ({ ...table, indexes: change.indexes }))
+    case 'check/set':
+      return mapTable(doc, change.tableId, (table) => ({ ...table, checks: change.checks }))
     case 'relationship/create':
       return applyRelationshipCreate(doc, change.relationship, change.fkColumns, databaseType)
     case 'relationship/patch':
@@ -725,6 +767,30 @@ export function applyChange(doc: EditorDocument, change: ErdChange, databaseType
         diagram: {
           ...doc.diagram,
           requirements: doc.diagram.requirements.filter((requirement) => requirement.id !== change.requirementId),
+        },
+      }
+    case 'validationException/add':
+      // 같은 규칙·대상의 예외가 이미 있으면 바꿔 끼운다 — 한 경고에 예외는 하나다
+      return {
+        ...doc,
+        diagram: {
+          ...doc.diagram,
+          validationExceptions: [
+            ...doc.diagram.validationExceptions.filter(
+              (exception) =>
+                exception.id !== change.exception.id &&
+                !(exception.ruleId === change.exception.ruleId && exception.target === change.exception.target),
+            ),
+            change.exception,
+          ],
+        },
+      }
+    case 'validationException/remove':
+      return {
+        ...doc,
+        diagram: {
+          ...doc.diagram,
+          validationExceptions: doc.diagram.validationExceptions.filter((exception) => exception.id !== change.exceptionId),
         },
       }
     case 'node/move': {

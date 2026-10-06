@@ -31,15 +31,17 @@ export type TargetKind =
   | 'primaryKey'
   | 'uniqueKey'
   | 'index'
+  | 'check'
   | 'relationship'
   | 'note'
   | 'area'
   | 'requirement'
+  | 'validationException'
   | 'node'
 
 export interface ChangeTargetKey {
   kind: TargetKind
-  /** 객체 id — primaryKey·uniqueKey·index는 소속 테이블 id(소유자가 테이블이다) */
+  /** 객체 id — primaryKey·uniqueKey·index·check는 소속 테이블 id(소유자가 테이블이다) */
   id: string
   /** 속성명 — '*'는 객체 전체(생성·삭제·배열 교체), 'order'는 컬럼 순서 */
   field: string
@@ -71,6 +73,8 @@ export function changeTargetKeys(change: ErdChange): ChangeTargetKey[] {
       return [{ kind: 'uniqueKey', id: change.tableId, field: '*' }]
     case 'index/set':
       return [{ kind: 'index', id: change.tableId, field: '*' }]
+    case 'check/set':
+      return [{ kind: 'check', id: change.tableId, field: '*' }]
     case 'relationship/create':
       return [{ kind: 'relationship', id: change.relationship.id, field: '*' }]
     case 'relationship/patch':
@@ -95,6 +99,10 @@ export function changeTargetKeys(change: ErdChange): ChangeTargetKey[] {
       return [{ kind: 'requirement', id: change.requirementId, field: '*' }]
     case 'requirement/patch':
       return Object.keys(change.patch).map((field) => ({ kind: 'requirement' as const, id: change.requirementId, field }))
+    case 'validationException/add':
+      return [{ kind: 'validationException', id: change.exception.id, field: '*' }]
+    case 'validationException/remove':
+      return [{ kind: 'validationException', id: change.exceptionId, field: '*' }]
     case 'node/move':
       return Object.entries(change.positions).flatMap(([tableId, pos]) =>
         (['x', 'y'] as const)
@@ -131,6 +139,9 @@ function columnPatchOf(from: ErdColumn, to: ErdColumn): Partial<ErdColumn> | nul
     if (from[f] !== to[f]) patch[f] = to[f]
   }
   if (normDefault(from.defaultValue) !== normDefault(to.defaultValue)) patch.defaultValue = to.defaultValue
+  // 생성 컬럼·ON UPDATE(v1.34) — 생성식은 객체라 내용으로 비교한다
+  if (JSON.stringify(from.generated ?? null) !== JSON.stringify(to.generated ?? null)) patch.generated = to.generated ?? null
+  if ((from.onUpdate ?? null) !== (to.onUpdate ?? null)) patch.onUpdate = to.onUpdate ?? null
   return Object.keys(patch).length > 0 ? (patch as Partial<ErdColumn>) : null
 }
 
@@ -160,6 +171,11 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
   }
   for (const r of from.diagram.requirements) {
     if (!to.diagram.requirements.some((x) => x.id === r.id)) changes.push({ type: 'requirement/remove', requirementId: r.id })
+  }
+  for (const e of from.diagram.validationExceptions) {
+    if (!to.diagram.validationExceptions.some((x) => x.id === e.id)) {
+      changes.push({ type: 'validationException/remove', exceptionId: e.id })
+    }
   }
 
   /* 패치·이동 — 공통 객체끼리 필드 diff */
@@ -211,11 +227,15 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
     ) {
       changes.push({ type: 'uniqueKey/set', tableId: next.id, uniques: next.uniques })
     }
+    // 인덱스 — 이름·종류·파서까지 내용으로 비교한다(v1.34)
     if (
       prev.indexes.length !== next.indexes.length ||
-      prev.indexes.some((ix, i) => ix.id !== next.indexes[i].id || JSON.stringify(ix.columns) !== JSON.stringify(next.indexes[i].columns))
+      prev.indexes.some((ix, i) => JSON.stringify(ix) !== JSON.stringify(next.indexes[i]))
     ) {
       changes.push({ type: 'index/set', tableId: next.id, indexes: next.indexes })
+    }
+    if (JSON.stringify(prev.checks) !== JSON.stringify(next.checks)) {
+      changes.push({ type: 'check/set', tableId: next.id, checks: next.checks })
     }
 
     /* 노드 레이아웃 — 위치는 모아서 한 커맨드, 폭·색은 개별 */
@@ -327,6 +347,13 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
   for (const next of to.diagram.requirements) {
     if (!from.diagram.requirements.some((r) => r.id === next.id)) changes.push({ type: 'requirement/create', requirement: next })
   }
+  // 검증 예외는 고치지 않고 지우고 다시 둔다 — 내용이 바뀐 기록도 add가 같은 id를 바꿔 끼운다
+  for (const next of to.diagram.validationExceptions) {
+    const prev = from.diagram.validationExceptions.find((e) => e.id === next.id)
+    if (!prev || JSON.stringify(prev) !== JSON.stringify(next)) {
+      changes.push({ type: 'validationException/add', exception: next })
+    }
+  }
 
   /* 컬럼 순서 이동 패스 — 생성(add)이 꼬리에 붙인 뒤 to 순서로 맞춘다. working 배열로 적용을
    *  시뮬레이션해, 커맨드열을 순서대로 적용하면 정확히 toIds 순서가 되도록 이동을 뽑는다. */
@@ -392,6 +419,10 @@ function presentValueOf(doc: EditorDocument, key: ChangeTargetKey): unknown {
       return table?.uniques
     case 'index':
       return table?.indexes
+    case 'check':
+      return table?.checks
+    case 'validationException':
+      return doc.diagram.validationExceptions.find((e) => e.id === key.id)
     case 'relationship': {
       const rel = doc.model.relationships.find((r) => r.id === key.id)
       return rel ? (rel as unknown as Record<string, unknown>)[key.field] : undefined
@@ -489,7 +520,7 @@ export function conflictRestores(conflicts: LwwConflict[], present: EditorDocume
   for (const conflict of conflicts) {
     const { kind, id, field } = conflict.target
     if (field === '*') continue
-    if (kind === 'table' || kind === 'primaryKey' || kind === 'uniqueKey' || kind === 'index' || kind === 'node') {
+    if (kind === 'table' || kind === 'primaryKey' || kind === 'uniqueKey' || kind === 'index' || kind === 'check' || kind === 'node') {
       if (kind === 'node') {
         const node = present.diagram.nodes[id]
         if (!node) continue
@@ -514,6 +545,8 @@ export function conflictRestores(conflicts: LwwConflict[], present: EditorDocume
         restores.push({ type: 'primaryKey/set', tableId: id, primaryKey: table.primaryKey })
       } else if (kind === 'uniqueKey') {
         restores.push({ type: 'uniqueKey/set', tableId: id, uniques: table.uniques })
+      } else if (kind === 'check') {
+        restores.push({ type: 'check/set', tableId: id, checks: table.checks })
       } else {
         restores.push({ type: 'index/set', tableId: id, indexes: table.indexes })
       }
@@ -616,7 +649,7 @@ function objectKeyOf(change: ErdChange): string | null {
 
 /** 구조 변경의 객체 키 — 같은 객체의 앞선 병합(patch) 항목이 무의미해진다(제거·생성이 상태를
  *  통째로 정한다). 구조 변경끼리는 순서까지 의미가 있어(C9 추가→제거) 절대 버리지 않는다.
- *  primaryKey/uniqueKey/index/set·column/move는 절대값이지만 독립적이라 어느 쪽도 무효화하지 않는다 —
+ *  primaryKey/uniqueKey/index/check/set·column/move는 절대값이지만 독립적이라 어느 쪽도 무효화하지 않는다 —
  *  column/move의 toIndex는 배열 상태 상대값이라 drop하면 순서가 달라진다. */
 function structuralKeyOf(change: ErdChange): string | null {
   switch (change.type) {
@@ -644,6 +677,10 @@ function structuralKeyOf(change: ErdChange): string | null {
       return `requirement:${change.requirement.id}`
     case 'requirement/remove':
       return `requirement:${change.requirementId}`
+    case 'validationException/add':
+      return `validationException:${change.exception.id}`
+    case 'validationException/remove':
+      return `validationException:${change.exceptionId}`
     default:
       return null
   }
@@ -717,6 +754,7 @@ export function describeTarget(doc: EditorDocument, key: ChangeTargetKey): strin
     case 'primaryKey':
     case 'uniqueKey':
     case 'index':
+    case 'check':
     case 'node':
       return table?.physicalName || key.id
     case 'column': {
@@ -741,6 +779,10 @@ export function describeTarget(doc: EditorDocument, key: ChangeTargetKey): strin
     case 'requirement': {
       const requirement = doc.diagram.requirements.find((r) => r.id === key.id)
       return requirement?.code || key.id
+    }
+    case 'validationException': {
+      const exception = doc.diagram.validationExceptions.find((e) => e.id === key.id)
+      return exception?.ruleId || key.id
     }
   }
 }

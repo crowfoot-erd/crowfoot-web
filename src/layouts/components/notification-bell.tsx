@@ -5,6 +5,7 @@
  * 해당 문서로 이동, 하단 "모두 읽음"·"전체 보기"(S-14 /community/notifications — v1.24부터
  * 커뮤니티 좌측 메뉴에도 같은 행선지가 있다).
  */
+import { notificationMessageValues, notificationTarget } from '@/layouts/components/notification-target'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck } from 'lucide-react'
@@ -47,7 +48,7 @@ export function NotificationBell() {
     markRead.mutate(item.id, {
       onSuccess: () => {
         setOpen(false)
-        navigate(`/workspaces/${item.workspaceId}/models/${item.modelId}`)
+        navigate(notificationTarget(item).path)
       },
     })
   }
@@ -94,10 +95,7 @@ export function NotificationBell() {
                     className={`size-1.5 shrink-0 rounded-full ${item.read ? 'bg-transparent border border-muted-foreground/40' : 'bg-primary'}`}
                   />
                   <span className="min-w-0 flex-1 truncate">
-                    {t(`shell.notifications.type.${item.type}`, {
-                      actor: item.actorDisplayName ?? '',
-                      model: item.modelName,
-                    })}
+                    {t(`shell.notifications.type.${item.type}`, notificationMessageValues(item))}
                   </span>
                 </span>
                 <span className="pl-3 text-xs text-muted-foreground">{timeAgo(item.createdAt)}</span>

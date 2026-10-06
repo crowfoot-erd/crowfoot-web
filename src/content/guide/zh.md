@@ -211,8 +211,9 @@ Crowfoot 的界面大致分为三类。
 
 这种方式不需要连接数据库，仅根据脚本创建文档。
 
-* 可解析的语句为 `CREATE TABLE` 和 `ALTER TABLE ... ADD CONSTRAINT`。会读取列、类型、NOT NULL、默认值、自增、主键、唯一键、外键和注释。PostgreSQL 的 `COMMENT ON` 也会作为逻辑名读取。
-* `CREATE INDEX`、`CREATE VIEW`、`INSERT` 等无法解析的语句会被跳过，并在预览中列出。
+* 可解析的语句为 `CREATE TABLE`、`ALTER TABLE ... ADD CONSTRAINT` 和 `CREATE [UNIQUE|FULLTEXT] INDEX`。会读取列、类型（含秒的小数位数）、NOT NULL、默认值、自增、主键、唯一键、索引（含 FULLTEXT、SPATIAL）、外键、CHECK 约束、生成列、`ON UPDATE` 和注释。PostgreSQL 的 `COMMENT ON` 也会作为逻辑名读取。
+* `CREATE VIEW`、`INSERT` 等无法解析的语句会被跳过，并在预览中列出。
+* 已读取但被缩减或舍弃的项目会另外列在下方的“已读取但被缩减或舍弃的项目”中。例如被缩减为 Crowfoot 类型的类型、类型目录之外的类型、被舍弃的列属性（`UNSIGNED`、`COLLATE`、`CHARACTER SET` 等）以及不读取的会话语句（`SET FOREIGN_KEY_CHECKS`、`USE`）。创建文档前请先确认此列表。
 * 如果没有任何 `CREATE TABLE` 语句，则无法创建文档。
 * 文档名称留空时，会以“SQL ERD”为名创建。
 * 以这种方式创建的文档未连接数据库。如需使用同步数据库，请在文档列表中选择 **{{model.list.menu.connect}}**。
@@ -359,7 +360,8 @@ Crowfoot 的界面大致分为三类。
 | **D** | 使用域类型的列（见 9.4 节） |
 | × | 删除列 |
 | **{{model.editor.table.addColumn}}** | 在最下方添加列 |
-| **{{model.editor.key.addUnique}}**、**{{model.editor.key.addIndex}}** | 创建唯一键和索引（见 6.5 节） |
+| **{{model.editor.key.addUnique}}**、**{{model.editor.key.addIndex}}**、**{{model.editor.check.add}}** | 创建唯一键、索引和 CHECK 约束（见 6.5 节） |
+| **ƒ** | 生成列。鼠标悬停可查看生成表达式（见 6.3 节） |
 | 边框上的点 | 用于开始创建关系的手柄（见 7.1 节） |
 
 主键列始终排在最上方。
@@ -380,6 +382,8 @@ Crowfoot 的界面大致分为三类。
 | {{model.editor.domainType.label}} | 选择域类型后，类型、长度、是否允许 NULL 和默认值会按域类型的值填入（见 9.4 节） |
 | {{model.editor.columnInfo.dataType}}、{{model.editor.columnInfo.length}} | 根据类型显示长度输入框，或精度和小数位数输入框 |
 | {{model.editor.columnInfo.defaultValue}} | 例如：`0`、`NOW()` |
+| {{model.editor.columnInfo.onUpdate}} | 更新行时自动写入的值，例如 `CURRENT_TIMESTAMP(6)`。仅在 MySQL 文档中显示 |
+| {{model.editor.columnInfo.generated}} | 开启后填写{{model.editor.columnInfo.generatedExpression}}，并在 STORED（存储值）和 VIRTUAL（读取时计算）中选择。生成列不能设置默认值、自增或 ON UPDATE，因此这些输入项会被关闭并清空 |
 | {{model.editor.columnInfo.comment}} | 仅在文档内使用的列说明，不会写入 SQL 的 COMMENT |
 
 类型名称按各 DBMS 的写法显示。例如日期时间类型在 PostgreSQL 文档中显示为 TIMESTAMP，在 MySQL 文档中显示为 DATETIME。
@@ -397,8 +401,11 @@ Crowfoot 的界面大致分为三类。
 1. 点击表下方的 **{{model.editor.key.addUnique}}** 或 **{{model.editor.key.addIndex}}**。
 2. 填写名称并选择列。选择的顺序即复合键中的列顺序，可以用箭头调整。
 3. 索引可以为每一列设置排序方向（ASC、DESC）。
+4. 索引可以在 BTREE、FULLTEXT、SPATIAL 中选择 **{{model.editor.key.indexType}}**。FULLTEXT 和 SPATIAL 没有排序方向。FULLTEXT 可以填写 MySQL 全文检索解析器（例如 `ngram`）。
 
-创建的键会以 **UK**、**IX** 行显示在表的下方，点击该行可以修改或删除。创建关系时，会自动为外键列生成索引。
+创建的键会以 **UK**、**IX**、**CK** 行显示在表的下方。FULLTEXT 索引带有 **FT**，SPATIAL 索引带有 **SP** 标记。点击该行可以修改或删除。创建关系时，会自动为外键列生成索引。
+
+点击 **{{model.editor.check.add}}** 可创建 CHECK 约束。名称会自动填为 `ck_表名_1` 的形式，表达式按原样填写括号内的内容（例如 `price >= 0`）。表达式不会被解析，修改列名后需要自行修改表达式。删除列时 CHECK 约束会保留。
 
 ## 7. 关系
 
@@ -770,18 +777,22 @@ Crowfoot 的界面大致分为三类。
 * 点击条目，画布会移动到对应的表。
 * 面板打开期间，有问题的表的边框也会以相应级别的颜色标出。提示级别不会在画布上标出。
 * 工具栏的 **{{model.validation.toggle}}** 按钮上会显示错误数；没有错误时显示警告数。即使关闭面板，数字也会保持最新。
+* 警告和提示条目如果是有意为之，可以标记为例外。将鼠标悬停在条目上，点击右侧的眼睛图标（**{{model.validation.exception.mark}}**），用一行（200 字以内）写下原因并保存。错误不能标记为例外。
+* 标记为例外的条目不计入按钮上的数字、级别按钮的数字以及画布上的边框颜色。点击上方的 **{{model.validation.exception.chip}}** 按钮，可以查看例外列表及其原因、作者和日期，并用 **{{model.validation.exception.remove}}** 撤销。问题已修正、不再出现的例外会标记为 **{{model.validation.exception.stale}}**。删除对应的表、列或关系时，例外也会一并删除。例外保存在文档中，因此撤销和协同编辑同样适用；只有查看权限的人只能查看。
 * 有错误也不会阻止保存。错误是应用到数据库时可能导致失败的问题，请在部署前修正。
 
 | 级别 | 规则 | 含义 |
 |---|---|---|
 | 错误 | {{model.validation.rules.DUPLICATE_TABLE_NAME}} | 有两个或以上物理名相同的表 |
 | 错误 | {{model.validation.rules.DUPLICATE_COLUMN_NAME}} | 同一个表中有两个或以上同名的列 |
-| 错误 | {{model.validation.rules.DUPLICATE_KEY_NAME}} | 唯一键或索引的名称重复 |
+| 错误 | {{model.validation.rules.DUPLICATE_KEY_NAME}} | 唯一键、索引或 CHECK 约束的名称重复 |
 | 错误 | {{model.validation.rules.COMPOSITE_KEY_DUPLICATE_COLUMN}} | 一个键中同一列出现两次 |
 | 错误 | {{model.validation.rules.FK_TYPE_MISMATCH}} | 外键列与父列的类型不同 |
 | 错误 | {{model.validation.rules.FK_TARGET_NOT_KEY}} | 外键指向的列不是主键或唯一键 |
 | 错误 | {{model.validation.rules.FK_NULLABILITY_MISMATCH}} | 关系的多重性与外键是否允许 NULL 不一致 |
 | 错误 | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | 1:1 关系的外键上没有唯一键 |
+| 错误 | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | 列类型不在 Crowfoot 类型列表中 |
+| 错误 | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR、VARBINARY 没有长度（PostgreSQL 文档不检查） |
 | 警告 | {{model.validation.rules.MISSING_PK}} | 没有主键的表 |
 | 警告 | {{model.validation.rules.EMPTY_TABLE}} | 没有列的表 |
 | 警告 | {{model.validation.rules.FK_MAPPING_EMPTY}} | 关系中没有关联的列 |
@@ -900,11 +911,15 @@ Crowfoot 的界面大致分为三类。
 
 ![通知](/guide-assets/zh/shell-notifications.webp)
 
-点击铃铛图标会显示最近的通知。通知分为三种：
+点击铃铛图标会显示最近的通知。通知分为五种：
 
 * 我的文档收到评论时
 * 我的文档收到点赞时
 * 文档的创建者回复了我的评论时
+* 别人评论了我在反馈中发布的帖子时。自己的评论不会通知
+* （仅管理员）别人在反馈中发布新帖子时
+
+点击通知会标为已读，并跳转到相应的文档或帖子。评论通知会滚动到那条评论并短暂高亮。
 
 用 **{{shell.notifications.markAll}}** 全部标为已读，用 **{{shell.notifications.viewAll}}** 查看完整列表。
 

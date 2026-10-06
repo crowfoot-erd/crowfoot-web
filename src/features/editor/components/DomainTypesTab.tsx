@@ -99,7 +99,7 @@ function toInput(form: FormState): DomainTypeInput {
     name: form.name.trim(),
     dataType: form.dataType,
     length: spec?.length ? toNumber(form.length) : null,
-    precision: spec?.precision ? toNumber(form.precision) : null,
+    precision: spec?.precision || spec?.fraction ? toNumber(form.precision) : null,
     scale: spec?.precision ? toNumber(form.scale) : null,
     nullable: form.nullable,
     defaultValue: form.defaultValue.trim() === '' ? null : form.defaultValue.trim(),
@@ -340,6 +340,12 @@ export function DomainTypesTab({ workspaceId, canEdit, dbmsId, terms, focusId, o
                     <Input type="number" inputMode="numeric" value={form.scale} onChange={(event) => setForm({ ...form, scale: event.target.value })} />
                   </label>
                 </>
+              ) : null}
+              {spec?.fraction ? (
+                <label className="grid gap-1 text-sm">
+                  {t('model.editor.domainType.field.fraction')}
+                  <Input type="number" inputMode="numeric" min={0} max={6} placeholder="6" value={form.precision} onChange={(event) => setForm({ ...form, precision: event.target.value })} />
+                </label>
               ) : null}
             </div>
             <label className="flex items-center gap-2 text-sm">

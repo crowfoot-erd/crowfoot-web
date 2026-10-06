@@ -148,7 +148,7 @@ function remoteContent() {
   return serializeContent({
     schemaVersion: 1,
     model: { tables: [table], relationships: [] },
-    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], viewport: null },
+    diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null },
   })
 }
 
@@ -939,7 +939,7 @@ describe('EditorShell — 키(유니크·인덱스)', () => {
     useEditorStore.getState().commit({
       type: 'index/set',
       tableId,
-      indexes: [{ id: 'i1', name: 'idx_orders_email', columns: [{ columnId: email.id, order: 'ASC' }] }],
+      indexes: [{ id: 'i1', name: 'idx_orders_email', columns: [{ columnId: email.id, order: 'ASC' }], type: 'BTREE', parser: null }],
     })
 
     // 컬럼 하나 삭제 → 복합 UK는 컬럼만 줄고, 1컬럼 IX는 통째로 사라진다
@@ -969,7 +969,7 @@ describe('EditorShell — 키(유니크·인덱스)', () => {
 
     await waitFor(() => {
       const orders = useEditorStore.getState().present.model.tables[0]
-      expect(orders.indexes).toEqual([{ id: expect.any(String), name: 'idx_orders_email', columns: [{ columnId: email.id, order: 'DESC' }] }])
+      expect(orders.indexes).toEqual([{ id: expect.any(String), name: 'idx_orders_email', columns: [{ columnId: email.id, order: 'DESC' }], type: 'BTREE', parser: null }])
     })
     // 노드 키 영역 표시 — 행 1곳만 발견된다(키 이름은 자동 폭 측정 미러에 없다 —
     // 긴 키 이름이 상자를 부풀려 컬럼 이름↔타입 사이 빈칸을 만드는 일을 막는다)
@@ -2599,7 +2599,7 @@ describe('EditorShell — 검증 패널(v1.20, 05-validation §4.1)', () => {
     return serializeContent({
       schemaVersion: 1,
       model: { tables: [table], relationships: [] },
-      diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], viewport: null },
+      diagram: { nodes: { [table.id]: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null },
     })
   }
 

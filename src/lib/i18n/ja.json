@@ -215,17 +215,21 @@
       "type": {
         "COMMENT_CREATED": "{{actor}}さんが{{model}}にコメントしました",
         "REACTION_ADDED": "{{actor}}さんが{{model}}をいいねしました",
-        "OWNER_REPLIED": "{{actor}}さんがあなたのコメントに返信しました"
+        "OWNER_REPLIED": "{{actor}}さんがあなたのコメントに返信しました",
+        "FEEDBACK_POST_CREATED": "{{actor}}さんがフィードバックに「{{title}}」を投稿しました",
+        "COMMUNITY_COMMENT_CREATED": "{{actor}}さんがあなたの投稿「{{title}}」にコメントしました"
       },
       "typeBadge": {
         "COMMENT_CREATED": "コメント",
         "REACTION_ADDED": "いいね",
-        "OWNER_REPLIED": "返信"
+        "OWNER_REPLIED": "返信",
+        "FEEDBACK_POST_CREATED": "新しい提案",
+        "COMMUNITY_COMMENT_CREATED": "投稿コメント"
       },
       "table": {
         "type": "種類",
         "content": "内容",
-        "document": "ドキュメント",
+        "document": "対象",
         "createdAt": "日時"
       }
     }
@@ -875,6 +879,7 @@
           "dataType": "型",
           "length": "長さ",
           "precision": "精度",
+          "fraction": "小数秒の桁数",
           "scale": "スケール",
           "nullable": "NULL許可",
           "defaultValue": "デフォルト値",
@@ -1095,7 +1100,9 @@
           "note": "メモ",
           "node": "ノード",
           "area": "グループ",
-          "requirement": "要件"
+          "requirement": "要件",
+          "check": "CHECK 制約",
+          "validationException": "検証の例外"
         },
         "action": {
           "add": "追加",
@@ -1152,6 +1159,7 @@
         "dataType": "データ型",
         "length": "長さ",
         "precision": "精度",
+        "fraction": "小数秒の桁数",
         "scale": "スケール",
         "primaryKey": "主キー",
         "nullable": "NOT NULL",
@@ -1165,7 +1173,9 @@
         "columnLogicalName": "カラム論理名",
         "reorder": "カラムの並べ替え — ドラッグして移動",
         "nnPkLocked": "主キーカラムは常にNOT NULLです",
-        "nameDuplicate": "既に存在するテーブル名です: {{name}}"
+        "nameDuplicate": "既に存在するテーブル名です: {{name}}",
+        "generatedStored": "生成列(STORED): {{expression}}",
+        "generatedVirtual": "生成列(VIRTUAL): {{expression}}"
       },
       "note": {
         "placeholder": "メモを入力…",
@@ -1307,9 +1317,19 @@
         "dataType": "型",
         "length": "長さ",
         "precision": "精度",
+        "fraction": "小数秒の桁数",
         "scale": "スケール",
         "pkHint": "PKとして保存するとNOT NULLが強制され、カラムは先頭(PKブロック)に移動します。",
-        "aiHint": "自動採番は整数型のPK(INT/BIGINT/SMALLINT)でのみ使用できます。"
+        "aiHint": "自動採番は整数型のPK(INT/BIGINT/SMALLINT)でのみ使用できます。",
+        "onUpdate": "ON UPDATE",
+        "onUpdateHint": "行を更新するときに自動で入れる値です(例: CURRENT_TIMESTAMP(6))。MySQL のドキュメントでのみ DDL に含まれます。",
+        "generated": "生成列",
+        "generatedExpression": "生成式",
+        "generatedExpressionRequired": "生成式を入力してください",
+        "generatedKind": "保存方式",
+        "generatedStored": "STORED — 値を保存",
+        "generatedVirtual": "VIRTUAL — 読み取り時に計算",
+        "generatedHint": "生成列にはデフォルト値・自動採番・ON UPDATE を設定できません。VIRTUAL に対応しない DBMS の DDL は警告付きで STORED として出力します。"
       },
       "key": {
         "unique": "ユニーク",
@@ -1329,7 +1349,10 @@
         "noColumns": "このテーブルにはカラムがありません",
         "remove": "キーを削除",
         "order": "ソート順",
-        "orderHint": "インデックスはカラムごとにソート順(ASC/DESC)を指定できます"
+        "orderHint": "インデックスはカラムごとにソート順(ASC/DESC)を指定できます",
+        "indexType": "インデックスの種類",
+        "parser": "パーサー(任意)",
+        "indexTypeHint": "FULLTEXT・SPATIAL インデックスには列ごとの並び順がありません。パーサーは MySQL の全文検索でのみ使われます(例: ngram)。"
       },
       "dbms": {
         "common": "共通(論理)"
@@ -1420,6 +1443,14 @@
         "tables": "メンバーテーブル",
         "tablesHint": "チェックするとこのグループのメンバーになります",
         "noTables": "このドキュメントにテーブルがありません"
+      },
+      "check": {
+        "add": "CHECK を追加",
+        "titleAdd": "CHECK 制約を追加",
+        "titleEdit": "CHECK 制約を編集",
+        "expression": "式",
+        "expressionHint": "括弧の中の式をそのまま書きます(例: price >= 0)。式は解釈しないため、列名を変えたら式も自分で直してください。",
+        "expressionRequired": "式を入力してください"
       }
     },
   "requirements": {"criteria": {"title": "受け入れ基準", "count": "基準 {{done}}/{{total}}", "hint": "1 行に 1 つ書きます。要件が正しく反映されたかを確認する項目です"}, "search": "コード・タイトル・内容・テーブルを検索", "progress": "反映 {{applied}}/{{total}}", "domains": {"label": "ドメイン", "all": "すべて", "noRequirements": "このドメインにはまだ要件がありません", "showOnCanvas": "キャンバスで見る"}, "export": {"button": "エクスポート", "markdown": "Markdown (.md)", "csv": "CSV (.csv)", "heading": "要件仕様", "columns": {"code": "コード", "domain": "ドメイン", "state": "状態", "title": "タイトル", "description": "内容", "tables": "テーブル"}}, "title": "要件", "add": "追加", "filterLabel": "状態フィルター", "state": {"APPLIED": "反映済み", "PENDING": "反映待ち", "UNLINKED": "リンク切れ", "LEFTOVER": "要整理", "DRAFT": "検討中", "DROPPED": "除外"}, "stateHint": {"APPLIED": "確定した要件がERDに反映されています", "PENDING": "確定しましたが、ERDが最新の内容をまだ反映していません", "UNLINKED": "反映済みと表示しましたが、リンクされたテーブルがありません", "LEFTOVER": "除外した要件にテーブルがまだリンクされています", "DRAFT": "まだ確定していない要件です", "DROPPED": "対象外になった要件です"}, "status": {"draft": "検討中", "confirmed": "確定", "dropped": "除外"}, "scope": {"tables": "機能", "document": "共通"}, "group": {"unassigned": "未分類", "document": "共通"}, "empty": "要件がありません", "emptyDetail": "ClaudeがMCPで登録するか、自分で追加できます", "emptyFiltered": "条件に合う要件がありません", "tableCount": "テーブル {{count}}", "noDescription": "内容なし", "linkedTables": "リンクされたテーブル", "noTables": "リンクされたテーブルがありません", "markApplied": "反映済みにする", "revision": "改訂 {{revision}}", "removeConfirm": "誤って登録した項目だけを削除してください", "limit": "要件はドキュメントごとに{{max}}件まで登録できます", "tableInfo": "要件", "untraced": {"title": "根拠のないテーブル", "hint": "どの要件にもリンクされていないテーブルです"}, "dialog": {"createTitle": "要件を追加", "editTitle": "要件を編集", "title": "タイトル", "titleRequired": "タイトルを入力してください", "description": "内容", "revisionHint": "タイトルや内容を変更すると反映待ちになります", "scope": "範囲", "status": "状態", "area": "ドメイン(グループ)", "tables": "リンクするテーブル", "documentHint": "共通要件はドキュメント全体に適用され、テーブルにはリンクしません"}},
@@ -1444,6 +1475,8 @@
       "FK_NULLABILITY_MISMATCH": "FK NULL許容の不一致",
       "ONE_TO_ONE_MISSING_UK": "1:1リレーションにUKなし",
       "COMPOSITE_KEY_DUPLICATE_COLUMN": "複合キーのカラム重複",
+      "UNKNOWN_DATA_TYPE": "カタログにない型",
+      "MISSING_TYPE_LENGTH": "長さのない型",
       "MISSING_PK": "主キーなし",
       "EMPTY_TABLE": "カラムのないテーブル",
       "FK_MAPPING_EMPTY": "FKカラムマッピングなし",
@@ -1453,6 +1486,17 @@
       "MISSING_LOGICAL_NAME": "論理名なし",
       "FK_WITHOUT_INDEX": "FK先頭カラムにインデックスなし",
       "WIDE_TABLE": "カラム過多（30超）"
+    },
+    "exception": {
+      "chip": "例外",
+      "listLabel": "検証の例外一覧",
+      "stale": "該当なし",
+      "meta": "{{author}} · {{date}}",
+      "remove": "例外を解除",
+      "mark": "意図した例外として記録",
+      "reason": "例外の理由",
+      "reasonPlaceholder": "理由を1行で書いてください(200文字以内)",
+      "save": "保存"
     }
   },
     "import": {
@@ -1689,7 +1733,9 @@
     "submit": "ドキュメントを作成",
     "fieldRequired": "必須",
     "successToast": "「{{name}}」を作成しました — テーブル {{tables}}件 · リレーション {{relationships}}件",
-    "skippedToast": "スキップしたステートメント: {{skipped}}"
+    "skippedToast": "スキップしたステートメント: {{skipped}}",
+    "previewWarnings": "読み込んだが縮小・破棄した項目 {{count}}件",
+    "warningsToast": "読み込んだが縮小・破棄した項目が {{count}}件あります — プレビューで一覧を確認してください"
   },
   "landing": {
     "edge": {

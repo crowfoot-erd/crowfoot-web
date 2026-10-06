@@ -38,7 +38,7 @@ describe('S-14 알림', () => {
   it('renders notifications with type phrases, document links and the total count', async () => {
     renderPage()
 
-    expect(await screen.findByText('총 3개')).toBeVisible()
+    expect(await screen.findByText('총 4개')).toBeVisible()
     expect(screen.getByText('오너님이 내 댓글에 답했습니다')).toBeVisible()
     expect(screen.getByText('지나가던 DBA님이 주문 서비스 ERD에 댓글을 남겼습니다')).toBeVisible()
     expect(screen.getByText('marco님이 crowfoot-erd을 좋아합니다')).toBeVisible()
@@ -54,6 +54,9 @@ describe('S-14 알림', () => {
     expect(screen.getAllByText('댓글')).toHaveLength(1)
     expect(screen.getAllByText('좋아요')).toHaveLength(1)
     expect(screen.getAllByText('답글')).toHaveLength(1)
+    // 게시글 댓글 알림(v1.34) — 대상 열은 글 제목, 링크는 그 댓글
+    expect(screen.getByText('marco님이 내 글 「ERD 내보내기 포맷 제안」에 댓글을 남겼습니다')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'ERD 내보내기 포맷 제안' })).toHaveAttribute('href', '/community/posts/802#comment-31')
     // 모두 읽음 — 안읽음이 있을 때만 노출
     expect(screen.getByRole('button', { name: '모두 읽음' })).toBeEnabled()
   })
@@ -123,7 +126,7 @@ describe('S-14 알림', () => {
     renderWithProviders(<AppRoutes />, { route: '/notifications', wrapRoutes: false })
 
     // then: 리다이렉트 후 목록이 렌더되고 좌측 커뮤니티 메뉴에 알림 항목이 있다
-    expect(await screen.findByText('총 3개')).toBeVisible()
+    expect(await screen.findByText('총 4개')).toBeVisible()
     expect(screen.getByRole('link', { name: '알림' })).toHaveAttribute(
       'href',
       '/community/notifications',
@@ -136,6 +139,6 @@ describe('S-14 알림', () => {
 
     // then: fixtures는 1페이지분(3건)뿐 — ?page=2가 넘어왔다면 빈 페이지가 나온다
     expect(await screen.findByText('새 알림이 없습니다')).toBeVisible()
-    expect(screen.queryByText('총 3개')).not.toBeInTheDocument()
+    expect(screen.queryByText('총 4개')).not.toBeInTheDocument()
   })
 })

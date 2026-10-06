@@ -13,7 +13,7 @@ describe('content-io', () => {
     const parsed = parseContent('{"tables":[],"relationships":[]}')
     expect(parsed.schemaVersion).toBe(1)
     expect(parsed.model).toEqual({ tables: [], relationships: [] })
-    expect(parsed.diagram).toEqual({ nodes: {}, notes: [], areas: [], requirements: [], viewport: null })
+    expect(parsed.diagram).toEqual({ nodes: {}, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null })
   })
 
   it('v1 문서는 round-trip으로 동일하게 복원된다', () => {
@@ -39,6 +39,8 @@ describe('content-io', () => {
                 defaultValue: null,
                 autoIncrement: true,
                 comment: null,
+                generated: null,
+                onUpdate: null,
               },
               {
                 id: 'c2',
@@ -52,11 +54,14 @@ describe('content-io', () => {
                 defaultValue: null,
                 autoIncrement: false,
                 comment: null,
+                generated: { expression: 'lower(email)', stored: true },
+                onUpdate: 'CURRENT_TIMESTAMP(6)',
               },
             ],
             primaryKey: { name: 'orders_pk', columnIds: ['c1'] },
             uniques: [{ id: 'u1', name: 'uk_orders_email', columnIds: ['c2'] }],
-            indexes: [{ id: 'i1', name: 'idx_orders_email', columns: [{ columnId: 'c2', order: 'DESC' }] }],
+            indexes: [{ id: 'i1', name: 'idx_orders_email', columns: [{ columnId: 'c2', order: 'DESC' }], type: 'FULLTEXT', parser: 'ngram' }],
+            checks: [{ id: 'k1', name: 'ck_orders_1', expression: 'id > 0' }],
           },
         ],
         relationships: [],
@@ -66,12 +71,47 @@ describe('content-io', () => {
         notes: [],
         areas: [], // v1.13 주제 영역 — 수화 결과와 round-trip이 동일한 문서가 되도록 픽스처에 명시
         requirements: [], // v1.31 요구사항 — 위와 같은 이유
+        validationExceptions: [
+          { id: 'x1', ruleId: 'ORPHAN_TABLE', target: 'table:t1', reason: '로그 테이블', createdBy: '홍길동', createdAt: '2026-10-06T00:00:00.000Z' },
+        ],
         viewport: null,
       },
     }
     const parsed = parseContent(JSON.stringify(content))
     expect(parsed).toEqual(content)
     expect(JSON.parse(serializeContent(parsed))).toEqual(content)
+  })
+
+  it('v1.34 이전 문서는 새 키를 기본값으로 연다 — checks []·generated null·onUpdate null·BTREE·예외 []', () => {
+    const parsed = parseContent(
+      JSON.stringify({
+        schemaVersion: 1,
+        model: {
+          tables: [
+            {
+              id: 't1',
+              logicalName: '',
+              physicalName: 'orders',
+              comment: null,
+              columns: [
+                { id: 'c1', logicalName: '', physicalName: 'id', dataType: 'BIGINT', length: null, precision: null, scale: null, nullable: false, defaultValue: null, autoIncrement: true, comment: null },
+              ],
+              primaryKey: null,
+              uniques: [],
+              indexes: [{ id: 'i1', name: 'idx_orders_id', columns: [{ columnId: 'c1', order: 'ASC' }] }],
+            },
+          ],
+          relationships: [],
+        },
+        diagram: { nodes: {}, notes: [], viewport: null },
+      }),
+    )
+    const table = parsed.model.tables[0]
+    expect(table.checks).toEqual([])
+    expect(table.columns[0].generated).toBeNull()
+    expect(table.columns[0].onUpdate).toBeNull()
+    expect(table.indexes[0]).toMatchObject({ type: 'BTREE', parser: null })
+    expect(parsed.diagram.validationExceptions).toEqual([])
   })
 
   it('키 없는 이전 v1 문서는 기본값으로 정규화된다 — uniques/indexes []', () => {

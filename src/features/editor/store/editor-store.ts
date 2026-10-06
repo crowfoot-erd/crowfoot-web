@@ -40,7 +40,7 @@ function notifyLocalChanges(changes: ErdChange[]): void {
 
 const emptyDocument: EditorDocument = {
   model: { tables: [], relationships: [] },
-  diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null },
+  diagram: { nodes: {}, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null },
 }
 
 /** present가 바뀐 뒤 선택 정리 — 문서에서 사라진 객체 id(테이블·메모·관계)는 선택에서 뺀다.

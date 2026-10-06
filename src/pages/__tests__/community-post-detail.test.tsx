@@ -27,7 +27,7 @@ function ok(body: object) {
   }
 }
 
-function renderDetail(postId: string) {
+function renderDetail(postId: string, hash = '') {
   asAuthenticated() // me 쿼리 활성화 — 수정·삭제 첨부(작성자 or 관리자) 판정
   return renderWithProviders(
     <>
@@ -35,7 +35,7 @@ function renderDetail(postId: string) {
       <Route path="/community/feedback" element={<div>FEEDBACK BOARD</div>} />
       <Route path="/community/release-notes" element={<div>RELEASE BOARD</div>} />
     </>,
-    { route: `/community/posts/${postId}` },
+    { route: `/community/posts/${postId}${hash}` },
   )
 }
 
@@ -58,6 +58,20 @@ describe('커뮤니티 게시글 상세', () => {
     expect(viewer).toHaveTextContent('## 제안 배경')
     expect(screen.getByText('좋은 제안입니다. PostgreSQL 우선 지원을 검토하겠습니다.')).toBeVisible()
     expect(screen.getByTestId('comment-input')).toBeVisible()
+  })
+
+  it('알림에서 온 #comment-{id}면 그 댓글을 강조한다', async () => {
+    const firstCommentId = await (async () => {
+      const response = await fetch('/api/v1/core/community/posts/802/comments', { headers: { Authorization: 'Bearer t' } })
+      const body = await response.json()
+      return String(body.responses[0].commentId)
+    })()
+    renderDetail('802', `#comment-${firstCommentId}`)
+
+    await screen.findByText('좋은 제안입니다. PostgreSQL 우선 지원을 검토하겠습니다.')
+    await waitFor(() =>
+      expect(document.getElementById(`comment-${firstCommentId}`)).toHaveAttribute('data-highlighted', 'true'),
+    )
   })
 
   it('hides the comment section on a RELEASE_NOTE post', async () => {

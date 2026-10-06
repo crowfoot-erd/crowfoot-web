@@ -140,6 +140,8 @@ export interface ValidationRunInput {
   errorCount: number
   warningCount: number
   infoCount: number
+  /** 예외로 둔 결과 수(v1.34) — 위 세 건수에는 들어 있지 않다 */
+  exceptionCount?: number
 }
 
 /** 검증 실행 기록(§1.13) — Editor 이상, 감사 MODEL_VALIDATED만 남긴다. 204 본문 없음.

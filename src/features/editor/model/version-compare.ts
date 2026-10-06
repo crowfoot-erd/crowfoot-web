@@ -3,7 +3,7 @@
  *
  * diffDocuments 결과를 캔버스 배지용 마크와 사이드바 섹션으로 갈라 놓는다 — 순수 함수.
  *
- * · 구조 kind(table·column·primaryKey·uniqueKey·index·relationship)의 add/update만
+ * · 구조 kind(table·column·primaryKey·uniqueKey·index·check·relationship)의 add/update만
  *   캔버스 배지가 된다. note·node는 노드가 아니거나(노트) 레이아웃 정보라(node) 사이드바
  *   목록으로만 안내하고, move는 구조 변경이 아니다.
  * · remove는 최신 버전 캔버스에 노드가 없으므로 목록 전용 섹션("사라진 테이블")으로 간다.
@@ -22,6 +22,7 @@ const STRUCTURAL_KINDS: ReadonlySet<DocDiffItem['kind']> = new Set([
   'primaryKey',
   'uniqueKey',
   'index',
+  'check',
   'relationship',
 ])
 

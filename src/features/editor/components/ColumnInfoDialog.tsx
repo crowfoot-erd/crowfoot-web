@@ -5,6 +5,8 @@
  * PK·타입·길이·정밀도·NN·AI·기본값·코멘트 전부 — 노드 인라인 편집과 같은 규칙
  * (PK는 NN 강제·최상단 이동, AI는 PK + 정수 타입만)을 폼으로 노출한다.
  * 확정 시 PK 토글 묶음 + column/patch를 1커밋 스택으로 붙는다.
+ * v1.34: 생성 컬럼(식·STORED/VIRTUAL)과 ON UPDATE(MySQL 문서만 보인다 — 다른 DBMS 문서에서는 값을 그대로 둔다).
+ * 생성 컬럼을 켜면 기본값·자동 증가·ON UPDATE는 끄고 비운다(생성 컬럼에는 둘 수 없다).
  * 협업(v1.17): 열려 있는 동안 소속 테이블의 Edit Session Lock을 잡는다(useEditLock) —
  * 컬럼·키 변경은 전부 테이블 귀속이라 락 단위도 테이블이다.
  */
@@ -44,6 +46,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import type { ColumnPatch } from '@/features/editor/model/changes'
 import { splitLogicalName } from '@/features/editor/model/logical-name'
+import { stripOuterParens } from '@/features/editor/model/keys'
 import type { WorkspaceTerm } from '@/api/types'
 import type { DomainType } from '@/features/domain-types/api'
 import { DOMAIN_FIELDS, type DomainField } from '@/features/editor/model/changes'
@@ -71,6 +74,8 @@ export interface ColumnInfoDialogProps {
   pkCount: number
   /** 문서 대상 DBMS — 타입 옵션 라벨을 물리 표기로(값은 공용 논리 코드 유지) */
   dbmsId: string
+  /** ON UPDATE 입력을 보일지 — MySQL 문서만. 숨겨도 저장된 값은 건드리지 않는다 */
+  showOnUpdate?: boolean
   /** 워크스페이스 도메인 타입 목록 — 주면 도메인 타입을 고를 수 있다(§11.1). undefined면 목록을 읽지 못한 것이다 */
   domainTypes?: readonly DomainType[]
   /** 외래 키 컬럼인지 — 외래 키 컬럼에는 도메인 타입을 적용할 수 없다(타입이 부모 컬럼을 따른다) */
@@ -92,6 +97,10 @@ type ColumnInfoForm = {
   autoIncrement: boolean
   defaultValue: string
   comment: string
+  generatedOn: boolean
+  generatedExpression: string
+  generatedStored: boolean
+  onUpdate: string
 }
 
 /** 숫자 input 확정 — 빈 값·비숫자는 null로 정규화 */
@@ -113,6 +122,7 @@ export function ColumnInfoDialog({
   isPk,
   pkCount,
   dbmsId,
+  showOnUpdate = false,
   domainTypes,
   isFk = false,
   terms,
@@ -135,6 +145,13 @@ export function ColumnInfoDialog({
     autoIncrement: z.boolean(),
     defaultValue: z.string().trim(),
     comment: z.string().trim(),
+    generatedOn: z.boolean(),
+    generatedExpression: z.string().trim(),
+    generatedStored: z.boolean(),
+    onUpdate: z.string().trim(),
+  }).refine((values) => !values.generatedOn || values.generatedExpression !== '', {
+    path: ['generatedExpression'],
+    message: t('model.editor.columnInfo.generatedExpressionRequired'),
   })
 
   const form = useForm<ColumnInfoForm>({
@@ -151,6 +168,10 @@ export function ColumnInfoDialog({
       autoIncrement: false,
       defaultValue: '',
       comment: '',
+      generatedOn: false,
+      generatedExpression: '',
+      generatedStored: true,
+      onUpdate: '',
     },
   })
 
@@ -175,6 +196,10 @@ export function ColumnInfoDialog({
         autoIncrement: column.autoIncrement,
         defaultValue: column.defaultValue ?? '',
         comment: description ?? '',
+        generatedOn: column.generated != null,
+        generatedExpression: column.generated?.expression ?? '',
+        generatedStored: column.generated?.stored ?? true,
+        onUpdate: column.onUpdate ?? '',
       })
       setDomainId(column.domain?.id ?? '')
     }
@@ -189,7 +214,7 @@ export function ColumnInfoDialog({
     return {
       dataType: watched.dataType,
       length: formSpec?.length ? toNumberOrNull(watched.length) : null,
-      precision: formSpec?.precision ? toNumberOrNull(watched.precision) : null,
+      precision: formSpec?.precision || formSpec?.fraction ? toNumberOrNull(watched.precision) : null,
       scale: formSpec?.precision ? toNumberOrNull(watched.scale) : null,
       nullable: watched.pk ? false : watched.nullable,
       defaultValue: watched.defaultValue.trim() === '' ? null : watched.defaultValue.trim(),
@@ -223,11 +248,12 @@ export function ColumnInfoDialog({
 
   const dataType = form.watch('dataType')
   const pk = form.watch('pk')
+  const generatedOn = form.watch('generatedOn')
   const spec = dataTypeSpec(dataType)
   /** AI는 PK + 정수 타입(INT·BIGINT·SMALLINT) 조합에서만 의미가 있다 */
   // 이 컬럼 외에 다른 PK가 남는지 — 폼에서 PK를 켜도 복합(2개 이상)이면 AI를 제공하지 않는다
   const otherPkCount = pkCount - (isPk ? 1 : 0)
-  const aiAvailable = pk && otherPkCount === 0 && isAutoIncrementType(dataType)
+  const aiAvailable = pk && otherPkCount === 0 && isAutoIncrementType(dataType) && !generatedOn
 
   const handleSubmit = form.handleSubmit((values) => {
     if (!column) return
@@ -239,12 +265,17 @@ export function ColumnInfoDialog({
         logicalName: values.comment === '' ? values.logicalName : `${values.logicalName}-----${values.comment}`,
         dataType: values.dataType,
         length: spec?.length ? toNumberOrNull(values.length) : null,
-        precision: spec?.precision ? toNumberOrNull(values.precision) : null,
+        precision: spec?.precision || spec?.fraction ? toNumberOrNull(values.precision) : null,
         scale: spec?.precision ? toNumberOrNull(values.scale) : null,
         // PK는 항상 NN, AI는 성립 조건일 때만 유지
         nullable: values.pk ? false : values.nullable,
-        autoIncrement: values.pk && otherPkCount === 0 && isAutoIncrementType(values.dataType) ? values.autoIncrement : false,
-        defaultValue: values.defaultValue === '' ? null : values.defaultValue,
+        autoIncrement:
+          !values.generatedOn && values.pk && otherPkCount === 0 && isAutoIncrementType(values.dataType) ? values.autoIncrement : false,
+        // 생성 컬럼에는 기본값·ON UPDATE를 두지 않는다
+        defaultValue: values.generatedOn || values.defaultValue === '' ? null : values.defaultValue,
+        generated: values.generatedOn ? { expression: stripOuterParens(values.generatedExpression), stored: values.generatedStored } : null,
+        // ON UPDATE 입력이 보이지 않는 문서(MySQL 외)는 저장된 값을 그대로 둔다
+        onUpdate: values.generatedOn ? null : showOnUpdate ? (values.onUpdate === '' ? null : values.onUpdate) : (column.onUpdate ?? null),
         // 도메인 타입 연결 — 고른 것이 없으면 푼다. 끊긴 연결을 그대로 두면 건드리지 않는다.
         // 고른 도메인 타입과 값이 다른 속성은 "다르게 쓰기"로 적힌다(맞춘 버전은 지금 버전이 된다)
         ...(domainId === ''
@@ -488,6 +519,20 @@ export function ColumnInfoDialog({
                     )}
                   />
                 </div>
+              ) : spec?.fraction ? (
+                <FormField
+                  control={form.control}
+                  name="precision"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('model.editor.columnInfo.fraction')}</FormLabel>
+                      <FormControl>
+                        <Input type="number" inputMode="numeric" min={0} max={6} placeholder="6" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               ) : (
                 <span aria-hidden />
               )}
@@ -500,12 +545,93 @@ export function ColumnInfoDialog({
                 <FormItem>
                   <FormLabel>{t('model.editor.columnInfo.defaultValue')}</FormLabel>
                   <FormControl>
-                    <Input placeholder={t('model.editor.columnInfo.defaultValuePlaceholder')} {...field} />
+                    <Input placeholder={t('model.editor.columnInfo.defaultValuePlaceholder')} {...field} disabled={generatedOn} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {showOnUpdate ? (
+              <FormField
+                control={form.control}
+                name="onUpdate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('model.editor.columnInfo.onUpdate')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder="CURRENT_TIMESTAMP(6)" {...field} disabled={generatedOn} data-testid="column-on-update" />
+                    </FormControl>
+                    <FormDescription>{t('model.editor.columnInfo.onUpdateHint')}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+
+            {/* 생성 컬럼(v1.34) — 켜면 기본값·자동 증가·ON UPDATE를 끄고 비운다 */}
+            <div className="grid gap-2 rounded-md border p-2">
+              <FormField
+                control={form.control}
+                name="generatedOn"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        data-testid="column-generated"
+                        className="size-3.5 accent-primary"
+                        checked={field.value}
+                        onChange={(event) => {
+                          field.onChange(event.target.checked)
+                          if (event.target.checked) {
+                            form.setValue('defaultValue', '')
+                            form.setValue('autoIncrement', false)
+                            form.setValue('onUpdate', '')
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">{t('model.editor.columnInfo.generated')}</FormLabel>
+                  </FormItem>
+                )}
+              />
+              {generatedOn ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="generatedExpression"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t('model.editor.columnInfo.generatedExpression')}</FormLabel>
+                        <FormControl>
+                          <Textarea rows={2} className="font-mono text-xs" placeholder="price * quantity" data-testid="column-generated-expression" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="generatedStored"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{t('model.editor.columnInfo.generatedKind')}</FormLabel>
+                        <select
+                          value={field.value ? 'stored' : 'virtual'}
+                          onChange={(event) => field.onChange(event.target.value === 'stored')}
+                          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          aria-label={t('model.editor.columnInfo.generatedKind')}
+                        >
+                          <option value="stored">{t('model.editor.columnInfo.generatedStored')}</option>
+                          <option value="virtual">{t('model.editor.columnInfo.generatedVirtual')}</option>
+                        </select>
+                        <FormDescription>{t('model.editor.columnInfo.generatedHint')}</FormDescription>
+                      </FormItem>
+                    )}
+                  />
+                </>
+              ) : null}
+            </div>
             <FormField
               control={form.control}
               name="comment"

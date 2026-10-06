@@ -9,17 +9,28 @@
  * - 패널을 열 때 감사로 검증 실행 1회를 남긴다(validation-runs, Editor 멤버십 — 역할은
  *   서버가 재검증). 디바운스 재계산마다 보내지 않는다(§5).
  * - 패널은 열릴 때만 마운트된다(open 아니면 null — 익스플로러·용어사전과 같은 패턴).
+ * - 검증 예외(v1.34, §4.4): 경고·참고 행은 한 줄 사유(200자 이내)와 함께 "의도된 예외"로 표시할 수 있다.
+ *   예외로 둔 항목은 셸이 미리 걸러 issues에 없다. "예외 N" 칩을 켜면 예외 목록(사유·작성자·날짜·해제)을 본다.
+ *   규칙이 더 이상 발화하지 않는 예외는 "해당 없음"으로 보인다. 읽기 전용(Viewer)은 보기만 한다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react'
+import { CircleAlert, CircleCheck, EyeOff, Info, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
 import type { ErdRelationship, ErdTable } from '@/features/editor/model/content-schema'
 import { viewportCenteredOn, type CanvasExtent } from '@/features/editor/model/canvas-bounds'
 import { recordValidationRun } from '@/features/models/api'
-import type { ValidationIssue, ValidationLevel } from '@/features/editor/model/validation'
+import {
+  canExcept,
+  EXCEPTION_REASON_MAX,
+  issueTargetKey,
+  type ExceptedIssue,
+  type ValidationIssue,
+  type ValidationLevel,
+} from '@/features/editor/model/validation'
+import { newId } from '@/features/editor/model/changes'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
 
@@ -36,8 +47,14 @@ const LEVEL_RANK: Record<ValidationLevel, number> = { error: 0, warning: 1, info
 
 export interface ValidationPanelProps {
   open: boolean
-  /** 에디터 셸이 디바운스 재계산한 결과 — 패널은 순수하게 소비만 한다 */
+  /** 에디터 셸이 디바운스 재계산한 결과(예외로 둔 항목은 빠진 것) — 패널은 순수하게 소비만 한다 */
   issues: ValidationIssue[]
+  /** 예외 기록마다 한 줄 — 지금도 발화하는 결과가 없으면 issue가 null("해당 없음") */
+  excepted?: ExceptedIssue[]
+  /** 예외를 두고 해제할 수 있는가 — 편집 가능한 문서의 Editor만. Viewer는 보기만 한다 */
+  canExceptEdit?: boolean
+  /** 예외 기록의 작성자 표기 — 현재 사용자 이름(없으면 id) */
+  userName?: string
   /** 감사 전송 여부 — Editor 멤버십(Viewer 열람은 전송 없음, 역할은 서버가 재검증) */
   canReport: boolean
   workspaceId: string
@@ -49,6 +66,9 @@ export function ValidationPanel(props: ValidationPanelProps) {
   return (
     <PanelBody
       issues={props.issues}
+      excepted={props.excepted ?? []}
+      canExceptEdit={props.canExceptEdit ?? false}
+      userName={props.userName ?? ''}
       canReport={props.canReport}
       workspaceId={props.workspaceId}
       modelId={props.modelId}
@@ -56,8 +76,25 @@ export function ValidationPanel(props: ValidationPanelProps) {
   )
 }
 
-function PanelBody({ issues, canReport, workspaceId, modelId }: Omit<ValidationPanelProps, 'open'>) {
-  const { t } = useTranslation()
+function PanelBody({
+  issues,
+  excepted,
+  canExceptEdit,
+  userName,
+  canReport,
+  workspaceId,
+  modelId,
+}: Omit<ValidationPanelProps, 'open' | 'excepted' | 'canExceptEdit' | 'userName'> & {
+  excepted: ExceptedIssue[]
+  canExceptEdit: boolean
+  userName: string
+}) {
+  const { t, i18n } = useTranslation()
+  const commit = useEditorStore((s) => s.commit)
+  // 예외 목록 보기(칩 토글) — 켜면 문제 목록 자리에 예외 목록을 보인다
+  const [showExcepted, setShowExcepted] = useState(false)
+  // 예외 사유를 적는 중인 행 — 행 키(규칙·대상)와 입력값
+  const [drafting, setDrafting] = useState<{ key: string; reason: string } | null>(null)
   const rf = useReactFlow()
   const setSelection = useEditorStore((s) => s.setSelection)
   const tables = useEditorStore((s) => s.present.model.tables)
@@ -84,8 +121,26 @@ function PanelBody({ issues, canReport, workspaceId, modelId }: Omit<ValidationP
       errorCount: counts.error,
       warningCount: counts.warning,
       infoCount: counts.info,
+      // 예외 수는 따로 — 위 건수에는 들어 있지 않다(§4.4)
+      exceptionCount: excepted.length,
     }).catch(() => {})
   }, [canReport, counts, workspaceId, modelId])
+
+  /** 예외로 표시 — 같은 규칙·대상의 기존 기록은 리듀서가 바꿔 끼운다 */
+  const addException = (issue: ValidationIssue, reason: string) => {
+    commit({
+      type: 'validationException/add',
+      exception: {
+        id: newId(),
+        ruleId: issue.code,
+        target: issueTargetKey(issue),
+        reason: reason.trim().slice(0, EXCEPTION_REASON_MAX),
+        createdBy: userName,
+        createdAt: new Date().toISOString(),
+      },
+    })
+    setDrafting(null)
+  }
 
   /* ---------- 포커스 — 대상 테이블을 화면 중심으로 (익스플로러와 같은 식) ---------- */
 
@@ -96,7 +151,7 @@ function PanelBody({ issues, canReport, workspaceId, modelId }: Omit<ValidationP
       const layout = state.present.diagram.nodes[tableId]
       if (!table || !layout) return
       const w = tableRenderWidth(layout.width ?? null, 0)
-      const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length)
+      const h = estimateTableHeight(table.columns.length, table.uniques.length + table.indexes.length + (table.checks?.length ?? 0))
       const el = document.querySelector('.react-flow')
       const size = el
         ? { width: el.clientWidth, height: el.clientHeight }
@@ -182,11 +237,66 @@ function PanelBody({ issues, canReport, workspaceId, modelId }: Omit<ValidationP
               </button>
             )
           })}
+          {excepted.length > 0 ? (
+            <button
+              type="button"
+              data-testid="validation-filter-excepted"
+              onClick={() => setShowExcepted((prev) => !prev)}
+              aria-pressed={showExcepted}
+              className={cn(
+                'flex h-6 items-center gap-1 rounded-md border border-dashed px-1.5 text-xs font-medium tabular-nums text-muted-foreground',
+                showExcepted && 'border-solid border-foreground/40 bg-accent text-foreground',
+              )}
+            >
+              {t('model.validation.exception.chip')} {excepted.length}
+            </button>
+          ) : null}
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1.5">
-        {totalCount === 0 ? (
+        {showExcepted && excepted.length > 0 ? (
+          /* 예외 목록 — 사유·작성자·날짜, 해제(편집 가능할 때만) */
+          <ul className="flex flex-col gap-1" aria-label={t('model.validation.exception.listLabel')} data-testid="validation-excepted-list">
+            {excepted.map(({ exception, issue }) => (
+              <li key={exception.id} data-testid="validation-excepted" className="rounded-md px-1.5 py-1 text-xs hover:bg-accent/40">
+                <div className="flex items-start gap-1.5">
+                  <EyeOff aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {t(`model.validation.rules.${exception.ruleId}`, { defaultValue: exception.ruleId })}
+                    </span>
+                    <span className="block truncate text-muted-foreground">
+                      {issue ? issueTarget(issue, labelContext) : targetLabel(exception.target, labelContext)}
+                      {issue ? null : (
+                        <span data-testid="validation-excepted-stale" className="ml-1 rounded-sm bg-muted px-1 text-[10px]">
+                          {t('model.validation.exception.stale')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="block break-words text-foreground/80">{exception.reason}</span>
+                    <span className="block text-[10px] text-muted-foreground">
+                      {t('model.validation.exception.meta', {
+                        author: exception.createdBy || '—',
+                        date: formatDate(exception.createdAt, i18n.language),
+                      })}
+                    </span>
+                  </span>
+                  {canExceptEdit ? (
+                    <button
+                      type="button"
+                      data-testid="validation-exception-remove"
+                      className="shrink-0 rounded-sm px-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                      onClick={() => commit({ type: 'validationException/remove', exceptionId: exception.id })}
+                    >
+                      {t('model.validation.exception.remove')}
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : totalCount === 0 ? (
           /* 빈 상태 — 초록 체크와 문구(§4.2 1) */
           <div data-testid="validation-empty" className="flex flex-col items-center gap-2 px-4 py-10 text-center">
             <CircleCheck aria-hidden className="size-6 text-emerald-500" />
@@ -202,29 +312,89 @@ function PanelBody({ issues, canReport, workspaceId, modelId }: Omit<ValidationP
                   {group.issues.length > 1 ? ` (${group.issues.length})` : ''}
                 </p>
                 <ul className="flex flex-col">
-                  {group.issues.map((issue, index) => (
-                    <li key={`${issue.code}:${issue.columnId ?? ''}:${issue.relationshipId ?? ''}:${index}`}>
-                      <button
-                        type="button"
-                        data-testid="validation-issue"
-                        onClick={() => {
-                          setSelection([issue.tableId!])
-                          focusTable(issue.tableId!)
-                        }}
-                        className="flex w-full items-start gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent/60"
-                      >
-                        <LevelIcon level={issue.level} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">
-                            {t(`model.validation.rules.${issue.code}`)}
-                          </span>
-                          <span className="block truncate text-muted-foreground">
-                            {issueTarget(issue, labelContext)}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                  {group.issues.map((issue, index) => {
+                    const rowKey = `${issue.code}:${issueTargetKey(issue)}`
+                    const exceptable = canExceptEdit && canExcept(issue)
+                    const draft = drafting?.key === rowKey ? drafting : null
+                    return (
+                      <li key={`${rowKey}:${index}`} className="group/issue">
+                        <div className="flex items-start">
+                          <button
+                            type="button"
+                            data-testid="validation-issue"
+                            onClick={() => {
+                              setSelection([issue.tableId!])
+                              focusTable(issue.tableId!)
+                            }}
+                            className="flex min-w-0 flex-1 items-start gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent/60"
+                          >
+                            <LevelIcon level={issue.level} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">
+                                {t(`model.validation.rules.${issue.code}`)}
+                              </span>
+                              <span className="block truncate text-muted-foreground">
+                                {issueTarget(issue, labelContext)}
+                              </span>
+                            </span>
+                          </button>
+                          {exceptable && !draft ? (
+                            <button
+                              type="button"
+                              data-testid="validation-except"
+                              className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover/issue:opacity-100"
+                              onClick={() => setDrafting({ key: rowKey, reason: '' })}
+                              aria-label={`${t('model.validation.exception.mark')} — ${t(`model.validation.rules.${issue.code}`)}`}
+                              title={t('model.validation.exception.mark')}
+                            >
+                              <EyeOff aria-hidden className="size-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                        {draft ? (
+                          /* 한 줄 사유(필수, 200자 이내) — Enter 확정, Esc 취소 */
+                          <form
+                            className="flex flex-col gap-1 px-1.5 pb-1.5"
+                            onSubmit={(event) => {
+                              event.preventDefault()
+                              if (draft.reason.trim() !== '') addException(issue, draft.reason)
+                            }}
+                          >
+                            <input
+                              autoFocus
+                              data-testid="validation-exception-reason"
+                              value={draft.reason}
+                              maxLength={EXCEPTION_REASON_MAX}
+                              onChange={(event) => setDrafting({ key: rowKey, reason: event.target.value })}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Escape') setDrafting(null)
+                              }}
+                              placeholder={t('model.validation.exception.reasonPlaceholder')}
+                              aria-label={t('model.validation.exception.reason')}
+                              className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+                            />
+                            <div className="flex justify-end gap-1">
+                              <button
+                                type="button"
+                                className="rounded-sm px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                                onClick={() => setDrafting(null)}
+                              >
+                                {t('common.cancel')}
+                              </button>
+                              <button
+                                type="submit"
+                                data-testid="validation-exception-save"
+                                disabled={draft.reason.trim() === ''}
+                                className="rounded-sm bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground disabled:opacity-40"
+                              >
+                                {t('model.validation.exception.save')}
+                              </button>
+                            </div>
+                          </form>
+                        ) : null}
+                      </li>
+                    )
+                  })}
                 </ul>
               </li>
             ))}
@@ -273,4 +443,18 @@ function issueTarget(issue: ValidationIssue, context: LabelContext): string {
   if (issue.columnId) return `${table}.${context.columnName.get(issue.columnId) ?? issue.columnId}`
   if (issue.relationshipId) return context.relationLabel.get(issue.relationshipId) ?? issue.relationshipId
   return table
+}
+
+/** 대상 키 → 표기 — 발화하지 않는 예외(해당 없음)는 결과가 없으니 키에서 이름을 찾는다 */
+function targetLabel(target: string, context: LabelContext): string {
+  const [kind, first, second] = target.split(':')
+  if (kind === 'column') return `${context.tableName.get(first) ?? first}.${context.columnName.get(second) ?? second}`
+  if (kind === 'relationship') return context.relationLabel.get(first) ?? first
+  return context.tableName.get(first) ?? first
+}
+
+/** 예외 작성 날짜 — 화면 언어의 날짜 표기. 읽지 못하는 값은 원문 그대로 */
+function formatDate(iso: string, locale: string): string {
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString(locale)
 }

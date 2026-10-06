@@ -59,6 +59,13 @@ export const columnDomainSchema = z.object({
 })
 export type ErdColumnDomain = z.infer<typeof columnDomainSchema>
 
+/** 생성 컬럼 정의 (08-core/02-model.md §1.5.1) — stored=true는 STORED·PERSISTED, false는 VIRTUAL */
+export const generatedColumnSchema = z.object({
+  expression: z.string(),
+  stored: z.boolean(),
+})
+export type ErdGeneratedColumn = z.infer<typeof generatedColumnSchema>
+
 export const columnSchema = z.object({
   id: z.string().min(1),
   logicalName: z.string(),
@@ -73,6 +80,11 @@ export const columnSchema = z.object({
   comment: z.string().nullable(),
   /** 도메인 타입 연결 — 없으면 도메인 타입을 쓰지 않는 컬럼이다(v1.29 이전 문서는 전부 없다) */
   domain: columnDomainSchema.nullish(),
+  /** 생성 컬럼(v1.34) — 식 원문(바깥 괄호 없이)과 저장형(STORED) 여부. 없는 문서는 null로 정규화된다.
+   *  생성 컬럼에는 기본값·자동 증가·ON UPDATE를 두지 않는다 */
+  generated: generatedColumnSchema.nullable().default(null),
+  /** 행을 고칠 때 자동으로 넣는 값(MySQL ON UPDATE — 예: CURRENT_TIMESTAMP(6)). 없는 문서는 null */
+  onUpdate: z.string().nullable().default(null),
 })
 export type ErdColumn = z.infer<typeof columnSchema>
 
@@ -95,6 +107,10 @@ export type ErdUniqueKey = z.infer<typeof uniqueKeySchema>
 export const INDEX_ORDERS = ['ASC', 'DESC'] as const
 export type IndexOrder = (typeof INDEX_ORDERS)[number]
 
+/** 인덱스 종류(v1.34) — BTREE가 기본. FULLTEXT·SPATIAL은 컬럼별 정렬이 의미 없다 */
+export const INDEX_TYPES = ['BTREE', 'FULLTEXT', 'SPATIAL'] as const
+export type IndexType = (typeof INDEX_TYPES)[number]
+
 /** 인덱스 — 복합 지원. columns 순서가 인덱스 컬럼 순서(선두 컬럼 우선), 컬럼별 정렬 포함 */
 export const indexSchema = z.object({
   id: z.string().min(1),
@@ -107,8 +123,21 @@ export const indexSchema = z.object({
       }),
     )
     .min(1),
+  /** 인덱스 종류 — 없는 문서는 BTREE로 정규화된다 */
+  type: z.enum(INDEX_TYPES).default('BTREE'),
+  /** 전문 검색 파서(MySQL WITH PARSER — 예: ngram). FULLTEXT에서만 의미가 있다 */
+  parser: z.string().nullable().default(null),
 })
 export type ErdIndex = z.infer<typeof indexSchema>
+
+/** CHECK 제약(v1.34) — 식은 괄호 안 원문 그대로(해석하지 않는다 — 컬럼 이름이 바뀌어도 식은 그대로).
+ *  이름은 문서 전체 키 네임스페이스(PK·UK·인덱스·FK)에서 유일하다(keys.ts) */
+export const checkConstraintSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  expression: z.string(),
+})
+export type ErdCheck = z.infer<typeof checkConstraintSchema>
 
 export const tableSchema = z.object({
   id: z.string().min(1),
@@ -122,6 +151,8 @@ export const tableSchema = z.object({
   uniques: z.array(uniqueKeySchema).default([]),
   /** 인덱스 목록 — 위와 같음 */
   indexes: z.array(indexSchema).default([]),
+  /** CHECK 제약 목록 — v1.34 추가. 이전 문서는 빈 배열로 정규화된다 */
+  checks: z.array(checkConstraintSchema).default([]),
 })
 export type ErdTable = z.infer<typeof tableSchema>
 
@@ -282,6 +313,21 @@ export const requirementSchema = z.object({
 })
 export type ErdRequirement = z.infer<typeof requirementSchema>
 
+/**
+ * 검증 예외(v1.34, 05-editor/05-validation.md §4.4) — 경고·참고 등급의 검증 결과를 "의도된 예외"로 둔 기록.
+ * ruleId는 규칙 코드(ORPHAN_TABLE 등), target은 대상 키(`table:{id}` · `column:{tableId}:{columnId}` ·
+ * `relationship:{id}`). 대상이 지워지면 함께 지운다(changes.ts cascade)
+ */
+export const validationExceptionSchema = z.object({
+  id: z.string().min(1),
+  ruleId: z.string().min(1),
+  target: z.string().min(1),
+  reason: z.string(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+})
+export type ErdValidationException = z.infer<typeof validationExceptionSchema>
+
 export const modelDataSchema = z.object({
   tables: z.array(tableSchema),
   relationships: z.array(relationshipSchema),
@@ -296,6 +342,8 @@ export const diagramDataSchema = z.object({
   areas: z.array(areaSchema).default([]),
   // 요구사항 — 없는 문서(v1.31 이전)는 빈 배열로 연다. 이 키를 스키마가 알아야 에디터 저장 때 지워지지 않는다
   requirements: z.array(requirementSchema).default([]),
+  // 검증 예외 — 없는 문서(v1.34 이전)는 빈 배열로 연다
+  validationExceptions: z.array(validationExceptionSchema).default([]),
   viewport: viewportSchema.nullable(),
 })
 export type ErdDiagramData = z.infer<typeof diagramDataSchema>

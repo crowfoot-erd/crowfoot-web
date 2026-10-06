@@ -68,7 +68,7 @@ describe('validateModel — 1차 규칙', () => {
     const m = model()
     const table = createTable('orders', {
       logicalName: '주문',
-      columns: [createColumn({ id: 'c1', physicalName: 'id', logicalName: 'ID' })],
+      columns: [createColumn({ id: 'c1', physicalName: 'id', logicalName: 'ID', length: 20 })],
       primaryKey: { name: 'orders_pk', columnIds: ['c1'] },
       uniques: [{ id: 'u1', name: 'uk_orders_id', columnIds: ['c1'] }],
     })
@@ -82,7 +82,7 @@ describe('validateModel — 1차 규칙', () => {
     const c2 = createColumn({ id: 'c2', physicalName: 'email' })
     m.tables = [
       createTable('orders', { columns: [c1], primaryKey: { name: 'orders_pk', columnIds: ['c1'] }, uniques: [{ id: 'u1', name: 'uk_email', columnIds: ['c1'] }] }),
-      createTable('users', { columns: [c2], primaryKey: { name: 'users_pk', columnIds: ['c2'] }, indexes: [{ id: 'i1', name: 'UK_EMAIL', columns: [{ columnId: 'c2', order: 'ASC' }] }] }),
+      createTable('users', { columns: [c2], primaryKey: { name: 'users_pk', columnIds: ['c2'] }, indexes: [{ id: 'i1', name: 'UK_EMAIL', columns: [{ columnId: 'c2', order: 'ASC' }], type: 'BTREE', parser: null }] }),
     ]
     const issues = validateModel(m).filter((i) => i.code === 'DUPLICATE_KEY_NAME')
     expect(issues).toHaveLength(2)
@@ -226,7 +226,7 @@ describe('validateModel — v1.20 규칙 (05-editor/05-validation.md §2)', () =
     expect(validateModel(m).filter((i) => i.code === 'COMPOSITE_KEY_DUPLICATE_COLUMN')).toHaveLength(1)
 
     t.primaryKey = { name: 'pk', columnIds: ['c1'] }
-    t.indexes = [{ id: 'i1', name: 'ix', columns: [{ columnId: 'c2', order: 'ASC' }, { columnId: 'c2', order: 'ASC' }] }]
+    t.indexes = [{ id: 'i1', name: 'ix', columns: [{ columnId: 'c2', order: 'ASC' }, { columnId: 'c2', order: 'ASC' }], type: 'BTREE', parser: null }]
     expect(validateModel(m).filter((i) => i.code === 'COMPOSITE_KEY_DUPLICATE_COLUMN')).toHaveLength(1)
   })
 
@@ -337,7 +337,7 @@ describe('validateModel — v1.20 규칙 (05-editor/05-validation.md §2)', () =
     // 대상 컬럼(선두 자식 FK 컬럼)을 싣는다 — 패널이 orders.members_id 꼴로 보여주는 재료
     expect(issues[0].columnId).toBe('cc1')
 
-    m.tables[1].indexes = [{ id: 'i1', name: 'ix_orders_user', columns: [{ columnId: 'cc1', order: 'ASC' }] }]
+    m.tables[1].indexes = [{ id: 'i1', name: 'ix_orders_user', columns: [{ columnId: 'cc1', order: 'ASC' }], type: 'BTREE', parser: null }]
     expect(validateModel(m).filter((i) => i.code === 'FK_WITHOUT_INDEX')).toHaveLength(0)
   })
 

@@ -59,7 +59,7 @@ function fixtureDoc(): EditorDocument {
         [settings.id]: { x: 400, y: 0, width: null, color: 'default' },
       },
       notes: [{ id: 'note-1', x: 0, y: 400, width: 200, text: '내용', title: '정책', color: 'yellow', linkedTableId: null }],
-      areas: [], requirements: [],
+      areas: [], requirements: [], validationExceptions: [],
       viewport: null,
     },
   }
@@ -151,7 +151,7 @@ describe('ModelExplorerPanel — 트리 렌더', () => {
   })
 
   it('빈 문서면 안내 문구', () => {
-    hydrate({ model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null } })
+    hydrate({ model: { tables: [], relationships: [] }, diagram: { nodes: {}, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null } })
     renderPanel()
     expect(screen.getByText('문서가 비어 있습니다')).toBeInTheDocument()
   })

@@ -22,7 +22,7 @@ function document(): EditorDocument {
   })
   return {
     model: { tables: [table], relationships: [] },
-    diagram: { nodes: { T1: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], viewport: null },
+    diagram: { nodes: { T1: { x: 0, y: 0, width: null, color: 'default' } }, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null },
   }
 }
 

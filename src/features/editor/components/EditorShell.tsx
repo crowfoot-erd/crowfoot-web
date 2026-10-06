@@ -70,7 +70,7 @@ import { useRequirementsPanel } from '@/features/editor/store/requirements-panel
 import { ValidationPanel } from './ValidationPanel'
 import { ValidationHighlightContext } from './canvas/validation-context'
 import { useValidationIssues } from '@/features/editor/model/use-validation'
-import type { ValidationLevel } from '@/features/editor/model/validation'
+import { partitionByExceptions, type ValidationLevel } from '@/features/editor/model/validation'
 
 /** 자동 저장 지연 — 마지막 편집 후 이 시간 동안 추가 편집이 없으면 저장한다 */
 const AUTOSAVE_DELAY_MS = 2000
@@ -226,7 +226,15 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
   // 검증(ERD 린터) — 문서 변경을 디바운스해 재계산한다(05-validation §3). 배지가 토글에
   // 있으므로 패널 열림과 무관하게 항상 최신이고, 공개 뷰어에서는 검증 자체를 안 한다.
   // 캔버스 링은 패널이 열려 있을 때만(error가 warning보다 우선, info는 캔버스 표시 없음)
-  const validationIssues = useValidationIssues(!publicView, validationOpen)
+  const allValidationIssues = useValidationIssues(!publicView, validationOpen)
+  // 검증 예외(v1.34 — 05-validation §4.4): 예외로 둔 경고·참고는 배지·등급 칩·캔버스 링에서 뺀다.
+  // 예외 기록은 디바운스 없이 바로 반영한다(표시하자마자 목록에서 빠지게)
+  const validationExceptions = useEditorStore((s) => s.present.diagram.validationExceptions)
+  const validationPartition = useMemo(
+    () => partitionByExceptions(allValidationIssues, validationExceptions),
+    [allValidationIssues, validationExceptions],
+  )
+  const validationIssues = validationPartition.active
   const validationErrorCount = useMemo(
     () => validationIssues.filter((issue) => issue.level === 'error').length,
     [validationIssues],
@@ -904,6 +912,9 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
           <ValidationPanel
             open={validationOpen}
             issues={validationIssues}
+            excepted={validationPartition.excepted}
+            canExceptEdit={editable}
+            userName={me.data?.name ?? me.data?.userId ?? ''}
             canReport={canEdit}
             workspaceId={model.workspaceId}
             modelId={model.modelId}

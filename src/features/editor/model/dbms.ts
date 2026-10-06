@@ -30,6 +30,8 @@ export interface DataTypeSpec {
   length?: boolean
   /** 정밀도+스케일(p,s) 지정 가능 */
   precision?: boolean
+  /** 소수 초 자릿수(0~6) 지정 가능 — 값은 precision에 저장한다(DATETIME(6)) */
+  fraction?: boolean
 }
 
 /** 공용 타입 카탈로그 — DBMS 공통분모의 논리 타입 (1차 하드코딩, 2차 Domain로 확장) */
@@ -45,18 +47,35 @@ export const DATA_TYPES: DataTypeSpec[] = [
   { code: 'CHAR', category: 'character', length: true },
   { code: 'VARCHAR', category: 'character', length: true },
   { code: 'TEXT', category: 'text' },
+  { code: 'MEDIUMTEXT', category: 'text' },
+  { code: 'LONGTEXT', category: 'text' },
   { code: 'BOOLEAN', category: 'boolean' },
   { code: 'DATE', category: 'datetime' },
-  { code: 'TIME', category: 'datetime' },
-  { code: 'DATETIME', category: 'datetime' },
-  { code: 'TIMESTAMP', category: 'datetime' },
+  { code: 'TIME', category: 'datetime', fraction: true },
+  { code: 'DATETIME', category: 'datetime', fraction: true },
+  { code: 'TIMESTAMP', category: 'datetime', fraction: true },
   { code: 'JSON', category: 'json' },
   { code: 'UUID', category: 'uuid' },
   { code: 'BLOB', category: 'binary' },
+  { code: 'BINARY', category: 'binary', length: true },
+  { code: 'VARBINARY', category: 'binary', length: true },
 ]
 
 export function dataTypeSpec(code: string): DataTypeSpec | undefined {
   return DATA_TYPES.find((t) => t.code === code)
+}
+
+/** 타입 크기 표기 — (길이) / (정밀도,스케일) / 날짜시간 소수 초 (자릿수). 크기가 없으면 '' */
+export function typeSizeSuffix(value: {
+  dataType: string
+  length: number | null
+  precision: number | null
+  scale: number | null
+}): string {
+  if (value.length != null) return `(${value.length})`
+  if (value.precision == null) return ''
+  if (dataTypeSpec(value.dataType)?.fraction) return `(${value.precision})`
+  return `(${value.precision},${value.scale ?? 0})`
 }
 
 /** 자동 증가(AI) 가능 타입 — 정수 범주만 (PK와 조합해 UI가 판정한다) */
@@ -110,6 +129,10 @@ export const DBMS_TEMPLATES: DbmsTemplate[] = [
       DOUBLE: 'DOUBLE PRECISION',
       FLOAT: 'REAL',
       BLOB: 'BYTEA',
+      BINARY: 'BYTEA',
+      VARBINARY: 'BYTEA',
+      MEDIUMTEXT: 'TEXT',
+      LONGTEXT: 'TEXT',
     },
     autoIncrement: 'type',
   },
@@ -124,6 +147,10 @@ export const DBMS_TEMPLATES: DbmsTemplate[] = [
       NUMERIC: 'NUMBER',
       VARCHAR: 'VARCHAR2',
       TEXT: 'CLOB',
+      MEDIUMTEXT: 'CLOB',
+      LONGTEXT: 'CLOB',
+      BINARY: 'RAW',
+      VARBINARY: 'RAW',
       BOOLEAN: 'NUMBER(1)',
       TIME: 'TIMESTAMP',
       DATETIME: 'TIMESTAMP',
@@ -139,6 +166,8 @@ export const DBMS_TEMPLATES: DbmsTemplate[] = [
     label: 'SQL Server',
     types: {
       TEXT: 'VARCHAR(MAX)',
+      MEDIUMTEXT: 'VARCHAR(MAX)',
+      LONGTEXT: 'VARCHAR(MAX)',
       BOOLEAN: 'BIT',
       TIMESTAMP: 'DATETIME2', // MSSQL TIMESTAMP는 rowversion이라 다른 의미
       JSON: 'NVARCHAR(MAX)',
@@ -230,7 +259,7 @@ export function parsePhysicalType(raw: string, dbmsId: string): ParsedPhysicalTy
   return {
     code: spec.code,
     length: spec.length ? int(args[0]) : null,
-    precision: spec.precision ? int(args[0]) : null,
+    precision: spec.precision || spec.fraction ? int(args[0]) : null,
     scale: spec.precision ? int(args[1]) : null,
   }
 }

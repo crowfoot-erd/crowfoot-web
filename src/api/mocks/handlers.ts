@@ -74,7 +74,7 @@ function buildSyncPair() {
           linkedTableId: docUsers.id,
         },
       ],
-      areas: [], requirements: [],
+      areas: [], requirements: [], validationExceptions: [],
       viewport: null,
     },
   })
@@ -122,7 +122,7 @@ function buildSyncPair() {
   const schemaContent = serializeContent({
     schemaVersion: 1,
     model: { tables: [dbUsers, dbOrders, dbProducts], relationships: [dbRel.relationship] },
-    diagram: { nodes: {}, notes: [], areas: [], requirements: [], viewport: null },
+    diagram: { nodes: {}, notes: [], areas: [], requirements: [], validationExceptions: [], viewport: null },
   })
 
   return {
@@ -652,6 +652,18 @@ export const fixtures = {
         workspaceId: '4',
         read: false,
         createdAt: '2026-09-24T07:30:00Z',
+      },
+      {
+        // v1.34 — 제안 및 신고 글의 댓글 알림(게시글·댓글로 이동)
+        id: '60',
+        type: 'COMMUNITY_COMMENT_CREATED',
+        actorUserId: '8',
+        actorDisplayName: 'marco',
+        postId: '802',
+        postTitle: 'ERD 내보내기 포맷 제안',
+        commentId: '31',
+        read: true,
+        createdAt: '2026-09-23T07:30:00Z',
       },
     ],
   },
@@ -1777,6 +1789,7 @@ export const handlers = [
             foreignKeyCount: 0,
           })),
           skipped: [] as string[],
+          warnings: [] as string[],
         },
       }),
     )
@@ -1808,6 +1821,7 @@ export const handlers = [
           tableCount: 2,
           relationshipCount: 1,
           skipped: [] as string[],
+          warnings: [] as string[],
         },
       }),
       { status: 201 },
