@@ -85,6 +85,9 @@ export const columnSchema = z.object({
   generated: generatedColumnSchema.nullable().default(null),
   /** 행을 고칠 때 자동으로 넣는 값(MySQL ON UPDATE — 예: CURRENT_TIMESTAMP(6)). 없는 문서는 null */
   onUpdate: z.string().nullable().default(null),
+  /** IDENTITY 종류(v1.37) — 자동 증가를 IDENTITY로 실현하는 DBMS(PostgreSQL·Oracle)에서 ALWAYS면 GENERATED ALWAYS.
+   *  없으면 BY DEFAULT다(이전 문서는 전부 없다). 자동 증가가 아니면 의미가 없다 */
+  identityGeneration: z.enum(['ALWAYS', 'BY_DEFAULT']).nullish(),
 })
 export type ErdColumn = z.infer<typeof columnSchema>
 
@@ -107,11 +110,14 @@ export type ErdUniqueKey = z.infer<typeof uniqueKeySchema>
 export const INDEX_ORDERS = ['ASC', 'DESC'] as const
 export type IndexOrder = (typeof INDEX_ORDERS)[number]
 
-/** 인덱스 종류(v1.34) — BTREE가 기본. FULLTEXT·SPATIAL은 컬럼별 정렬이 의미 없다 */
-export const INDEX_TYPES = ['BTREE', 'FULLTEXT', 'SPATIAL'] as const
+/** 인덱스 종류(v1.34) — BTREE가 기본. FULLTEXT·SPATIAL은 컬럼별 정렬이 의미 없다.
+ *  v1.37: PostgreSQL 접근 방식(HASH·GIN·GIST·BRIN·SPGIST)을 더한다 — DBMS별로 고를 수 있는 종류는 dbms.ts dbmsIndexSupport */
+export const INDEX_TYPES = ['BTREE', 'FULLTEXT', 'SPATIAL', 'HASH', 'GIN', 'GIST', 'BRIN', 'SPGIST'] as const
 export type IndexType = (typeof INDEX_TYPES)[number]
 
-/** 인덱스 — 복합 지원. columns 순서가 인덱스 컬럼 순서(선두 컬럼 우선), 컬럼별 정렬 포함 */
+/** 인덱스 — 복합 지원. columns 순서가 인덱스 컬럼 순서(선두 컬럼 우선), 컬럼별 정렬 포함.
+ *  v1.37 특수 인덱스(유니크·식·부분·INCLUDE·연산자 클래스) 필드는 모두 선택이다 — 없는 문서는 키를 더하지 않고 그대로 왕복한다.
+ *  식 인덱스(expression)는 키 목록 전체를 원문으로 두고 columns는 비운다 — 컬럼도 식도 없는 인덱스는 무효다 */
 export const indexSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -120,13 +126,27 @@ export const indexSchema = z.object({
       z.object({
         columnId: z.string().min(1),
         order: z.enum(INDEX_ORDERS),
+        /** 연산자 클래스(PostgreSQL — 예: gin_trgm_ops·varchar_pattern_ops). 없으면 기본 */
+        opclass: z.string().nullish(),
       }),
-    )
-    .min(1),
+    ),
   /** 인덱스 종류 — 없는 문서는 BTREE로 정규화된다 */
   type: z.enum(INDEX_TYPES).default('BTREE'),
   /** 전문 검색 파서(MySQL WITH PARSER — 예: ngram). FULLTEXT에서만 의미가 있다 */
   parser: z.string().nullable().default(null),
+  /** 유니크 인덱스(v1.37) — 없으면 false. 부분·식 유니크를 담는다(일반 유니크는 여전히 table.uniques) */
+  unique: z.boolean().optional(),
+  /** 키 목록 원문(v1.37) — 키 하나라도 식이면 전체를 원문으로 둔다(예: `lower(nickname)`). 있으면 columns는 비고 무시한다 */
+  expression: z.string().nullish(),
+  /** 부분 인덱스 조건(v1.37) — WHERE 키워드·바깥 괄호 없는 원문 */
+  where: z.string().nullish(),
+  /** INCLUDE(키가 아닌 포함) 컬럼 id(v1.37) */
+  include: z.array(z.string().min(1)).optional(),
+}).superRefine((index, ctx) => {
+  // 컬럼(1개 이상)이나 식 중 하나는 있어야 한다 — 이전 규칙 columns.min(1)을 식 인덱스만큼 넓힌다
+  if (index.columns.length === 0 && !index.expression?.trim()) {
+    ctx.addIssue({ code: 'custom', path: ['columns'], message: 'index needs at least one column or an expression' })
+  }
 })
 export type ErdIndex = z.infer<typeof indexSchema>
 

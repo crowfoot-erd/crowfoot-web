@@ -26,7 +26,7 @@ import {
   type TableColorValue,
 } from '@/features/editor/model/content-schema'
 import { dbmsAutoIndexesFk, parsePhysicalType } from '@/features/editor/model/dbms'
-import { defaultKeyName } from '@/features/editor/model/keys'
+import { checkReferencesColumn, defaultKeyName, indexCoversColumns, indexesWithoutColumn } from '@/features/editor/model/keys'
 
 export type TablePatch = Partial<Pick<ErdTable, 'logicalName' | 'physicalName' | 'comment'>>
 export type ColumnPatch = Partial<Omit<ErdColumn, 'id'>>
@@ -285,17 +285,6 @@ function uniquesWithoutColumn(uniques: ErdUniqueKey[], columnId: string): ErdUni
     .filter((unique) => unique.columnIds.length > 0)
 }
 
-/** 인덱스 목록에서 컬럼 제거 — 컬럼별 정렬은 보존, 남는 컬럼이 없으면 인덱스를 제거한다 */
-function indexesWithoutColumn(indexes: ErdIndex[], columnId: string): ErdIndex[] {
-  return indexes
-    .map((index) =>
-      index.columns.some((entry) => entry.columnId === columnId)
-        ? { ...index, columns: index.columns.filter((entry) => entry.columnId !== columnId) }
-        : index,
-    )
-    .filter((index) => index.columns.length > 0)
-}
-
 /** 컬럼 삭제의 하향 정리 — 관계 매핑에 걸린 컬럼(FK 자식·부모 PK)이면 관계 전체를 제거한다
  *  (복합 FK의 나머지 컬럼도 함께 — 매핑 일부만 남은 FK는 무결성 의미가 없다).
  *  일반 컬럼이면 PK·유니크·인덱스에서 해당 참조만 정리한다. */
@@ -310,14 +299,21 @@ function removeColumnEverywhere(doc: EditorDocument, tableId: string, columnId: 
     // 원본 컬럼이 아직 살아 있으면(부모 쪽 PK 등 cascade가 지우지 않는 컬럼) 일반 정리로 마저 제거
     return removeColumnEverywhere(cascaded, tableId, columnId)
   }
-  // CHECK 제약은 컬럼 id에 묶이지 않는다(식은 원문) — 그대로 둔다
-  const removed = mapTable(doc, tableId, (table) => ({
-    ...table,
-    columns: table.columns.filter((c) => c.id !== columnId),
-    primaryKey: primaryKeyWithoutColumn(table.primaryKey, columnId),
-    uniques: uniquesWithoutColumn(table.uniques, columnId),
-    indexes: indexesWithoutColumn(table.indexes, columnId),
-  }))
+  // CHECK 식은 원문이라 컬럼 id에 묶이지 않는다 — 지운 컬럼의 이름을 쓰는 CHECK를 함께 지운다
+  // (남기면 DDL이 없는 컬럼을 참조한다 — v1.37, core removeColumnEverywhere와 같다)
+  const removed = mapTable(doc, tableId, (table) => {
+    const columnName = table.columns.find((c) => c.id === columnId)?.physicalName ?? ''
+    const checks = table.checks?.filter((check) => !checkReferencesColumn(check.expression, columnName))
+    return {
+      ...table,
+      ...(checks && checks.length !== table.checks?.length ? { checks } : {}),
+      columns: table.columns.filter((c) => c.id !== columnId),
+      primaryKey: primaryKeyWithoutColumn(table.primaryKey, columnId),
+      uniques: uniquesWithoutColumn(table.uniques, columnId),
+      // 인덱스는 키·INCLUDE에서 빼고, 식·조건이 이 컬럼을 쓰면 통째로 지운다(v1.37 — keys.ts)
+      indexes: indexesWithoutColumn(table.indexes, columnId, columnName),
+    }
+  })
   return withoutExceptions(removed, (target) => target === `column:${tableId}:${columnId}`)
 }
 
@@ -501,7 +497,8 @@ function rekeyForeignKey(
     primaryKey = remain.length > 0 ? { ...primaryKey, columnIds: remain } : null
   }
   uniques = uniques.filter((u) => keyOf(u.columnIds) !== prevKey)
-  indexes = indexes.filter((ix) => keyOf(ix.columns.map((c) => c.columnId)) !== prevKey)
+  // 부분·식 인덱스(v1.37)는 FK 인덱스가 아니다 — 사용자가 만든 것이라 남긴다
+  indexes = indexes.filter((ix) => !indexCoversColumns(ix) || keyOf(ix.columns.map((c) => c.columnId)) !== prevKey)
 
   /* ---------- 걸기 ---------- */
   if (next.identifying) {
@@ -546,7 +543,7 @@ function rekeyForeignKey(
     next.type === 'ONE_TO_MANY' &&
     !next.identifying &&
     !dbmsAutoIndexesFk(databaseType) &&
-    !indexes.some((ix) => keyOf(ix.columns.map((c) => c.columnId)) === nextKey)
+    !indexes.some((ix) => indexCoversColumns(ix) && keyOf(ix.columns.map((c) => c.columnId)) === nextKey)
   ) {
     indexes = [
       ...indexes,
@@ -638,7 +635,8 @@ function applyRelationshipPatch(
 
     // 인덱스 동기화 — UK와 같은 소유 규칙(컬럼 집합 일치)으로 비식별 1:N 기본 인덱스를 맞춘다.
     // MySQL(InnoDB) 문서는 FK 인덱스를 만들지 않는다(§6.6 — DB이 자동 생성), 남아 있으면 제거만
-    const ownedIndex = indexes.find((ix) => ix.columns.map((c) => c.columnId).sort().join('\0') === fkKey)
+    // 부분·식 인덱스(v1.37)는 FK를 덮지 않는다 — 소유 인덱스로 치지 않는다
+    const ownedIndex = indexes.find((ix) => indexCoversColumns(ix) && ix.columns.map((c) => c.columnId).sort().join('\0') === fkKey)
     const wantIndex = next.type === 'ONE_TO_MANY' && !next.identifying && !dbmsAutoIndexesFk(databaseType)
     if (wantIndex && !ownedIndex) {
       indexes = [

@@ -191,26 +191,36 @@ export function routeOrthogonal(
     const visited = new Uint8Array(size)
 
     const point = (i: number, j: number): RouterPoint => ({ x: xs[i], y: ys[j] })
-    /** (i,j)로 이동하는 선분이 장애물에 막히지 않는지 — 레인 배열에 캐시한다 */
-    const hClearCache = new Map<number, boolean>()
+    /** (i,j)로 이동하는 선분이 장애물에 막히지 않는지 — 레인 배열에 캐시한다(0 미계산·1 통과·2 막힘) */
+    const hClearCache = new Uint8Array(cols * rows)
     const hClear = (i: number, j: number) => {
       const key = j * cols + i
-      let clear = hClearCache.get(key)
-      if (clear === undefined) {
-        clear = segmentClear(point(i, j), point(i + 1, j), grown)
-        hClearCache.set(key, clear)
-      }
-      return clear
+      if (hClearCache[key] === 0) hClearCache[key] = segmentClear(point(i, j), point(i + 1, j), grown) ? 1 : 2
+      return hClearCache[key] === 1
     }
-    const vClearCache = new Map<number, boolean>()
+    const vClearCache = new Uint8Array(cols * rows)
     const vClear = (i: number, j: number) => {
       const key = j * cols + i
-      let clear = vClearCache.get(key)
-      if (clear === undefined) {
-        clear = segmentClear(point(i, j), point(i, j + 1), grown)
-        vClearCache.set(key, clear)
-      }
-      return clear
+      if (vClearCache[key] === 0) vClearCache[key] = segmentClear(point(i, j), point(i, j + 1), grown) ? 1 : 2
+      return vClearCache[key] === 1
+    }
+    /** 레인별 소프트 회피 후보 — 그 레인과 같은 선(±USED_LINE_TOLERANCE)에 놓인 선분만 미리 걸러 둔다.
+     *  간선마다 avoid 전체를 훑으면 관계 수에 비례해 느려진다(v1.37 드래그 성능) */
+    const rowAvoid: (UsedSegment[] | undefined)[] = new Array(rows)
+    const colAvoid: (UsedSegment[] | undefined)[] = new Array(cols)
+    const avoidOnRow = (j: number) =>
+      (rowAvoid[j] ??= avoid.filter((u) => u.axis === 'h' && Math.abs(u.at - ys[j]) < USED_LINE_TOLERANCE))
+    const avoidOnCol = (i: number) =>
+      (colAvoid[i] ??= avoid.filter((u) => u.axis === 'v' && Math.abs(u.at - xs[i]) < USED_LINE_TOLERANCE))
+
+    // 미방문 최소 노드 — (거리, 노드 번호) 순 이진 힙. 노드 번호로 동률을 가르면 예전 선형 스캔
+    // (가장 작은 번호의 최소 거리 노드)과 같은 순서로 꺼내 경로가 바뀌지 않는다. 선형 스캔은
+    // 그리드 노드 수의 제곱이라 테이블 40개 문서에서 드래그 한 번에 수백 ms가 걸렸다(v1.37)
+    const heap = new MinHeap()
+    const relax = (v: number, d: number, from: number) => {
+      dist[v] = d
+      prev[v] = from
+      heap.push(d, v)
     }
 
     // 시작 — 방향 미정(=-1 취급): 첫 이동에는 굽음 페널티 없음
@@ -218,20 +228,13 @@ export function routeOrthogonal(
     const startKeyAlt = nodeKey(si, sj, 1)
     dist[startKey] = 0
     dist[startKeyAlt] = 0
+    heap.push(0, startKey)
+    heap.push(0, startKeyAlt)
 
     let reached: number | null = null
-    for (;;) {
-      // 미방문 최소 노드 — 그리드가 작아 선형 스캔으로 충분하다
-      let u = -1
-      let best = Infinity
-      for (let k = 0; k < size; k += 1) {
-        if (!visited[k] && dist[k] < best) {
-          best = dist[k]
-          u = k
-        }
-      }
-      if (u < 0) break
-      if (best === Infinity) break
+    while (heap.size > 0) {
+      const u = heap.pop()
+      if (visited[u]) continue // 더 짧은 거리로 이미 꺼낸 낡은 항목
       visited[u] = 1
 
       const isTarget = u === nodeKey(ti, tj, 0) || u === nodeKey(ti, tj, 1)
@@ -251,13 +254,10 @@ export function routeOrthogonal(
       ] as const) {
         if (!ok) continue
         let cost = Math.abs(xs[ni] - xs[i]) + (dir === 1 ? BEND_PENALTY : 0)
-        if (avoid.length > 0 && overlapsUsed('h', ys[j], Math.min(xs[ni], xs[i]), Math.max(xs[ni], xs[i]), avoid))
+        if (avoid.length > 0 && overlapsUsed('h', ys[j], Math.min(xs[ni], xs[i]), Math.max(xs[ni], xs[i]), avoidOnRow(j)))
           cost += CORRIDOR_AVOID_PENALTY
         const v = nodeKey(ni, j, 0)
-        if (dist[u] + cost < dist[v]) {
-          dist[v] = dist[u] + cost
-          prev[v] = u
-        }
+        if (dist[u] + cost < dist[v]) relax(v, dist[u] + cost, u)
       }
       // 세로 이동(다음 방향 1)
       for (const [nj, ok] of [
@@ -266,13 +266,10 @@ export function routeOrthogonal(
       ] as const) {
         if (!ok) continue
         let cost = Math.abs(ys[nj] - ys[j]) + (dir === 0 ? BEND_PENALTY : 0)
-        if (avoid.length > 0 && overlapsUsed('v', xs[i], Math.min(ys[nj], ys[j]), Math.max(ys[nj], ys[j]), avoid))
+        if (avoid.length > 0 && overlapsUsed('v', xs[i], Math.min(ys[nj], ys[j]), Math.max(ys[nj], ys[j]), avoidOnCol(i)))
           cost += CORRIDOR_AVOID_PENALTY
         const v = nodeKey(i, nj, 1)
-        if (dist[u] + cost < dist[v]) {
-          dist[v] = dist[u] + cost
-          prev[v] = u
-        }
+        if (dist[u] + cost < dist[v]) relax(v, dist[u] + cost, u)
       }
     }
 
@@ -397,11 +394,17 @@ export function routeWithNormalStubs(
   sourceFace: string,
   targetFace: string,
   obstacles: RouterBox[],
-  opts: { stub?: number; margin?: number; lane?: number | null; avoid?: UsedSegment[] } = {},
+  opts: { stub?: number; margin?: number; lane?: number | null; avoid?: UsedSegment[]; quick?: boolean } = {},
 ): RouterPoint[] {
   const ns = faceNormal(sourceFace)
   const nt = faceNormal(targetFace)
   const { s1, t1 } = stubEndpoints(source, target, sourceFace, targetFace, obstacles, opts.stub ?? 24)
+  // 드래그 중 빠른 경로 — 꺾임 1~2번의 단순 직각 경로가 장애물에 막히지 않으면 그대로 쓴다.
+  // 막힐 때만 다익스트라로 간다(드롭 뒤 전체 라우팅이 다시 맞춘다 — v1.37 드래그 성능)
+  if (opts.quick) {
+    const quick = quickOrthogonal(s1, t1, ns, obstacles)
+    if (quick) return collapseCollinear([source, ...quick, target])
+  }
   // 강제 통로 레인 — 마주 보는 면에서 다른 관계와 같은 통로를 나눠 쓸 때 벌어진 중간 레인.
   // 3점 경유 경로가 장애물에 막히거나 먼저 그린 관계의 통로와 포개지면 기존 다익스트라
   // 라우팅으로 돌아간다(레인 포기 — 다익스트라는 회피 비용으로 통로를 피해 간다)
@@ -416,6 +419,26 @@ export function routeWithNormalStubs(
   }
   const mid = routeOrthogonal(s1, t1, obstacles, opts.margin, opts.avoid)
   return collapseCollinear([source, ...mid, target])
+}
+
+/** 단순 직각 경로 후보 — 출발 법선 방향으로 먼저 움직이는 Z자·ㄱ자를 먼저, 그다음 반대 축을 본다.
+ *  모든 선분이 장애물 내부를 지나지 않는 첫 후보를 돌려준다. 없으면 null */
+function quickOrthogonal(s1: RouterPoint, t1: RouterPoint, ns: RouterPoint, obstacles: RouterBox[]): RouterPoint[] | null {
+  const mx = (s1.x + t1.x) / 2
+  const my = (s1.y + t1.y) / 2
+  const horizontalFirst: RouterPoint[][] = [
+    [s1, { x: mx, y: s1.y }, { x: mx, y: t1.y }, t1],
+    [s1, { x: t1.x, y: s1.y }, t1],
+  ]
+  const verticalFirst: RouterPoint[][] = [
+    [s1, { x: s1.x, y: my }, { x: t1.x, y: my }, t1],
+    [s1, { x: s1.x, y: t1.y }, t1],
+  ]
+  const candidates = ns.x !== 0 ? [...horizontalFirst, ...verticalFirst] : [...verticalFirst, ...horizontalFirst]
+  for (const points of candidates) {
+    if (points.every((p, i) => i === 0 || segmentClear(points[i - 1], p, obstacles))) return points
+  }
+  return null
 }
 
 /** waypoint 폴리라인을 모서리 둥근 SVG path로 — getSmoothStepPath와 같은 느낌 */
@@ -803,6 +826,13 @@ export function sharedRoutes(
     .join(';')}`
   if (sharedRoutesCache && sharedRoutesCache.key === key) return sharedRoutesCache.routes
 
+  // 드래그 중 — 드래그 시작 때의 전체 결과를 기준으로 바뀐 관계선만 다시 계산한다(v1.37)
+  if (incrementalRouting && lastFullRoutes) {
+    const routes = incrementalRoutes(reqs, obstacles, lastFullRoutes)
+    sharedRoutesCache = { key, routes }
+    return routes
+  }
+
   const lanes = corridorLanes(reqs, obstacles)
   const used: UsedSegment[] = []
   const routes = new Map<string, RouterPoint[]>()
@@ -822,7 +852,87 @@ export function sharedRoutes(
     }
   }
   sharedRoutesCache = { key, routes }
+  lastFullRoutes = { reqs: new Map(reqs.map((r) => [r.relId, r])), obstacleKeys: new Set(obstacles.map(boxKey)), routes }
   return routes
+}
+
+/**
+ * 드래그 중 증분 라우팅 — 전체 라우팅(통로 레인 배정 + 관계 수만큼의 순차 다익스트라)은 테이블 40개·관계 74개
+ * 문서에서 프레임당 100ms를 넘어 드래그가 끊겼다(v1.37 사용자 보고). 드래그 중에는 드래그 시작 때의 전체 결과를
+ * 기준으로 ① 양 끝 앵커·면이 그대로이고 ② 움직인 테이블을 지나지 않는 관계선은 그대로 두고, 나머지만 다시 그린다.
+ * 다시 그리는 선은 그대로 둔 선의 통로를 피한다. 드롭하면 문서가 바뀌어 전체 라우팅으로 다시 맞춘다.
+ */
+let incrementalRouting = false
+let lastFullRoutes: {
+  reqs: Map<string, CorridorEndpoint>
+  obstacleKeys: Set<string>
+  routes: Map<string, RouterPoint[]>
+} | null = null
+
+/** 드래그 시작·끝에 캔버스가 부른다 — 켜져 있는 동안 sharedRoutes가 증분으로 계산한다 */
+export function setIncrementalRouting(on: boolean): void {
+  incrementalRouting = on
+}
+
+export function isIncrementalRouting(): boolean {
+  return incrementalRouting
+}
+
+const boxKey = (b: RouterBox) => `${Math.round(b.x)},${Math.round(b.y)},${Math.round(b.w)},${Math.round(b.h)}`
+
+function sameEndpoint(a: CorridorEndpoint, b: CorridorEndpoint): boolean {
+  return (
+    a.sourceFace === b.sourceFace &&
+    a.targetFace === b.targetFace &&
+    Math.round(a.source.x) === Math.round(b.source.x) &&
+    Math.round(a.source.y) === Math.round(b.source.y) &&
+    Math.round(a.target.x) === Math.round(b.target.x) &&
+    Math.round(a.target.y) === Math.round(b.target.y)
+  )
+}
+
+function incrementalRoutes(
+  reqs: CorridorEndpoint[],
+  obstacles: RouterBox[],
+  base: NonNullable<typeof lastFullRoutes>,
+): Map<string, RouterPoint[]> {
+  const moved = obstacles.filter((b) => !base.obstacleKeys.has(boxKey(b)))
+  const routes = new Map<string, RouterPoint[]>()
+  const changed: CorridorEndpoint[] = []
+  const used: UsedSegment[] = []
+  for (const req of reqs) {
+    const before = base.reqs.get(req.relId)
+    const points = before && sameEndpoint(before, req) ? base.routes.get(req.relId) : undefined
+    const blocked =
+      points !== undefined && moved.some((box) => points.some((p, i) => i > 0 && segmentHitsBox(points[i - 1], p, box)))
+    if (!points || blocked) {
+      changed.push(req)
+      continue
+    }
+    routes.set(req.relId, points)
+    pushUsed(used, points)
+  }
+  for (const req of changed.sort((a, b) => (a.relId < b.relId ? -1 : 1))) {
+    const points = routeWithNormalStubs(req.source, req.target, req.sourceFace, req.targetFace, obstacles, {
+      lane: null,
+      avoid: used,
+      quick: true,
+    })
+    routes.set(req.relId, points)
+    pushUsed(used, points)
+  }
+  return routes
+}
+
+function pushUsed(used: UsedSegment[], points: RouterPoint[]): void {
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1]
+    const b = points[i]
+    if (Math.abs(a.y - b.y) < 0.5 && Math.abs(a.x - b.x) >= USED_SEGMENT_MIN)
+      used.push({ axis: 'h', at: a.y, lo: Math.min(a.x, b.x), hi: Math.max(a.x, b.x) })
+    else if (Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) >= USED_SEGMENT_MIN)
+      used.push({ axis: 'v', at: a.x, lo: Math.min(a.y, b.y), hi: Math.max(a.y, b.y) })
+  }
 }
 
 /** 면 공유 분산 간격 — 같은 면에 붙은 관계 끝끼리 벌리는 폭.
@@ -921,4 +1031,61 @@ export function trimPolyline(points: RouterPoint[], startTrim: number, endTrim: 
   for (let i = from.index + 1; i <= to.index; i += 1) out.push(segs[i].a)
   out.push(to.point)
   return out
+}
+
+/** 다익스트라용 최소 힙 — (거리, 노드 번호) 사전순. 같은 노드가 여러 번 들어가도 된다(꺼낼 때 방문 여부로 거른다) */
+class MinHeap {
+  private readonly dists: number[] = []
+  private readonly keys: number[] = []
+
+  get size(): number {
+    return this.keys.length
+  }
+
+  push(dist: number, key: number): void {
+    this.dists.push(dist)
+    this.keys.push(key)
+    let i = this.keys.length - 1
+    while (i > 0) {
+      const parent = (i - 1) >> 1
+      if (!this.less(i, parent)) break
+      this.swap(i, parent)
+      i = parent
+    }
+  }
+
+  pop(): number {
+    const top = this.keys[0]
+    const lastDist = this.dists.pop() as number
+    const lastKey = this.keys.pop() as number
+    if (this.keys.length > 0) {
+      this.dists[0] = lastDist
+      this.keys[0] = lastKey
+      let i = 0
+      for (;;) {
+        const left = i * 2 + 1
+        const right = left + 1
+        let smallest = i
+        if (left < this.keys.length && this.less(left, smallest)) smallest = left
+        if (right < this.keys.length && this.less(right, smallest)) smallest = right
+        if (smallest === i) break
+        this.swap(i, smallest)
+        i = smallest
+      }
+    }
+    return top
+  }
+
+  private less(a: number, b: number): boolean {
+    return this.dists[a] < this.dists[b] || (this.dists[a] === this.dists[b] && this.keys[a] < this.keys[b])
+  }
+
+  private swap(a: number, b: number): void {
+    const d = this.dists[a]
+    this.dists[a] = this.dists[b]
+    this.dists[b] = d
+    const k = this.keys[a]
+    this.keys[a] = this.keys[b]
+    this.keys[b] = k
+  }
 }

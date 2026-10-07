@@ -104,7 +104,34 @@ describe('edge-route-table — 면 부하(faceLoad — 자기 참조 루프 좌�
 
     const { faceLoad } = relationshipSharedRoutes({}, 'sig-load', tables, relationships, boxOfOf(boxes))
 
-    expect(faceLoad.get('S')).toEqual({ left: 2, right: 1, top: 0, bottom: 0 })
+    // 4면 분산(v1.37) — 왼쪽 아래의 B는 A와 왼쪽 면을 나누지 않고 비어 있는 아래 면으로 붙는다
+    expect(faceLoad.get('S')).toEqual({ left: 1, right: 1, top: 0, bottom: 1 })
     expect(faceLoad.get('C')).toEqual({ left: 1, right: 0, top: 0, bottom: 0 })
+  })
+})
+
+describe('edge-route-table — 4면 분산 연결면(v1.37)', () => {
+  it('한 면에 몰리던 관계를 상대 사분면을 향한 다른 면으로 나눈다', () => {
+    // 허브 H 아래에 자식 6개가 넓게 늘어서 있다 — 최단 면이면 전부 H의 아래 면에 붙는다
+    const boxes: Record<string, RouterBox> = { H: { x: 1000, y: 0, w: 200, h: 150 } }
+    const relationships = []
+    for (let i = 0; i < 6; i += 1) {
+      const id = `C${i}`
+      boxes[id] = { x: i * 400, y: 500, w: 200, h: 150 }
+      relationships.push(rel(`r-${i}`, 'H', id))
+    }
+    const tables = Object.keys(boxes).map((id) => ({ id }) as ErdTable)
+    const { faceLoad, routes } = relationshipSharedRoutes({}, 'sig-balance', tables, relationships, boxOfOf(boxes))
+    const load = faceLoad.get('H')!
+    expect(load.bottom).toBeLessThan(6)
+    expect(load.left + load.right).toBeGreaterThan(0)
+    // 상대를 등진 면은 쓰지 않는다 — 자식은 모두 H보다 아래라 위 면은 비어 있다
+    expect(load.top).toBe(0)
+    // 왼쪽 자식은 왼쪽 면, 오른쪽 자식은 오른쪽 면으로만 옮겨 간다
+    for (const [relId, route] of routes) {
+      const i = Number(relId.slice(2))
+      if (route.targetFace === 'left') expect(boxes[`C${i}`].x).toBeLessThan(1000)
+      if (route.targetFace === 'right') expect(boxes[`C${i}`].x).toBeGreaterThan(1000)
+    }
   })
 })

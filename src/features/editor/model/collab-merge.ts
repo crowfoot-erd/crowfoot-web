@@ -22,6 +22,7 @@ import type {
   EditorDocument,
 } from '@/features/editor/model/content-schema'
 import type { ColumnPatch, ErdChange, RequirementPatch, TablePatch } from '@/features/editor/model/changes'
+import { indexSignature } from '@/features/editor/model/keys'
 
 /* ---------- (객체, 속성) 키 ---------- */
 
@@ -142,6 +143,7 @@ function columnPatchOf(from: ErdColumn, to: ErdColumn): Partial<ErdColumn> | nul
   // 생성 컬럼·ON UPDATE(v1.34) — 생성식은 객체라 내용으로 비교한다
   if (JSON.stringify(from.generated ?? null) !== JSON.stringify(to.generated ?? null)) patch.generated = to.generated ?? null
   if ((from.onUpdate ?? null) !== (to.onUpdate ?? null)) patch.onUpdate = to.onUpdate ?? null
+  if ((from.identityGeneration ?? null) !== (to.identityGeneration ?? null)) patch.identityGeneration = to.identityGeneration ?? null
   return Object.keys(patch).length > 0 ? (patch as Partial<ErdColumn>) : null
 }
 
@@ -227,10 +229,11 @@ export function deriveChanges(from: EditorDocument, to: EditorDocument): ErdChan
     ) {
       changes.push({ type: 'uniqueKey/set', tableId: next.id, uniques: next.uniques })
     }
-    // 인덱스 — 이름·종류·파서까지 내용으로 비교한다(v1.34)
+    // 인덱스 — 이름·종류·파서(v1.34)와 유니크·식·조건·INCLUDE·연산자 클래스(v1.37)까지 내용으로 비교한다.
+    // 없는 필드와 null·false를 같게 본다(keys.ts indexSignature) — 이전 문서와의 표현 차이로 index/set이 생기지 않게
     if (
       prev.indexes.length !== next.indexes.length ||
-      prev.indexes.some((ix, i) => JSON.stringify(ix) !== JSON.stringify(next.indexes[i]))
+      prev.indexes.some((ix, i) => ix.id !== next.indexes[i].id || indexSignature(ix) !== indexSignature(next.indexes[i]))
     ) {
       changes.push({ type: 'index/set', tableId: next.id, indexes: next.indexes })
     }

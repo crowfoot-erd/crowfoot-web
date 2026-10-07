@@ -17,7 +17,7 @@ import { z } from 'zod'
 
 import type { ReverseEngineeringResult } from '@/api/types'
 import { saveModelContent } from '@/features/editor/api'
-import { layoutTablePositions } from '@/features/editor/model/auto-layout'
+import { bestLayout } from '@/features/editor/components/canvas/layout-quality'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { Button } from '@/components/ui/button'
 import {
@@ -109,7 +109,8 @@ export function ReverseDialog({ open, onOpenChange, workspaceId, presetConnectio
   const applyAutoLayout = async (result: ReverseEngineeringResult) => {
     try {
       const doc = JSON.parse(result.model.content) as EditorDocument
-      const positions = await layoutTablePositions(doc)
+      // 계층형 후보 중 관계선 교차·포개짐이 가장 적은 배치(v1.37 — layout-quality)
+      const positions = await bestLayout(doc, 'layered')
       if (Object.keys(positions).length === 0) return
       for (const [tableId, position] of Object.entries(positions)) {
         const node = doc.diagram.nodes[tableId]

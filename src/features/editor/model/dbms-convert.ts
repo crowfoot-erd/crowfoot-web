@@ -11,17 +11,19 @@
  *  4. 대상이 FK 인덱스를 자동으로 만들지 않는 DBMS면 비식별 1:N 관계의 FK 인덱스를 보충한다
  *     (대상이 자동으로 만드는 DBMS면 기존 인덱스를 지우지 않는다)
  *  5. 그 밖의 내용은 그대로 복사한다
+ *  6. 대상 DBMS가 내지 못하는 인덱스 기능(종류·식·조건·INCLUDE·연산자 클래스 — v1.37)은 값을 그대로 두고 보고한다
  */
 import { createIndex } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdColumn, ErdRelationship, ErdTable } from '@/features/editor/model/content-schema'
 import {
   dataTypeSpec,
   dbmsAutoIndexesFk,
+  dbmsIndexSupport,
   parsePhysicalType,
   physicalType,
   templateIdForDatabase,
 } from '@/features/editor/model/dbms'
-import { defaultKeyName } from '@/features/editor/model/keys'
+import { defaultKeyName, indexCoversColumns } from '@/features/editor/model/keys'
 
 /** 공용 타입 코드의 물리 표기가 원본과 대상에서 다른 경우 — 안내 */
 export interface TypeNotationChange {
@@ -55,11 +57,20 @@ export interface AddedFkIndex {
   columnNames: string[]
 }
 
+/** 대상 DBMS가 DDL로 내지 못하는 기능을 쓰는 인덱스 — 경고(값은 새 문서에 그대로 남는다) */
+export interface UnsupportedIndex {
+  tableName: string
+  indexName: string
+  /** 내지 못하는 기능 — 종류 이름(GIN 등) 또는 EXPRESSION·WHERE·INCLUDE·OPCLASS */
+  features: string[]
+}
+
 export interface DbmsConversionReport {
   typeChanges: TypeNotationChange[]
   normalized: NormalizedColumn[]
   unsupported: UnsupportedColumn[]
   addedIndexes: AddedFkIndex[]
+  unsupportedIndexes: UnsupportedIndex[]
 }
 
 export interface DbmsConversionResult {
@@ -78,7 +89,8 @@ function fkLeadingColumnIndexed(rel: ErdRelationship, child: ErdTable): boolean 
   if (!leading) return true // 매핑이 없으면 보충할 대상이 아니다
   if (child.primaryKey?.columnIds[0] === leading) return true
   if (child.uniques.some((uk) => uk.columnIds[0] === leading)) return true
-  return child.indexes.some((ix) => ix.columns[0]?.columnId === leading)
+  // 부분·식 인덱스(v1.37)는 모든 행의 FK를 덮지 않는다 — 세지 않는다
+  return child.indexes.some((ix) => indexCoversColumns(ix) && ix.columns[0]?.columnId === leading)
 }
 
 /** 컬럼 타입 정리(규칙 1~3) — 바뀐 컬럼과 보고 항목을 돌려준다 */
@@ -130,7 +142,7 @@ export function convertDocumentDbms(
 ): DbmsConversionResult {
   const fromTemplate = templateIdForDatabase(fromDatabaseType)
   const toTemplate = templateIdForDatabase(toDatabaseType)
-  const report: DbmsConversionReport = { typeChanges: [], normalized: [], unsupported: [], addedIndexes: [] }
+  const report: DbmsConversionReport = { typeChanges: [], normalized: [], unsupported: [], addedIndexes: [], unsupportedIndexes: [] }
 
   // 규칙 1~3 — 컬럼 타입
   let tables = document.model.tables.map((table) => ({
@@ -185,6 +197,21 @@ export function convertDocumentDbms(
         indexName,
         columnNames: fkColumns.map((column) => column.physicalName),
       })
+    }
+  }
+
+  // 규칙 6 — 대상이 내지 못하는 인덱스 기능은 값을 지키고 보고만 한다(core DDL 생성기가 경고와 함께 뺀다)
+  const support = dbmsIndexSupport(toDatabaseType)
+  for (const table of tables) {
+    for (const index of table.indexes) {
+      const features: string[] = []
+      if (!support.types.includes(index.type ?? 'BTREE')) features.push(index.type)
+      if (index.unique && !support.unique) features.push('UNIQUE')
+      if ((index.expression ?? '').trim() !== '' && !support.expression) features.push('EXPRESSION')
+      if ((index.where ?? '').trim() !== '' && !support.where) features.push('WHERE')
+      if ((index.include ?? []).length > 0 && !support.include) features.push('INCLUDE')
+      if (index.columns.some((c) => (c.opclass ?? '') !== '') && !support.opclass) features.push('OPCLASS')
+      if (features.length > 0) report.unsupportedIndexes.push({ tableName: table.physicalName, indexName: index.name, features })
     }
   }
 

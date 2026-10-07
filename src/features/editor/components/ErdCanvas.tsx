@@ -11,7 +11,7 @@
  * 들어오는 테이블이 그때그때 마운트되며 끊기고(100테이블 문서에서 롱태스크 1초+ 실측),
  * 전부 렌더해 두면 팬·줌·드래그 전부 60fps가 나온다(마운트 체인이 없으니 이동은 GPU 합성뿐).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ComponentType, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -47,7 +47,7 @@ import {
 import { groupColorOf, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
 import { createArea, createIndex, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
-import { defaultCheckName, defaultKeyName, documentKeyNames, type KeyKind } from '@/features/editor/model/keys'
+import { defaultCheckName, defaultKeyName, documentKeyNames, withIndexExtras, type KeyKind } from '@/features/editor/model/keys'
 import { DEFAULT_CHILD_MULTIPLICITY, type ErdColumn } from '@/features/editor/model/content-schema'
 import { isDuplicateRelationship, isDuplicateTableName } from '@/features/editor/model/validation'
 import { findNoteDropTarget } from '@/features/editor/model/note-link'
@@ -80,7 +80,7 @@ import { KeyInfoDialog, type KeyInfoSubmit } from './KeyInfoDialog'
 import { NoteNode, type NoteNodeType } from './canvas/NoteNode'
 import { RelationPickerOverlay, type RelationPick } from './canvas/RelationPickerOverlay'
 import { RemoteCursorLayer } from './canvas/RemoteCursorLayer'
-import { handleAnchors, shortestHandlePair } from './canvas/edge-router'
+import { handleAnchors, setIncrementalRouting, shortestHandlePair } from './canvas/edge-router'
 import { RelationshipEdge, type RelationshipEdgeType } from './canvas/RelationshipEdge'
 import { TableNode, type TableNodeType } from './canvas/TableNode'
 import { estimateTableHeight, tableRenderWidth } from '@/features/editor/model/table-size'
@@ -323,6 +323,21 @@ export interface ErdCanvasProps {
   sendCursor?: ((cursor: CursorPayload) => void) | null
 }
 
+const PRO_OPTIONS = { hideAttribution: true }
+const MULTI_SELECTION_KEYS = ['Shift', 'Meta']
+const DELETE_KEYS = ['Backspace', 'Delete']
+
+/** 닫혀 있는 동안은 다시 그리지 않는 대화상자 — 캔버스는 드래그 중 프레임마다 다시 그려지는데, 그때마다 닫힌
+ *  대화상자 다섯 개가 폼·검증 스키마를 새로 만들었다(v1.37 드래그 성능). 열기·닫기 렌더는 그대로 일어난다 */
+function skipWhileClosed<P extends { open: boolean }>(Dialog: ComponentType<P>) {
+  return memo(Dialog, (prev, next) => !prev.open && !next.open)
+}
+const TableInfoDialogLazy = skipWhileClosed(TableInfoDialog)
+const ColumnInfoDialogLazy = skipWhileClosed(ColumnInfoDialog)
+const KeyInfoDialogLazy = skipWhileClosed(KeyInfoDialog)
+const CheckConstraintDialogLazy = skipWhileClosed(CheckConstraintDialog)
+const RelationshipDialogLazy = skipWhileClosed(RelationshipDialog)
+
 export function ErdCanvas({
   canEdit,
   nameDisplay,
@@ -387,6 +402,8 @@ export function ErdCanvas({
 
   // 문서를 떠나면 잔상을 지운다 — 다음 문서의 노드가 이전 선택을 물려받지 않게
   useEffect(() => () => clearRemotePresence(), [])
+  // 드래그 중에 화면을 떠나도 증분 라우팅이 남지 않게
+  useEffect(() => () => setIncrementalRouting(false), [])
 
   /** 마우스 이동 → flow 좌표 커서 발행(쓰로틀은 핸들 안 — 여기선 매 이벤트 건넨다) */
   const handlePointerMove = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
@@ -617,6 +634,7 @@ export function ErdCanvas({
   const handleNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, _node, draggedNodes) => {
       draggingRef.current = false
+      setIncrementalRouting(false) // 드롭 커밋 뒤 전체 라우팅으로 다시 맞춘다
       const state = useEditorStore.getState()
       const positions: Record<string, { x: number; y: number }> = {}
       const noteChanges: ErdChange[] = []
@@ -1093,6 +1111,12 @@ export function ErdCanvas({
           orders: Object.fromEntries(found.columns.map((entry) => [entry.columnId, entry.order])),
           type: found.type,
           parser: found.parser,
+          // 특수 인덱스(v1.37)
+          unique: found.unique ?? false,
+          expression: found.expression ?? null,
+          where: found.where ?? null,
+          include: found.include ?? [],
+          opclasses: Object.fromEntries(found.columns.flatMap((entry) => (entry.opclass ? [[entry.columnId, entry.opclass] as const] : []))),
         }
       : null
   }, [keyDialogRef, keyDialogTable])
@@ -1133,7 +1157,7 @@ export function ErdCanvas({
     commit({ type: 'check/set', tableId: ref.tableId, checks })
   }
 
-  const handleKeyConfirm = ({ name, columnIds, orders, type, parser }: KeyInfoSubmit) => {
+  const handleKeyConfirm = ({ name, columnIds, orders, type, parser, unique, expression, where, include, opclasses }: KeyInfoSubmit) => {
     const ref = keyDialogRef
     if (!ref) return
     const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === ref.tableId)
@@ -1144,10 +1168,16 @@ export function ErdCanvas({
         : [...table.uniques, { id: newId(), name, columnIds }]
       commit({ type: 'uniqueKey/set', tableId: ref.tableId, uniques })
     } else {
-      const columns = columnIds.map((columnId) => ({ columnId, order: orders[columnId] ?? 'ASC' }))
+      const columns = columnIds.map((columnId) => ({
+        columnId,
+        order: orders[columnId] ?? 'ASC',
+        ...(opclasses[columnId] ? { opclass: opclasses[columnId] } : {}),
+      }))
+      // 특수 인덱스 필드(v1.37)는 값이 있을 때만 싣는다 — 일반 인덱스는 이전과 같은 모양으로 남는다
+      const extras = { unique, expression, where, include }
       const indexes = ref.keyId
-        ? table.indexes.map((ix) => (ix.id === ref.keyId ? { ...ix, name, columns, type, parser } : ix))
-        : [...table.indexes, createIndex({ name, columns, type, parser })]
+        ? table.indexes.map((ix) => (ix.id === ref.keyId ? withIndexExtras({ ...ix, name, columns, type, parser }, extras) : ix))
+        : [...table.indexes, withIndexExtras(createIndex({ name, columns, type, parser }), extras)]
       commit({ type: 'index/set', tableId: ref.tableId, indexes })
     }
   }
@@ -1272,6 +1302,25 @@ export function ErdCanvas({
     handleContextMenuAction({ type: 'createTable', position: toFlow(center) })
   }, [handleContextMenuAction, toFlow])
 
+  /* React Flow에 넘기는 핸들러·옵션은 참조를 고정한다 — 렌더마다 새 함수·배열을 넘기면 React Flow가 모든 노드·엣지
+     래퍼를 다시 그린다. 캔버스는 드래그 프레임마다 다시 그려지므로 테이블 40개·관계 74개 문서에서 프레임마다
+     래퍼 114개가 다시 그려졌다(v1.37 드래그 성능) */
+  const handleCancelPendingRelation = useCallback(() => setPendingRelation(null), [])
+  const handleNodeDragStart = useCallback(() => {
+    draggingRef.current = true
+    setIncrementalRouting(true) // 드래그 중에는 바뀐 관계선만 다시 그린다(edge-router)
+  }, [])
+  const handleNodeDoubleClick = useCallback((_event: ReactMouseEvent, node: AppNode) => {
+    if (node.type === 'table') setInfoTableId(node.id)
+  }, [])
+  const handleEdgeDoubleClick = useCallback(
+    (_event: ReactMouseEvent, edge: AppEdge) => setRelDialog({ mode: 'edit', relationshipId: edge.id }),
+    [],
+  )
+  const handleInit = useCallback((instance: ReactFlowInstance<AppNode, AppEdge>) => {
+    rfRef.current = instance
+  }, [])
+
   const flow = (
     <div
       ref={wrapperRef}
@@ -1291,32 +1340,14 @@ export function ErdCanvas({
         onNodesDelete={canEdit ? handleNodesDelete : undefined}
         onEdgesDelete={canEdit ? handleEdgesDelete : undefined}
         onConnect={canEdit ? handleConnect : undefined}
-        onPaneClick={pendingRelation ? () => setPendingRelation(null) : undefined}
-        onNodeDragStart={
-          canEdit
-            ? () => {
-                draggingRef.current = true
-              }
-            : undefined
-        }
+        onPaneClick={pendingRelation ? handleCancelPendingRelation : undefined}
+        onNodeDragStart={canEdit ? handleNodeDragStart : undefined}
         onNodeDrag={canEdit ? handleNodeDragLive : undefined}
         onNodeDragStop={canEdit ? handleNodeDragStop : undefined}
-        onNodeDoubleClick={
-          canEdit
-            ? (_event, node) => {
-                if (node.type === 'table') setInfoTableId(node.id)
-              }
-            : undefined
-        }
-        onEdgeDoubleClick={
-          canEdit
-            ? (_event, edge) => setRelDialog({ mode: 'edit', relationshipId: edge.id })
-            : undefined
-        }
+        onNodeDoubleClick={canEdit ? handleNodeDoubleClick : undefined}
+        onEdgeDoubleClick={canEdit ? handleEdgeDoubleClick : undefined}
         defaultViewport={initialViewportRef.current}
-        onInit={(instance) => {
-          rfRef.current = instance
-        }}
+        onInit={handleInit}
         onMoveEnd={handleMoveEnd}
         nodesDraggable={canEdit}
         nodesConnectable={canEdit}
@@ -1324,13 +1355,13 @@ export function ErdCanvas({
         zoomOnDoubleClick={false}
         // 우하단 "React Flow" 어트리뷰션 배지 제거(2026-09-28 사용자 요청) —
         // 제품 화면에 라이브러리 표기가 노출될 이유가 없다
-        proOptions={{ hideAttribution: true }}
+        proOptions={PRO_OPTIONS}
         elementsSelectable
         // 박스 선택(selectionKeyCode)은 팬·관계 클릭과 제스처가 겹쳐 쓰지 않는다 —
         // 다중 선택은 Shift+클릭으로만(§9)
         selectionKeyCode={null}
-        multiSelectionKeyCode={['Shift', 'Meta']}
-        deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
+        multiSelectionKeyCode={MULTI_SELECTION_KEYS}
+        deleteKeyCode={canEdit ? DELETE_KEYS : null}
         minZoom={0.1}
         maxZoom={2.5}
         translateExtent={extent}
@@ -1416,7 +1447,7 @@ export function ErdCanvas({
         flow
       )}
 
-      <TableInfoDialog
+      <TableInfoDialogLazy
         open={infoTable !== null}
         onOpenChange={(open) => {
           if (!open) setInfoTableId(null)
@@ -1431,7 +1462,7 @@ export function ErdCanvas({
           isDuplicateTableName(useEditorStore.getState().present.model, tableId, physicalName)}
       />
 
-      <ColumnInfoDialog
+      <ColumnInfoDialogLazy
         open={infoColumn !== null}
         onOpenChange={(open) => {
           if (!open) setInfoColumnRef(null)
@@ -1462,12 +1493,13 @@ export function ErdCanvas({
         }}
       />
 
-      <KeyInfoDialog
+      <KeyInfoDialogLazy
         open={keyDialogRef !== null && keyDialogRef.kind !== 'check' && keyDialogTable !== null}
         onOpenChange={(open) => {
           if (!open) setKeyDialogRef(null)
         }}
         kind={keyDialogRef?.kind === 'index' ? 'index' : 'unique'}
+        dbmsId={dbmsId}
         target={keyDialogTarget}
         table={keyDialogTable}
         existingNames={keyExistingNames}
@@ -1475,7 +1507,7 @@ export function ErdCanvas({
         onConfirm={handleKeyConfirm}
       />
 
-      <CheckConstraintDialog
+      <CheckConstraintDialogLazy
         open={keyDialogRef?.kind === 'check' && keyDialogTable !== null}
         onOpenChange={(open) => {
           if (!open) setKeyDialogRef(null)
@@ -1487,7 +1519,7 @@ export function ErdCanvas({
         onConfirm={handleCheckConfirm}
       />
 
-      <RelationshipDialog
+      <RelationshipDialogLazy
         open={relDialogData.open}
         onOpenChange={(open) => {
           if (!open) setRelDialog(null)

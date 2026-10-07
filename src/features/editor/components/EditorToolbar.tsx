@@ -79,8 +79,6 @@ import { downloadDataUrl, downloadTextFile, safeFilename } from '@/lib/download'
 import {
   LayoutCancelledError,
   cancelLayout,
-  layoutHubPositions,
-  layoutTablePositions,
   orderFkColumns,
   positionNotes,
   type AutoLayoutMode,
@@ -88,6 +86,7 @@ import {
   type TableSizes,
 } from '@/features/editor/model/auto-layout'
 import { buildCrownFile } from '@/features/editor/model/crown-io'
+import { bestLayout } from '@/features/editor/components/canvas/layout-quality'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
 import {
@@ -633,14 +632,8 @@ function AutoLayoutButton({ canEdit }: { canEdit: boolean }) {
       }
       // 허브·하이브리드는 순수 동기 계산(전략만 다름), 계층형은 elkjs 비동기 —
       // 이후 파이프라인(FK 정렬·노트·fit)은 공통
-      const positions =
-        nextMode === 'layered'
-          ? await layoutTablePositions(doc, { sizes, direction: nextDirection })
-          : layoutHubPositions(doc, {
-              sizes,
-              strategy: nextMode === 'hybrid' ? 'tree' : 'ring',
-              direction: nextDirection,
-            })
+      // 모드 안의 후보를 모두 배치해 보고 관계선 교차·포개짐이 가장 적은 배치를 고른다(v1.37 — layout-quality)
+      const positions = await bestLayout(doc, nextMode, { sizes, direction: nextDirection })
       if (Object.keys(positions).length > 0) {
         // FK 컬럼을 부모 테이블 위치 순으로 정렬한다 — 선 부착 순서가 좌→우로 정렬돼 겹침이 줄고,
         // 노트는 테이블 위에 포개지지 않게 위치를 잡는다. 묶음 커밋이라 Undo 1회

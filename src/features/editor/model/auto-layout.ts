@@ -33,6 +33,12 @@ export type AutoLayoutMode = 'layered' | 'hub' | 'hybrid'
  *  (ring=링 반지름 공식의 동심원, tree=허브+1링 방사형에 스포크 서브트리는 계층형 블록) */
 export type HubLayoutStrategy = 'ring' | 'tree'
 
+/** 방사형 배치 후보(v1.37) — 자식 순서와 시작 각도 회전(라디안) */
+export interface HubLayoutVariant {
+  order?: 'document' | 'barycenter'
+  rotate?: number
+}
+
 /** 테이블 렌더 크기 추정치 — ELK 노드 크기와 노트 오프셋이 같은 식을 쓴다 */
 function estimateTableSize(table: ErdTable, width: number | null) {
   return {
@@ -346,6 +352,7 @@ export function buildLayoutGraph(
   doc: EditorDocument,
   spacing: LayoutSpacing = DEFAULT_LAYOUT_SPACING,
   sizes?: TableSizes,
+  elkOptions: Record<string, string> = {},
 ): ElkNode {
   /** 간격 옵션 — 루트뿐 아니라 **그룹 컴파운드 노드에도** 걸어야 그룹 안 멤버에 적용된다.
    *  루트에만 걸면 컴파운드 자식 사이는 ELK 기본 간격으로 무너진다(실측 2026-09-23:
@@ -357,6 +364,8 @@ export function buildLayoutGraph(
     'elk.spacing.edgeNode': `${spacing.edgeNode}`,
     'layered.spacing.nodeNodeBetweenLayers': `${spacing.betweenLayers}`,
     'elk.spacing.componentComponent': `${spacing.component}`,
+    // 배치 후보(v1.37) — 교차 최소화·노드 배치 옵션. 루트와 그룹 노드에 같이 건다
+    ...elkOptions,
   }
 
   const tableNode = (table: ErdTable): ElkNode => {
@@ -429,7 +438,14 @@ export function buildLayoutGraph(
  */
 export async function layoutTablePositions(
   doc: EditorDocument,
-  options: { elk?: ELK; spacing?: LayoutSpacing; sizes?: TableSizes; direction?: LayoutDirection } = {},
+  options: {
+    elk?: ELK
+    spacing?: LayoutSpacing
+    sizes?: TableSizes
+    direction?: LayoutDirection
+    /** 배치 후보의 ELK 추가 옵션(v1.37 — 선 교차가 가장 적은 후보를 고를 때) */
+    elkOptions?: Record<string, string>
+  } = {},
 ): Promise<Record<string, { x: number; y: number }>> {
   if (doc.model.tables.length < 2) return {}
   if (options.direction === 'right') {
@@ -441,7 +457,7 @@ export async function layoutTablePositions(
     return transposePositions(transposed)
   }
   const elk = options.elk ?? (await getElk())
-  const graph = await runElk(elk, buildLayoutGraph(doc, options.spacing, options.sizes), options.elk === undefined)
+  const graph = await runElk(elk, buildLayoutGraph(doc, options.spacing, options.sizes, options.elkOptions), options.elk === undefined)
   const tableIds = new Set(doc.model.tables.map((table) => table.id))
   const positions: Record<string, { x: number; y: number }> = {}
   const collect = (node: ElkNode, offsetX: number, offsetY: number) => {
@@ -575,7 +591,14 @@ interface HubEntity {
  */
 export function layoutHubPositions(
   doc: EditorDocument,
-  options: { spacing?: LayoutSpacing; sizes?: TableSizes; strategy?: HubLayoutStrategy; direction?: LayoutDirection } = {},
+  options: {
+    spacing?: LayoutSpacing
+    sizes?: TableSizes
+    strategy?: HubLayoutStrategy
+    direction?: LayoutDirection
+    /** 배치 후보(v1.37) — 자식 순서(document: 문서 순, barycenter: 이웃이 놓인 각도 순으로 모은다)와 시작 각도(라디안) */
+    variant?: HubLayoutVariant
+  } = {},
 ): Record<string, { x: number; y: number }> {
   if (doc.model.tables.length < 2) return {}
   // 좌→우는 계층형 블록이 있는 tree(하이브리드)에만 뜻이 있다 — 동심원(ring)은 방향이 없다
@@ -726,20 +749,49 @@ export function layoutHubPositions(
       )
     }
     // 부채꼴 각도 — BFS 방문 순서대로 자식에게 리프 비례 폭을 배정하고 이등분선에 놓는다.
-    // 시작각 12시 고정. 단일 자식은 부모 wedge 전체를 물려받아 체인이 일직선으로 뻗는다
-    const START = -Math.PI / 2
+    // 시작각은 12시(후보가 돌릴 수 있다). 단일 자식은 부모 wedge 전체를 물려받아 체인이 일직선으로 뻗는다
+    const START = -Math.PI / 2 + (options.variant?.rotate ?? 0)
     const angleOf = new Map<string, number>()
     const rangeOf = new Map<string, [number, number]>()
-    rangeOf.set(hub.id, [START, START + Math.PI * 2])
-    for (const entity of bfsOrder) {
-      const [from, to] = rangeOf.get(entity.id)!
-      angleOf.set(entity.id, (from + to) / 2)
-      const kids = childrenOf.get(entity.id) ?? []
-      let cursor = from
-      for (const kid of kids) {
-        const width = ((to - from) * leavesOf.get(kid.id)!) / leavesOf.get(entity.id)!
-        rangeOf.set(kid.id, [cursor, cursor + width])
-        cursor += width
+    const assignAngles = () => {
+      rangeOf.set(hub.id, [START, START + Math.PI * 2])
+      for (const entity of bfsOrder) {
+        const [from, to] = rangeOf.get(entity.id)!
+        angleOf.set(entity.id, (from + to) / 2)
+        const kids = childrenOf.get(entity.id) ?? []
+        let cursor = from
+        for (const kid of kids) {
+          const width = ((to - from) * leavesOf.get(kid.id)!) / leavesOf.get(entity.id)!
+          rangeOf.set(kid.id, [cursor, cursor + width])
+          cursor += width
+        }
+      }
+    }
+    assignAngles()
+    // 무게중심 순서(v1.37 배치 후보) — 형제를 '부모 말고 이어진 이웃들이 놓인 각도'의 평균 순으로 다시 늘어놓는다.
+    // 서로 이어진 테이블이 원의 반대편에 놓여 선이 허브 앞을 가로지르는 일을 줄인다(방사형 교차 줄이기의 표준 방법)
+    if (options.variant?.order === 'barycenter') {
+      for (let pass = 0; pass < 4; pass += 1) {
+        for (const entity of bfsOrder) {
+          const kids = childrenOf.get(entity.id) ?? []
+          if (kids.length < 2) continue
+          const [from, to] = rangeOf.get(entity.id)!
+          const mid = (from + to) / 2
+          const keyOf = new Map<string, number>()
+          for (const kid of kids) {
+            const others = [...(adjacency.get(kid.id) ?? [])].filter((id) => id !== entity.id && angleOf.has(id))
+            if (others.length === 0) {
+              keyOf.set(kid.id, angleOf.get(kid.id)!)
+              continue
+            }
+            // 원형 평균 — 부모 wedge 중심 기준으로 펼쳐 비교한다
+            const sx = others.reduce((sum, id) => sum + Math.cos(angleOf.get(id)! - mid), 0)
+            const sy = others.reduce((sum, id) => sum + Math.sin(angleOf.get(id)! - mid), 0)
+            keyOf.set(kid.id, mid + Math.atan2(sy, sx))
+          }
+          childrenOf.set(entity.id, [...kids].sort((a, b) => keyOf.get(a.id)! - keyOf.get(b.id)! || a.orderKey - b.orderKey))
+        }
+        assignAngles()
       }
     }
     const halfDiag = (entity: HubEntity) => Math.hypot(entity.box.w, entity.box.h) / 2

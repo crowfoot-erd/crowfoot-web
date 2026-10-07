@@ -15,11 +15,13 @@
  * · 매칭 키: 테이블·컬럼 = 물리명(trim·소문자), 관계 = (자식, fkName) 우선 → 없으면 (부모→자식) 순서쌍 폴백.
  * · 리네임은 remove+add로 나타난다(물리명이 신원이라 추적 불가) — v1 한계, 실행취소로 복구된다.
  * · UK는 DB 우선 전체 교체(문서 전용 UK는 지운다) — 1:1 FK의 UK는 DB가 항상 보유하므로 자가치유된다.
- * · 인덱스는 introspection이 읽지 않아 건드리지 않는다(컬럼 삭제 시 참조 정리만 cascade가 수행).
+ * · 인덱스(v1.37)는 이름으로 맞춰 DB 것을 추가·갱신한다(종류·파서·컬럼·정렬·연산자 클래스·유니크·INCLUDE·식·조건).
+ *   식·조건은 expressionKey(core SchemaDiffer와 같은 정규화)로 같으면 문서 원문을 지킨다 — DB는 다시 쓴 원문을 준다.
+ *   문서 전용 인덱스는 보존한다(FK 인덱스 등 — 이전과 같다).
  *
  * 단계 순서(캐스케이드 상호작용 고려 — changes.ts 의미론 기준):
  * 1. 관계 제거(DB 대응 없음·매핑 변경) → 2. 테이블 제거(cascade) → 3. 테이블 생성(키 이름 충돌 회피) →
- * 4. 테이블별 컬럼·PK·UK 확정(DB 우선) → 5. 관계 생성(중립형+patch)·스칼라 patch → 6. 존 정렬(PK→FK→일반).
+ * 4. 테이블별 컬럼·PK·UK·인덱스 확정(DB 우선) → 5. 관계 생성(중립형+patch)·스칼라 patch → 6. 존 정렬(PK→FK→일반).
  * 단계 사이사이 working 문서에 변경을 접어 판정은 항상 진행 상태 기준이다(자가치유).
  *   - relationship/remove·table/remove는 피어 FK 컬럼을 함께 지우지만, 4단계가 DB 컬럼을 다시
  *     확보하고 5단계가 fkColumns:[] 생성으로 그 컬럼을 재사용하므로 결과는 DB와 일치한다.
@@ -30,15 +32,16 @@ import { applyChanges, newId, type ErdChange, type RelationshipPatch } from '@/f
 import type {
   EditorDocument,
   ErdColumn,
+  ErdIndex,
   ErdRelationship,
   ErdTable,
   ErdUniqueKey,
 } from '@/features/editor/model/content-schema'
-import { documentKeyNames, nextName } from '@/features/editor/model/keys'
+import { documentKeyNames, expressionKey, indexDetail, indexSignature, nextName } from '@/features/editor/model/keys'
 import { contentBounds } from '@/features/editor/model/canvas-bounds'
 import i18n from '@/lib/i18n'
 
-export type SyncItemKind = 'table' | 'column' | 'primaryKey' | 'uniqueKey' | 'relationship'
+export type SyncItemKind = 'table' | 'column' | 'primaryKey' | 'uniqueKey' | 'index' | 'relationship'
 export type SyncItemAction = 'add' | 'update' | 'remove'
 
 /** 관계 제거 사유 — 문구가 아니라 식별자로 판정한다(action 분기·렌더 키) */
@@ -115,6 +118,82 @@ function materializeTable(dbTable: ErdTable, doc: EditorDocument): ErdTable {
   }
 }
 
+/** 이름을 뺀 인덱스 내용 키 — 식·조건은 expressionKey로 */
+function indexContentKey(index: ErdIndex): string {
+  return indexSignature({ ...index, name: '', expression: expressionKey(index.expression), where: expressionKey(index.where) })
+}
+
+/** DB 인덱스를 문서 인덱스로 옮긴다 — 컬럼·INCLUDE id는 물리명으로 live 테이블 id에 맞춘다. 못 맞추면 null */
+function mapDbIndex(dbIndex: ErdIndex, dbTable: ErdTable, live: ErdTable): ErdIndex | null {
+  const liveIdOf = (dbColumnId: string): string | undefined => {
+    const dbCol = dbTable.columns.find((c) => c.id === dbColumnId)
+    return dbCol ? columnByName(live, dbCol.physicalName)?.id : undefined
+  }
+  const columns: ErdIndex['columns'] = []
+  for (const entry of dbIndex.columns) {
+    const columnId = liveIdOf(entry.columnId)
+    if (!columnId) return null
+    columns.push({ ...entry, columnId })
+  }
+  const include: string[] = []
+  for (const id of dbIndex.include ?? []) {
+    const columnId = liveIdOf(id)
+    if (!columnId) return null
+    include.push(columnId)
+  }
+  if (columns.length === 0 && (dbIndex.expression ?? '').trim() === '') return null
+  const mapped: ErdIndex = { ...dbIndex, columns }
+  if (include.length > 0) mapped.include = include
+  else delete mapped.include
+  return mapped
+}
+
+/** 인덱스 동기 — DB 인덱스를 이름으로 맞춰 추가·갱신한다(core DocumentSync.syncIndexes와 같은 매칭).
+ *  식·조건은 expressionKey로 같으면 문서 원문을 지킨다. 바뀐 것이 없으면 null */
+function syncIndexes(
+  live: ErdTable,
+  dbTable: ErdTable,
+  taken: Set<string>,
+): { indexes: ErdIndex[]; items: Omit<SyncDiffItem, 'table'>[] } | null {
+  const nameOf = (id: string) => live.columns.find((c) => c.id === id)?.physicalName ?? id
+  const indexes = [...live.indexes]
+  const consumed = new Set<string>()
+  const items: Omit<SyncDiffItem, 'table'>[] = []
+  for (const dbIndex of dbTable.indexes) {
+    const mapped = mapDbIndex(dbIndex, dbTable, live)
+    if (!mapped) continue
+    const byName = indexes.findIndex((ix) => !consumed.has(ix.id) && nameKey(ix.name) === nameKey(dbIndex.name))
+    // 이름이 겹쳐 접미(_1)를 붙여 들인 인덱스(MySQL은 테이블마다 같은 이름을 쓸 수 있다)는 내용으로 다시 찾는다 — 재동기 고정점
+    const at = byName >= 0 ? byName : indexes.findIndex((ix) => !consumed.has(ix.id) && indexContentKey(ix) === indexContentKey(mapped))
+    if (at >= 0) {
+      const own = indexes[at]!
+      consumed.add(own.id)
+      // DB가 다시 쓴 식·조건이 정규화해 같으면 문서 원문을 지킨다
+      const next: ErdIndex = { ...mapped, id: own.id, name: own.name }
+      if (expressionKey(own.expression) === expressionKey(mapped.expression)) {
+        if (own.expression != null) next.expression = own.expression
+        else delete next.expression
+      }
+      if (expressionKey(own.where) === expressionKey(mapped.where)) {
+        if (own.where != null) next.where = own.where
+        else delete next.where
+      }
+      if (indexSignature(own) !== indexSignature(next)) {
+        indexes[at] = next
+        items.push({ kind: 'index', action: 'update', name: own.name, detail: indexDetail(next, nameOf) })
+      }
+      continue
+    }
+    const name = nextName(taken, dbIndex.name)
+    taken.add(name.toLowerCase())
+    const added: ErdIndex = { ...mapped, id: newId(), name }
+    consumed.add(added.id)
+    indexes.push(added)
+    items.push({ kind: 'index', action: 'add', name, detail: indexDetail(added, nameOf) })
+  }
+  return items.length > 0 ? { indexes, items } : null
+}
+
 /** UK 배열 동등성 — 이름·컬럼 순서까지 같은가(id는 표현이므로 제외) */
 function sameUniques(a: ErdUniqueKey[], b: ErdUniqueKey[]): boolean {
   return (
@@ -140,6 +219,7 @@ function columnPatch(cur: ErdColumn, db: ErdColumn): Partial<ErdColumn> | null {
   // 생성식·ON UPDATE(v1.34) — 리버스가 DB에서 읽는 물리 속성이라 DB 값을 따른다
   if (JSON.stringify(cur.generated ?? null) !== JSON.stringify(db.generated ?? null)) patch.generated = db.generated ?? null
   if ((cur.onUpdate ?? null) !== (db.onUpdate ?? null)) patch.onUpdate = db.onUpdate ?? null
+  if ((cur.identityGeneration ?? null) !== (db.identityGeneration ?? null)) patch.identityGeneration = db.identityGeneration ?? null
   // 논리명 — DB 코멘트가 있을 때만 덮어쓴다. 없으면 문서 값 보존
   if (hasDbComment(db) && cur.logicalName !== db.logicalName) patch.logicalName = db.logicalName
   return Object.keys(patch).length > 0 ? patch : null
@@ -378,6 +458,15 @@ export function diffSync(current: EditorDocument, db: EditorDocument): SyncDiff 
         name: nextUniques.map((u) => u.name).join(', '),
         detail: i18n.t('model.editor.sync.detail.uniqueCount', { from: live.uniques.length, to: nextUniques.length }),
       })
+    }
+
+    // 인덱스(v1.37) — 이름으로 맞춰 DB 것을 추가·갱신한다. 문서 전용 인덱스는 남긴다
+    const liveNow = liveTable(cur.id)
+    if (!liveNow) continue
+    const nextIndexes = syncIndexes(liveNow, dbTable, documentKeyNames(working.model))
+    if (nextIndexes) {
+      emit({ type: 'index/set', tableId: cur.id, indexes: nextIndexes.indexes })
+      items.push(...nextIndexes.items.map((item) => ({ ...item, table: dbTable.physicalName })))
     }
   }
 

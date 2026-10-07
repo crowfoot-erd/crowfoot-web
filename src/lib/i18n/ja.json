@@ -1039,6 +1039,7 @@
           "column": "カラム",
           "primaryKey": "主キー",
           "uniqueKey": "ユニークキー",
+          "index": "インデックス",
           "relationship": "リレーション"
         },
         "action": {
@@ -1322,6 +1323,8 @@
         "scale": "スケール",
         "pkHint": "PKとして保存するとNOT NULLが強制され、カラムは先頭(PKブロック)に移動します。",
         "aiHint": "自動採番は整数型のPK(INT/BIGINT/SMALLINT)でのみ使用できます。",
+        "identityAlways": "常に生成(GENERATED ALWAYS)",
+        "identityAlwaysHint": "オンにすると値を直接入れられません。オフは BY DEFAULT — 値を指定するとその値を使います。",
         "onUpdate": "ON UPDATE",
         "onUpdateHint": "行を更新するときに自動で入れる値です(例: CURRENT_TIMESTAMP(6))。MySQL のドキュメントでのみ DDL に含まれます。",
         "generated": "生成列",
@@ -1353,7 +1356,21 @@
         "orderHint": "インデックスはカラムごとにソート順(ASC/DESC)を指定できます",
         "indexType": "インデックスの種類",
         "parser": "パーサー(任意)",
-        "indexTypeHint": "FULLTEXT・SPATIAL インデックスには列ごとの並び順がありません。パーサーは MySQL の全文検索でのみ使われます(例: ngram)。"
+        "indexTypeHint": "BTREE 以外のインデックス(FULLTEXT・SPATIAL・GIN など)には列ごとの並び順がありません。パーサーは MySQL の全文検索でのみ使われます(例: ngram)。",
+        "uniqueIndex": "ユニークインデックス",
+        "uniqueIndexHint": "部分・式ユニークのように、制約ではなくユニークインデックスとして作成します。通常のユニークはユニークキーを使ってください。",
+        "keyMode": "キー構成",
+        "keyModeColumns": "カラム",
+        "keyModeExpression": "式",
+        "expression": "キー式",
+        "expressionHint": "キーリスト全体を原文で書きます(例: lower(nickname) や tenant_id, lower(name) DESC)。カラム名を変えても式はそのままです。",
+        "expressionRequired": "式を入力してください",
+        "opclass": "演算子クラス",
+        "where": "条件(WHERE)",
+        "whereHint": "部分インデックス — 条件を満たす行だけを含めます。WHERE は付けずに書きます(例: deleted_at IS NULL)。",
+        "include": "付加カラム(INCLUDE)",
+        "includeHint": "キー以外のカラムをインデックスに含めます(カバリングインデックス)。",
+        "unsupportedHint": "この DBMS はこの値を DDL に含めません。ドキュメントにはそのまま残ります。"
       },
       "dbms": {
         "common": "共通(論理)"
@@ -1406,7 +1423,9 @@
           "normalized": "共通型に整理されるカラム",
           "unsupported": "合わない型 {{count}}件",
           "unsupportedHint": "新しいドキュメントに元の値のまま残ります。作成後に直接修正してください。",
-          "addedIndexes": "追加されるFKインデックス"
+          "addedIndexes": "追加されるFKインデックス",
+          "unsupportedIndexes": "対象 DBMS が出力できないインデックス {{count}}件",
+          "unsupportedIndexesHint": "新しいドキュメントに値はそのまま残りますが、DDL には含まれません。必要なら作成後に修正してください。"
         }
       },
       "crown": {

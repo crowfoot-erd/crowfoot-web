@@ -21,7 +21,8 @@
  * 경로 재계산·리렌더가 없다.
  */
 import { memo, useCallback, useMemo } from 'react'
-import { BaseEdge, EdgeLabelRenderer, useStore, type Edge, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, useStore, type Edge, type EdgeProps, type ReactFlowState } from '@xyflow/react'
+import { shallow } from 'zustand/shallow'
 
 import { cn } from 'cn'
 import { useEditorStore } from '@/features/editor/store/editor-store'
@@ -103,6 +104,25 @@ function CrowFoot() {
 
 /* ---------- 선 물러남 — 글리프 끝점끼리 선이 이어진다 ---------- */
 
+const NO_OBSTACLES: RouterBox[] = []
+
+/** RF 노드 좌표·크기 지문 — 공유 라우팅 테이블의 캐시 키. RF는 드래그 중 nodeLookup Map 참조를 유지한 채 내부만
+ *  갱신하므로 참조 대신 원시값 지문을 쓴다. 스토어 상태 객체당 한 번만 만들어 모든 엣지가 나눠 쓴다 */
+const signatureByState = new WeakMap<object, string>()
+function nodeSignatureOf(state: ReactFlowState): string {
+  let sig = signatureByState.get(state)
+  if (sig === undefined) {
+    sig = ''
+    for (const node of state.nodeLookup.values()) {
+      const m = node.measured
+      // positionAbsolute는 RF 타입상 undefined 가능 — 미측정 노드는 0으로 식별(측정 크기 '?'와 함께 판별)
+      sig += `${node.id}:${Math.round(node.internals.positionAbsolute.x ?? 0)},${Math.round(node.internals.positionAbsolute.y ?? 0)}:${m ? `${Math.round(m.width ?? 0)}x${Math.round(m.height ?? 0)}` : '?'};`
+    }
+    signatureByState.set(state, sig)
+  }
+  return sig
+}
+
 function RelationshipEdgeComponent({
   id,
   sourceX,
@@ -126,16 +146,6 @@ function RelationshipEdgeComponent({
    *  참조 구독으로는 재계산이 촉발되지 않는다 — 좌표 원시값 시그니처를 별도로 구독한다.
    *  크기(measured)도 지문에 넣어 측정이 늦게 오거나 폭이 바뀌어도 테이블이 따라간다 */
   const nodeLookup = useStore((s) => s.nodeLookup)
-  const nodeSignature = useStore((s) => {
-    let sig = ''
-    for (const node of s.nodeLookup.values()) {
-      const m = node.measured
-      // positionAbsolute는 RF 타입상 undefined 가능 — 미측정 노드는 0으로 식별(측정 크기 '?'와 함께 판별)
-      sig += `${node.id}:${Math.round(node.internals.positionAbsolute.x ?? 0)},${Math.round(node.internals.positionAbsolute.y ?? 0)}:${m ? `${Math.round(m.width ?? 0)}x${Math.round(m.height ?? 0)}` : '?'};`
-    }
-    return sig
-  })
-
   /** 자기 참조 — source·target이 같은 노드라 RF 좌표는 퇴화한다. 오른쪽 면 실측 앵커로 고정 루프를 그린다 */
   const isSelfLoop = !!relationship && relationship.childTableId === relationship.parentTableId
 
@@ -169,14 +179,30 @@ function RelationshipEdgeComponent({
    *  edge-route-table이 문서(present)·좌표 지문(nodeSignature)당 한 번 계산해 모든 엣지가
    *  같은 결과를 공유한다 — 장애물 박스도 전체 테이블을 감싸 드래그 중 실시간으로 따라간다.
    *  자기 참조 엣지도 면 부하(faceLoad — 루프 좌우 선택)를 위해 조회한다(캐시 공유라 공짜) */
-  const shared = useMemo(
-    () =>
-      relationship
-        ? relationshipSharedRoutes(present, nodeSignature, tables, relationships, boxOf)
-        : null,
-    [relationship, present, nodeSignature, tables, relationships, boxOf],
+  const sharedOf = useCallback(
+    (state: ReactFlowState) =>
+      relationship ? relationshipSharedRoutes(present, nodeSignatureOf(state), tables, relationships, boxOf) : null,
+    [relationship, present, tables, relationships, boxOf],
   )
-  const sharedRoute = shared?.routes.get(id) ?? null
+  /** 내 경로만 구독한다 — 공유 테이블은 경로가 그대로인 관계의 객체를 재사용하므로, 드래그 중 다른 테이블이
+   *  움직여도 내 경로가 같으면 다시 그리지 않는다. 예전에는 모든 엣지가 전체 좌표 지문을 구독해 테이블 하나를
+   *  끌 때 관계선 전부가 프레임마다 두 번씩 다시 그려졌다(테이블 40개·관계 74개 문서 — v1.37 드래그 성능) */
+  const sharedRoute = useStore(useCallback((state: ReactFlowState) => sharedOf(state)?.routes.get(id) ?? null, [sharedOf, id]))
+  /** 자기 참조 루프의 면 부하 — 루프 엣지만 구독한다 */
+  const faceLoad = useStore(
+    useCallback(
+      (state: ReactFlowState) => (isSelfLoop && relationship ? sharedOf(state)?.faceLoad.get(relationship.childTableId) : undefined),
+      [sharedOf, isSelfLoop, relationship],
+    ),
+    shallow,
+  )
+  /** 공유 경로가 없는 엣지(박스 미측정 등)의 폴백 장애물 — 그런 엣지만 구독한다 */
+  const fallbackObstacles = useStore(
+    useCallback(
+      (state: ReactFlowState) => (sharedRoute || isSelfLoop ? NO_OBSTACLES : (sharedOf(state)?.obstacles ?? NO_OBSTACLES)),
+      [sharedOf, sharedRoute, isSelfLoop],
+    ),
+  )
 
   /** 라이브 연결면 — 공유 라우팅 테이블이 boxOf(드래그 중에도 화면 좌표)로 이미 계산한 면.
    *  RF props(sourcePosition)는 buildEdges가 스토어 좌표로 구운 핸들을 따라가서 드롭 커밋
@@ -219,7 +245,7 @@ function RelationshipEdgeComponent({
    *  참조가 여럿이면 relId 순서로 outset을 벌려 포개짐을 피한다 */
   const selfLoop = useMemo(() => {
     if (!relationship || !isSelfLoop) return null
-    const load = shared?.faceLoad.get(relationship.childTableId)
+    const load = faceLoad
     const side: 'left' | 'right' = (load?.left ?? 0) < (load?.right ?? 0) ? 'left' : 'right'
     const selfIndex = relationships
       .filter((r) => r.childTableId === relationship.childTableId && r.parentTableId === r.childTableId)
@@ -241,7 +267,7 @@ function RelationshipEdgeComponent({
       side,
       outset,
     }
-  }, [relationship, isSelfLoop, shared, boxOf, relationships, sourceX, sourceY])
+  }, [relationship, isSelfLoop, faceLoad, boxOf, relationships, sourceX, sourceY])
 
   const points = useMemo(() => {
     if (isSelfLoop)
@@ -260,9 +286,9 @@ function RelationshipEdgeComponent({
       routeAnchors.target,
       liveSourcePosition,
       liveTargetPosition,
-      shared?.obstacles ?? [],
+      fallbackObstacles,
     )
-  }, [isSelfLoop, selfLoop, relationship, sharedRoute, shared, routeAnchors, liveSourcePosition, liveTargetPosition])
+  }, [isSelfLoop, selfLoop, relationship, sharedRoute, fallbackObstacles, routeAnchors, liveSourcePosition, liveTargetPosition])
 
   /** 보이는 선 — 일반 관계는 라우팅 앵커가 이미 심볼 폭만큼 물러났고, 자기 참조 루프는
    *  양 끝 선분이 항상 법선(선택한 면)이라 경로를 잘라 물러남을 만든다 */

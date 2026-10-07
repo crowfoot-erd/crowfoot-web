@@ -25,7 +25,7 @@
  * 그룹(주제 영역) 소속 테이블은 **그룹 색이 개별 색을 덮어 고정**한다(groupColorOf — 문서
  * 순서 첫 소속 그룹, 그룹 색이 default면 개별 색 폴백). 미니맵도 같은 우선순위다.
  */
-import { Fragment, memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { Fragment, memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
 import { GripHorizontal, GripVertical, Info, KeyRound, PencilLine, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +42,7 @@ import {
 } from '@/features/editor/model/dbms'
 import type { DomainType } from '@/features/domain-types/api'
 import { applyDomainPatchFor } from '@/features/editor/model/domain-type'
-import type { KeyKind } from '@/features/editor/model/keys'
+import { isExpressionIndex, type KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
@@ -159,14 +159,18 @@ interface KeyRowProps {
   name: string
   /** 복합 키 컬럼 물리명 — 표시 순서 = 키 컬럼 순서. CHECK는 식 원문 한 칸 */
   columnNames: string[]
-  /** 인덱스 종류 — BTREE가 아니면(FULLTEXT·SPATIAL) 배지를 붙인다 */
+  /** 인덱스 종류 — BTREE가 아니면(FULLTEXT·SPATIAL·GIN 등) 배지를 붙인다 */
   indexType?: string
+  /** 유니크 인덱스(v1.37) — UQ 배지 */
+  uniqueIndex?: boolean
+  /** 괄호 뒤에 붙는 꼬리 — 인덱스 INCLUDE·WHERE(v1.37) */
+  suffix?: string
   canEdit: boolean
   onEdit: () => void
   onRemove: () => void
 }
 
-function KeyRow({ kind, name, columnNames, indexType, canEdit, onEdit, onRemove }: KeyRowProps) {
+function KeyRow({ kind, name, columnNames, indexType, uniqueIndex, suffix, canEdit, onEdit, onRemove }: KeyRowProps) {
   const { t } = useTranslation()
   return (
     <div className="group/key flex items-center gap-1 border-t px-1 py-0.5 text-[10px] leading-5">
@@ -182,9 +186,14 @@ function KeyRow({ kind, name, columnNames, indexType, canEdit, onEdit, onRemove 
       >
         {kind === 'unique' ? 'UK' : kind === 'check' ? 'CK' : 'IX'}
       </span>
+      {uniqueIndex ? (
+        <span data-testid="index-unique-badge" className="shrink-0 rounded-sm bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
+          UQ
+        </span>
+      ) : null}
       {indexType && indexType !== 'BTREE' ? (
         <span data-testid="index-type-badge" className="shrink-0 rounded-sm bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
-          {indexType === 'FULLTEXT' ? 'FT' : 'SP'}
+          {indexType === 'FULLTEXT' ? 'FT' : indexType === 'SPATIAL' ? 'SP' : indexType}
         </span>
       ) : null}
       <button
@@ -192,10 +201,12 @@ function KeyRow({ kind, name, columnNames, indexType, canEdit, onEdit, onRemove 
         className="nodrag flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left hover:bg-accent disabled:pointer-events-none"
         onClick={onEdit}
         disabled={!canEdit}
-        title={`${name} (${columnNames.join(', ')})`}
+        title={`${name} (${columnNames.join(', ')})${suffix ? ` ${suffix}` : ''}`}
       >
         <span className="truncate font-medium">{name}</span>
-        <span className="truncate text-muted-foreground">({columnNames.join(', ')})</span>
+        <span className="truncate text-muted-foreground">
+          ({columnNames.join(', ')}){suffix ? ` ${suffix}` : ''}
+        </span>
       </button>
       {canEdit ? (
         <button
@@ -242,7 +253,9 @@ interface ColumnRowProps {
   typeOptions: { value: string; label: string }[]
 }
 
-function ColumnRow({
+const ColumnRow = memo(ColumnRowComponent)
+
+function ColumnRowComponent({
   tableId,
   column,
   index,
@@ -787,6 +800,27 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
     setDropAt(null)
   }
 
+  /* 행 핸들러는 참조를 고정한다 — 행(ColumnRow)이 memo라, 렌더마다 새 함수를 넘기면 테이블을 끄는 동안
+     프레임마다 모든 행과 입력 칸이 다시 그려진다(v1.37 드래그 성능). 호출 시점의 최신 핸들러를 ref로 부른다 */
+  const rowHandlers = useRef({ handleGripDragStart, handleRowDragOver, handleRowDrop, endDrag })
+  useLayoutEffect(() => {
+    rowHandlers.current = { handleGripDragStart, handleRowDragOver, handleRowDrop, endDrag }
+  })
+  const onGripDragStart = useCallback(
+    (columnId: string, event: DragEvent<HTMLSpanElement>) => rowHandlers.current.handleGripDragStart(columnId, event),
+    [],
+  )
+  const onRowDragOver = useCallback(
+    (index: number, event: DragEvent<HTMLElement>) => rowHandlers.current.handleRowDragOver(index, event),
+    [],
+  )
+  const onRowDrop = useCallback(
+    (index: number, event: DragEvent<HTMLElement>) => rowHandlers.current.handleRowDrop(index, event),
+    [],
+  )
+  const onRowDragEnd = useCallback(() => rowHandlers.current.endDrag(), [])
+  const onFocusedAuto = useCallback(() => setLastAddedId(null), [])
+
   const reorderColumn = (columnId: string, dropIndex: number) => {
     const { present } = useEditorStore.getState()
     const target = present.model.tables.find((tb) => tb.id === id)
@@ -1071,15 +1105,15 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
               pkCount={pkIds.size}
               canEdit={canEdit}
               autoFocus={lastAddedId === column.id}
-              onFocusedAuto={() => setLastAddedId(null)}
+              onFocusedAuto={onFocusedAuto}
               rowGrid={rowGridOf(typeWidth)}
               isDragging={dragColumnId === column.id}
               isInsertAbove={dropAt === index}
               isInsertBelow={dropAt === index + 1}
-              onGripDragStart={handleGripDragStart}
-              onRowDragOver={handleRowDragOver}
-              onRowDrop={handleRowDrop}
-              onDragEnd={endDrag}
+              onGripDragStart={onGripDragStart}
+              onRowDragOver={onRowDragOver}
+              onRowDrop={onRowDrop}
+              onDragEnd={onRowDragEnd}
               typeOptions={typeOptions}
             />
             </Fragment>
@@ -1119,13 +1153,33 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
                 key={index.id}
                 kind="index"
                 name={index.name}
-                // 정렬은 BTREE에서만 의미가 있다 — FULLTEXT·SPATIAL은 컬럼 이름만
-                columnNames={index.columns.map((entry) =>
-                  index.type === 'BTREE'
-                    ? `${columnById.get(entry.columnId)?.physicalName ?? '?'} ${entry.order}`
-                    : (columnById.get(entry.columnId)?.physicalName ?? '?'),
-                )}
+                // 정렬은 BTREE에서만 의미가 있다 — FULLTEXT·SPATIAL 등은 컬럼 이름만(연산자 클래스는 뒤에 붙인다).
+                // 식 인덱스(v1.37)는 컬럼별 표시가 없다 — 키 목록 원문 한 칸
+                columnNames={
+                  isExpressionIndex(index)
+                    ? [(index.expression ?? '').trim()]
+                    : index.columns.map((entry) =>
+                        [
+                          columnById.get(entry.columnId)?.physicalName ?? '?',
+                          entry.opclass || null,
+                          index.type === 'BTREE' ? entry.order : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' '),
+                      )
+                }
                 indexType={index.type}
+                uniqueIndex={index.unique === true}
+                suffix={
+                  [
+                    index.include && index.include.length > 0
+                      ? `INCLUDE (${index.include.map((cid) => columnById.get(cid)?.physicalName ?? '?').join(', ')})`
+                      : null,
+                    index.where && index.where.trim() !== '' ? `WHERE ${index.where.trim()}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' ') || undefined
+                }
                 canEdit={canEdit}
                 onEdit={() => openKeyInfo(id, index.id, 'index')}
                 onRemove={() =>

@@ -11,6 +11,7 @@ import type {
   ErdValidationException,
 } from '@/features/editor/model/content-schema'
 import { dataTypeSpec, dbmsAutoIndexesFk, templateIdForDatabase } from '@/features/editor/model/dbms'
+import { indexCoversColumns } from '@/features/editor/model/keys'
 import { splitLogicalName } from '@/features/editor/model/logical-name'
 
 export type ValidationCode =
@@ -169,7 +170,8 @@ function fkLeadingColumnIndexed(rel: ErdRelationship, child: ErdTable): boolean 
   if (!leading) return false
   if (child.primaryKey?.columnIds[0] === leading) return true
   if (child.uniques.some((uk) => uk.columnIds[0] === leading)) return true
-  return child.indexes.some((ix) => ix.columns[0]?.columnId === leading)
+  // 부분·식 인덱스(v1.37)는 모든 행의 FK를 덮지 않는다 — 세지 않는다
+  return child.indexes.some((ix) => indexCoversColumns(ix) && ix.columns[0]?.columnId === leading)
 }
 
 /** 순환 참조에 참여하는 테이블 — 방향 간선(부모→자식) 그래프의 크기 ≥2 SCC.

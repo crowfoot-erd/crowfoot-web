@@ -105,7 +105,8 @@ function ConvertDbmsDialogBody({
     report.typeChanges.length === 0 &&
     report.normalized.length === 0 &&
     report.unsupported.length === 0 &&
-    report.addedIndexes.length === 0
+    report.addedIndexes.length === 0 &&
+    report.unsupportedIndexes.length === 0
 
   const handleSubmit = async () => {
     if (!result || !effectiveTarget) return
@@ -219,6 +220,23 @@ function ConvertDbmsDialogBody({
                     {report.unsupported.map((item) => (
                       <li key={`${item.tableName}.${item.columnName}`}>
                         <code>{`${item.tableName}.${item.columnName}`}</code> — <code>{item.dataType}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {report.unsupportedIndexes.length > 0 ? (
+                <div className="grid gap-1" data-testid="dbms-convert-unsupported-indexes">
+                  <p className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-500">
+                    <TriangleAlert aria-hidden className="size-4" />
+                    {t('model.editor.dbmsConvert.report.unsupportedIndexes', { count: report.unsupportedIndexes.length })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{t('model.editor.dbmsConvert.report.unsupportedIndexesHint')}</p>
+                  <ul className="list-disc pl-5">
+                    {report.unsupportedIndexes.map((item) => (
+                      <li key={`${item.tableName}.${item.indexName}`}>
+                        <code>{`${item.tableName}.${item.indexName}`}</code> — {item.features.join(', ')}
                       </li>
                     ))}
                   </ul>

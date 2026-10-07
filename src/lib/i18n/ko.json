@@ -1039,6 +1039,7 @@
           "column": "컬럼",
           "primaryKey": "기본 키",
           "uniqueKey": "유니크 키",
+          "index": "인덱스",
           "relationship": "관계"
         },
         "action": {
@@ -1322,6 +1323,8 @@
         "scale": "스케일",
         "pkHint": "PK로 저장하면 NOT NULL이 강제되고 컬럼이 최상단(PK 블록)으로 이동합니다.",
         "aiHint": "자동 증가는 PK + 정수 타입(INT·BIGINT·SMALLINT)에서만 설정할 수 있습니다.",
+        "identityAlways": "항상 생성(GENERATED ALWAYS)",
+        "identityAlwaysHint": "켜면 값을 직접 넣을 수 없습니다. 끄면 BY DEFAULT — 값을 주면 그 값을 씁니다.",
         "onUpdate": "ON UPDATE",
         "onUpdateHint": "행을 고칠 때 자동으로 넣는 값입니다(예: CURRENT_TIMESTAMP(6)). MySQL 문서에서만 DDL에 실립니다.",
         "generated": "생성 컬럼",
@@ -1353,7 +1356,21 @@
         "orderHint": "인덱스는 컬럼별 정렬(ASC/DESC)을 지정할 수 있어요",
         "indexType": "인덱스 종류",
         "parser": "파서(선택)",
-        "indexTypeHint": "FULLTEXT·SPATIAL 인덱스는 컬럼별 정렬을 두지 않습니다. 파서는 MySQL 전문 검색에만 쓰입니다(예: ngram)."
+        "indexTypeHint": "BTREE가 아닌 인덱스(FULLTEXT·SPATIAL·GIN 등)는 컬럼별 정렬을 두지 않습니다. 파서는 MySQL 전문 검색에만 쓰입니다(예: ngram).",
+        "uniqueIndex": "유니크 인덱스",
+        "uniqueIndexHint": "부분·식 유니크처럼 제약이 아닌 유니크 인덱스로 만듭니다. 일반 유니크는 유니크 키를 쓰세요.",
+        "keyMode": "키 구성",
+        "keyModeColumns": "컬럼",
+        "keyModeExpression": "식",
+        "expression": "키 식",
+        "expressionHint": "키 목록 전체를 원문으로 적습니다(예: lower(nickname) 또는 tenant_id, lower(name) DESC). 컬럼 이름이 바뀌어도 식은 그대로입니다.",
+        "expressionRequired": "식을 입력하세요",
+        "opclass": "연산자 클래스",
+        "where": "조건(WHERE)",
+        "whereHint": "부분 인덱스 — 조건을 만족하는 행만 담습니다. WHERE 없이 적습니다(예: deleted_at IS NULL).",
+        "include": "포함 컬럼(INCLUDE)",
+        "includeHint": "키가 아닌 컬럼을 인덱스에 함께 담습니다(커버링 인덱스).",
+        "unsupportedHint": "이 DBMS는 이 값을 DDL에 싣지 않습니다. 문서에는 그대로 남습니다."
       },
       "dbms": {
         "common": "공용(논리)"
@@ -1406,7 +1423,9 @@
           "normalized": "공용 타입으로 정리되는 컬럼",
           "unsupported": "맞지 않는 타입 {{count}}개",
           "unsupportedHint": "새 문서에 원래 값 그대로 남습니다. 만든 뒤 직접 고쳐 주세요.",
-          "addedIndexes": "추가되는 FK 인덱스"
+          "addedIndexes": "추가되는 FK 인덱스",
+          "unsupportedIndexes": "대상 DBMS가 내지 못하는 인덱스 {{count}}개",
+          "unsupportedIndexesHint": "새 문서에 값이 그대로 남지만 DDL에는 실리지 않습니다. 필요하면 만든 뒤 고쳐 주세요."
         }
       },
       "crown": {

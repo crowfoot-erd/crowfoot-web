@@ -8,6 +8,7 @@
  * 새 DBMS 지원은 `DBMS_TEMPLATES`에 항목을 추가하는 것으로 끝난다 —
  * 타입 매핑·자동 증가 방식이 그 템플릿 안에 다 담긴다.
  */
+import type { IndexType } from '@/features/editor/model/content-schema'
 
 /** 타입 범주 — 자동 증간 가능 여부 등 규칙은 코드가 아니라 범주로 판정한다 */
 export type DataTypeCategory =
@@ -213,6 +214,35 @@ export function physicalType(code: string, dbmsId: string): string {
  *  새 DBMS 추가 시 이 분류를 반드시 결정한다(InnoDB 계열=자동 생성, 그 외 대부분=앱이 생성). */
 export function dbmsAutoIndexesFk(databaseType: string): boolean {
   return templateIdForDatabase(databaseType) === 'mysql'
+}
+
+/** DBMS가 DDL로 낼 수 있는 인덱스 기능(v1.37 — 특수 인덱스). 편집 UI가 고를 수 있는 항목만 보여 주는 데 쓴다.
+ *  지원하지 않는 값이 문서에 이미 있어도 지우지 않는다(core DDL 생성기가 경고와 함께 뺀다) */
+export interface IndexSupport {
+  /** 고를 수 있는 종류 — 첫 항목이 기본(BTREE) */
+  types: IndexType[]
+  unique: boolean
+  /** 식 인덱스(키 목록 원문) */
+  expression: boolean
+  /** 부분 인덱스(WHERE) */
+  where: boolean
+  /** INCLUDE(포함 컬럼) */
+  include: boolean
+  /** 컬럼별 연산자 클래스 */
+  opclass: boolean
+}
+
+const INDEX_SUPPORT: Record<string, IndexSupport> = {
+  postgres: { types: ['BTREE', 'HASH', 'GIN', 'GIST', 'BRIN', 'SPGIST'], unique: true, expression: true, where: true, include: true, opclass: true },
+  mysql: { types: ['BTREE', 'FULLTEXT', 'SPATIAL', 'HASH'], unique: true, expression: true, where: false, include: false, opclass: false },
+  oracle: { types: ['BTREE'], unique: true, expression: true, where: false, include: false, opclass: false },
+  mssql: { types: ['BTREE'], unique: true, expression: false, where: true, include: true, opclass: false },
+  common: { types: ['BTREE'], unique: true, expression: false, where: false, include: false, opclass: false },
+}
+
+/** 템플릿 id(또는 database_types 코드)의 인덱스 기능 — 모르는 DBMS는 공용(BTREE·유니크만) */
+export function dbmsIndexSupport(dbmsId: string): IndexSupport {
+  return INDEX_SUPPORT[templateIdForDatabase(dbmsId)] ?? INDEX_SUPPORT.common
 }
 
 /** 물리 타입 표기를 공용 논리 코드로 되돌린 파싱 결과 — length는 CHAR·VARCHAR 계열,

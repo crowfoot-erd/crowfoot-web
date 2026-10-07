@@ -39,7 +39,7 @@ import type {
 } from '@/features/editor/model/content-schema'
 import { CLIPBOARD_STORAGE_KEY, removeStoredClipboard } from '@/features/editor/model/clipboard-storage'
 import { NOTE_ESTIMATED_HEIGHT } from '@/features/editor/model/canvas-bounds'
-import { documentKeyNames, nextName } from '@/features/editor/model/keys'
+import { documentKeyNames, isExpressionIndex, nextName } from '@/features/editor/model/keys'
 import { estimateTableHeight, MIN_WIDTH } from '@/features/editor/model/table-size'
 
 /** 붙여넣기 오프셋 — 원본 오른쪽 아래로 살짝 치우친다 */
@@ -266,12 +266,15 @@ export function pasteFromClipboard(
         ...ix,
         id: newId(),
         name: nextName(keyNames, ix.name),
+        // 정렬·연산자 클래스(v1.37)는 그대로, 컬럼 id만 새 id로
         columns: ix.columns.flatMap((c) => {
           const columnId = columnIdMap.get(c.columnId)
-          return columnId ? [{ columnId, order: c.order }] : []
+          return columnId ? [{ ...c, columnId }] : []
         }),
+        // INCLUDE 컬럼(v1.37)도 새 id로 — 원문 식·조건은 물리명이라 그대로 맞는다
+        ...(ix.include ? { include: ix.include.flatMap((id) => columnIdMap.get(id) ?? []) } : {}),
       }))
-      .filter((ix) => ix.columns.length > 0)
+      .filter((ix) => ix.columns.length > 0 || isExpressionIndex(ix))
 
     const layout = positionOf(original.id)
     const table: ErdTable = {

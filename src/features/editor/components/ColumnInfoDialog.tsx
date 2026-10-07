@@ -95,6 +95,7 @@ type ColumnInfoForm = {
   scale: string
   nullable: boolean
   autoIncrement: boolean
+  identityAlways: boolean
   defaultValue: string
   comment: string
   generatedOn: boolean
@@ -104,6 +105,9 @@ type ColumnInfoForm = {
 }
 
 /** 숫자 input 확정 — 빈 값·비숫자는 null로 정규화 */
+/** 자동 증가를 IDENTITY(GENERATED … AS IDENTITY)로 내는 DBMS */
+const IDENTITY_DBMS = new Set(['postgres', 'oracle'])
+
 function toNumberOrNull(raw: string): number | null {
   if (raw.trim() === '') return null
   const parsed = Number.parseInt(raw, 10)
@@ -143,6 +147,7 @@ export function ColumnInfoDialog({
     scale: z.string(),
     nullable: z.boolean(),
     autoIncrement: z.boolean(),
+    identityAlways: z.boolean(),
     defaultValue: z.string().trim(),
     comment: z.string().trim(),
     generatedOn: z.boolean(),
@@ -166,6 +171,7 @@ export function ColumnInfoDialog({
       scale: '',
       nullable: true,
       autoIncrement: false,
+      identityAlways: false,
       defaultValue: '',
       comment: '',
       generatedOn: false,
@@ -194,6 +200,7 @@ export function ColumnInfoDialog({
         scale: toDisplay(column.scale),
         nullable: column.nullable,
         autoIncrement: column.autoIncrement,
+        identityAlways: column.identityGeneration === 'ALWAYS',
         defaultValue: column.defaultValue ?? '',
         comment: description ?? '',
         generatedOn: column.generated != null,
@@ -254,6 +261,8 @@ export function ColumnInfoDialog({
   // 이 컬럼 외에 다른 PK가 남는지 — 폼에서 PK를 켜도 복합(2개 이상)이면 AI를 제공하지 않는다
   const otherPkCount = pkCount - (isPk ? 1 : 0)
   const aiAvailable = pk && otherPkCount === 0 && isAutoIncrementType(dataType) && !generatedOn
+  /** IDENTITY 종류(v1.37) — 자동 증가를 IDENTITY로 내는 DBMS에서만 고른다 */
+  const identityKindAvailable = aiAvailable && form.watch('autoIncrement') && IDENTITY_DBMS.has(dbmsId)
 
   const handleSubmit = form.handleSubmit((values) => {
     if (!column) return
@@ -271,6 +280,15 @@ export function ColumnInfoDialog({
         nullable: values.pk ? false : values.nullable,
         autoIncrement:
           !values.generatedOn && values.pk && otherPkCount === 0 && isAutoIncrementType(values.dataType) ? values.autoIncrement : false,
+        // IDENTITY 종류 — 고를 수 없는 DBMS는 저장된 값을 그대로 둔다. 자동 증가가 꺼지면 지운다
+        identityGeneration:
+          !values.generatedOn && values.pk && otherPkCount === 0 && isAutoIncrementType(values.dataType) && values.autoIncrement
+            ? IDENTITY_DBMS.has(dbmsId)
+              ? values.identityAlways
+                ? 'ALWAYS'
+                : null
+              : (column.identityGeneration ?? null)
+            : null,
         // 생성 컬럼에는 기본값·ON UPDATE를 두지 않는다
         defaultValue: values.generatedOn || values.defaultValue === '' ? null : values.defaultValue,
         generated: values.generatedOn ? { expression: stripOuterParens(values.generatedExpression), stored: values.generatedStored } : null,
@@ -376,6 +394,23 @@ export function ColumnInfoDialog({
             ) : null}
             {!aiAvailable ? (
               <p className="-mt-2 text-xs text-muted-foreground">{t('model.editor.columnInfo.aiHint')}</p>
+            ) : null}
+            {identityKindAvailable ? (
+              <FormField
+                control={form.control}
+                name="identityAlways"
+                render={({ field }) => (
+                  <FormItem className="-mt-2 flex items-center justify-between gap-3">
+                    <div>
+                      <FormLabel className="text-xs">{t('model.editor.columnInfo.identityAlways')}</FormLabel>
+                      <FormDescription className="text-xs">{t('model.editor.columnInfo.identityAlwaysHint')}</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} aria-label={t('model.editor.columnInfo.identityAlways')} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             ) : null}
 
             {/* 도메인 타입 — 고르면 타입·길이·NULL 허용·기본값이 그 값으로 채워진다(§11.1) */}

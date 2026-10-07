@@ -1039,6 +1039,7 @@
           "column": "列",
           "primaryKey": "主键",
           "uniqueKey": "唯一键",
+          "index": "索引",
           "relationship": "关系"
         },
         "action": {
@@ -1322,6 +1323,8 @@
         "scale": "小数位数",
         "pkHint": "保存为 PK 后将强制 NOT NULL，并将该列移至顶部（PK 区块）。",
         "aiHint": "自增仅适用于整数类型的主键（INT/BIGINT/SMALLINT）。",
+        "identityAlways": "始终生成(GENERATED ALWAYS)",
+        "identityAlwaysHint": "开启后不能直接插入值。关闭则为 BY DEFAULT —— 指定值时使用该值。",
         "onUpdate": "ON UPDATE",
         "onUpdateHint": "更新行时自动写入的值(例如 CURRENT_TIMESTAMP(6))。仅在 MySQL 文档的 DDL 中输出。",
         "generated": "生成列",
@@ -1353,7 +1356,21 @@
         "orderHint": "索引支持按列设置排序顺序（ASC/DESC）",
         "indexType": "索引类型",
         "parser": "解析器(可选)",
-        "indexTypeHint": "FULLTEXT、SPATIAL 索引没有按列排序。解析器仅用于 MySQL 全文检索(例如 ngram)。"
+        "indexTypeHint": "非 BTREE 索引(FULLTEXT、SPATIAL、GIN 等)没有按列排序。解析器仅用于 MySQL 全文检索(例如 ngram)。",
+        "uniqueIndex": "唯一索引",
+        "uniqueIndexHint": "创建唯一索引而非约束，用于部分或表达式唯一。普通唯一请使用唯一键。",
+        "keyMode": "键构成",
+        "keyModeColumns": "列",
+        "keyModeExpression": "表达式",
+        "expression": "键表达式",
+        "expressionHint": "以原文写出整个键列表(例如 lower(nickname) 或 tenant_id, lower(name) DESC)。列重命名时表达式不会随之改变。",
+        "expressionRequired": "请输入表达式",
+        "opclass": "运算符类",
+        "where": "条件(WHERE)",
+        "whereHint": "部分索引——仅包含满足条件的行。不写 WHERE 关键字(例如 deleted_at IS NULL)。",
+        "include": "包含列(INCLUDE)",
+        "includeHint": "将非键列一并存入索引(覆盖索引)。",
+        "unsupportedHint": "此 DBMS 不会在 DDL 中输出该值，但它会保留在文档中。"
       },
       "dbms": {
         "common": "通用（逻辑）"
@@ -1406,7 +1423,9 @@
           "normalized": "整理为通用类型的列",
           "unsupported": "不兼容的类型 {{count}} 个",
           "unsupportedHint": "这些列在新文档中保持原值。创建后请自行修改。",
-          "addedIndexes": "将添加的FK索引"
+          "addedIndexes": "将添加的FK索引",
+          "unsupportedIndexes": "目标 DBMS 无法输出的索引 {{count}} 个",
+          "unsupportedIndexesHint": "这些值会原样保留在新文档中，但不会写入 DDL。如有需要，请在创建后修改。"
         }
       },
       "crown": {

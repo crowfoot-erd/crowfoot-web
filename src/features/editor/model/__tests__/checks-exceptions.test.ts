@@ -19,7 +19,7 @@ import { deriveChanges } from '@/features/editor/model/collab-merge'
 import { emptyContent } from '@/features/editor/model/content-io'
 import type { EditorDocument, ErdValidationException } from '@/features/editor/model/content-schema'
 import { diffDocuments } from '@/features/editor/model/doc-diff'
-import { defaultCheckName, documentKeyNames, stripOuterParens } from '@/features/editor/model/keys'
+import { checkReferencesColumn, defaultCheckName, documentKeyNames, stripOuterParens } from '@/features/editor/model/keys'
 import { buildRelationship } from '@/features/editor/model/relationship'
 import { issueTargetKey, partitionByExceptions, validateModel } from '@/features/editor/model/validation'
 import { useEditorStore } from '@/features/editor/store/editor-store'
@@ -102,14 +102,26 @@ describe('CHECK 제약', () => {
     expect(validateModel(doc.model).filter((issue) => issue.code === 'DUPLICATE_KEY_NAME')).not.toHaveLength(0)
   })
 
-  it('컬럼을 지워도 CHECK 제약은 남는다 — 식은 컬럼 id에 묶이지 않는다', () => {
+  it('컬럼을 지우면 그 컬럼을 쓰는 CHECK도 지운다 — 문자열 리터럴 안의 같은 글자는 참조가 아니다', () => {
     let doc = applyChange(baseDoc(), {
       type: 'check/set',
       tableId: 'T-orders',
-      checks: [{ id: 'K1', name: 'ck_orders_1', expression: 'price >= 0' }],
+      checks: [
+        { id: 'K1', name: 'ck_orders_1', expression: 'price >= 0' },
+        { id: 'K2', name: 'ck_orders_2', expression: '"PRICE" < 1000' },
+        { id: 'K3', name: 'ck_orders_3', expression: "status <> 'price'" },
+      ],
     })
     doc = applyChange(doc, { type: 'column/remove', tableId: 'T-orders', columnId: 'C-price' })
-    expect(doc.model.tables[1].checks).toHaveLength(1)
+    expect(doc.model.tables[1].checks?.map((check) => check.name)).toEqual(['ck_orders_3'])
+  })
+
+  it('checkReferencesColumn — 식별자 경계와 따옴표를 가린다', () => {
+    expect(checkReferencesColumn('view_count >= 0 AND like_count >= 0', 'like_count')).toBe(true)
+    expect(checkReferencesColumn('view_counts >= 0', 'view_count')).toBe(false)
+    expect(checkReferencesColumn('t.`price` > 0', 'price')).toBe(true)
+    expect(checkReferencesColumn("note <> 'it''s price'", 'price')).toBe(false)
+    expect(checkReferencesColumn('[Price] > 1e5', 'price')).toBe(true)
   })
 
   it('바깥 괄호 한 겹만 벗긴다', () => {

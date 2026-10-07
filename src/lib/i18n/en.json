@@ -1039,6 +1039,7 @@
           "column": "Column",
           "primaryKey": "Primary key",
           "uniqueKey": "Unique key",
+          "index": "Index",
           "relationship": "Relationship"
         },
         "action": {
@@ -1322,6 +1323,8 @@
         "scale": "Scale",
         "pkHint": "Saving as PK forces NOT NULL and moves the column to the top (PK block).",
         "aiHint": "Auto increment is available only for integer PK types (INT/BIGINT/SMALLINT).",
+        "identityAlways": "Always generated (GENERATED ALWAYS)",
+        "identityAlwaysHint": "When on, values cannot be inserted directly. When off, BY DEFAULT — a supplied value is used.",
         "onUpdate": "ON UPDATE",
         "onUpdateHint": "Value set automatically when a row is updated (e.g. CURRENT_TIMESTAMP(6)). Included in DDL for MySQL documents only.",
         "generated": "Generated column",
@@ -1353,7 +1356,21 @@
         "orderHint": "Indexes support per-column sort order (ASC/DESC)",
         "indexType": "Index type",
         "parser": "Parser (optional)",
-        "indexTypeHint": "FULLTEXT and SPATIAL indexes have no per-column order. The parser is used only for MySQL full-text search (e.g. ngram)."
+        "indexTypeHint": "Non-BTREE indexes (FULLTEXT, SPATIAL, GIN, etc.) have no per-column order. The parser is used only for MySQL full-text search (e.g. ngram).",
+        "uniqueIndex": "Unique index",
+        "uniqueIndexHint": "Creates a unique index rather than a constraint, for partial or expression uniques. Use a unique key for ordinary uniques.",
+        "keyMode": "Key",
+        "keyModeColumns": "Columns",
+        "keyModeExpression": "Expression",
+        "expression": "Key expression",
+        "expressionHint": "Write the whole key list as raw text (e.g. lower(nickname) or tenant_id, lower(name) DESC). The expression is not updated when columns are renamed.",
+        "expressionRequired": "Enter an expression",
+        "opclass": "Operator class",
+        "where": "Condition (WHERE)",
+        "whereHint": "Partial index — only rows matching the condition are indexed. Omit the WHERE keyword (e.g. deleted_at IS NULL).",
+        "include": "Included columns (INCLUDE)",
+        "includeHint": "Non-key columns stored in the index (covering index).",
+        "unsupportedHint": "This DBMS does not include this value in DDL. It stays in the document."
       },
       "dbms": {
         "common": "Common (logical)"
@@ -1406,7 +1423,9 @@
           "normalized": "Columns normalized to common types",
           "unsupported": "{{count}} incompatible type(s)",
           "unsupportedHint": "These stay as they are in the new document. Fix them yourself after it is created.",
-          "addedIndexes": "FK indexes to be added"
+          "addedIndexes": "FK indexes to be added",
+          "unsupportedIndexes": "{{count}} index(es) use features the target DBMS cannot output",
+          "unsupportedIndexesHint": "The values stay in the new document but are left out of DDL. Adjust them after creating it if needed."
         }
       },
       "crown": {

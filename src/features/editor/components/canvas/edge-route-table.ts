@@ -14,6 +14,7 @@ import {
   faceShareOffset,
   handleAnchors,
   insetAnchors,
+  isIncrementalRouting,
   offsetAlongFace,
   sharedRoutes,
   shortestHandlePair,
@@ -24,6 +25,82 @@ import {
   type RouterPoint,
 } from './edge-router'
 import type { ErdTable, ErdRelationship } from '@/features/editor/model/content-schema'
+
+/** 면 부담 가중치 — 그 면에 이미 붙은 선 하나가 선 길이 몇 px만큼의 비용인지. 면 분산 간격(48px)의 몇 배로 두어
+ *  가까운 면이 붐비면 조금 먼 빈 면을 고르게 한다. 문서 646(테이블 40·관계 74)에서 40~320을 재어 겹침·꺾임이
+ *  가장 적은 값으로 정했다(v1.37) */
+const FACE_LOAD_WEIGHT = 200
+/** 상대를 등진 면 벌점 — 선이 테이블을 돌아 나가야 하는 면은 사실상 고르지 않는다 */
+const BACKWARD_FACE_PENALTY = 2000
+
+interface BalanceEnds {
+  rel: { id: string; childTableId: string; parentTableId: string }
+  child: RouterBox
+  parent: RouterBox
+  sides: { child: FaceSide; parent: FaceSide }
+}
+
+const centerOf = (b: RouterBox) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 })
+const faceCenter = (b: RouterBox, f: FaceSide) =>
+  f === 'left' ? { x: b.x, y: b.y + b.h / 2 } : f === 'right' ? { x: b.x + b.w, y: b.y + b.h / 2 }
+    : f === 'top' ? { x: b.x + b.w / 2, y: b.y } : { x: b.x + b.w / 2, y: b.y + b.h }
+/** 상대 쪽을 향한 면 두 개 — 가로(좌/우) 하나와 세로(상/하) 하나 */
+const facingFaces = (from: RouterBox, to: RouterBox): FaceSide[] => {
+  const a = centerOf(from)
+  const b = centerOf(to)
+  return [b.x >= a.x ? 'right' : 'left', b.y >= a.y ? 'bottom' : 'top']
+}
+/** 면 법선이 상대 앵커 쪽을 향하는지 — 반대면 선이 테이블을 돌아 나가야 한다 */
+const facesToward = (b: RouterBox, f: FaceSide, target: RouterPoint) => {
+  const c = faceCenter(b, f)
+  return f === 'left' ? target.x <= c.x : f === 'right' ? target.x >= c.x : f === 'top' ? target.y <= c.y : target.y >= c.y
+}
+
+/**
+ * 4면 분산 연결면 배정(v1.37, 사용자 요청 — "상·하·좌·우 4면을 최대한 활용해 겹치지 않도록") — 관계마다 상대 사분면을 향한 면(가로·세로) 조합 최대 4쌍에서, 선 길이 + 그 면에 이미 붙은
+ * 선 수 × 가중치 + 상대를 등진 면 벌점이 가장 작은 쌍을 고른다. 모든 관계를 몇 차례 다시 배정해 수렴시킨다.
+ */
+function balanceFaces(list: BalanceEnds[]): void {
+  const load = new Map<string, number>()
+  const key = (tableId: string, f: FaceSide) => `${tableId}|${f}`
+  const add = (e: BalanceEnds, d: number) => {
+    load.set(key(e.rel.childTableId, e.sides.child), (load.get(key(e.rel.childTableId, e.sides.child)) ?? 0) + d)
+    load.set(key(e.rel.parentTableId, e.sides.parent), (load.get(key(e.rel.parentTableId, e.sides.parent)) ?? 0) + d)
+  }
+  list.forEach((e) => add(e, 1))
+  const cost = (e: BalanceEnds, cf: FaceSide, pf: FaceSide) => {
+    const ca = faceCenter(e.child, cf)
+    const pa = faceCenter(e.parent, pf)
+    let c = Math.abs(ca.x - pa.x) + Math.abs(ca.y - pa.y)
+    c += FACE_LOAD_WEIGHT * ((load.get(key(e.rel.childTableId, cf)) ?? 0) + (load.get(key(e.rel.parentTableId, pf)) ?? 0))
+    if (!facesToward(e.child, cf, pa)) c += BACKWARD_FACE_PENALTY
+    if (!facesToward(e.parent, pf, ca)) c += BACKWARD_FACE_PENALTY
+    return c
+  }
+  for (let round = 0; round < 6; round += 1) {
+    let changed = false
+    for (const e of list) {
+      add(e, -1)
+      let best = e.sides
+      let bestCost = cost(e, e.sides.child, e.sides.parent)
+      for (const cf of facingFaces(e.child, e.parent)) {
+        for (const pf of facingFaces(e.parent, e.child)) {
+          const c = cost(e, cf, pf)
+          if (c < bestCost - 1e-6) {
+            bestCost = c
+            best = { child: cf, parent: pf }
+          }
+        }
+      }
+      if (best !== e.sides) {
+        e.sides = best
+        changed = true
+      }
+      add(e, 1)
+    }
+    if (!changed) break
+  }
+}
 
 /** 자식(시작) 글리프가 노드 경계에서 선 쪽으로 차지하는 길이(가장 바깥 심볼 + 스트로크 절반).
  *  선 몸체는 이 지점에서 시작해 글리프와 포개지지 않는다. */
@@ -70,6 +147,18 @@ export interface SharedRouteTable {
 }
 
 let cache: { doc: object; signature: string; value: SharedRouteTable } | null = null
+
+/** 마지막 전체 계산 — 드래그 중(증분 라우팅)에는 움직이지 않은 테이블끼리 잇는 관계의 앵커를 이 값으로 고정한다.
+ *  끄는 테이블과 이어진 테이블의 면 분산이 프레임마다 바뀌어, 끌지 않는 관계선 수십 개가 매 프레임 다시 라우팅됐다
+ *  (v1.37 드래그 성능). 드롭하면 전체 계산으로 다시 맞춘다 */
+let fullBase: {
+  doc: object
+  value: SharedRouteTable
+  reqs: Map<string, CorridorEndpoint>
+  boxes: Map<string, string>
+} | null = null
+
+const boxSig = (b: RouterBox | null) => (b ? `${Math.round(b.x)},${Math.round(b.y)},${Math.round(b.w)},${Math.round(b.h)}` : '-')
 
 /**
  * 문서 전체 관계의 공유 라우팅 테이블 — 연결면(shortestHandlePair)·면 분산(faceShareOffset)·
@@ -118,6 +207,10 @@ export function relationshipSharedRoutes(
     if (!child || !parent) continue
     const sides = shortestHandlePair(child, parent, child, parent)
     endsList.push({ rel, child, parent, sides })
+  }
+  // 4면 분산 — 가장 짧은 면 쌍에서 시작해, 붐비는 면의 선을 상대 사분면을 향한 다른 면으로 옮긴다(v1.37)
+  balanceFaces(endsList)
+  for (const { rel, child, parent, sides } of endsList) {
     endpoints.push({ relId: rel.id, tableId: rel.childTableId, face: sides.child, along: alongOf(sides.child, parent) })
     endpoints.push({ relId: rel.id, tableId: rel.parentTableId, face: sides.parent, along: alongOf(sides.parent, child) })
   }
@@ -136,7 +229,22 @@ export function relationshipSharedRoutes(
       faces: { child: FaceSide; parent: FaceSide }
     }
   >()
+  const incremental = isIncrementalRouting() && fullBase !== null && fullBase.doc === doc
+  const moved = (tableId: string) => fullBase!.boxes.get(tableId) !== boxSig(box(tableId))
   for (const { rel, child, parent, sides } of endsList) {
+    const frozen = incremental && !moved(rel.childTableId) && !moved(rel.parentTableId) ? fullBase!.value.routes.get(rel.id) : undefined
+    const frozenReq = frozen ? fullBase!.reqs.get(rel.id) : undefined
+    if (frozen && frozenReq) {
+      faceOffsets.set(rel.id, { source: frozen.sourceFaceOffset, target: frozen.targetFaceOffset })
+      endAnchors.set(rel.id, {
+        child: frozen.sourceFaceAnchor,
+        parent: frozen.targetFaceAnchor,
+        inset: { source: frozen.sourceAnchor, target: frozen.targetAnchor },
+        faces: { child: frozen.sourceFace, parent: frozen.targetFace },
+      })
+      reqs.push(frozenReq)
+      continue
+    }
     const sourceFaceOffset = faceShareOffset(endpoints, rel.id, rel.childTableId)
     const targetFaceOffset = faceShareOffset(endpoints, rel.id, rel.parentTableId)
     faceOffsets.set(rel.id, { source: sourceFaceOffset, target: targetFaceOffset })
@@ -174,10 +282,11 @@ export function relationshipSharedRoutes(
 
   const routed = sharedRoutes(reqs, obstacles)
   const routes = new Map<string, RelationshipSharedRoute>()
+  const previous = cache?.value.routes
   for (const req of reqs) {
     const offsets = faceOffsets.get(req.relId)!
     const anchors = endAnchors.get(req.relId)!
-    routes.set(req.relId, {
+    const next: RelationshipSharedRoute = {
       points: routed.get(req.relId) ?? [],
       sourceFaceOffset: offsets.source,
       targetFaceOffset: offsets.target,
@@ -187,7 +296,11 @@ export function relationshipSharedRoutes(
       targetFaceAnchor: anchors.parent,
       sourceAnchor: anchors.inset.source,
       targetAnchor: anchors.inset.target,
-    })
+    }
+    // 내용이 같으면 이전 객체를 그대로 쓴다 — 엣지는 자기 경로 객체만 구독하므로, 드래그 중 경로가 그대로인
+    // 관계선은 다시 그려지지 않는다(v1.37 드래그 성능)
+    const before = previous?.get(req.relId)
+    routes.set(req.relId, before && sameSharedRoute(before, next) ? before : next)
   }
 
   const faceLoad = new Map<string, Record<FaceSide, number>>()
@@ -202,5 +315,30 @@ export function relationshipSharedRoutes(
 
   const value = { routes, obstacles, faceLoad }
   cache = { doc, signature, value }
+  if (!isIncrementalRouting()) {
+    fullBase = {
+      doc,
+      value,
+      reqs: new Map(reqs.map((r) => [r.relId, r])),
+      boxes: new Map(tables.map((t) => [t.id, boxSig(box(t.id))])),
+    }
+  }
   return value
+}
+
+const samePoint = (a: RouterPoint, b: RouterPoint) => a.x === b.x && a.y === b.y
+
+function sameSharedRoute(a: RelationshipSharedRoute, b: RelationshipSharedRoute): boolean {
+  return (
+    a.sourceFace === b.sourceFace &&
+    a.targetFace === b.targetFace &&
+    a.sourceFaceOffset === b.sourceFaceOffset &&
+    a.targetFaceOffset === b.targetFaceOffset &&
+    samePoint(a.sourceFaceAnchor, b.sourceFaceAnchor) &&
+    samePoint(a.targetFaceAnchor, b.targetFaceAnchor) &&
+    samePoint(a.sourceAnchor, b.sourceAnchor) &&
+    samePoint(a.targetAnchor, b.targetAnchor) &&
+    a.points.length === b.points.length &&
+    a.points.every((p, i) => samePoint(p, b.points[i]))
+  )
 }

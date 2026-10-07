@@ -25,6 +25,7 @@ import type {
   ErdTable,
 } from '@/features/editor/model/content-schema'
 import { typeSizeSuffix } from '@/features/editor/model/dbms'
+import { indexDetail, indexSignature } from '@/features/editor/model/keys'
 
 export type DocDiffKind =
   | 'table'
@@ -124,6 +125,7 @@ function diffTable(from: ErdTable, to: ErdTable, items: DocDiffItem[]): void {
     // 생성 컬럼·ON UPDATE(v1.34) — 생성식은 객체라 내용으로 비교한다
     if (JSON.stringify(c.generated ?? null) !== JSON.stringify(next.generated ?? null)) changed.push('generated')
     if ((c.onUpdate ?? null) !== (next.onUpdate ?? null)) changed.push('onUpdate')
+    if ((c.identityGeneration ?? null) !== (next.identityGeneration ?? null)) changed.push('identityGeneration')
     if (changed.length > 0) {
       items.push({ kind: 'column', action: 'update', table: to.physicalName, name: next.physicalName, detail: changed.join(', ') })
     }
@@ -162,22 +164,16 @@ function diffTable(from: ErdTable, to: ErdTable, items: DocDiffItem[]): void {
     items,
   })
 
-  // 인덱스 — id 매칭, columns는 컬럼·정렬 순서까지. 종류·파서(v1.34)도 비교하고 BTREE 아닌 종류는 상세에 붙인다
+  // 인덱스 — id 매칭, columns는 컬럼·정렬 순서까지. 종류·파서(v1.34)와 유니크·식·조건·INCLUDE·연산자 클래스(v1.37)도
+  // 비교하고(keys.ts indexSignature) 상세는 한 줄 표기(BTREE 아닌 종류·식·INCLUDE·WHERE 포함)
   diffKeyedArrays({
     from: from.indexes,
     to: to.indexes,
     table: to.physicalName,
     kind: 'index',
-    same: (a, b) =>
-      a.name === b.name &&
-      a.type === b.type &&
-      (a.parser ?? null) === (b.parser ?? null) &&
-      a.columns.map((m) => `${m.columnId}:${m.order}`).join('\0') ===
-        b.columns.map((m) => `${m.columnId}:${m.order}`).join('\0'),
+    same: (a, b) => indexSignature(a) === indexSignature(b),
     label: (i) => i.name,
-    columnDetail: (i) =>
-      (i.type && i.type !== 'BTREE' ? `${i.type} ` : '') +
-      i.columns.map((m) => physById.get(m.columnId) ?? m.columnId).join(', '),
+    columnDetail: (i) => indexDetail(i, (id) => physById.get(id) ?? id),
     items,
   })
 
