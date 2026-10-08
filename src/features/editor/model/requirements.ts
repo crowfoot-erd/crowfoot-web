@@ -4,6 +4,7 @@
  * 저장하는 값은 status·revision·appliedRevision·tableIds뿐이다. 반영됨·반영 대기 같은 판정은 읽을 때 계산한다.
  * 같은 규칙을 core의 개요 조회(DocumentOutline)가 Java로 갖고 있다 — 한쪽을 바꾸면 다른 쪽도 바꾼다.
  */
+import type { ErdChange } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdArea, ErdRequirement } from '@/features/editor/model/content-schema'
 
 export type RequirementState = 'APPLIED' | 'PENDING' | 'UNLINKED' | 'LEFTOVER' | 'DRAFT' | 'DROPPED'
@@ -42,6 +43,21 @@ export function nextRequirementCode(requirements: readonly ErdRequirement[]): st
 export function untracedTableIds(doc: EditorDocument): string[] {
   const traced = new Set(doc.diagram.requirements.flatMap((requirement) => requirement.tableIds))
   return doc.model.tables.filter((table) => !traced.has(table.id)).map((table) => table.id)
+}
+
+/**
+ * 도메인 그룹 자동 배치(v1.39) — 도메인이 있는 요구사항에 연결된 테이블 가운데 어느 그룹에도 없는 것을 그 도메인 그룹에 넣는 변경.
+ * 다른 그룹에 있는 테이블은 옮기지 않는다. 넣을 테이블이 없으면 null.
+ * 같은 규칙을 core의 편집 API(DocumentEditor.placeInRequirementArea)가 Java로 갖고 있다 — 08-core/17-model-edit.md Section 2.2
+ */
+export function requirementAreaPlacement(doc: EditorDocument, areaId: string | null, tableIds: readonly string[]): ErdChange | null {
+  const area = areaId === null ? undefined : doc.diagram.areas.find((candidate) => candidate.id === areaId)
+  if (!area) return null
+  const grouped = new Set(doc.diagram.areas.flatMap((candidate) => candidate.tableIds))
+  const known = new Set(doc.model.tables.map((table) => table.id))
+  const added = [...new Set(tableIds)].filter((tableId) => known.has(tableId) && !grouped.has(tableId))
+  if (added.length === 0) return null
+  return { type: 'area/patch', areaId: area.id, patch: { tableIds: [...area.tableIds, ...added] } }
 }
 
 /** 판정별 수 — 도구 모음 배지(반영 대기)와 패널 필터가 쓴다 */

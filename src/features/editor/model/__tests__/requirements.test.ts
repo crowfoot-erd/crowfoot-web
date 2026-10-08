@@ -12,6 +12,7 @@ import {
   groupRequirements,
   matchesRequirement,
   nextRequirementCode,
+  requirementAreaPlacement,
   requirementDomains,
   requirementState,
   requirementsToCsv,
@@ -215,6 +216,37 @@ describe('도메인별 정리', () => {
     )
     expect(csv.startsWith('\uFEFF코드,도메인,상태,제목,내용,테이블,수용 기준\r\n')).toBe(true)
     expect(csv).toContain('REQ-001,주문,검토 중,"주문, ""빠른"" 주문","한 줄\n두 줄",orders users,\r\n')
+  })
+})
+
+describe('도메인 그룹 자동 배치(v1.39)', () => {
+  /** users는 회원 그룹, orders는 그룹 밖 — 빈 혜택 그룹이 있다 */
+  function loose(): EditorDocument {
+    const base = doc()
+    return {
+      ...base,
+      diagram: {
+        ...base.diagram,
+        areas: [
+          { id: 'a-member', name: '회원', description: '', color: 'blue', tableIds: ['t-users'] },
+          { id: 'a-benefit', name: '혜택', description: '', color: 'default', tableIds: [] },
+        ],
+      },
+    }
+  }
+
+  it('그룹이 없는 테이블만 도메인 그룹에 넣고, 다른 그룹의 테이블은 옮기지 않는다', () => {
+    const change = requirementAreaPlacement(loose(), 'a-benefit', ['t-users', 't-orders', 't-orders'])
+    expect(change).toEqual({ type: 'area/patch', areaId: 'a-benefit', patch: { tableIds: ['t-orders'] } })
+    const next = applyChange(loose(), change!, 'mysql')
+    expect(next.diagram.areas.find((area) => area.id === 'a-member')?.tableIds).toEqual(['t-users'])
+  })
+
+  it('도메인이 없거나 없는 그룹이거나 넣을 테이블이 없으면 null', () => {
+    expect(requirementAreaPlacement(loose(), null, ['t-orders'])).toBeNull()
+    expect(requirementAreaPlacement(loose(), 'a-gone', ['t-orders'])).toBeNull()
+    expect(requirementAreaPlacement(loose(), 'a-benefit', ['t-users'])).toBeNull()
+    expect(requirementAreaPlacement(loose(), 'a-benefit', ['t-deleted'])).toBeNull()
   })
 })
 

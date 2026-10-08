@@ -30,7 +30,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { viewportCenteredOn, type CanvasExtent } from '@/features/editor/model/canvas-bounds'
-import { newId } from '@/features/editor/model/changes'
+import { newId, type ErdChange } from '@/features/editor/model/changes'
 import { TABLE_COLOR_HEX, type ErdRequirement } from '@/features/editor/model/content-schema'
 import {
   REQUIREMENT_LIMIT,
@@ -38,6 +38,7 @@ import {
   countRequirementStates,
   matchesRequirement,
   nextRequirementCode,
+  requirementAreaPlacement,
   requirementDomains,
   requirementState,
   requirementsToCsv,
@@ -155,6 +156,7 @@ function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sour
   const rf = useReactFlow()
   const present = useEditorStore((s) => s.present)
   const commit = useEditorStore((s) => s.commit)
+  const commitAll = useEditorStore((s) => s.commitAll)
   const setSelection = useEditorStore((s) => s.setSelection)
   const focusId = useRequirementsPanel((s) => s.focusId)
   const clearFocus = useRequirementsPanel((s) => s.clearFocus)
@@ -706,19 +708,26 @@ function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sour
           nextCode={nextRequirementCode(requirements)}
           areas={present.diagram.areas}
           tables={present.model.tables.map((table) => ({ id: table.id, physical: table.physicalName }))}
-          onCreate={(draft) =>
-            commit({
+          onCreate={(draft) => {
+            const doc = useEditorStore.getState().present
+            const create: ErdChange = {
               type: 'requirement/create',
-              requirement: {
-                id: newId(),
-                code: nextRequirementCode(useEditorStore.getState().present.diagram.requirements),
-                revision: 1,
-                appliedRevision: 0,
-                ...draft,
-              },
-            })
-          }
-          onPatch={(requirementId, patch) => commit({ type: 'requirement/patch', requirementId, patch })}
+              requirement: { id: newId(), code: nextRequirementCode(doc.diagram.requirements), revision: 1, appliedRevision: 0, ...draft },
+            }
+            // 그룹이 없는 연결 테이블은 도메인 그룹에 넣는다(v1.39) — 한 번의 실행 취소로 함께 되돌린다
+            const placement = requirementAreaPlacement(doc, draft.areaId, draft.tableIds)
+            commitAll(placement ? [create, placement] : [create])
+          }}
+          onPatch={(requirementId, patch) => {
+            const doc = useEditorStore.getState().present
+            const current = doc.diagram.requirements.find((candidate) => candidate.id === requirementId)
+            const change: ErdChange = { type: 'requirement/patch', requirementId, patch }
+            const placement =
+              current && ('areaId' in patch || 'tableIds' in patch)
+                ? requirementAreaPlacement(doc, patch.areaId !== undefined ? patch.areaId : current.areaId, patch.tableIds ?? current.tableIds)
+                : null
+            commitAll(placement ? [change, placement] : [change])
+          }}
           onRemove={(requirementId) => commit({ type: 'requirement/remove', requirementId })}
         />
         {/* DB에 반영 — 저장된 문서와 연결된 데이터베이스의 차이를 ALTER 문으로 보여 주고 실행한다(DB 동기화와 같은 다이얼로그) */}

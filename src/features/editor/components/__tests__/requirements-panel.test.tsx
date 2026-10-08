@@ -308,6 +308,24 @@ describe('RequirementsPanel', () => {
     })
   })
 
+  it('도메인 그룹 자동 배치 — 그룹이 없는 연결 테이블만 도메인 그룹에 들어가고, 되돌리기 한 번으로 함께 돌아간다(v1.39)', () => {
+    renderPanel()
+    const areas = () => Object.fromEntries(useEditorStore.getState().present.diagram.areas.map((area) => [area.name, area.tableIds]))
+    fireEvent.click(screen.getByTestId('requirement-add'))
+    const dialog = screen.getByTestId('requirement-dialog')
+    fireEvent.change(within(dialog).getByLabelText('제목'), { target: { value: '주문 이력을 남긴다' } })
+    fireEvent.change(within(dialog).getByLabelText('도메인(그룹)'), { target: { value: 'a-order' } })
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'audit_logs' }))
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'users' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    expect(areas()).toEqual({ 회원: ['t-users'], 주문: ['t-orders', 't-audit'] })
+
+    useEditorStore.getState().undo()
+    expect(areas()).toEqual({ 회원: ['t-users'], 주문: ['t-orders'] })
+    expect(requirements().some((r) => r.title === '주문 이력을 남긴다')).toBe(false)
+  })
+
   it('수정 — 제목을 고치면 개정 번호가 올라 반영 대기가 되고, 되돌리기 한 번으로 돌아간다', () => {
     renderPanel()
     fireEvent.click(screen.getByText('이메일로 가입한다'))

@@ -1098,6 +1098,7 @@ Crowfoot 的界面大致分为三类。
 编辑者及以上角色可以自行添加和修改需求。
 
 * 点击面板上方的 **{{model.requirements.add}}** 或展开行中的编辑按钮，设置标题、内容、范围、状态、分组和要链接的表。编号（REQ-001）会自动生成。
+* 为设置了分组的需求链接表时，尚未属于任何分组的表会一并加入该分组。已在其他分组中的表不会被移动。撤销一次即可同时还原需求和分组的更改。Claude（MCP）链接表时也一样。
 * 展开待反映的行并点击 **{{model.requirements.changes.show}}**，即可比较最后一次反映的内容和当前内容。会显示变更的标题、内容中新增的行(绿色 +)和删除的行(红色 −)，以及验收标准和关联表的差异。比较以已保存的文档为准，未保存的编辑在保存后显示。从未反映过的需求显示为 **{{model.requirements.changes.isNew}}**。
 * 按同一行中的 **{{model.requirements.steps.title}}** 依次操作。用 **{{model.requirements.steps.tables}}** 修改关联的表；如果文档已连接数据库，保存后点击 **{{model.requirements.steps.database}}**，在数据库上执行变更后的结构。此按钮会打开数据库同步的迁移 DDL 窗口。最后点击 **{{model.requirements.markApplied}}**，状态即变为已反映。此标记也是文档编辑，可以撤销。
 * **{{model.requirements.criteria.title}}** 是用来确认需求是否已正确体现的检查项。在编辑窗口中每行填写一条，并在展开的行中勾选。也可以为每条标准附上确认 SQL，用数据确认（见下文）。
