@@ -39,7 +39,7 @@ The left sidebar changes depending on what you select in the top menu.
 | **{{shell.nav.workspaces}}** | The **{{shell.sidebar.newWorkspace}}** button, **{{shell.sidebar.mine}}**, **{{shell.sidebar.shared}}** |
 | **{{shell.nav.teams}}** | The **{{shell.sidebar.newTeam}}** button, **{{shell.sidebar.ownedTeams}}**, **{{shell.sidebar.joinedTeams}}** |
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**, **{{shell.sidebar.communityFeedback}}**, **{{shell.sidebar.communityMyComments}}**, **{{shell.sidebar.communityMyLikes}}**, **{{shell.sidebar.communityNotifications}}** |
-| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**, **{{shell.sidebar.adminCodes}}**, **{{shell.sidebar.adminManaged}}**, **{{shell.sidebar.adminSystemTerms}}**, **{{shell.sidebar.adminAuditLogs}}**, **{{shell.sidebar.adminTraffic}}** |
+| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**, **{{shell.sidebar.adminCodes}}**, **{{shell.sidebar.adminManaged}}**, **{{shell.sidebar.adminSystemTerms}}**, **{{shell.sidebar.adminShowcase}}**, **{{shell.sidebar.adminAuditLogs}}**, **{{shell.sidebar.adminTraffic}}** |
 
 ### 1.3 The editor window
 
@@ -135,7 +135,7 @@ A workspace has six tabs below its name.
 
 Click the three-dot menu at the right end of a row to see **{{model.list.menu.edit}}** and **{{model.list.menu.delete}}**. Documents that are not connected to a database also show **{{model.list.menu.connect}}**.
 
-* **{{model.list.menu.edit}}** changes only the name and description. The database type and version cannot be changed.
+* **{{model.list.menu.edit}}** changes only the name and description. The database type and version cannot be changed. The **{{model.site.heading}}** area at the bottom of the same dialog registers a site built with the document (section 13.3).
 * **{{model.list.menu.connect}}** lists only connections with the same DBMS as the document. Once connected, you can use Sync DB in the editor (section 10.4).
 * Only the owner can delete a document. A deleted document cannot be restored.
 
@@ -881,6 +881,24 @@ The **{{shareViewer.tab.comments}}** tab at the bottom of the editor collects th
 * Only the person who created the document can reply to comments, and replies carry an author label. Replies cannot be replied to.
 * Comments posted without signing in can be edited or deleted with the password entered when posting.
 
+### 13.3 Showcase a site you built
+
+If you built a site with this document, register its address to show it on the start page and in the site showcase. The document does not need to be shared.
+
+1. In the workspace's ERD tab, click the three-dot button on the document row and choose **{{model.list.menu.edit}}**.
+2. Enter the site address in the **{{model.site.heading}}** area at the bottom. Leave the title and short description empty to use the values from the site.
+3. Click **{{model.site.save}}**. Fetching the screenshot and details can take about 30 seconds.
+
+* After saving, the screenshot, favicon, title, and description appear. You can edit the title and description and save again.
+* The site is registered even if the screenshot cannot be fetched. The reason appears in the area, and cards show a picture drawn from the favicon and name instead.
+* If the site has changed, click **{{model.site.recapture}}**. The same site can be fetched again once a minute, and the fetch done when saving counts too.
+* **{{model.site.delete}}** removes the site from the start page and the site showcase.
+* Internal or private addresses cannot be registered. Editors and above can register, edit, and delete a site.
+
+A registered site appears right away in the **{{landing.showcase.heading}}** section of the start page. Click **{{landing.showcase.more}}** under the section to browse every registered site, adding more with **{{showcase.loadMore}}**. **{{showcase.card.open}}** on a card opens the site in a new window, and if the document is shared, **{{showcase.card.viewErd}}** shows its ERD.
+
+Report an inappropriate site with the flag button on its card. Only signed-in users can report, and a site is hidden from the list automatically after 3 reports. An administrator can review it and show it again.
+
 ## 14. Version history
 
 ### 14.1 Viewing saved versions
@@ -988,6 +1006,7 @@ Administrator accounts see **{{shell.nav.admin}}** in the top menu.
 | **{{shell.sidebar.adminCodes}}** | Code values such as database types |
 | **{{shell.sidebar.adminManaged}}** | Instances for service-provided databases and the databases issued from them |
 | **{{shell.sidebar.adminSystemTerms}}** | Add and delete words in the system dictionary |
+| **{{shell.sidebar.adminShowcase}}** | Review registered sites by report count and hide or show them |
 | **{{shell.sidebar.adminAuditLogs}}** | A log of important actions |
 | **{{shell.sidebar.adminTraffic}}** | Visit statistics |
 

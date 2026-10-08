@@ -254,6 +254,16 @@ describe('diffSync — 컬럼', () => {
     const { changes } = diffSync(cur, db)
     expect(changes.filter((c) => c.type === 'column/patch')).toHaveLength(0)
   })
+
+  it("defaultValue — 바깥 따옴표만 다른 값은 같다(member ≡ 'member', v1.40 신고 50)", () => {
+    const curTable = curOrders()
+    curTable.columns = curTable.columns.map((c) => (c.physicalName === 'status' ? { ...c, defaultValue: 'member' } : c))
+    const dbTable = dbOrders()
+    dbTable.columns = dbTable.columns.map((c) => (c.physicalName === 'status' ? { ...c, defaultValue: "'member'" } : c))
+
+    const { changes } = diffSync(makeDoc([curTable]), makeDoc([dbTable]))
+    expect(changes.filter((c) => c.type === 'column/patch')).toHaveLength(0)
+  })
 })
 
 describe('diffSync — PK·UK', () => {

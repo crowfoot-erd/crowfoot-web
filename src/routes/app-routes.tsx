@@ -25,6 +25,7 @@ import { LoginPage } from '@/pages/login'
 import { ShareViewerPage } from '@/pages/share-viewer'
 import { ReleaseNoteViewerPage } from '@/pages/release-note-viewer'
 import { SharedListPage } from '@/pages/shared-list'
+import { ShowcasePage } from '@/pages/showcase'
 import { TermsPage } from '@/pages/terms'
 import { ModelViewerPage } from '@/pages/model-viewer'
 import { ModelVersionViewerPage } from '@/pages/model-version-viewer'
@@ -36,6 +37,7 @@ import { WorkspacesPage } from '@/pages/workspaces'
 import { AdminAuditLogsPage } from '@/pages/admin/audit-logs'
 import { AdminCodesPage } from '@/pages/admin/codes'
 import { AdminManagedPage } from '@/pages/admin/managed'
+import { AdminShowcasePage } from '@/pages/admin/showcase'
 import { AdminSystemTermsPage } from '@/pages/admin/system-terms'
 import { AdminUserDetailPage } from '@/pages/admin/user-detail'
 import { AdminUsersPage } from '@/pages/admin/users'
@@ -86,6 +88,8 @@ function buildRoutes(prefix: string) {
       <Route path={`${prefix}/release-notes/:postId`} element={<ReleaseNoteViewerPage />} />
       {/* 공유 문서 목록 — 누구나(랜딩 갤러리의 "모두 보기") */}
       <Route path={`${prefix}/shared`} element={<SharedListPage />} />
+      {/* 만든 사이트 목록 — 누구나(랜딩 "만든 사이트"의 더보기, 08-core/19-site-showcase.md Section 6) */}
+      <Route path={`${prefix}/showcase`} element={<ShowcasePage />} />
 
       {/* 보호 — 앱 셸 4분할 */}
       <Route element={<ProtectedRoute />}>
@@ -148,6 +152,7 @@ function buildRoutes(prefix: string) {
             <Route path="managed" element={<AdminManagedPage />} />
             <Route path="system-terms" element={<AdminSystemTermsPage />} />
             <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+            <Route path="showcase" element={<AdminShowcasePage />} />
           <Route
             path="traffic"
             element={

@@ -1,7 +1,7 @@
 /** 주제 영역(그룹) 헬퍼 — 이름 유일화·멤버 조회·표시 집합·색 고정 (05-editor/02-ui.md §6) */
 import { describe, expect, it } from 'vitest'
 
-import { createArea, createTable } from '@/features/editor/model/changes'
+import { createArea, createTable, nextAreaColor } from '@/features/editor/model/changes'
 import { emptyContent } from '@/features/editor/model/content-io'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { groupColorOf, tablesOfArea, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
@@ -72,5 +72,16 @@ describe('groupColorOf — 그룹 색이 멤버 테이블 렌더 색을 고정�
     // 첫 그룹이 무색이면 폴백(다음 그룹 색을 따라가지 않는다 — 첫 소속이 원천)
     const uncoloredFirst = { ...base, diagram: { ...base.diagram, areas: [createArea('무색', { id: 'A0', tableIds: ['T-USERS'] }), ...base.diagram.areas, second] } }
     expect(groupColorOf(uncoloredFirst, 'T-USERS')).toBeNull()
+  })
+})
+
+describe('nextAreaColor — 새 그룹 자동 색(v1.40)', () => {
+  it('문서에서 아직 쓰지 않은 첫 팔레트 색을 고르고, 다 쓰면 그룹 수로 돈다', () => {
+    expect(nextAreaColor([])).toBe('blue')
+    expect(nextAreaColor([{ color: 'blue' }, { color: 'default' }])).toBe('green')
+    expect(nextAreaColor([{ color: 'green' }, { color: 'blue' }])).toBe('amber')
+    const all = ['blue', 'green', 'amber', 'violet', 'red', 'teal', 'pink', 'orange', 'sky', 'yellow'].map((color) => ({ color: color as 'blue' }))
+    expect(nextAreaColor(all)).toBe('blue')
+    expect(nextAreaColor([...all, { color: 'blue' }])).toBe('green')
   })
 })

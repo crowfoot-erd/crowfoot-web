@@ -667,6 +667,38 @@ export const fixtures = {
       },
     ],
   },
+  /** 사이트 쇼케이스 공개 목록(08-core/19-site-showcase.md Section 3.5) — 최근 등록순.
+   *  첫 행은 공유 중인 문서(shareToken)와 썸네일이 있고, 둘째 행은 공유하지 않은 문서·썸네일 없음(대체 그림) */
+  showcaseSites: {
+    totalCount: 2,
+    responses: [
+      {
+        siteId: '12',
+        url: 'https://blog.example.com',
+        title: '예제 블로그',
+        description: '개발 이야기를 씁니다',
+        siteName: 'Example',
+        faviconUrl: 'https://blog.example.com/favicon.ico',
+        thumbnailUrl: '/api/v1/core/showcase/sites/12/thumbnail?v=1791444000',
+        modelName: 'blog 1.0',
+        databaseType: 'mysql',
+        shareToken: 'Sh4reT0ken0fM0del501aaaa',
+        createdAt: '2026-10-08T07:40:00Z',
+      },
+      {
+        siteId: '11',
+        url: 'https://shop.example.org/home',
+        title: '동네 가게',
+        description: null,
+        siteName: null,
+        faviconUrl: null,
+        thumbnailUrl: null,
+        modelName: '주문 서비스 ERD',
+        databaseType: 'postgresql',
+        createdAt: '2026-10-07T01:00:00Z',
+      },
+    ],
+  },
   /** 공유 갤러리 목록(§1.10.5) — 인증 없는 랜딩 갤러리 응답. 서버가 이미 정렬·선별을 마친 상태다 —
    *  전 워크스페이스 공유(템플릿 문서 포함)를 반응 수 상위 3(인기, 반응→조회→최근 순) 우선 +
    *  나머지 최근 공유순, 최대 18건(인기 3+최근 15). 선두 3건이 인기 박스 구간.
@@ -1517,6 +1549,91 @@ export const handlers = [
 
   // 공유 갤러리 목록(§1.10.5) — 인증 없음. 랜딩 페이지가 현재 공유 중인 문서를 나열
   http.get(`${BASE}/api/v1/core/shares`, () => HttpResponse.json(ok(fixtures.sharedGallery))),
+
+  // 사이트 쇼케이스(08-core/19-site-showcase.md Section 1.3) — 문서의 사이트는 기본 미등록(null).
+  // 등록·다시 가져오기·삭제 시나리오는 개별 테스트가 server.use()로 덧씌운다
+  http.get(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/site`, () =>
+    HttpResponse.json(ok({ response: null })),
+  ),
+  http.put(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/site`, async ({ request }) => {
+    const body = (await request.json()) as { url: string; title?: string; description?: string }
+    return HttpResponse.json(
+      ok({
+        response: {
+          ...fixtures.showcaseSites.responses[0],
+          url: body.url,
+          title: body.title || new URL(body.url).host,
+          description: body.description || null,
+          capturedAt: '2026-10-08T07:40:00Z',
+          captureError: null,
+          hidden: false,
+          reportCount: 0,
+          updatedAt: '2026-10-08T07:40:00Z',
+        },
+      }),
+    )
+  }),
+  // 등록 때의 캡처도 1분 제한에 든다(Section 3.3) — 기본은 너무 이르다(429)
+  http.post(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/site/capture`, () =>
+    fail('SITE_CAPTURE_TOO_SOON', 429),
+  ),
+  http.delete(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/site`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+  // 공개 목록(Section 3.5) — 무인증, page는 0부터
+  http.get(`${BASE}/api/v1/core/showcase/sites`, ({ request }) => {
+    const url = new URL(request.url)
+    const page = Math.max(0, Number(url.searchParams.get('page') ?? '0') || 0)
+    const size = Math.min(48, Math.max(1, Number(url.searchParams.get('size') ?? '12') || 12))
+    const rows = fixtures.showcaseSites.responses
+    return HttpResponse.json(
+      ok({
+        page,
+        size,
+        totalPages: Math.ceil(rows.length / size),
+        responses: rows.slice(page * size, (page + 1) * size),
+        totalCount: rows.length,
+      }),
+    )
+  }),
+  // 썸네일(Section 3.6) — 테스트 환경(jsdom)은 이미지를 받지 않지만 브라우저 목업용으로 404를 둔다
+  http.get(`${BASE}/api/v1/core/showcase/sites/:siteId/thumbnail`, () => new HttpResponse(null, { status: 404 })),
+  // 신고(Section 3.7) — 로그인. 멱등
+  http.post(`${BASE}/api/v1/core/showcase/sites/:siteId/reports`, () =>
+    HttpResponse.json(ok({ response: { reported: true } })),
+  ),
+  // 관리자 목록(Section 3.8) — 숨긴 사이트 포함, hidden 필터
+  http.get(`${BASE}/api/v1/core/admin/showcase/sites`, ({ request }) => {
+    const hidden = new URL(request.url).searchParams.get('hidden')
+    const rows = [
+      {
+        ...fixtures.showcaseSites.responses[0],
+        hidden: false,
+        hiddenAt: null,
+        autoHidden: false,
+        reportCount: 1,
+        captureError: null,
+        workspaceId: '100',
+        modelId: '501',
+        createdBy: '김개발',
+      },
+      {
+        ...fixtures.showcaseSites.responses[1],
+        siteId: '9',
+        title: '스팸 사이트',
+        hidden: true,
+        hiddenAt: '2026-10-08T09:00:00Z',
+        autoHidden: true,
+        reportCount: 3,
+        captureError: 'CAPTURE_FAILED',
+        workspaceId: '100',
+        modelId: '502',
+        createdBy: '박설계',
+      },
+    ].filter((row) => (hidden === null ? true : String(row.hidden) === hidden))
+    return HttpResponse.json(ok({ page: 0, size: 20, totalPages: 1, responses: rows, totalCount: rows.length }))
+  }),
+  http.patch(`${BASE}/api/v1/core/admin/showcase/sites/:siteId`, () => new HttpResponse(null, { status: 204 })),
 
   // 공유 문서 피드백 초기화(§1.10.7, v1.21) — 인증 없음. 반응 상태 + 댓글 목록 1회.
   // 알려진 토큰(링크 목록·갤러리)이면 피드백을 내리고, 그 외는 공개 조회와 같은 판정(404/410)

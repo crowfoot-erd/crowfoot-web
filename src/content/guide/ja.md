@@ -39,7 +39,7 @@ Crowfootの画面は大きく3種類あります。
 | **{{shell.nav.workspaces}}** | **{{shell.sidebar.newWorkspace}}** ボタン、**{{shell.sidebar.mine}}**、**{{shell.sidebar.shared}}** |
 | **{{shell.nav.teams}}** | **{{shell.sidebar.newTeam}}** ボタン、**{{shell.sidebar.ownedTeams}}**、**{{shell.sidebar.joinedTeams}}** |
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**、**{{shell.sidebar.communityFeedback}}**、**{{shell.sidebar.communityMyComments}}**、**{{shell.sidebar.communityMyLikes}}**、**{{shell.sidebar.communityNotifications}}** |
-| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**、**{{shell.sidebar.adminCodes}}**、**{{shell.sidebar.adminManaged}}**、**{{shell.sidebar.adminSystemTerms}}**、**{{shell.sidebar.adminAuditLogs}}**、**{{shell.sidebar.adminTraffic}}** |
+| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**、**{{shell.sidebar.adminCodes}}**、**{{shell.sidebar.adminManaged}}**、**{{shell.sidebar.adminSystemTerms}}**、**{{shell.sidebar.adminShowcase}}**、**{{shell.sidebar.adminAuditLogs}}**、**{{shell.sidebar.adminTraffic}}** |
 
 ### 1.3 エディタウィンドウ
 
@@ -135,7 +135,7 @@ Crowfootの画面は大きく3種類あります。
 
 行の右端にある3点ボタンを押すと、**{{model.list.menu.edit}}**と **{{model.list.menu.delete}}**が表示されます。データベースに接続していないドキュメントには、**{{model.list.menu.connect}}**も表示されます。
 
-* **{{model.list.menu.edit}}**で変更できるのは名前と説明だけです。データベースの種類とバージョンは変更できません。
+* **{{model.list.menu.edit}}**で変更できるのは名前と説明だけです。データベースの種類とバージョンは変更できません。同じ画面下部の **{{model.site.heading}}** 欄では、このドキュメントで作ったサイトを登録します（13.3節）。
 * **{{model.list.menu.connect}}**には、ドキュメントと同じDBMSの接続だけが表示されます。接続すると、エディタでDB同期を使えるようになります（10.4節）。
 * ドキュメントを削除できるのはオーナーだけです。削除したドキュメントは元に戻せません。
 
@@ -881,6 +881,24 @@ ERDドキュメントと一緒に開くと、左の一覧のテーブルをド�
 * 返信できるのはドキュメントを作成した人だけで、返信には作成者の印が付きます。返信にさらに返信することはできません。
 * ログインせずに投稿したコメントは、投稿時に入力したパスワードで編集・削除します。
 
+### 13.3 作ったサイトを紹介する
+
+このドキュメントで作ったサイトがあれば、アドレスを登録してスタートページとサイトショーケースに表示できます。ドキュメントを共有していなくてもかまいません。
+
+1. ワークスペースのERDタブで、ドキュメント行の三点ボタンを押し、**{{model.list.menu.edit}}**を選びます。
+2. 下部の **{{model.site.heading}}** 欄にサイトのアドレスを入力します。タイトルと一言紹介を空欄にすると、サイトに書かれた値を使います。
+3. **{{model.site.save}}**を押します。画面のサムネイルと情報の取得に30秒ほどかかることがあります。
+
+* 保存すると、サムネイル、ファビコン、タイトル、紹介が表示されます。タイトルと紹介は修正して保存し直せます。
+* サムネイルを取得できなくてもサイトは登録されます。理由が欄の中に表示され、カードにはファビコンと名前で描いた画像が代わりに表示されます。
+* サイトの画面が変わったら **{{model.site.recapture}}**を押します。同じサイトの再取得は1分に1回までで、保存時の取得も1回に数えます。
+* **{{model.site.delete}}**を押すと、スタートページとサイトショーケースからも消えます。
+* 社内ネットワークやプライベートアドレスは登録できません。登録・修正・削除は編集者以上ができます。
+
+登録したサイトはすぐにスタートページの **{{landing.showcase.heading}}** に表示されます。その下の **{{landing.showcase.more}}**を選ぶと、登録されたサイトすべてを **{{showcase.loadMore}}**で続けて閲覧できます。カードの **{{showcase.card.open}}**はサイトを新しいウィンドウで開き、ドキュメントが共有中なら **{{showcase.card.viewErd}}**でERDも見られます。
+
+不適切なサイトは、カードの旗ボタンで通報します。通報できるのはログインしている人だけで、通報が3件たまると一覧から自動で非表示になります。管理者が確認したうえで再表示できます。
+
 ## 14. バージョン履歴
 
 ### 14.1 保存履歴を見る
@@ -988,6 +1006,7 @@ ERDドキュメントと一緒に開くと、左の一覧のテーブルをド�
 | **{{shell.sidebar.adminCodes}}** | データベースの種類などのコード値 |
 | **{{shell.sidebar.adminManaged}}** | サービス提供データベースのインスタンスと発行状況 |
 | **{{shell.sidebar.adminSystemTerms}}** | システム辞書の単語の登録と削除 |
+| **{{shell.sidebar.adminShowcase}}** | 登録されたサイトを通報数順に確認し、非表示・再表示を切り替え |
 | **{{shell.sidebar.adminAuditLogs}}** | 主な操作の記録 |
 | **{{shell.sidebar.adminTraffic}}** | アクセス統計 |
 

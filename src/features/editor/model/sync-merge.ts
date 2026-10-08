@@ -11,7 +11,7 @@
  *   cascade가 노드를 치우고, 메모는 연관 해제로 남는다(changes.ts 의미론).
  * · 문서 전용 속성(테이블·컬럼 comment, 문서 전용 컬럼·인덱스, 물리명 대소문자)은 보존한다.
  * · 논리명은 DB 코멘트가 있을 때(db 논리명 ≠ 물리명 — 리버스 조립 규칙)만 덮어쓴다.
- * · defaultValue는 ''≡null로 정규화해 비교한다(드리프트 방지).
+ * · defaultValue는 ''≡null로 정규화하고, 바깥 따옴표만 다른 값도 같게 본다(드리프트 방지 — v1.40 신고 50).
  * · 매칭 키: 테이블·컬럼 = 물리명(trim·소문자), 관계 = (자식, fkName) 우선 → 없으면 (부모→자식) 순서쌍 폴백.
  * · 리네임은 remove+add로 나타난다(물리명이 신원이라 추적 불가) — v1 한계, 실행취소로 복구된다.
  * · UK는 DB 우선 전체 교체(문서 전용 UK는 지운다) — 1:1 FK의 UK는 DB가 항상 보유하므로 자가치유된다.
@@ -73,6 +73,18 @@ const nameKey = (s: string): string => s.trim().toLowerCase()
 
 /** defaultValue 비교 정규화 — 빈 문자열과 null을 같은 취급 */
 const normDefault = (v: string | null): string | null => (v == null || v === '' ? null : v)
+
+/** defaultValue 비교 키 — 바깥 작은따옴표를 벗긴다('member' ≡ member). core DefaultLiterals.comparisonKey와 같은 규칙(v1.40 — 신고 50) */
+function defaultKey(v: string | null): string | null {
+  const value = normDefault(v)
+  if (value == null) return null
+  const trimmed = value.trim()
+  if (trimmed.length >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    const inner = trimmed.slice(1, -1)
+    if (!inner.replaceAll("''", '').includes("'")) return inner.replaceAll("''", "'")
+  }
+  return value
+}
 
 /** 관계 매핑 비교용 — 부모=자식 컬럼 물리명 순서쌍 문자열(순서 유지) */
 function mappingPairs(doc: EditorDocument, rel: ErdRelationship): string[] {
@@ -215,7 +227,7 @@ function columnPatch(cur: ErdColumn, db: ErdColumn): Partial<ErdColumn> | null {
   if (cur.scale !== db.scale) patch.scale = db.scale
   if (cur.nullable !== db.nullable) patch.nullable = db.nullable
   if (cur.autoIncrement !== db.autoIncrement) patch.autoIncrement = db.autoIncrement
-  if (normDefault(cur.defaultValue) !== normDefault(db.defaultValue)) patch.defaultValue = normDefault(db.defaultValue)
+  if (defaultKey(cur.defaultValue) !== defaultKey(db.defaultValue)) patch.defaultValue = normDefault(db.defaultValue)
   // 생성식·ON UPDATE(v1.34) — 리버스가 DB에서 읽는 물리 속성이라 DB 값을 따른다
   if (JSON.stringify(cur.generated ?? null) !== JSON.stringify(db.generated ?? null)) patch.generated = db.generated ?? null
   if ((cur.onUpdate ?? null) !== (db.onUpdate ?? null)) patch.onUpdate = db.onUpdate ?? null

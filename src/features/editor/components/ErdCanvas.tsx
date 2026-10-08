@@ -45,7 +45,7 @@ import {
   type CanvasExtent,
 } from '@/features/editor/model/canvas-bounds'
 import { groupColorOf, uniqueAreaName, visibleTableIds } from '@/features/editor/model/areas'
-import { createArea, createIndex, createTable, newId, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
+import { createArea, createIndex, createTable, newId, nextAreaColor, pkToggleChanges, type ErdChange } from '@/features/editor/model/changes'
 import { buildRelationship, primaryKeyColumns } from '@/features/editor/model/relationship'
 import { defaultCheckName, defaultKeyName, documentKeyNames, withIndexExtras, type KeyKind } from '@/features/editor/model/keys'
 import { DEFAULT_CHILD_MULTIPLICITY, type ErdColumn } from '@/features/editor/model/content-schema'
@@ -952,7 +952,7 @@ export function ErdCanvas({
           // 선택 테이블을 초기 멤버로 그룹 생성 — 바로 편집 다이얼로그를 열어 이름·설명·색을 입힌다
           const doc = useEditorStore.getState().present
           const name = uniqueAreaName(doc, t('model.editor.area.defaultName'))
-          const area = createArea(name, { tableIds: action.tableIds })
+          const area = createArea(name, { tableIds: action.tableIds, color: nextAreaColor(doc.diagram.areas) })
           commit({ type: 'area/create', area })
           onOpenAreaEdit(area.id)
           return

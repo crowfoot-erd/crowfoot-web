@@ -133,6 +133,9 @@
       "MANAGED_PROVISION_FAILED": "プロビジョニングに失敗しました。しばらくしてからもう一度お試しください。",
       "MANAGED_DATABASE_NOT_FOUND": "発行済みデータベースが見つかりません。",
       "SHARE_NOT_FOUND": "共有リンクが見つかりません。",
+      "SITE_URL_BLOCKED": "社内ネットワークやプライベートアドレスは登録できません。インターネットで開けるアドレスを入力してください。",
+      "SITE_CAPTURE_TOO_SOON": "取得したばかりです。1分後にもう一度お試しください。",
+      "SITE_SHOWCASE_NOT_FOUND": "サイトが見つかりません。",
       "SHARE_INACTIVE": "この共有リンクはまだ有効でないか、有効期限が切れています。",
       "COMMUNITY_POST_NOT_FOUND": "投稿が見つかりません。",
       "COMMUNITY_COMMENT_NOT_FOUND": "コメントが見つかりません。一覧を更新します。",
@@ -188,6 +191,7 @@
       "backToWorkspaces": "ワークスペースに戻る",
       "adminAuditLogs": "監査ログ",
       "adminTraffic": "トラフィック統計",
+      "adminShowcase": "サイトショーケース",
       "teamsTitle": "チーム",
       "newTeam": "新規チーム",
       "ownedTeams": "自分がオーナーのチーム",
@@ -507,6 +511,32 @@
         "savedToast": "保存しました。"
       }
     },
+    "showcase": {
+      "title": "サイトショーケース",
+      "notice": "登録されたサイトを通報の多い順に表示します。通報が3件たまると自動で非表示になります。再表示すると通報数は0に戻ります。",
+      "filter": {
+        "label": "非表示フィルター",
+        "all": "すべて",
+        "visible": "表示中",
+        "hidden": "非表示"
+      },
+      "table": {
+        "thumbnail": "サムネイル",
+        "site": "サイト",
+        "model": "ドキュメント",
+        "reports": "通報",
+        "createdAt": "登録日",
+        "hidden": "非表示"
+      },
+      "autoHidden": "通報により非表示",
+      "manualHidden": "管理者が非表示",
+      "captureError": "キャプチャ失敗: {{reason}}",
+      "ids": "ワークスペース {{workspaceId}} · ドキュメント {{modelId}}",
+      "toggleLabel": "{{title}} を非表示",
+      "hiddenToast": "サイトを非表示にしました",
+      "shownToast": "サイトを再表示しました",
+      "empty": "サイトがありません。"
+    },
     "managed": {
       "title": "マネージドDB",
       "cardTitle": "インスタンス",
@@ -739,6 +769,37 @@
       "databaseType": "データベース種別",
       "databaseTypePlaceholder": "種別を選択",
       "successToast": "ERDドキュメントを作成しました"
+    },
+    "site": {
+      "heading": "作ったサイト",
+      "notice": "このドキュメントで作ったサイトのアドレスを入力すると、画面のサムネイルと情報を取得し、トップページとサイトショーケースに表示します。",
+      "url": "サイトのアドレス",
+      "title": "タイトル（任意）",
+      "titlePlaceholder": "空欄ならサイトのタイトルを使います",
+      "description": "一言紹介（任意）",
+      "descriptionPlaceholder": "空欄ならサイトの説明を使います",
+      "urlInvalid": "http または https で始まるアドレスを入力してください。",
+      "invalid": {
+        "url": "アドレスの形式と長さを確認してください。",
+        "title": "タイトルは200文字以内で入力してください。",
+        "description": "紹介は500文字以内で入力してください。"
+      },
+      "capturing": "サムネイルと情報を取得しています…",
+      "save": "サイトを保存",
+      "recapture": "再取得",
+      "delete": "削除",
+      "empty": "登録されたサイトはありません。",
+      "hidden": "公開一覧で非表示",
+      "captureError": "サムネイルを取得できませんでした — {{reason}}",
+      "savedToast": "サイトを保存しました",
+      "savedWithErrorToast": "サイトを保存しましたが、サムネイルを取得できませんでした",
+      "recapturedToast": "サムネイルと情報を再取得しました",
+      "recaptureFailedToast": "サムネイルを再取得できませんでした",
+      "deletedToast": "サイトを削除しました",
+      "deleteConfirm": {
+        "title": "サイトの削除",
+        "description": "登録したサイトを削除しますか？トップページとサイトショーケースからも消えます。"
+      }
     },
     "edit": {
       "title": "{{name}}を編集",
@@ -1602,6 +1663,29 @@
     "reply": "返信",
     "viewerReadonly": "コメントには Commenter 以上の役割が必要です"
   },
+  "showcase": {
+    "title": "Crowfoot で作られたサイト",
+    "description": "Crowfoot でデータベースを設計して作られたサイトをご覧ください。",
+    "count": "{{count}}件",
+    "empty": "まだ登録されたサイトはありません。",
+    "error": "一覧を読み込めませんでした。しばらくしてからもう一度お試しください。",
+    "loadMore": "もっと見る",
+    "card": {
+      "open": "サイトを開く",
+      "viewErd": "ERD を見る",
+      "report": "{{title}} を通報"
+    },
+    "report": {
+      "title": "サイトを通報",
+      "notice": "「{{title}}」が不適切な場合はお知らせください。通報がたまると一覧から非表示になります。",
+      "reason": "理由（任意）",
+      "reasonPlaceholder": "どこが不適切か書いてください",
+      "submit": "通報",
+      "successToast": "通報しました。確認いたします。",
+      "loginRequired": "通報するにはログインしてください。",
+      "login": "ログイン"
+    }
+  },
   "shared": {
     "title": "共有ドキュメント",
     "description": "Crowfoot で共有されている ERD を探せます。クリックすると読み取り専用で開きます。",
@@ -1885,6 +1969,10 @@
       "guide": "利用ガイド",
       "terms": "利用規約",
       "currentVersion": "現在のバージョン v{{version}}"
+    },
+    "showcase": {
+      "heading": "Crowfoot で作られたサイト",
+      "more": "サイトをすべて見る"
     },
     "gallery": {
       "more": "共有ドキュメントをすべて見る",

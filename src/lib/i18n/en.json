@@ -133,6 +133,9 @@
       "MANAGED_PROVISION_FAILED": "Provisioning failed. Please try again shortly.",
       "MANAGED_DATABASE_NOT_FOUND": "Issued database not found.",
       "SHARE_NOT_FOUND": "Share link not found.",
+      "SITE_URL_BLOCKED": "Internal or private addresses cannot be registered. Enter an address that opens on the internet.",
+      "SITE_CAPTURE_TOO_SOON": "It was just fetched. Try again in a minute.",
+      "SITE_SHOWCASE_NOT_FOUND": "Site not found.",
       "SHARE_INACTIVE": "This share link is not active yet or has expired.",
       "COMMUNITY_POST_NOT_FOUND": "Post not found.",
       "COMMUNITY_COMMENT_NOT_FOUND": "Comment not found. Refreshing the list.",
@@ -188,6 +191,7 @@
       "backToWorkspaces": "Back to workspaces",
       "adminAuditLogs": "Audit logs",
       "adminTraffic": "Traffic",
+      "adminShowcase": "Site showcase",
       "teamsTitle": "Teams",
       "newTeam": "New team",
       "ownedTeams": "Teams I own",
@@ -507,6 +511,32 @@
         "savedToast": "Saved."
       }
     },
+    "showcase": {
+      "title": "Site showcase",
+      "notice": "Registered sites, most reported first. A site is hidden automatically after 3 reports. Showing it again resets its report count to 0.",
+      "filter": {
+        "label": "Visibility filter",
+        "all": "All",
+        "visible": "Visible",
+        "hidden": "Hidden"
+      },
+      "table": {
+        "thumbnail": "Thumbnail",
+        "site": "Site",
+        "model": "Document",
+        "reports": "Reports",
+        "createdAt": "Registered",
+        "hidden": "Hidden"
+      },
+      "autoHidden": "Hidden by reports",
+      "manualHidden": "Hidden by admin",
+      "captureError": "Capture failed: {{reason}}",
+      "ids": "Workspace {{workspaceId}} · Document {{modelId}}",
+      "toggleLabel": "Hide {{title}}",
+      "hiddenToast": "Site hidden",
+      "shownToast": "Site is visible again",
+      "empty": "No sites."
+    },
     "managed": {
       "title": "Managed DB",
       "cardTitle": "Instances",
@@ -739,6 +769,37 @@
       "databaseType": "Database type",
       "databaseTypePlaceholder": "Select a type",
       "successToast": "ERD document created"
+    },
+    "site": {
+      "heading": "Site built with this document",
+      "notice": "Enter the address of a site built with this document. Crowfoot fetches a screenshot and details and shows it on the home page and in the site showcase.",
+      "url": "Site address",
+      "title": "Title (optional)",
+      "titlePlaceholder": "Leave empty to use the site's title",
+      "description": "Short description (optional)",
+      "descriptionPlaceholder": "Leave empty to use the site's description",
+      "urlInvalid": "Enter an address that starts with http or https.",
+      "invalid": {
+        "url": "Check the address format and length.",
+        "title": "The title can be up to 200 characters.",
+        "description": "The description can be up to 500 characters."
+      },
+      "capturing": "Fetching the screenshot and details…",
+      "save": "Save site",
+      "recapture": "Fetch again",
+      "delete": "Delete",
+      "empty": "No site registered.",
+      "hidden": "Hidden from the public list",
+      "captureError": "Could not fetch the screenshot — {{reason}}",
+      "savedToast": "Site saved",
+      "savedWithErrorToast": "Site saved, but the screenshot could not be fetched",
+      "recapturedToast": "Screenshot and details fetched again",
+      "recaptureFailedToast": "Could not fetch the screenshot again",
+      "deletedToast": "Site deleted",
+      "deleteConfirm": {
+        "title": "Delete site",
+        "description": "Delete the registered site? It will also disappear from the home page and the site showcase."
+      }
     },
     "edit": {
       "title": "Edit {{name}}",
@@ -1602,6 +1663,29 @@
     "reply": "Reply",
     "viewerReadonly": "Commenting requires the Commenter role or higher"
   },
+  "showcase": {
+    "title": "Sites built with Crowfoot",
+    "description": "Browse sites whose databases were designed with Crowfoot.",
+    "count": "{{count}} sites",
+    "empty": "No sites registered yet.",
+    "error": "Could not load the list. Try again in a moment.",
+    "loadMore": "Load more",
+    "card": {
+      "open": "Open site",
+      "viewErd": "View ERD",
+      "report": "Report {{title}}"
+    },
+    "report": {
+      "title": "Report site",
+      "notice": "Let us know if \"{{title}}\" is inappropriate. Sites with enough reports are hidden from the list.",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "Tell us what is inappropriate",
+      "submit": "Report",
+      "successToast": "Reported. We will review it.",
+      "loginRequired": "Log in to report a site.",
+      "login": "Log in"
+    }
+  },
   "shared": {
     "title": "Shared documents",
     "description": "Browse the ERDs shared on Crowfoot. Each one opens read-only.",
@@ -1885,6 +1969,10 @@
       "guide": "User guide",
       "terms": "Terms",
       "currentVersion": "Current version v{{version}}"
+    },
+    "showcase": {
+      "heading": "Sites built with Crowfoot",
+      "more": "See all sites"
     },
     "gallery": {
       "more": "See all shared documents",

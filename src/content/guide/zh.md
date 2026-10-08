@@ -39,7 +39,7 @@ Crowfoot 的界面大致分为三类。
 | **{{shell.nav.workspaces}}** | **{{shell.sidebar.newWorkspace}}** 按钮、**{{shell.sidebar.mine}}**、**{{shell.sidebar.shared}}** |
 | **{{shell.nav.teams}}** | **{{shell.sidebar.newTeam}}** 按钮、**{{shell.sidebar.ownedTeams}}**、**{{shell.sidebar.joinedTeams}}** |
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**、**{{shell.sidebar.communityFeedback}}**、**{{shell.sidebar.communityMyComments}}**、**{{shell.sidebar.communityMyLikes}}**、**{{shell.sidebar.communityNotifications}}** |
-| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**、**{{shell.sidebar.adminCodes}}**、**{{shell.sidebar.adminManaged}}**、**{{shell.sidebar.adminSystemTerms}}**、**{{shell.sidebar.adminAuditLogs}}**、**{{shell.sidebar.adminTraffic}}** |
+| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**、**{{shell.sidebar.adminCodes}}**、**{{shell.sidebar.adminManaged}}**、**{{shell.sidebar.adminSystemTerms}}**、**{{shell.sidebar.adminShowcase}}**、**{{shell.sidebar.adminAuditLogs}}**、**{{shell.sidebar.adminTraffic}}** |
 
 ### 1.3 编辑器窗口
 
@@ -135,7 +135,7 @@ Crowfoot 的界面大致分为三类。
 
 点击行最右侧的“⋯”按钮，会出现 **{{model.list.menu.edit}}** 和 **{{model.list.menu.delete}}**。尚未连接数据库的文档还会出现 **{{model.list.menu.connect}}**。
 
-* 在 **{{model.list.menu.edit}}** 中只能修改名称和说明，不能更改数据库类型和版本。
+* 在 **{{model.list.menu.edit}}** 中只能修改名称和说明，不能更改数据库类型和版本。同一窗口下方的 **{{model.site.heading}}** 区域用于登记用此文档做成的网站（见 13.3 节）。
 * **{{model.list.menu.connect}}** 中只显示与文档 DBMS 相同的连接。连接后即可在编辑器中使用同步数据库（见 10.4 节）。
 * 只有所有者才能删除文档。文档删除后无法恢复。
 
@@ -881,6 +881,24 @@ Crowfoot 的界面大致分为三类。
 * 只有文档的创建者才能回复，回复会带有作者标记。不能对回复再次回复。
 * 未登录时发表的评论，可以用发表时填写的密码修改或删除。
 
+### 13.3 展示做成的网站
+
+如果用此文档做成了网站，可以登记它的地址，在起始页和网站展示中显示。文档不需要共享。
+
+1. 在工作区的 ERD 标签页中，点击文档行的三点按钮，选择 **{{model.list.menu.edit}}**。
+2. 在下方的 **{{model.site.heading}}** 区域输入网站地址。标题和一句话介绍留空时，使用网站上的内容。
+3. 点击 **{{model.site.save}}**。获取页面缩略图和信息可能需要 30 秒左右。
+
+* 保存后会显示缩略图、网站图标、标题和介绍。可以修改标题和介绍后再次保存。
+* 即使没能获取缩略图，网站也会登记。原因显示在区域内，卡片上则改为显示用网站图标和名称绘制的图片。
+* 网站页面有变化时，点击 **{{model.site.recapture}}**。同一网站每分钟只能重新获取一次，保存时的获取也算一次。
+* 点击 **{{model.site.delete}}** 后，网站也会从起始页和网站展示中消失。
+* 不能登记内网或私有地址。编辑者及以上角色可以登记、修改和删除。
+
+登记的网站会立即出现在起始页的 **{{landing.showcase.heading}}** 区域。选择该区域下方的 **{{landing.showcase.more}}**，可以用 **{{showcase.loadMore}}** 继续浏览所有已登记的网站。卡片上的 **{{showcase.card.open}}** 会在新窗口打开网站；如果文档正在共享，还可以用 **{{showcase.card.viewErd}}** 查看 ERD。
+
+不合适的网站可以用卡片上的旗帜按钮举报。只有登录用户可以举报，举报累计 3 次后会自动从列表中隐藏。管理员确认后可以重新显示。
+
 ## 14. 版本历史
 
 ### 14.1 查看保存记录
@@ -988,6 +1006,7 @@ Crowfoot 的界面大致分为三类。
 | **{{shell.sidebar.adminCodes}}** | 数据库类型等代码值 |
 | **{{shell.sidebar.adminManaged}}** | 托管数据库的实例和发放情况 |
 | **{{shell.sidebar.adminSystemTerms}}** | 登记和删除系统词典的单词 |
+| **{{shell.sidebar.adminShowcase}}** | 按举报数查看已登记的网站，并隐藏或重新显示 |
 | **{{shell.sidebar.adminAuditLogs}}** | 主要操作记录 |
 | **{{shell.sidebar.adminTraffic}}** | 访问统计 |
 

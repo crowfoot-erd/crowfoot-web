@@ -311,6 +311,16 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://crowfoot.java21.net/showcase</loc>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/showcase" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/showcase" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://crowfoot.java21.net/ja/showcase" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://crowfoot.java21.net/zh/showcase" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://crowfoot.java21.net/showcase" />
+    <lastmod>2026-10-08</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://crowfoot.java21.net/release-notes</loc>
     <xhtml:link rel="alternate" hreflang="ko" href="https://crowfoot.java21.net/release-notes" />
     <xhtml:link rel="alternate" hreflang="en" href="https://crowfoot.java21.net/en/release-notes" />

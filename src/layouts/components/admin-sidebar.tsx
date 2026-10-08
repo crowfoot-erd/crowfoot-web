@@ -1,10 +1,10 @@
 /**
  * 관리자 사이드바 (storyboard 00-common §3.1 — /admin/*에서 워크스페이스 트리를 대체)
- * 사용자 관리·코드 테이블·감사 로그 메뉴 + 하단 워크스페이스 복귀 링크.
+ * 사용자 관리·코드 테이블·사이트 쇼케이스·감사 로그 메뉴 + 하단 워크스페이스 복귀 링크.
  * 새 워크스페이스 생성은 관리자 화면에서 노출하지 않는다.
  */
 import { Link, NavLink } from 'react-router-dom'
-import { ArrowLeft, BarChart3, BookA, DatabaseZap, ScrollText, Table2, Users } from 'lucide-react'
+import { AppWindow, ArrowLeft, BarChart3, BookA, DatabaseZap, ScrollText, Table2, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,11 @@ export function AdminSidebar() {
           <NavLink to="/admin/system-terms" className={menuClass}>
             <BookA aria-hidden className="h-4 w-4 text-muted-foreground" />
             {t('shell.sidebar.adminSystemTerms')}
+          </NavLink>
+          {/* 사이트 쇼케이스 — 숨김 필터·신고 수·숨김 스위치 (08-core/19-site-showcase.md Section 6) */}
+          <NavLink to="/admin/showcase" className={menuClass}>
+            <AppWindow aria-hidden className="h-4 w-4 text-muted-foreground" />
+            {t('shell.sidebar.adminShowcase')}
           </NavLink>
           <NavLink to="/admin/audit-logs" className={menuClass}>
             <ScrollText aria-hidden className="h-4 w-4 text-muted-foreground" />

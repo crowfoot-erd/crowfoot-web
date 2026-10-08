@@ -295,7 +295,12 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
       )}
 
       <CreateModelDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={workspaceId} />
-      <EditModelDialog model={editing} onOpenChange={(open) => !open && setEditing(null)} workspaceId={workspaceId} />
+      <EditModelDialog
+        model={editing}
+        onOpenChange={(open) => !open && setEditing(null)}
+        workspaceId={workspaceId}
+        canEdit={canCreate}
+      />
       {/* 최초 연결 다이얼로그 — 공용 컴포넌트(에디터 툴바와 같은 것)를 행 액션에서도 쓴다 */}
       {connecting ? (
         <ConnectDatabaseDialog

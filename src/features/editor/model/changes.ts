@@ -153,6 +153,17 @@ export function createTable(physicalName: string, init: Partial<ErdTable> = {}):
   }
 }
 
+/**
+ * 새 그룹의 자동 색 순서(v1.40) — 문서에서 아직 쓰지 않은 첫 색을 고른다. 다 쓰면 그룹 수로 돈다.
+ * 이웃한 색이 비슷하지 않게 섞은 순서다. core DocumentEditor.AREA_PALETTE와 같다(05-editor/02-ui.md Section 6)
+ */
+export const AREA_PALETTE = ['blue', 'green', 'amber', 'violet', 'red', 'teal', 'pink', 'orange', 'sky', 'yellow'] as const
+
+export function nextAreaColor(areas: readonly Pick<ErdArea, 'color'>[]): ErdArea['color'] {
+  const used = new Set<string>(areas.map((area) => area.color))
+  return AREA_PALETTE.find((color) => !used.has(color)) ?? AREA_PALETTE[areas.length % AREA_PALETTE.length]!
+}
+
 export function createArea(name: string, init: Partial<ErdArea> = {}): ErdArea {
   return {
     id: newId(),

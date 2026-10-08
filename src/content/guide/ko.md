@@ -39,7 +39,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **{{shell.nav.workspaces}}** | **{{shell.sidebar.newWorkspace}}** 버튼, **{{shell.sidebar.mine}}**, **{{shell.sidebar.shared}}** |
 | **{{shell.nav.teams}}** | **{{shell.sidebar.newTeam}}** 버튼, **{{shell.sidebar.ownedTeams}}**, **{{shell.sidebar.joinedTeams}}** |
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**, **{{shell.sidebar.communityFeedback}}**, **{{shell.sidebar.communityMyComments}}**, **{{shell.sidebar.communityMyLikes}}**, **{{shell.sidebar.communityNotifications}}** |
-| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**, **{{shell.sidebar.adminCodes}}**, **{{shell.sidebar.adminManaged}}**, **{{shell.sidebar.adminSystemTerms}}**, **{{shell.sidebar.adminAuditLogs}}**, **{{shell.sidebar.adminTraffic}}** |
+| **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**, **{{shell.sidebar.adminCodes}}**, **{{shell.sidebar.adminManaged}}**, **{{shell.sidebar.adminSystemTerms}}**, **{{shell.sidebar.adminShowcase}}**, **{{shell.sidebar.adminAuditLogs}}**, **{{shell.sidebar.adminTraffic}}** |
 
 ### 1.3 에디터 창
 
@@ -135,7 +135,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 행 오른쪽 끝의 점 세 개 버튼을 누르면 **{{model.list.menu.edit}}**과 **{{model.list.menu.delete}}**가 나옵니다. 데이터베이스에 연결하지 않은 문서에는 **{{model.list.menu.connect}}**도 나옵니다.
 
-* **{{model.list.menu.edit}}**에서는 이름과 설명만 바꿀 수 있습니다. 데이터베이스 종류와 버전은 바꿀 수 없습니다.
+* **{{model.list.menu.edit}}**에서는 이름과 설명만 바꿀 수 있습니다. 데이터베이스 종류와 버전은 바꿀 수 없습니다. 같은 창 아래의 **{{model.site.heading}}** 칸에서는 이 문서로 만든 사이트를 등록합니다(13.3절).
 * **{{model.list.menu.connect}}**에는 문서와 같은 DBMS의 커넥션만 나옵니다. 연결하면 에디터에서 DB 동기화를 쓸 수 있습니다(10.4절).
 * 문서 삭제는 소유자만 할 수 있습니다. 삭제한 문서는 되돌릴 수 없습니다.
 
@@ -881,6 +881,24 @@ ERD 문서와 함께 열면 왼쪽 목록의 테이블을 문서의 그룹별로
 * 답글은 문서를 만든 사람만 달 수 있고, 답글에는 작성자 표시가 붙습니다. 답글에는 다시 답글을 달 수 없습니다.
 * 로그인하지 않고 쓴 댓글은 쓸 때 적은 비밀번호로 고치거나 지웁니다.
 
+### 13.3 만든 사이트 알리기
+
+이 문서로 만든 사이트가 있으면 주소를 등록해 시작 페이지와 사이트 쇼케이스에 보여 줄 수 있습니다. 문서를 공유하지 않아도 됩니다.
+
+1. 워크스페이스의 ERD 탭에서 문서 행의 점 세 개 버튼을 누르고 **{{model.list.menu.edit}}**을 누릅니다.
+2. 아래쪽 **{{model.site.heading}}** 칸에 사이트 주소를 넣습니다. 제목과 한 줄 소개는 비워 두면 사이트에 적힌 값을 씁니다.
+3. **{{model.site.save}}**를 누릅니다. 화면 썸네일과 정보를 가져오느라 30초쯤 걸릴 수 있습니다.
+
+* 저장하면 썸네일, 파비콘, 제목, 소개가 보입니다. 제목과 소개를 고쳐 다시 저장할 수 있습니다.
+* 썸네일을 가져오지 못해도 사이트는 등록됩니다. 그 이유가 칸 안에 나오고, 카드에는 파비콘과 이름으로 그린 그림이 대신 나옵니다.
+* 사이트 화면이 바뀌었으면 **{{model.site.recapture}}**를 누릅니다. 같은 사이트는 1분에 한 번만 다시 가져올 수 있습니다. 저장할 때 가져온 것도 한 번으로 셉니다.
+* **{{model.site.delete}}**를 누르면 시작 페이지와 사이트 쇼케이스에서도 사라집니다.
+* 내부망이나 사설 주소는 등록할 수 없습니다. 등록, 수정, 삭제는 편집자 이상이 할 수 있습니다.
+
+등록한 사이트는 바로 시작 페이지의 **{{landing.showcase.heading}}** 구역에 나옵니다. 구역 아래의 **{{landing.showcase.more}}**를 누르면 등록된 사이트 전체를 **{{showcase.loadMore}}**로 이어 가며 둘러볼 수 있습니다. 카드의 **{{showcase.card.open}}**은 사이트를 새 창으로 열고, 문서가 공유 중이면 **{{showcase.card.viewErd}}**로 ERD도 볼 수 있습니다.
+
+부적절한 사이트는 카드의 깃발 버튼으로 신고합니다. 신고는 로그인한 사람만 할 수 있고, 신고가 3건 쌓이면 목록에서 자동으로 숨겨집니다. 관리자가 확인한 뒤 다시 보이게 할 수 있습니다.
+
 ## 14. 버전 기록
 
 ### 14.1 저장 기록 보기
@@ -988,6 +1006,7 @@ ERD 문서와 함께 열면 왼쪽 목록의 테이블을 문서의 그룹별로
 | **{{shell.sidebar.adminCodes}}** | 데이터베이스 종류 같은 코드 값을 관리합니다 |
 | **{{shell.sidebar.adminManaged}}** | 서비스 제공 DB의 인스턴스와 발급 현황을 관리합니다 |
 | **{{shell.sidebar.adminSystemTerms}}** | 시스템 사전의 단어를 등록하고 삭제합니다 |
+| **{{shell.sidebar.adminShowcase}}** | 등록된 사이트를 신고 수 순으로 보고, 숨기거나 다시 보이게 합니다 |
 | **{{shell.sidebar.adminAuditLogs}}** | 주요 작업 기록을 봅니다 |
 | **{{shell.sidebar.adminTraffic}}** | 방문 통계를 봅니다 |
 
