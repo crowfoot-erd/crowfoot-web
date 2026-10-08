@@ -3,7 +3,6 @@
  *
  * - 이름·설명만 변경 (1.4 — version은 증가하지 않는다)
  * - PATCH 의미론: description을 비우면 명시적 클리어(null)
- * - 아래에 "만든 사이트" 칸을 둔다 — 저장은 따로 한다(08-core/19-site-showcase.md Section 6)
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -33,7 +32,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useUpdateModel } from '@/features/models/hooks'
-import { ModelSiteSection } from '@/features/showcase/components/model-site-section'
 import type { ModelSummary } from '@/api/types'
 import { errorMessage } from '@/lib/result-code'
 
@@ -41,8 +39,6 @@ export interface EditModelDialogProps {
   model: ModelSummary | null
   onOpenChange: (open: boolean) => void
   workspaceId: string
-  /** Editor 이상 — 아니면 만든 사이트를 읽기만 한다 */
-  canEdit?: boolean
 }
 
 function editModelSchema(nameRequiredMessage: string) {
@@ -54,7 +50,7 @@ function editModelSchema(nameRequiredMessage: string) {
 
 type EditModelForm = { name: string; description?: string }
 
-export function EditModelDialog({ model, onOpenChange, workspaceId, canEdit = true }: EditModelDialogProps) {
+export function EditModelDialog({ model, onOpenChange, workspaceId }: EditModelDialogProps) {
   const { t } = useTranslation()
   const updateMutation = useUpdateModel(workspaceId)
   const open = model !== null
@@ -101,7 +97,7 @@ export function EditModelDialog({ model, onOpenChange, workspaceId, canEdit = tr
 
   return (
     <Dialog open={open} onOpenChange={onOpen}>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('model.edit.title', { name: model?.name ?? '' })}</DialogTitle>
           <DialogDescription>{t('model.edit.notice')}</DialogDescription>
@@ -145,7 +141,6 @@ export function EditModelDialog({ model, onOpenChange, workspaceId, canEdit = tr
             </DialogFooter>
           </form>
         </Form>
-        {model ? <ModelSiteSection workspaceId={workspaceId} modelId={model.modelId} canEdit={canEdit} /> : null}
       </DialogContent>
     </Dialog>
   )

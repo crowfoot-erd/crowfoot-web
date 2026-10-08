@@ -52,6 +52,15 @@ describe('커뮤니티 게시판 목록', () => {
     expect(screen.getByText('총 2개')).toBeVisible()
   })
 
+  it('긴 제목은 한 줄로 말줄임하고 전체 제목을 title로 보여 준다 — 표 레이아웃을 깨지 않는다(v1.41)', async () => {
+    renderBoard('FEEDBACK')
+
+    const link = await screen.findByRole('link', { name: 'ERD 내보내기 포맷 제안' })
+    expect(link).toHaveClass('block', 'truncate')
+    expect(link).toHaveAttribute('title', 'ERD 내보내기 포맷 제안')
+    expect(link.closest('table')).toHaveClass('table-fixed')
+  })
+
   it('renders RELEASE_NOTE posts without the intro and hides comment counts', async () => {
     renderBoard('RELEASE_NOTE')
 

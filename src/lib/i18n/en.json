@@ -751,6 +751,7 @@
         "cta": "New ERD document"
       },
       "open": "Open {{name}}",
+      "site": "Site built with {{name}}",
       "actions": "Actions for {{name}}",
       "menu": {
         "connect": "Connect to database",
@@ -772,6 +773,7 @@
     },
     "site": {
       "heading": "Site built with this document",
+      "dialogTitle": "Site built with {{name}}",
       "notice": "Enter the address of a site built with this document. Crowfoot fetches a screenshot and details and shows it on the home page and in the site showcase.",
       "url": "Site address",
       "title": "Title (optional)",

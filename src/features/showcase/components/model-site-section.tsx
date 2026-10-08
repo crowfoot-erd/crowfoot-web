@@ -1,12 +1,13 @@
 /**
- * 문서 정보 다이얼로그의 "만든 사이트" 칸 (08-core/19-site-showcase.md Section 6·3.1~3.4)
+ * 문서의 "만든 사이트" 칸 (08-core/19-site-showcase.md Section 6·3.1~3.4) — 문서 목록 행의 사이트 아이콘이 여는
+ * 다이얼로그(ModelSiteDialog) 안에 둔다(v1.41 — 종전에는 이름·설명 수정 다이얼로그 아래에 있었다)
  *
  * - 주소(필수)·제목·설명(선택)을 넣고 저장하면 서버가 썸네일과 정보를 가져온다(최대 30초 — 진행 문구를 보인다)
  * - 저장한 값으로 입력 칸을 다시 채운다 — 고쳐서 다시 저장할 수 있다
  * - 같은 주소의 PUT(Section 3.2): 제목을 비우면 지금 제목을 둔다, 설명은 생략이면 유지·""이면 지운다 —
  *   그래서 설명은 저장된 값을 사용자가 직접 지웠을 때만 ""를 보낸다
  * - 다시 가져오기는 1분에 한 번(등록 때의 캡처도 센다 — 429 SITE_CAPTURE_TOO_SOON)
- * - 이름·설명 폼과 따로 저장한다(다이얼로그의 기존 저장 버튼과 엮지 않는다). 편집자 미만은 읽기만 한다
+ * - 편집자 미만은 읽기만 한다
  */
 import { useEffect, useState, type FormEvent } from 'react'
 import { AlertTriangle, EyeOff, Loader2, RefreshCw, Trash2 } from 'lucide-react'
@@ -45,6 +46,8 @@ export interface ModelSiteSectionProps {
   modelId: string
   /** Editor 이상 — 아니면 등록된 사이트를 읽기만 한다 */
   canEdit?: boolean
+  /** 다이얼로그 안에 둘 때 — 제목·안내와 위쪽 구분선을 다이얼로그 머리가 맡는다 */
+  embedded?: boolean
 }
 
 function isHttpUrl(value: string): boolean {
@@ -56,7 +59,7 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export function ModelSiteSection({ workspaceId, modelId, canEdit = true }: ModelSiteSectionProps) {
+export function ModelSiteSection({ workspaceId, modelId, canEdit = true, embedded = false }: ModelSiteSectionProps) {
   const { t } = useTranslation()
   const siteQuery = useModelSite(workspaceId, modelId)
   const saveMutation = useSaveModelSite(workspaceId, modelId)
@@ -137,13 +140,20 @@ export function ModelSiteSection({ workspaceId, modelId, canEdit = true }: Model
   }
 
   return (
-    <section aria-labelledby="model-site-heading" className="grid gap-3 border-t pt-4" data-testid="model-site-section">
-      <div>
-        <h3 id="model-site-heading" className="text-sm font-semibold">
-          {t('model.site.heading')}
-        </h3>
-        <p className="text-xs text-muted-foreground">{t('model.site.notice')}</p>
-      </div>
+    <section
+      aria-labelledby={embedded ? undefined : 'model-site-heading'}
+      aria-label={embedded ? t('model.site.heading') : undefined}
+      className={embedded ? 'grid gap-3' : 'grid gap-3 border-t pt-4'}
+      data-testid="model-site-section"
+    >
+      {embedded ? null : (
+        <div>
+          <h3 id="model-site-heading" className="text-sm font-semibold">
+            {t('model.site.heading')}
+          </h3>
+          <p className="text-xs text-muted-foreground">{t('model.site.notice')}</p>
+        </div>
+      )}
 
       {siteQuery.isPending ? (
         <Skeleton className="h-24 w-full" />

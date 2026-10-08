@@ -22,8 +22,8 @@ import {
 
 /** 목록 한 번에 붙이는 수 — 서버 기본값(Section 3.5)과 같다 */
 export const SHOWCASE_PAGE_SIZE = 12
-/** 랜딩 섹션의 카드 수(Section 3.5 — size=6 첫 페이지) */
-export const SHOWCASE_LANDING_SIZE = 6
+/** 랜딩 섹션의 카드 수(Section 3.5 — size=9 첫 페이지, 3열 3줄. v1.41 사용자 요청으로 6에서 늘렸다) */
+export const SHOWCASE_LANDING_SIZE = 9
 
 export const showcaseKeys = {
   all: ['showcase'] as const,

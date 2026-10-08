@@ -135,7 +135,8 @@ Crowfoot 的界面大致分为三类。
 
 点击行最右侧的“⋯”按钮，会出现 **{{model.list.menu.edit}}** 和 **{{model.list.menu.delete}}**。尚未连接数据库的文档还会出现 **{{model.list.menu.connect}}**。
 
-* 在 **{{model.list.menu.edit}}** 中只能修改名称和说明，不能更改数据库类型和版本。同一窗口下方的 **{{model.site.heading}}** 区域用于登记用此文档做成的网站（见 13.3 节）。
+* 在 **{{model.list.menu.edit}}** 中只能修改名称和说明，不能更改数据库类型和版本。
+* 点击行中的地球图标会打开 **{{model.site.heading}}** 对话框，用于登记用此文档做成的网站（见 13.3 节）。
 * **{{model.list.menu.connect}}** 中只显示与文档 DBMS 相同的连接。连接后即可在编辑器中使用同步数据库（见 10.4 节）。
 * 只有所有者才能删除文档。文档删除后无法恢复。
 
@@ -885,9 +886,15 @@ Crowfoot 的界面大致分为三类。
 
 如果用此文档做成了网站，可以登记它的地址，在起始页和网站展示中显示。文档不需要共享。
 
-1. 在工作区的 ERD 标签页中，点击文档行的三点按钮，选择 **{{model.list.menu.edit}}**。
-2. 在下方的 **{{model.site.heading}}** 区域输入网站地址。标题和一句话介绍留空时，使用网站上的内容。
+1. 在工作区的 ERD 标签页中，点击文档行的地球图标（**{{model.site.heading}}**），会打开对话框。
+2. 输入网站地址。标题和一句话介绍留空时，使用网站上的内容。
 3. 点击 **{{model.site.save}}**。获取页面缩略图和信息可能需要 30 秒左右。
+
+![文档行的地球图标](/guide-assets/zh/workspace-site-icon.webp)
+
+![做成的网站对话框 — 缩略图、标题、介绍以及重新获取和删除](/guide-assets/zh/workspace-site-dialog.webp)
+
+* 只有编辑者及以上角色可以登记和修改。查看权限只能查看已登记的网站。
 
 * 保存后会显示缩略图、网站图标、标题和介绍。可以修改标题和介绍后再次保存。
 * 即使没能获取缩略图，网站也会登记。原因显示在区域内，卡片上则改为显示用网站图标和名称绘制的图片。
@@ -896,6 +903,10 @@ Crowfoot 的界面大致分为三类。
 * 不能登记内网或私有地址。编辑者及以上角色可以登记、修改和删除。
 
 登记的网站会立即出现在起始页的 **{{landing.showcase.heading}}** 区域。选择该区域下方的 **{{landing.showcase.more}}**，可以用 **{{showcase.loadMore}}** 继续浏览所有已登记的网站。卡片上的 **{{showcase.card.open}}** 会在新窗口打开网站；如果文档正在共享，还可以用 **{{showcase.card.viewErd}}** 查看 ERD。
+
+![起始页的“用 Crowfoot 做成的网站”区域](/guide-assets/zh/landing-showcase.webp)
+
+![网站展示页面](/guide-assets/zh/showcase-page.webp)
 
 不合适的网站可以用卡片上的旗帜按钮举报。只有登录用户可以举报，举报累计 3 次后会自动从列表中隐藏。管理员确认后可以重新显示。
 

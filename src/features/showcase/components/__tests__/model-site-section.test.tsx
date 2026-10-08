@@ -1,10 +1,10 @@
 /**
- * 문서 정보 다이얼로그의 "만든 사이트" 칸 테스트 (08-core/19-site-showcase.md Section 3.1~3.4·6)
+ * 문서의 "만든 사이트" 다이얼로그 테스트 (08-core/19-site-showcase.md Section 3.1~3.4·6 — v1.41부터 행의 사이트 아이콘이 연다)
  *
  * given: 문서의 사이트 조회·등록·다시 가져오기·삭제 응답을 MSW로 정의
- * when: 문서 수정 다이얼로그를 열고 사이트 칸을 조작
+ * when: 만든 사이트 다이얼로그를 열고 조작
  * then: 저장 중 진행 문구 → 썸네일·캡처 실패 사유, 내부망 주소 거절 안내, 1분 제한(429) 안내,
- *       삭제 확인, PUT 본문(같은 주소의 설명 지우기는 ""), 이름·설명 폼은 따로 저장
+ *       삭제 확인, PUT 본문(같은 주소의 설명 지우기는 ""), 이름·설명 수정 다이얼로그에는 사이트 칸이 없다
  */
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,6 +17,7 @@ import { server } from '@/api/mocks/server'
 import type { ModelSummary } from '@/api/types'
 import { Toaster } from '@/components/ui/sonner'
 import { EditModelDialog } from '@/features/models/components/edit-model-dialog'
+import { ModelSiteDialog } from '@/features/showcase/components/model-site-dialog'
 import { renderWithProviders } from '@/test/test-app'
 
 const SITE_PATH = '/api/v1/core/workspaces/101/models/501/site'
@@ -56,7 +57,7 @@ function renderDialog(canEdit = true) {
       path="/"
       element={
         <>
-          <EditModelDialog model={MODEL} onOpenChange={() => {}} workspaceId="101" canEdit={canEdit} />
+          <ModelSiteDialog model={MODEL} onOpenChange={() => {}} workspaceId="101" canEdit={canEdit} />
           <Toaster />
         </>
       }
@@ -254,25 +255,14 @@ describe('만든 사이트 칸', () => {
     expect(within(section).queryByRole('button', { name: '다시 가져오기' })).not.toBeInTheDocument()
   })
 
-  it('이름·설명 폼은 사이트와 따로 저장한다 — 문서 저장은 사이트 API를 부르지 않는다', async () => {
-    let siteCalled = false
-    let patched: unknown = null
-    server.use(
-      http.put(SITE_PATH, () => {
-        siteCalled = true
-        return HttpResponse.json(ok({ response: SAVED }))
-      }),
-      http.patch('/api/v1/core/workspaces/101/models/501', async ({ request }) => {
-        patched = await request.json()
-        return new HttpResponse(null, { status: 204 })
-      }),
-    )
-    const user = userEvent.setup()
+  it('다이얼로그 제목에 문서 이름이 붙고, 이름·설명 수정 다이얼로그에는 사이트 칸이 없다(v1.41)', async () => {
     renderDialog()
+    expect(await screen.findByRole('heading', { name: '만든 사이트 — 블로그 ERD' })).toBeInTheDocument()
 
-    await siteSection()
-    await user.click(screen.getByRole('button', { name: '저장' }))
-    await waitFor(() => expect(patched).toEqual({ name: '블로그 ERD', description: null }))
-    expect(siteCalled).toBe(false)
+    renderWithProviders(
+      <Route path="/" element={<EditModelDialog model={MODEL} onOpenChange={() => {}} workspaceId="101" />} />,
+    )
+    await screen.findAllByRole('dialog')
+    expect(screen.getAllByTestId('model-site-section')).toHaveLength(1)
   })
 })

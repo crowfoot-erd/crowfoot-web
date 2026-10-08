@@ -1,7 +1,7 @@
 /**
  * 랜딩 "만든 사이트" 섹션 테스트 (08-core/19-site-showcase.md Section 6)
  *
- * given: 공개 목록(size=6) 응답을 MSW로 정의
+ * given: 공개 목록(size=9) 응답을 MSW로 정의
  * when: 랜딩 렌더
  * then: 공유 갤러리 아래에 카드와 "더보기"(/showcase), 빈 목록·실패면 섹션을 그리지 않는다
  */
@@ -32,7 +32,7 @@ describe('랜딩 — 만든 사이트', () => {
         return HttpResponse.json(
           ok({
             page: 0,
-            size: 6,
+            size: 9,
             totalPages: 1,
             totalCount: 1,
             responses: [
@@ -61,11 +61,11 @@ describe('랜딩 — 만든 사이트', () => {
     expect(within(section).getByText('예제 블로그')).toBeInTheDocument()
     expect(within(section).getByTestId('landing-showcase-more')).toHaveAttribute('href', '/showcase')
     expect(requests[0].get('page')).toBe('0')
-    expect(requests[0].get('size')).toBe('6')
+    expect(requests[0].get('size')).toBe('9')
 
-    // 공유 갤러리 다음에 온다
-    const gallery = await screen.findByTestId('landing-gallery')
-    expect(gallery.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // 제품 화면 슬라이드(롤링) 바로 위에 온다(v1.41)
+    const shots = screen.getByTestId('landing-shots')
+    expect(section.compareDocumentPosition(shots) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('등록된 사이트가 없으면 섹션을 그리지 않는다', async () => {
@@ -73,7 +73,7 @@ describe('랜딩 — 만든 사이트', () => {
     server.use(
       http.get('/api/v1/core/showcase/sites', () => {
         called = true
-        return HttpResponse.json(ok({ page: 0, size: 6, totalPages: 0, totalCount: 0, responses: [] }))
+        return HttpResponse.json(ok({ page: 0, size: 9, totalPages: 0, totalCount: 0, responses: [] }))
       }),
     )
     renderLanding()

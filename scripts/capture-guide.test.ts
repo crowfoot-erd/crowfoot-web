@@ -475,6 +475,25 @@ const APP_SCENES: Scene[] = [
   },
   { name: 'workspace-database', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=database`); await s.shot('workspace-database') } },
   {
+    name: 'workspace-site-dialog',
+    run: async (s) => {
+      await installShowcaseOverrides(s)
+      await goto(s, `/workspaces/${WS}`)
+      // 행의 지구본 아이콘 — 머리 행과 첫 행을 함께, 아이콘에 마우스를 올린 상태로
+      const row = s.page.locator('tbody tr').first()
+      const open = row.getByTestId('model-site-open')
+      await open.hover()
+      await s.page.waitForTimeout(300)
+      await s.shot('workspace-site-icon', { clip: union(s.page, [await s.page.locator('thead tr').first().boundingBox(), await row.boundingBox()], 8) })
+      await open.click()
+      const siteDialog = s.page.getByTestId('model-site-dialog')
+      await siteDialog.getByTestId('model-site-preview').waitFor()
+      await waitThumbnails(s, siteDialog)
+      await s.page.waitForTimeout(500)
+      await s.shot('workspace-site-dialog', { locator: siteDialog })
+    },
+  },
+  {
     name: 'connection-dialog',
     run: async (s) => {
       await goto(s, `/workspaces/${WS}?tab=database`)
@@ -1009,9 +1028,198 @@ const BROWSER_SCENES: Scene[] = [
   },
 ]
 
+/**
+ * 사이트 쇼케이스(v1.41) — 지어낸 사이트 아홉(시작 페이지 3×3). 하나는 썸네일이 없어 대체 그림이 나온다. 썸네일은 촬영 때 브라우저로 그린 가상의 사이트 화면(800×500)이다.
+ * 실제 회사·서비스의 이름이나 로고는 쓰지 않는다. 주소는 모두 example 도메인이다
+ */
+type ShowcaseLayout = 'blog' | 'admin' | 'notes' | 'calendar' | 'gallery' | 'chart'
+const SHOWCASE_SITES: { id: string; host: string; name: string; color: string; layout: ShowcaseLayout; db: string; share: boolean; noThumbnail?: boolean }[] = [
+  { id: '21', host: 'devlog.example.com', name: 'Dev Log', color: '#2563eb', layout: 'blog', db: 'postgresql', share: true },
+  { id: '22', host: 'shop-admin.example.net', name: 'Shop Admin', color: '#059669', layout: 'admin', db: 'mysql', share: false },
+  { id: '23', host: 'notes.example.org', name: 'Study Notes', color: '#7c3aed', layout: 'notes', db: 'postgresql', share: true },
+  { id: '24', host: 'rooms.example.com', name: 'Room Booking', color: '#ea580c', layout: 'calendar', db: 'mysql', share: false },
+  { id: '25', host: 'recipes.example.net', name: 'Daily Recipes', color: '#db2777', layout: 'gallery', db: 'postgresql', share: true },
+  { id: '26', host: 'fit.example.org', name: 'Workout Log', color: '#0891b2', layout: 'chart', db: 'mariadb', share: false },
+  { id: '27', host: 'bookclub.example.com', name: 'Book Club', color: '#b45309', layout: 'blog', db: 'postgresql', share: false },
+  { id: '28', host: 'petcare.example.net', name: 'Pet Care', color: '#16a34a', layout: 'admin', db: 'mysql', share: false, noThumbnail: true },
+  { id: '29', host: 'trips.example.org', name: 'Trip Planner', color: '#4f46e5', layout: 'gallery', db: 'postgresql', share: true },
+]
+/** [제목, 한 줄 소개, 문서 이름] — SHOWCASE_SITES와 같은 순서 */
+const SHOWCASE_TEXT: Record<Lang, [string, string, string][]> = {
+  ko: [
+    ['개발 일지', '배운 것과 삽질한 것을 적는 개인 블로그입니다', '블로그 ERD'],
+    ['동네 가게 관리자', '주문과 재고를 한 화면에서 봅니다', '쇼핑몰 관리 ERD'],
+    ['스터디 노트', '스터디 모임의 발표 자료와 노트를 모읍니다', '노트 서비스 ERD'],
+    ['회의실 예약', '사내 회의실을 시간 단위로 예약합니다', '예약 시스템 ERD'],
+    ['오늘의 레시피', '재료로 찾는 집밥 레시피 모음', '레시피 ERD'],
+    ['운동 기록장', '세트와 무게를 기록하고 주간 그래프로 봅니다', '운동 기록 ERD'],
+    ['독서 모임', '이달의 책과 모임 후기를 나눕니다', '독서 모임 ERD'],
+    ['반려동물 병원 예약', '진료 예약과 접종 기록을 관리합니다', '병원 예약 ERD'],
+    ['여행 계획표', '일정과 경비를 친구와 함께 짭니다', '여행 계획 ERD'],
+  ],
+  en: [
+    ['Dev Log', 'A personal blog about what I learned and broke', 'Blog ERD'],
+    ['Corner Shop Admin', 'Orders and stock on one screen', 'Shop admin ERD'],
+    ['Study Notes', 'Slides and notes from our study group', 'Notes service ERD'],
+    ['Room Booking', 'Book meeting rooms by the hour', 'Booking system ERD'],
+    ['Daily Recipes', 'Home recipes you can search by ingredient', 'Recipe ERD'],
+    ['Workout Log', 'Track sets and weights with weekly charts', 'Workout log ERD'],
+    ['Book Club', 'Monthly picks and meeting notes', 'Book club ERD'],
+    ['Pet Clinic Booking', 'Appointments and vaccination records', 'Clinic booking ERD'],
+    ['Trip Planner', 'Plan schedules and costs with friends', 'Trip planner ERD'],
+  ],
+  ja: [
+    ['開発日誌', '学んだことやハマったことを書く個人ブログです', 'ブログ ERD'],
+    ['街のお店の管理画面', '注文と在庫をひとつの画面で確認します', 'ショップ管理 ERD'],
+    ['勉強ノート', '勉強会の発表資料とノートをまとめます', 'ノートサービス ERD'],
+    ['会議室予約', '社内の会議室を時間単位で予約します', '予約システム ERD'],
+    ['今日のレシピ', '材料から探せる家庭料理のレシピ集', 'レシピ ERD'],
+    ['トレーニング記録', 'セットと重量を記録して週ごとのグラフで確認', 'トレーニング記録 ERD'],
+    ['読書会', '今月の本と読書会の感想を共有します', '読書会 ERD'],
+    ['ペット病院予約', '診療予約と予防接種の記録を管理します', '病院予約 ERD'],
+    ['旅行プランナー', '日程と費用を友だちと一緒に立てます', '旅行計画 ERD'],
+  ],
+  zh: [
+    ['开发日志', '记录学习心得和踩坑经历的个人博客', '博客 ERD'],
+    ['小店管理后台', '在一个页面查看订单和库存', '商城管理 ERD'],
+    ['学习笔记', '汇集学习小组的分享资料和笔记', '笔记服务 ERD'],
+    ['会议室预订', '按小时预订公司会议室', '预订系统 ERD'],
+    ['今日食谱', '按食材查找的家常菜谱合集', '食谱 ERD'],
+    ['健身记录', '记录组数和重量，按周查看图表', '健身记录 ERD'],
+    ['读书会', '分享本月书目和读书会心得', '读书会 ERD'],
+    ['宠物医院预约', '管理就诊预约和疫苗记录', '医院预约 ERD'],
+    ['旅行计划', '和朋友一起安排行程和费用', '旅行计划 ERD'],
+  ],
+}
+
+const showcaseFavicon = (name: string, color: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="${color}"/><text x="16" y="22" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">${name[0]}</text></svg>`)}`
+
+function showcaseSites(lang: Lang) {
+  return SHOWCASE_SITES.map((site, index) => {
+    const [title, description, modelName] = SHOWCASE_TEXT[lang][index]
+    return {
+      siteId: site.id, url: `https://${site.host}`, title, description, siteName: site.name,
+      faviconUrl: showcaseFavicon(site.name, site.color),
+      thumbnailUrl: site.noThumbnail ? null : `/api/v1/core/showcase/sites/${site.id}/thumbnail?v=1791444000`,
+      modelName, databaseType: site.db, ...(site.share ? { shareToken: `Sh4reT0ken0fS1te${site.id}aaaaaa` } : {}),
+      createdAt: `2026-10-0${8 - Math.floor(index / 3)}T0${index}:00:00Z`,
+    }
+  })
+}
+
+/** 가상의 사이트 화면 — 머리 띠, 메뉴, 큰 제목과 배치별 본문 */
+function showcaseMockup(site: (typeof SHOWCASE_SITES)[number]): string {
+  const c = site.color
+  const bar = (w: number, h = 10, color = '#e5e7eb') => `<div style="width:${w}%;height:${h}px;border-radius:${h / 2}px;background:${color}"></div>`
+  const lines = (n: number, widths = [92, 80, 86, 60]) => Array.from({ length: n }, (_, i) => bar(widths[i % widths.length])).join('')
+  let body = ''
+  switch (site.layout) {
+    case 'blog':
+      body = `<div style="display:grid;gap:18px">${[0, 1, 2].map((i) => `<div style="display:flex;gap:18px;align-items:center"><div style="width:150px;height:84px;border-radius:10px;background:${c}${['33', '22', '18'][i]}"></div><div style="flex:1;display:grid;gap:9px">${bar(55, 14, '#111827')}${lines(2)}</div></div>`).join('')}</div>`
+      break
+    case 'admin':
+      body = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">${['128', '42', '7'].map((v) => `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px"><div style="font-size:12px;color:#6b7280">●●●</div><div style="font-size:28px;font-weight:800;color:${c}">${v}</div></div>`).join('')}</div><div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">${[0, 1, 2, 3, 4].map((i) => `<div style="display:flex;gap:14px;align-items:center;padding:10px 14px;${i === 0 ? 'background:#f3f4f6' : 'border-top:1px solid #f3f4f6'}">${bar(18)}${bar(30)}${bar(14)}<div style="margin-left:auto;width:54px;height:18px;border-radius:9px;background:${i % 2 ? '#fde68a' : c + '33'}"></div></div>`).join('')}</div>`
+      break
+    case 'notes':
+      body = `<div style="display:flex;gap:22px"><div style="width:170px;display:grid;gap:12px;align-content:start">${[0, 1, 2, 3, 4].map((i) => `<div style="padding:8px 10px;border-radius:8px;${i === 1 ? `background:${c}22` : ''}">${bar(i === 1 ? 80 : 65, 9, i === 1 ? c : '#d1d5db')}</div>`).join('')}</div><div style="flex:1;display:grid;gap:11px;align-content:start">${bar(50, 18, '#111827')}${lines(4)}<div style="height:6px"></div>${bar(35, 14, c)}${lines(3)}</div></div>`
+      break
+    case 'calendar':
+      body = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">${Array.from({ length: 21 }, (_, i) => `<div style="height:62px;border:1px solid #e5e7eb;border-radius:8px;padding:6px;display:grid;gap:5px;align-content:start"><div style="font-size:11px;color:#9ca3af">${i + 1}</div>${[2, 5, 8, 9, 13, 16, 19].includes(i) ? `<div style="height:14px;border-radius:4px;background:${c}${i % 3 ? '55' : 'aa'}"></div>` : ''}</div>`).join('')}</div>`
+      break
+    case 'gallery':
+      body = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">${['55', '33', '44', '28', '4d', '22'].map((a) => `<div><div style="height:92px;border-radius:12px;background:${c}${a}"></div><div style="margin-top:8px;display:grid;gap:6px">${bar(70, 10, '#374151')}${bar(45)}</div></div>`).join('')}</div>`
+      break
+    case 'chart':
+      body = `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px"><div style="display:flex;align-items:flex-end;gap:16px;height:190px">${[40, 62, 48, 75, 58, 88, 70].map((h) => `<div style="flex:1;height:${h}%;border-radius:8px 8px 0 0;background:${c}${h > 70 ? '' : '88'}"></div>`).join('')}</div><div style="display:flex;gap:16px;margin-top:10px">${Array.from({ length: 7 }, () => `<div style="flex:1">${bar(60, 8)}</div>`).join('')}</div></div>`
+      break
+  }
+  return `<!doctype html><html><body style="margin:0;width:800px;height:500px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:#fff">
+<div style="height:58px;display:flex;align-items:center;gap:12px;padding:0 32px;border-bottom:1px solid #e5e7eb">
+<div style="width:30px;height:30px;border-radius:8px;background:${c};color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">${site.name[0]}</div>
+<div style="font-weight:700;font-size:18px;color:#111827">${site.name}</div>
+<div style="margin-left:auto;display:flex;gap:22px;align-items:center">${bar(0, 0)}<div style="width:48px">${bar(100, 9, '#d1d5db')}</div><div style="width:48px">${bar(100, 9, '#d1d5db')}</div><div style="width:48px">${bar(100, 9, '#d1d5db')}</div><div style="width:76px;height:30px;border-radius:15px;background:${c}"></div></div>
+</div>
+<div style="padding:26px 32px 0"><div style="font-size:30px;font-weight:800;color:#111827;margin-bottom:6px">${site.name}</div><div style="width:46%;margin-bottom:22px">${bar(100, 10, '#d1d5db')}</div>${body}</div>
+</body></html>`
+}
+
+/** 썸네일 그림 — 장면마다 다시 그리지 않도록 한 번만 만든다 */
+const showcaseThumbnails = new Map<string, Buffer>()
+async function renderShowcaseThumbnails(browser: Browser) {
+  if (showcaseThumbnails.size > 0) return
+  const context = await browser.newContext({ viewport: { width: 800, height: 500 }, deviceScaleFactor: 1 })
+  const page = await context.newPage()
+  for (const site of SHOWCASE_SITES.filter((item) => !item.noThumbnail)) {
+    await page.setContent(showcaseMockup(site))
+    await page.waitForTimeout(200) // 첫 그림이 배치 전에 찍혀 머리 띠가 아래에 한 번 더 그려진 적이 있다
+    showcaseThumbnails.set(site.id, await page.screenshot({ type: 'jpeg', quality: 88 }))
+  }
+  await context.close()
+}
+
+/** 쇼케이스 덮어쓰기 — 공개 목록, 문서의 사이트(첫 사이트), 썸네일 그림 */
+const showcaseInstalled = new WeakSet<Session>()
+async function installShowcaseOverrides(s: Session) {
+  if (showcaseInstalled.has(s)) return
+  showcaseInstalled.add(s)
+  await renderShowcaseThumbnails(s.context.browser()!)
+  const sites = showcaseSites(s.lang)
+  s.overrides.set('/core/showcase/sites', (method) =>
+    method === 'GET' ? { json: ok({ page: 0, size: 12, totalPages: 2, responses: sites, totalCount: 14 }) } : null,
+  )
+  // 첫 행 문서가 어느 것이든 같은 사이트를 보인다
+  s.overrides.set('/site', (method) => {
+    if (method !== 'GET') return null
+    const { shareToken: _shareToken, modelName: _modelName, databaseType: _databaseType, ...site } = sites[0]
+    return { json: ok({ response: { ...site, capturedAt: '2026-10-08T07:40:00Z', captureError: null, hidden: false, reportCount: 0, updatedAt: '2026-10-08T07:40:00Z' } }) }
+  })
+  // 나중에 건 경로가 먼저 걸린다 — 공통 /api/v1/ 가로채기보다 앞선다
+  await s.context.route(/\/api\/v1\/core\/showcase\/sites\/\d+\/thumbnail/, async (route) => {
+    const id = /sites\/(\d+)\/thumbnail/.exec(route.request().url())![1]
+    const image = showcaseThumbnails.get(id)
+    if (image) await route.fulfill({ status: 200, contentType: 'image/jpeg', body: image })
+    else await route.fulfill({ status: 404 })
+  })
+}
+
+/** 썸네일 그림이 다 그려질 때까지 기다린다 */
+const waitThumbnails = (s: Session, scope: ReturnType<Page['locator']>) =>
+  scope.evaluate(async (root) => {
+    const images = [...root.querySelectorAll('img')]
+    await Promise.all(images.map((image) => (image.complete ? null : new Promise((done) => { image.onload = done; image.onerror = done }))))
+  })
+
 /** 공개 화면 장면 — 로그인하지 않은 상태 */
 const GUEST_SCENES: Scene[] = [
   { name: 'login', run: async (s) => { await goto(s, '/login'); await s.shot('login', { clip: { x: 260, y: 150, width: 600, height: 380 } }) } },
+  {
+    name: 'landing-showcase',
+    run: async (s) => {
+      await installShowcaseOverrides(s)
+      await goto(s, '/')
+      const section = s.page.getByTestId('landing-showcase')
+      await section.waitFor()
+      // 카드 테두리가 그림 가장자리에서 잘리지 않게 둘레를 조금 띄운다
+      await section.evaluate((element) => { (element as HTMLElement).style.padding = '12px' })
+      await section.scrollIntoViewIfNeeded()
+      await waitThumbnails(s, section)
+      await s.page.waitForTimeout(400)
+      await s.shot('landing-showcase', { locator: section })
+    },
+  },
+  {
+    name: 'showcase-page',
+    run: async (s) => {
+      await installShowcaseOverrides(s)
+      await goto(s, '/showcase')
+      const main = s.page.locator('main')
+      await s.page.getByTestId('showcase-list').waitFor()
+      await waitThumbnails(s, main)
+      await s.page.waitForTimeout(400)
+      await s.shot('showcase-page', { locator: main })
+    },
+  },
 ]
 
 /** 예시 문서의 상세 응답 */

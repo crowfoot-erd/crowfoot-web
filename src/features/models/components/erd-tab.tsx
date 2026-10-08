@@ -9,7 +9,7 @@
  *   연결된 문서는 DB 종류 배지에 링크 표시로 구분한다
  */
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Ellipsis, Link2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Ellipsis, Globe, Link2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -35,6 +35,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatDateTime } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
 import type { ModelSummary } from '@/api/types'
+import { ModelSiteDialog } from '@/features/showcase'
 import { DatabaseImportButton } from '@/features/connections'
 import {
   ConnectDatabaseDialog,
@@ -60,6 +61,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
   const [keyword, setKeyword] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<ModelSummary | null>(null)
+  const [siteFor, setSiteFor] = useState<ModelSummary | null>(null)
   const [deleting, setDeleting] = useState<ModelSummary | null>(null)
   const [connecting, setConnecting] = useState<ModelSummary | null>(null)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1)
@@ -191,6 +193,17 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
+                      onClick={() => setSiteFor(model)}
+                      aria-label={t('model.list.site', { name: model.name })}
+                      title={t('model.site.heading')}
+                      data-testid="model-site-open"
+                    >
+                      <Globe aria-hidden className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openModel(model)}
                       aria-label={t('model.list.open', { name: model.name })}
                     >
@@ -295,9 +308,11 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
       )}
 
       <CreateModelDialog open={createOpen} onOpenChange={setCreateOpen} workspaceId={workspaceId} />
-      <EditModelDialog
-        model={editing}
-        onOpenChange={(open) => !open && setEditing(null)}
+      <EditModelDialog model={editing} onOpenChange={(open) => !open && setEditing(null)} workspaceId={workspaceId} />
+      {/* 만든 사이트 — 행의 사이트 아이콘이 연다(08-core/19-site-showcase.md Section 6, v1.41). 편집자 미만은 읽기만 */}
+      <ModelSiteDialog
+        model={siteFor}
+        onOpenChange={(open) => !open && setSiteFor(null)}
         workspaceId={workspaceId}
         canEdit={canCreate}
       />

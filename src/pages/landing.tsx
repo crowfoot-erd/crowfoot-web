@@ -2,11 +2,11 @@
  * 랜딩/소개 페이지 — 게스트의 / 첫 화면 (오픈소스 공개 대응, 2026-09-15)
  *
  * - 히어로(2행 강조) + 3단계 흐름(그리기→다듬기→실행) + 특징 6종 + 통합 공유 갤러리(인기 3 박스+최근, 새 창)
- *   + 만든 사이트(쇼케이스 6, 08-core/19-site-showcase.md Section 6) + 최근 릴리스(공개 — 문서 하단, 새 창)
+ *   + 최근 릴리스(공개 — 문서 하단, 새 창). 만든 사이트(쇼케이스 9, 08-core/19-site-showcase.md Section 6)는 슬라이드 바로 위
  * - 인증 상태에서도 열람 가능(리다이렉트 없음) — CTA는 로그인/앱 진입으로 전환, 헤더에 앱 셸과 같은 사용자 메뉴(정보·로그아웃)
  * - 헤더 우측 언어·테마 토글(로그인 버튼 옆) — 우하단 고정은 발견성이 낮아 이동(v1.16, 글로벌 진입점)
  */
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -193,6 +193,20 @@ export function LandingPage() {
     return () => window.clearInterval(timer)
   }, [hovering, picked])
   const shotIndex = LANDING_SLIDES.indexOf(shot)
+  // 슬라이드 높이 — 지금 보이는 장의 높이에 맞춘다(v1.41 사용자 요청). 장들이 가로로 늘어선 트랙이라 그대로 두면 모든 장이
+  // 가장 긴 장(모바일에서는 글이 많은 첫 장)의 높이를 따라가, 가로로 긴 화면 그림의 위아래에 빈 공간이 생겼다
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [shotHeight, setShotHeight] = useState<number | null>(null)
+  useEffect(() => {
+    const slide = trackRef.current?.children[shotIndex] as HTMLElement | undefined
+    if (!slide) return
+    const measure = () => setShotHeight(slide.offsetHeight > 0 ? slide.offsetHeight : null)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(slide)
+    return () => observer.disconnect()
+  }, [shotIndex])
   /** 사용 가이드 — 새 창으로 연다. 지금 언어의 주소로 보낸다(ko는 접두 없음) */
   const guideHref = currentLanguage() === 'ko' ? '/guide' : `/${currentLanguage()}/guide`
   // 랜딩은 브랜드 선행 제목(다른 페이지의「화면 제목 — Crowfoot」규칙 예외).
@@ -211,7 +225,7 @@ export function LandingPage() {
   const galleryItems = gallery?.items ?? []
   const popularItems = galleryItems.slice(0, 3)
   const recentItems = galleryItems.slice(3)
-  // 만든 사이트 — 서버가 최근 등록순 6건(size=6)을 내린다. 빈 목록·실패는 섹션을 숨긴다
+  // 만든 사이트 — 서버가 최근 등록순 9건(size=9)을 내린다. 빈 목록·실패는 섹션을 숨긴다
   const { data: showcase } = useLandingShowcase()
   const showcaseItems = showcase?.items ?? []
   const { data: releaseNotes } = usePublicReleaseNotes()
@@ -293,6 +307,30 @@ export function LandingPage() {
           </ul>
         </section>
 
+        {/* 만든 사이트 — 제품 화면 슬라이드(롤링) 바로 위(08-core/19-site-showcase.md Section 6 — v1.41 사용자 요청으로
+            갤러리 아래에서 올리고 9개로 늘렸다). 등록된 사이트가 있을 때만
+            (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙). 공유하지 않은 문서도 사이트 카드는 나온다 */}
+        {showcaseItems.length > 0 && (
+          <section aria-labelledby="landing-showcase" className="w-full" data-testid="landing-showcase">
+            <h2 id="landing-showcase" className={SECTION_HEADING}>
+              {t('landing.showcase.heading')}
+              <span aria-hidden className={SECTION_BAR} />
+            </h2>
+            <ShowcaseGrid sites={showcaseItems} testId="landing-showcase-list" />
+            {/* 전체 목록 — "더 보기"로 다음 페이지를 붙이는 화면으로 간다 */}
+            <p className="mt-6 text-center text-sm">
+              <Link
+                to={publicPath('/showcase')}
+                data-testid="landing-showcase-more"
+                className={MORE_LINK}
+              >
+                {t('landing.showcase.more')}
+                <ArrowUpRight aria-hidden className="size-4" />
+              </Link>
+            </p>
+          </section>
+        )}
+
         {/* 슬라이드 — 히어로 바로 아래. 첫 장이 AI 연동(MCP) 소개다(2026-10-02 사용자 요청 — MCP를 강조하고 화면 슬라이드와 합친다) */}
         <section className="w-full" aria-label={t('landing.shots.label')}>
           {/* 제품 화면 — 슬라이드. 화면 한 장을 크게 보여 주고 몇 초마다 다음 화면으로 넘긴다. 위의 탭으로 직접 고른다
@@ -329,11 +367,15 @@ export function LandingPage() {
             </div>
             {/* 슬라이드 트랙 — 첫 장은 AI 연동(MCP) 소개, 그 뒤로 제품 화면 넷. 가로로 이어 놓고 옆으로 민다
                 (끊기지 않게 transform 전환). 보이지 않는 장은 inert로 두어 초점이 가지 않는다 */}
-            <div className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/30 shadow-xl shadow-emerald-500/10">
+            <div
+              className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-muted/30 shadow-xl shadow-emerald-500/10 transition-[height] duration-700 ease-in-out motion-reduce:transition-none"
+              style={shotHeight === null ? undefined : { height: shotHeight }}
+            >
               <div
+                ref={trackRef}
                 data-testid="landing-shots-track"
                 data-index={shotIndex}
-                className="flex transition-transform duration-700 ease-in-out motion-reduce:transition-none"
+                className="flex items-start transition-transform duration-700 ease-in-out motion-reduce:transition-none"
                 style={{ transform: `translateX(-${shotIndex * 100}%)` }}
               >
                 {/* 첫 장 — AI와 함께 설계(MCP — v1.31·v1.32). 요청과 결과의 예시를 대화 모양으로 보여 준다 */}
@@ -649,28 +691,6 @@ export function LandingPage() {
           </section>
         )}
 
-        {/* 만든 사이트 — 공유 갤러리 아래(08-core/19-site-showcase.md Section 6). 등록된 사이트가 있을 때만
-            (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙). 공유하지 않은 문서도 사이트 카드는 나온다 */}
-        {showcaseItems.length > 0 && (
-          <section aria-labelledby="landing-showcase" className="w-full" data-testid="landing-showcase">
-            <h2 id="landing-showcase" className={SECTION_HEADING}>
-              {t('landing.showcase.heading')}
-              <span aria-hidden className={SECTION_BAR} />
-            </h2>
-            <ShowcaseGrid sites={showcaseItems} testId="landing-showcase-list" />
-            {/* 전체 목록 — "더 보기"로 다음 페이지를 붙이는 화면으로 간다 */}
-            <p className="mt-6 text-center text-sm">
-              <Link
-                to={publicPath('/showcase')}
-                data-testid="landing-showcase-more"
-                className={MORE_LINK}
-              >
-                {t('landing.showcase.more')}
-                <ArrowUpRight aria-hidden className="size-4" />
-              </Link>
-            </p>
-          </section>
-        )}
 
         {/* 최근 릴리스 — 문서 하단(갤러리 뒤). 공개 릴리스 노트가 있을 때만 (조회 중·빈 목록·실패는 조용히 숨김, 갤러리와 같은 규칙) */}
         {releaseNoteItems.length > 0 && (

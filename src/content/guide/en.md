@@ -135,7 +135,8 @@ A workspace has six tabs below its name.
 
 Click the three-dot menu at the right end of a row to see **{{model.list.menu.edit}}** and **{{model.list.menu.delete}}**. Documents that are not connected to a database also show **{{model.list.menu.connect}}**.
 
-* **{{model.list.menu.edit}}** changes only the name and description. The database type and version cannot be changed. The **{{model.site.heading}}** area at the bottom of the same dialog registers a site built with the document (section 13.3).
+* **{{model.list.menu.edit}}** changes only the name and description. The database type and version cannot be changed.
+* The globe icon on a row opens the **{{model.site.heading}}** dialog, where you register a site built with the document (section 13.3).
 * **{{model.list.menu.connect}}** lists only connections with the same DBMS as the document. Once connected, you can use Sync DB in the editor (section 10.4).
 * Only the owner can delete a document. A deleted document cannot be restored.
 
@@ -885,9 +886,15 @@ The **{{shareViewer.tab.comments}}** tab at the bottom of the editor collects th
 
 If you built a site with this document, register its address to show it on the start page and in the site showcase. The document does not need to be shared.
 
-1. In the workspace's ERD tab, click the three-dot button on the document row and choose **{{model.list.menu.edit}}**.
-2. Enter the site address in the **{{model.site.heading}}** area at the bottom. Leave the title and short description empty to use the values from the site.
+1. In the workspace's ERD tab, click the globe icon (**{{model.site.heading}}**) on the document row. A dialog opens.
+2. Enter the site address. Leave the title and short description empty to use the values from the site.
 3. Click **{{model.site.save}}**. Fetching the screenshot and details can take about 30 seconds.
+
+![Globe icon on the document row](/guide-assets/en/workspace-site-icon.webp)
+
+![Site dialog — screenshot, title, description, refetch and delete](/guide-assets/en/workspace-site-dialog.webp)
+
+* Only editors and above can register and edit a site. With view access you can only see the registered site.
 
 * After saving, the screenshot, favicon, title, and description appear. You can edit the title and description and save again.
 * The site is registered even if the screenshot cannot be fetched. The reason appears in the area, and cards show a picture drawn from the favicon and name instead.
@@ -896,6 +903,10 @@ If you built a site with this document, register its address to show it on the s
 * Internal or private addresses cannot be registered. Editors and above can register, edit, and delete a site.
 
 A registered site appears right away in the **{{landing.showcase.heading}}** section of the start page. Click **{{landing.showcase.more}}** under the section to browse every registered site, adding more with **{{showcase.loadMore}}**. **{{showcase.card.open}}** on a card opens the site in a new window, and if the document is shared, **{{showcase.card.viewErd}}** shows its ERD.
+
+![Sites built with Crowfoot section on the start page](/guide-assets/en/landing-showcase.webp)
+
+![Site showcase page](/guide-assets/en/showcase-page.webp)
 
 Report an inappropriate site with the flag button on its card. Only signed-in users can report, and a site is hidden from the list automatically after 3 reports. An administrator can review it and show it again.
 

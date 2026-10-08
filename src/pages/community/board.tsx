@@ -107,7 +107,8 @@ export function CommunityBoardPage({ board }: CommunityBoardPageProps) {
         <>
           <p className="text-sm text-muted-foreground">{t('common.total', { count: posts.data.totalCount })}</p>
           <div className="rounded-lg border">
-            <Table>
+            {/* 고정 레이아웃 — 긴 제목이 표를 넓혀 레이아웃을 깨지 않게 제목 칸을 남는 폭에 맞추고 말줄임한다(v1.41) */}
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('community.board.table.title')}</TableHead>
@@ -119,10 +120,11 @@ export function CommunityBoardPage({ board }: CommunityBoardPageProps) {
               <TableBody>
                 {posts.data.items.map((post) => (
                   <TableRow key={post.postId}>
-                    <TableCell>
+                    <TableCell className="max-w-0">
                       <Link
                         to={`/community/posts/${post.postId}`}
-                        className="font-medium underline-offset-3 hover:underline"
+                        title={post.title}
+                        className="block truncate font-medium underline-offset-3 hover:underline"
                       >
                         {post.title}
                       </Link>
