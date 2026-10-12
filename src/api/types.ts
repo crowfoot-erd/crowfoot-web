@@ -216,6 +216,8 @@ export interface ModelSummary {
   createdBy: { userId: string; name: string } | null
   createdAt: string
   updatedAt: string
+  /** 만든 사이트가 등록돼 있는가 — 목록 행의 사이트 아이콘 색(v1.42). 이전 응답에는 없다 */
+  hasSite?: boolean
 }
 
 /** 모델 전체 — 생성·상세 응답 (content 포함) */

@@ -52,6 +52,34 @@ describe('ERD 탭', () => {
     expect(screen.getByText('결제 도메인 1차')).toBeVisible()
   })
 
+  it('사이트가 등록된 문서는 행의 지구본 아이콘에 색과 "등록됨" 안내가 붙는다(v1.42)', async () => {
+    server.use(
+      http.get('/api/v1/core/workspaces/101/models', () =>
+        HttpResponse.json(
+          ok({
+            page: 1,
+            size: 20,
+            totalPages: 1,
+            totalCount: 2,
+            responses: [
+              { modelId: '501', workspaceId: '101', name: '주문 서비스 ERD', description: null, databaseType: 'postgresql', sourceConnectionId: null, version: 3, createdBy: null, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', hasSite: true },
+              { modelId: '502', workspaceId: '101', name: '회원 서비스 ERD', description: null, databaseType: 'mysql', sourceConnectionId: null, version: 1, createdBy: null, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', hasSite: false },
+            ],
+          }),
+        ),
+      ),
+    )
+    renderErdTab()
+
+    await screen.findByText('주문 서비스 ERD')
+    const [withSite, withoutSite] = screen.getAllByTestId('model-site-open')
+    expect(withSite).toHaveAttribute('data-has-site', 'true')
+    expect(withSite).toHaveAttribute('title', '만든 사이트 — 등록됨')
+    expect(withSite.querySelector('svg')).toHaveClass('text-emerald-600')
+    expect(withoutSite).not.toHaveAttribute('data-has-site')
+    expect(withoutSite.querySelector('svg')).not.toHaveClass('text-emerald-600')
+  })
+
   it('filters documents by keyword after debounce', async () => {
     renderErdTab()
     await screen.findByText('주문 서비스 ERD')

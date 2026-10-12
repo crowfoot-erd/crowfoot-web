@@ -752,6 +752,7 @@
       },
       "open": "{{name}} 문서 열기",
       "site": "{{name}} 만든 사이트",
+      "siteRegistered": "만든 사이트 — 등록됨",
       "actions": "{{name}} 문서 작업",
       "menu": {
         "connect": "데이터베이스에 연결",

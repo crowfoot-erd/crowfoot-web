@@ -752,6 +752,7 @@
       },
       "open": "Open {{name}}",
       "site": "Site built with {{name}}",
+      "siteRegistered": "Site built with this document — registered",
       "actions": "Actions for {{name}}",
       "menu": {
         "connect": "Connect to database",

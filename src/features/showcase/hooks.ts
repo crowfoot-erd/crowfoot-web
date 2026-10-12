@@ -46,10 +46,20 @@ export function useModelSite(workspaceId: string, modelId: string | null) {
   })
 }
 
-/** 문서의 사이트가 바뀐 뒤 — 공개·관리자 목록을 다시 읽게 한다 */
-function invalidateLists(queryClient: ReturnType<typeof useQueryClient>) {
+/**
+ * 문서의 사이트가 바뀐 뒤 — 공개·관리자 목록과 워크스페이스 문서 목록(행의 사이트 아이콘 표시 — hasSite, v1.42)을
+ * 다시 읽게 한다. 문서 상세(에디터) 캐시는 건드리지 않는다
+ */
+function invalidateLists(queryClient: ReturnType<typeof useQueryClient>, workspaceId?: string) {
   void queryClient.invalidateQueries({ queryKey: showcaseKeys.public })
   void queryClient.invalidateQueries({ queryKey: showcaseKeys.adminAll })
+  if (workspaceId === undefined) return
+  void queryClient.invalidateQueries({
+    predicate: (query) => {
+      const [scope, id, kind, sub] = query.queryKey
+      return scope === 'workspaces' && id === workspaceId && kind === 'models' && sub !== 'detail'
+    },
+  })
 }
 
 /** 저장·다시 가져오기 응답(사이트 객체)을 문서 캐시에 바로 넣고, 공개 목록은 다시 읽게 한다 */
@@ -63,7 +73,7 @@ function useSiteMutation<TVariables>(
     mutationFn,
     onSuccess: (site) => {
       if (site) queryClient.setQueryData(showcaseKeys.modelSite(workspaceId, modelId), site)
-      invalidateLists(queryClient)
+      invalidateLists(queryClient, workspaceId)
     },
   })
 }
@@ -82,7 +92,7 @@ export function useDeleteModelSite(workspaceId: string, modelId: string) {
     mutationFn: () => deleteModelSite(workspaceId, modelId),
     onSuccess: () => {
       queryClient.setQueryData(showcaseKeys.modelSite(workspaceId, modelId), null)
-      invalidateLists(queryClient)
+      invalidateLists(queryClient, workspaceId)
     },
   })
 }

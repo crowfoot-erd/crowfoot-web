@@ -195,10 +195,12 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                       size="sm"
                       onClick={() => setSiteFor(model)}
                       aria-label={t('model.list.site', { name: model.name })}
-                      title={t('model.site.heading')}
+                      title={model.hasSite ? t('model.list.siteRegistered') : t('model.site.heading')}
                       data-testid="model-site-open"
+                      data-has-site={model.hasSite ? 'true' : undefined}
                     >
-                      <Globe aria-hidden className="h-4 w-4" />
+                      {/* 사이트가 등록된 문서는 아이콘에 색을 입힌다 — 어느 문서에 사이트가 있는지 목록에서 바로 본다(v1.42) */}
+                      <Globe aria-hidden className={model.hasSite ? 'h-4 w-4 text-emerald-600 dark:text-emerald-400' : 'h-4 w-4'} />
                     </Button>
                     <Button
                       type="button"

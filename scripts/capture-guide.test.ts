@@ -1168,6 +1168,12 @@ async function installShowcaseOverrides(s: Session) {
   s.overrides.set('/core/showcase/sites', (method) =>
     method === 'GET' ? { json: ok({ page: 0, size: 12, totalPages: 2, responses: sites, totalCount: 14 }) } : null,
   )
+  // 첫 행 문서에는 사이트가 등록돼 있다 — 행의 지구본 아이콘에 색이 든다(v1.42 hasSite)
+  s.overrides.set(`/workspaces/${WS}/models`, (method) => {
+    if (method !== 'GET') return null
+    const responses = fixtures.models.responses.map((model, index) => ({ ...model, hasSite: index === 0 }))
+    return { json: ok({ page: 1, size: 100, totalPages: 1, totalCount: responses.length, responses }) }
+  })
   // 첫 행 문서가 어느 것이든 같은 사이트를 보인다
   s.overrides.set('/site', (method) => {
     if (method !== 'GET') return null

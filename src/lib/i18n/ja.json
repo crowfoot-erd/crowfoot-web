@@ -752,6 +752,7 @@
       },
       "open": "{{name}}を開く",
       "site": "{{name}} の作ったサイト",
+      "siteRegistered": "作ったサイト — 登録済み",
       "actions": "{{name}}の操作",
       "menu": {
         "connect": "データベースに接続",
