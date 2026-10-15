@@ -78,6 +78,59 @@ function criteriaLines(text: string): string[] {
     .filter((line) => line.length > 0)
 }
 
+/** 수용 기준 입력의 문제 — 번역 키와 상한. 문제가 없으면 null */
+function criteriaProblem(
+  lines: readonly string[],
+  checks: Record<string, ErdCriterionCheck>,
+): { key: string; max: number } | null {
+  if (lines.length > CRITERIA_LIMIT) return { key: 'model.requirements.criteria.tooMany', max: CRITERIA_LIMIT }
+  if (lines.some((line) => line.length > CRITERION_MAX_LENGTH)) {
+    return { key: 'model.requirements.criteria.tooLong', max: CRITERION_MAX_LENGTH }
+  }
+  if (lines.some((line) => (checks[line]?.sql.trim().length ?? 0) > CHECK_SQL_MAX_LENGTH)) {
+    return { key: 'model.requirements.checks.dialog.sqlTooLong', max: CHECK_SQL_MAX_LENGTH }
+  }
+  return null
+}
+
+/** 저장할 확인 — SQL이 비어 있으면 없다. 기대값을 비우면 "0" */
+function savedCheck(check: ErdCriterionCheck | undefined): ErdCriterionCheck | undefined {
+  const sql = check?.sql.trim() ?? ''
+  if (!check || sql.length === 0) return undefined
+  return { sql, expect: check.expect.trim() || '0' }
+}
+
+/** 수용 기준 — 같은 문구의 항목은 id와 체크를 이어받는다. 확인 SQL은 지금 입력을 따른다(비우면 뗀다) */
+function buildCriteria(
+  lines: readonly string[],
+  previous: readonly ErdRequirementCriterion[],
+  checks: Record<string, ErdCriterionCheck>,
+): ErdRequirementCriterion[] {
+  return lines.map((text) => {
+    const kept = previous.find((criterion) => criterion.text === text)
+    const base: ErdRequirementCriterion = { id: kept?.id ?? newId(), text, done: kept?.done ?? false }
+    const check = savedCheck(checks[text])
+    return check ? { ...base, check } : base
+  })
+}
+
+/** 고친 요구사항과 원래 요구사항의 차이 — 바뀐 항목만 담는다 */
+function requirementPatchOf(
+  requirement: ErdRequirement,
+  next: RequirementDraft,
+  criteria: ErdRequirementCriterion[],
+): RequirementPatch {
+  const patch: RequirementPatch = {}
+  if (next.title !== requirement.title) patch.title = next.title
+  if (next.description !== requirement.description) patch.description = next.description
+  if (next.areaId !== requirement.areaId) patch.areaId = next.areaId
+  if (next.scope !== requirement.scope) patch.scope = next.scope
+  if (next.status !== requirement.status) patch.status = next.status
+  if (next.tableIds.join('\0') !== requirement.tableIds.join('\0')) patch.tableIds = next.tableIds
+  if (JSON.stringify(criteria) !== JSON.stringify(requirement.criteria ?? [])) patch.criteria = criteria
+  return patch
+}
+
 const EMPTY: RequirementDraft = { title: '', description: '', areaId: null, scope: 'tables', status: 'draft', tableIds: [] }
 
 export function RequirementDialog({
@@ -134,21 +187,8 @@ export function RequirementDialog({
     setDraft((prev) => ({ ...prev, [key]: value }))
 
   const lines = criteriaLines(criteriaText)
-  /** 저장할 확인 — SQL이 비어 있으면 없다. 기대값을 비우면 "0" */
-  const checkOf = (text: string): ErdCriterionCheck | undefined => {
-    const check = checks[text]
-    const sql = check?.sql.trim() ?? ''
-    if (!check || sql.length === 0) return undefined
-    return { sql, expect: check.expect.trim() || '0' }
-  }
-  const criteriaError =
-    lines.length > CRITERIA_LIMIT
-      ? t('model.requirements.criteria.tooMany', { max: CRITERIA_LIMIT })
-      : lines.some((line) => line.length > CRITERION_MAX_LENGTH)
-        ? t('model.requirements.criteria.tooLong', { max: CRITERION_MAX_LENGTH })
-        : lines.some((line) => (checks[line]?.sql.trim().length ?? 0) > CHECK_SQL_MAX_LENGTH)
-          ? t('model.requirements.checks.dialog.sqlTooLong', { max: CHECK_SQL_MAX_LENGTH })
-          : null
+  const problem = criteriaProblem(lines, checks)
+  const criteriaError = problem ? t(problem.key, { max: problem.max }) : null
   const setCheck = (text: string, patch: Partial<ErdCriterionCheck>) =>
     setChecks((prev) => ({ ...prev, [text]: { ...(prev[text] ?? { sql: '', expect: '0' }), ...patch } }))
 
@@ -168,25 +208,11 @@ export function RequirementDialog({
       tableIds: draft.scope === 'document' ? [] : draft.tableIds,
     }
     if (criteriaError) return
-    // 수용 기준 — 같은 문구의 항목은 id와 체크를 이어받는다. 확인 SQL은 지금 입력을 따른다(비우면 뗀다)
-    const previous = requirement?.criteria ?? []
-    const criteria: ErdRequirementCriterion[] = lines.map((text) => {
-      const kept = previous.find((criterion) => criterion.text === text)
-      const base: ErdRequirementCriterion = { id: kept?.id ?? newId(), text, done: kept?.done ?? false }
-      const check = checkOf(text)
-      return check ? { ...base, check } : base
-    })
+    const criteria = buildCriteria(lines, requirement?.criteria ?? [], checks)
     if (!requirement) {
       onCreate(criteria.length > 0 ? { ...next, criteria } : next)
     } else {
-      const patch: RequirementPatch = {}
-      if (next.title !== requirement.title) patch.title = next.title
-      if (next.description !== requirement.description) patch.description = next.description
-      if (next.areaId !== requirement.areaId) patch.areaId = next.areaId
-      if (next.scope !== requirement.scope) patch.scope = next.scope
-      if (next.status !== requirement.status) patch.status = next.status
-      if (next.tableIds.join('\0') !== requirement.tableIds.join('\0')) patch.tableIds = next.tableIds
-      if (JSON.stringify(criteria) !== JSON.stringify(previous)) patch.criteria = criteria
+      const patch = requirementPatchOf(requirement, next, criteria)
       if (Object.keys(patch).length > 0) onPatch(requirement.id, patch)
     }
     onOpenChange(false)
@@ -398,27 +424,14 @@ export function RequirementDialog({
 
           <DialogFooter className="sm:justify-between">
             {requirement ? (
-              confirmingRemove ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{t('model.requirements.removeConfirm')}</span>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    data-testid="requirement-remove-confirm"
-                    onClick={() => {
-                      onRemove(requirement.id)
-                      onOpenChange(false)
-                    }}
-                  >
-                    {t('common.delete')}
-                  </Button>
-                </div>
-              ) : (
-                <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmingRemove(true)}>
-                  {t('common.delete')}
-                </Button>
-              )
+              <RemoveAction
+                confirming={confirmingRemove}
+                onAsk={() => setConfirmingRemove(true)}
+                onConfirm={() => {
+                  onRemove(requirement.id)
+                  onOpenChange(false)
+                }}
+              />
             ) : (
               <span />
             )}
@@ -432,6 +445,34 @@ export function RequirementDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** 삭제 버튼 — 한 번 더 눌러 확인한다 */
+function RemoveAction({
+  confirming,
+  onAsk,
+  onConfirm,
+}: {
+  confirming: boolean
+  onAsk: () => void
+  onConfirm: () => void
+}) {
+  const { t } = useTranslation()
+  if (!confirming) {
+    return (
+      <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={onAsk}>
+        {t('common.delete')}
+      </Button>
+    )
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground">{t('model.requirements.removeConfirm')}</span>
+      <Button type="button" variant="destructive" size="sm" data-testid="requirement-remove-confirm" onClick={onConfirm}>
+        {t('common.delete')}
+      </Button>
+    </div>
   )
 }
 

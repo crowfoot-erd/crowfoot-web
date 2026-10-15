@@ -403,19 +403,27 @@ export function dirtyTargetKeys(saved: EditorDocument, present: EditorDocument):
   return keys
 }
 
+/** 객체의 필드 값 — 객체가 없으면 undefined */
+const fieldOf = (target: object | undefined, field: string): unknown =>
+  target ? (target as Record<string, unknown>)[field] : undefined
+
+/** 컬럼 키의 현재 값 — 'order'는 컬럼 자체를 돌려준다 */
+function columnValueOf(doc: EditorDocument, key: ChangeTargetKey): unknown {
+  for (const t of doc.model.tables) {
+    const c = t.columns.find((x) => x.id === key.id)
+    if (c) return key.field === 'order' ? c : fieldOf(c, key.field)
+  }
+  return undefined
+}
+
 /** present에서 키의 현재 값 — patch 커맨드의 값과 비교해 "값이 실제로 바뀌는가"를 가린다 */
 function presentValueOf(doc: EditorDocument, key: ChangeTargetKey): unknown {
   const table = doc.model.tables.find((t) => t.id === key.id)
   switch (key.kind) {
     case 'table':
-      return table ? (table as unknown as Record<string, unknown>)[key.field] : undefined
-    case 'column': {
-      for (const t of doc.model.tables) {
-        const c = t.columns.find((x) => x.id === key.id)
-        if (c) return key.field === 'order' ? c : (c as unknown as Record<string, unknown>)[key.field]
-      }
-      return undefined
-    }
+      return fieldOf(table, key.field)
+    case 'column':
+      return columnValueOf(doc, key)
     case 'primaryKey':
       return table?.primaryKey
     case 'uniqueKey':
@@ -426,43 +434,39 @@ function presentValueOf(doc: EditorDocument, key: ChangeTargetKey): unknown {
       return table?.checks
     case 'validationException':
       return doc.diagram.validationExceptions.find((e) => e.id === key.id)
-    case 'relationship': {
-      const rel = doc.model.relationships.find((r) => r.id === key.id)
-      return rel ? (rel as unknown as Record<string, unknown>)[key.field] : undefined
-    }
-    case 'note': {
-      const note = doc.diagram.notes.find((n) => n.id === key.id)
-      return note ? (note as unknown as Record<string, unknown>)[key.field] : undefined
-    }
-    case 'area': {
-      const area = doc.diagram.areas.find((a) => a.id === key.id)
-      return area ? (area as unknown as Record<string, unknown>)[key.field] : undefined
-    }
-    case 'requirement': {
-      const requirement = doc.diagram.requirements.find((r) => r.id === key.id)
-      return requirement ? (requirement as unknown as Record<string, unknown>)[key.field] : undefined
-    }
+    case 'relationship':
+      return fieldOf(doc.model.relationships.find((r) => r.id === key.id), key.field)
+    case 'note':
+      return fieldOf(doc.diagram.notes.find((n) => n.id === key.id), key.field)
+    case 'area':
+      return fieldOf(doc.diagram.areas.find((a) => a.id === key.id), key.field)
+    case 'requirement':
+      return fieldOf(doc.diagram.requirements.find((r) => r.id === key.id), key.field)
     case 'node':
       return (doc.diagram.nodes[key.id] as unknown as Record<string, unknown> | undefined)?.[key.field]
   }
 }
+
+/** patch 커맨드의 필드 값 — 대상이 키와 다르면 undefined */
+const patchFieldOf = (targetId: string, patch: object, key: ChangeTargetKey): unknown =>
+  targetId === key.id ? (patch as Record<string, unknown>)[key.field] : undefined
 
 /** 상대 커맨드가 설정하는 값 — patch류는 패치 값, 구조 변경은 '*'.
  *  node/move는 축별 값을, 나머지 patch는 필드명 조회로 가져온다 */
 function remoteValueOf(change: ErdChange, key: ChangeTargetKey): unknown {
   switch (change.type) {
     case 'table/patch':
-      return change.tableId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+      return patchFieldOf(change.tableId, change.patch, key)
     case 'column/patch':
-      return change.columnId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+      return patchFieldOf(change.columnId, change.patch, key)
     case 'relationship/patch':
-      return change.relationshipId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+      return patchFieldOf(change.relationshipId, change.patch, key)
     case 'note/patch':
-      return change.noteId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+      return patchFieldOf(change.noteId, change.patch, key)
     case 'area/patch':
-      return change.areaId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+      return patchFieldOf(change.areaId, change.patch, key)
     case 'requirement/patch':
-      return change.requirementId === key.id ? change.patch[key.field as keyof typeof change.patch] : undefined
+      return patchFieldOf(change.requirementId, change.patch, key)
     case 'node/move':
       return change.positions[key.id]?.[key.field as 'x' | 'y']
     case 'node/resize':
@@ -480,6 +484,14 @@ const displayValue = (v: unknown): string => {
   return JSON.stringify(v)
 }
 
+/** 어느 한쪽이 구조 변경('*')이고 같은 객체를 건드리는지 */
+function overlapsStructurally(mine: Set<string>, key: ChangeTargetKey): boolean {
+  const prefix = `${key.kind}:${key.id}:`
+  return key.field === '*'
+    ? [...mine].some((k) => k.startsWith(prefix))
+    : [...mine].some((k) => k.endsWith(':*') && k.startsWith(prefix))
+}
+
 /** 타인 커맨드 × 내 dirty 범위 — 같은 (객체, 속성)을 값 변경과 함께 겹치면 충돌 목록.
  *  · 내 dirty 키와 정확히 같은 키 + 값이 실제로 다름 → 충돌(전형적 LWW)
  *  · 어느 한쪽이 '*'(구조) + 객체가 같음 → 충돌(Lock 우회·WS 끊김 보강 — 값 비교 없이 알림)
@@ -495,10 +507,7 @@ export function detectLwwConflicts(
   const conflicts: LwwConflict[] = []
   for (const key of changeTargetKeys(change)) {
     const exact = mine.has(keyId(key))
-    const structural =
-      key.field === '*'
-        ? [...mine].some((k) => k.startsWith(`${key.kind}:${key.id}:`))
-        : [...mine].some((k) => k.endsWith(':*') && k.startsWith(`${key.kind}:${key.id}:`))
+    const structural = overlapsStructurally(mine, key)
     if (!exact && !structural) continue
     if (exact && key.field !== '*') {
       const mineValue = presentValueOf(present, key)

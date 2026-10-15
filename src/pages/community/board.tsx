@@ -140,37 +140,59 @@ export function CommunityBoardPage({ board }: CommunityBoardPageProps) {
             </Table>
           </div>
 
-          {posts.data.totalPages > 1 ? (
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                aria-label={t('common.pagination.prev')}
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                <ChevronLeft aria-hidden />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {t('common.pagination.page', { page: posts.data.page, totalPages: posts.data.totalPages })}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                aria-label={t('common.pagination.next')}
-                disabled={page >= posts.data.totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                <ChevronRight aria-hidden />
-              </Button>
-            </div>
-          ) : null}
+          <BoardPagination
+            page={page}
+            shownPage={posts.data.page}
+            totalPages={posts.data.totalPages}
+            onPage={setPage}
+          />
         </>
       ) : (
         <EmptyState illustration="search" title={hasKeyword ? t('community.board.empty.search') : t('community.board.empty.all')} />
       )}
+    </div>
+  )
+}
+
+/** 페이지 이동 — 두 쪽 이상일 때만 이전·다음 버튼과 쪽 번호 */
+function BoardPagination({
+  page,
+  shownPage,
+  totalPages,
+  onPage,
+}: {
+  page: number
+  shownPage: number
+  totalPages: number
+  onPage: (nextPage: number) => void
+}) {
+  const { t } = useTranslation()
+  if (totalPages <= 1) return null
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        aria-label={t('common.pagination.prev')}
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+      >
+        <ChevronLeft aria-hidden />
+      </Button>
+      <span className="text-sm text-muted-foreground">
+        {t('common.pagination.page', { page: shownPage, totalPages })}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        aria-label={t('common.pagination.next')}
+        disabled={page >= totalPages}
+        onClick={() => onPage(page + 1)}
+      >
+        <ChevronRight aria-hidden />
+      </Button>
     </div>
   )
 }

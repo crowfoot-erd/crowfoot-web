@@ -356,6 +356,42 @@ function BreakdownTable({
   )
 }
 
+/** 차원별 분포 본문 — 오류·불러오는 중·빈 분포, 비율형은 도넛·순위형은 막대 + 표 */
+function BreakdownBody({
+  breakdown,
+  dimension,
+  activeKind,
+  chartData,
+}: {
+  breakdown: ReturnType<typeof useTrafficBreakdown>
+  dimension: TrafficDimension
+  activeKind: 'ratio' | 'rank'
+  chartData: { name: string; value: number }[]
+}) {
+  const { t } = useTranslation()
+  if (breakdown.isError) return <ErrorState onRetry={() => void breakdown.refetch()} />
+  if (breakdown.isPending) return <ChartSkeleton height={288} />
+  if ((breakdown.data?.entries.length ?? 0) === 0) return <EmptyState title={t('admin.traffic.breakdown.empty')} />
+  return (
+    <>
+      {activeKind === 'ratio' ? (
+        <RatioDonut
+          data={chartData}
+          total={breakdown.data?.total ?? 0}
+          ariaLabel={t(`admin.traffic.dimension.${dimension}`)}
+        />
+      ) : (
+        <RankBar data={chartData} ariaLabel={t(`admin.traffic.dimension.${dimension}`)} />
+      )}
+      <BreakdownTable
+        entries={breakdown.data?.entries ?? []}
+        dimension={dimension}
+        keyHeader={t(`admin.traffic.dimension.${dimension}`)}
+      />
+    </>
+  )
+}
+
 export default function AdminTrafficPage() {
   const { t, i18n } = useTranslation()
   const [days, setDays] = useState<number>(28)
@@ -467,30 +503,7 @@ export default function AdminTrafficPage() {
           </Tabs>
         </CardHeader>
         <CardContent className="space-y-4">
-          {breakdown.isError ? (
-            <ErrorState onRetry={() => void breakdown.refetch()} />
-          ) : breakdown.isPending ? (
-            <ChartSkeleton height={288} />
-          ) : (breakdown.data?.entries.length ?? 0) === 0 ? (
-            <EmptyState title={t('admin.traffic.breakdown.empty')} />
-          ) : (
-            <>
-              {activeKind === 'ratio' ? (
-                <RatioDonut
-                  data={chartData}
-                  total={breakdown.data?.total ?? 0}
-                  ariaLabel={t(`admin.traffic.dimension.${dimension}`)}
-                />
-              ) : (
-                <RankBar data={chartData} ariaLabel={t(`admin.traffic.dimension.${dimension}`)} />
-              )}
-              <BreakdownTable
-                entries={breakdown.data?.entries ?? []}
-                dimension={dimension}
-                keyHeader={t(`admin.traffic.dimension.${dimension}`)}
-              />
-            </>
-          )}
+          <BreakdownBody breakdown={breakdown} dimension={dimension} activeKind={activeKind} chartData={chartData} />
         </CardContent>
       </Card>
 

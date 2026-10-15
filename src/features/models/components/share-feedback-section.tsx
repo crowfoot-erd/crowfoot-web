@@ -617,45 +617,21 @@ function CommentRow({
 
       {editing ? (
         // 인라인 수정 폼 — 비회원 댓글은 비밀번호 칸이 함께 뜬다(작성 시 설정한 값)
-        <div className="mt-2 grid gap-2" data-testid="share-comment-edit-form">
-          <Textarea
-            value={editContent}
-            onChange={(event) => onEditContent(event.target.value)}
-            maxLength={MAX_CONTENT_LENGTH}
-            aria-label={editLabel}
-            data-testid="share-comment-edit-content"
-          />
-          {comment.authorType === 'guest' ? (
-            <Input
-              type="password"
-              value={editPassword}
-              onChange={(event) => onEditPassword(event.target.value)}
-              autoComplete="new-password"
-              placeholder={passwordPlaceholder}
-              aria-label={passwordLabel}
-              data-testid="share-comment-edit-password"
-            />
-          ) : null}
-          <div className="flex justify-end gap-1">
-            <Button type="button" variant="ghost" size="sm" onClick={onCancelEdit}>
-              {cancelLabel}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={onSubmitEdit}
-              disabled={
-                editContent.trim().length === 0 ||
-                (comment.authorType === 'guest' && editPassword.length < 4) ||
-                editPending
-              }
-              data-testid="share-comment-edit-submit"
-            >
-              {editPending ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : null}
-              {saveLabel}
-            </Button>
-          </div>
-        </div>
+        <CommentEditForm
+          comment={comment}
+          editContent={editContent}
+          editPassword={editPassword}
+          onEditContent={onEditContent}
+          onEditPassword={onEditPassword}
+          onCancelEdit={onCancelEdit}
+          onSubmitEdit={onSubmitEdit}
+          editPending={editPending}
+          editLabel={editLabel}
+          saveLabel={saveLabel}
+          cancelLabel={cancelLabel}
+          passwordLabel={passwordLabel}
+          passwordPlaceholder={passwordPlaceholder}
+        />
       ) : (
         <p className="whitespace-pre-wrap text-sm">{comment.content}</p>
       )}
@@ -687,6 +663,79 @@ function CommentRow({
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** 댓글 인라인 수정 폼 — 비회원 댓글은 비밀번호 칸이 함께 뜬다(작성 시 설정한 값) */
+function CommentEditForm({
+  comment,
+  editContent,
+  editPassword,
+  onEditContent,
+  onEditPassword,
+  onCancelEdit,
+  onSubmitEdit,
+  editPending,
+  editLabel,
+  saveLabel,
+  cancelLabel,
+  passwordLabel,
+  passwordPlaceholder,
+}: {
+  comment: ShareComment
+  editContent: string
+  editPassword: string
+  onEditContent: (value: string) => void
+  onEditPassword: (value: string) => void
+  onCancelEdit: () => void
+  onSubmitEdit: () => void
+  editPending: boolean
+  editLabel: string
+  saveLabel: string
+  cancelLabel: string
+  passwordLabel: string
+  passwordPlaceholder: string
+}) {
+  return (
+    <div className="mt-2 grid gap-2" data-testid="share-comment-edit-form">
+      <Textarea
+        value={editContent}
+        onChange={(event) => onEditContent(event.target.value)}
+        maxLength={MAX_CONTENT_LENGTH}
+        aria-label={editLabel}
+        data-testid="share-comment-edit-content"
+      />
+      {comment.authorType === 'guest' ? (
+        <Input
+          type="password"
+          value={editPassword}
+          onChange={(event) => onEditPassword(event.target.value)}
+          autoComplete="new-password"
+          placeholder={passwordPlaceholder}
+          aria-label={passwordLabel}
+          data-testid="share-comment-edit-password"
+        />
+      ) : null}
+      <div className="flex justify-end gap-1">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancelEdit}>
+          {cancelLabel}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={onSubmitEdit}
+          disabled={
+            editContent.trim().length === 0 ||
+            (comment.authorType === 'guest' && editPassword.length < 4) ||
+            editPending
+          }
+          data-testid="share-comment-edit-submit"
+        >
+          {editPending ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : null}
+          {saveLabel}
+        </Button>
+      </div>
     </div>
   )
 }

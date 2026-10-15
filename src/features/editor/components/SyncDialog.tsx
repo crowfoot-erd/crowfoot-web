@@ -138,27 +138,7 @@ export function SyncDialog({
           </p>
         ) : null}
 
-        {schema.isPending ? (
-          <div className="flex h-24 items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 aria-hidden className="size-4 animate-spin" />
-            {t('model.editor.sync.comparing')}
-          </div>
-        ) : schema.isError ? (
-          <div className="rounded-md border border-destructive/40 bg-destructive/[0.07] px-3 py-2 text-xs text-foreground">
-            <p>{t('model.editor.sync.compareFailed')}</p>
-            <p className="mt-1 break-all text-muted-foreground">{errorMessage(schema.error)}</p>
-          </div>
-        ) : diff === null ? null : diff.changes.length === 0 ? (
-          <p
-            data-testid="sync-no-changes"
-            className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400"
-          >
-            <CheckCircle2 aria-hidden className="size-4" />
-            {t('model.editor.sync.noChanges')}
-          </p>
-        ) : (
-          <DiffPreview diff={diff} />
-        )}
+        <CompareResult pending={schema.isPending} failed={schema.isError} error={schema.error} diff={diff} />
 
         <DialogFooter>
           {diff && diff.changes.length > 0 ? (
@@ -209,6 +189,50 @@ export function SyncDialog({
       ) : null}
     </Dialog>
   )
+}
+
+/** 비교 결과 — 진행 중, 실패, 차이 없음, 차분 목록 가운데 하나. 비교 전이면 비운다 */
+function CompareResult({
+  pending,
+  failed,
+  error,
+  diff,
+}: {
+  pending: boolean
+  failed: boolean
+  error: unknown
+  diff: SyncDiff | null
+}) {
+  const { t } = useTranslation()
+  if (pending) {
+    return (
+      <div className="flex h-24 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 aria-hidden className="size-4 animate-spin" />
+        {t('model.editor.sync.comparing')}
+      </div>
+    )
+  }
+  if (failed) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/[0.07] px-3 py-2 text-xs text-foreground">
+        <p>{t('model.editor.sync.compareFailed')}</p>
+        <p className="mt-1 break-all text-muted-foreground">{errorMessage(error)}</p>
+      </div>
+    )
+  }
+  if (diff === null) return null
+  if (diff.changes.length === 0) {
+    return (
+      <p
+        data-testid="sync-no-changes"
+        className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400"
+      >
+        <CheckCircle2 aria-hidden className="size-4" />
+        {t('model.editor.sync.noChanges')}
+      </p>
+    )
+  }
+  return <DiffPreview diff={diff} />
 }
 
 /** 차분 미리보기 — 개수 요약 + 테이블별 그룹 목록(그룹 내 순서는 diff 생성 순서 = 적용 순서) */

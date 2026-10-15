@@ -46,6 +46,33 @@ function toMultiplicity(optional: unknown): 'ZERO_OR_ONE' | 'EXACTLY_ONE' {
   return optional === true ? 'ZERO_OR_ONE' : 'EXACTLY_ONE'
 }
 
+/** 레거시 자식 선택성 → 기수 — 1:1은 0..1/1, 1:N은 0..N/1..N */
+function legacyChildMultiplicity(optional: boolean, oneToOne: boolean): string {
+  if (optional) return oneToOne ? 'ZERO_OR_ONE' : 'ZERO_OR_MORE'
+  return oneToOne ? 'EXACTLY_ONE' : 'ONE_OR_MORE'
+}
+
+/** 관계 하나의 레거시 기수 변환 — normalizeLegacyRelationships 참고 */
+function normalizeLegacyRelationship(rel: unknown): unknown {
+  if (typeof rel !== 'object' || rel === null) return rel
+  const r = rel as Record<string, unknown>
+  if ('parentMultiplicity' in r && 'childMultiplicity' in r) {
+    if (r.parentMultiplicity === 'TWO_OR_MORE' || r.childMultiplicity === 'TWO_OR_MORE') {
+      return {
+        ...r,
+        parentMultiplicity: r.parentMultiplicity === 'TWO_OR_MORE' ? 'ONE_OR_MORE' : r.parentMultiplicity,
+        childMultiplicity: r.childMultiplicity === 'TWO_OR_MORE' ? 'ONE_OR_MORE' : r.childMultiplicity,
+      }
+    }
+    return rel
+  }
+  return {
+    ...r,
+    parentMultiplicity: toMultiplicity(r.parentOptional),
+    childMultiplicity: legacyChildMultiplicity(r.childOptional === true, r.type === 'ONE_TO_ONE'),
+  }
+}
+
 /** v1 중반 레거시 — parentOptional/childOptional boolean 관계를 기수 enum으로 변환한다.
  *  이미 기수 필드가 있으면 그대로 둔다(저장은 항상 새 형식으로 기록된다).
  *  단 과거 버전의 TWO_OR_MORE(◠<)는 표기에서 제외되어 ONE_OR_MORE(|<)로 강등한다. */
@@ -59,33 +86,7 @@ function normalizeLegacyRelationships(json: unknown): unknown {
     ...json,
     model: {
       ...model,
-      relationships: relationships.map((rel) => {
-        if (typeof rel !== 'object' || rel === null) return rel
-        const r = rel as Record<string, unknown>
-        if ('parentMultiplicity' in r && 'childMultiplicity' in r) {
-          if (r.parentMultiplicity === 'TWO_OR_MORE' || r.childMultiplicity === 'TWO_OR_MORE') {
-            return {
-              ...r,
-              parentMultiplicity: r.parentMultiplicity === 'TWO_OR_MORE' ? 'ONE_OR_MORE' : r.parentMultiplicity,
-              childMultiplicity: r.childMultiplicity === 'TWO_OR_MORE' ? 'ONE_OR_MORE' : r.childMultiplicity,
-            }
-          }
-          return rel
-        }
-        const oneToOne = r.type === 'ONE_TO_ONE'
-        return {
-          ...r,
-          parentMultiplicity: toMultiplicity(r.parentOptional),
-          childMultiplicity:
-            r.childOptional === true
-              ? oneToOne
-                ? 'ZERO_OR_ONE'
-                : 'ZERO_OR_MORE'
-              : oneToOne
-                ? 'EXACTLY_ONE'
-                : 'ONE_OR_MORE',
-        }
-      }),
+      relationships: relationships.map(normalizeLegacyRelationship),
     },
   }
 }

@@ -1,0 +1,152 @@
+{
+  "src/features/database/components/data-browser.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/database/components/data-tab.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/database/components/sql-tab.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/components/ColumnInfoDialog.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/editor/components/ConvertDbmsDialog.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/components/EditorShell.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/editor/components/ErdCanvas.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    }
+  },
+  "src/features/editor/components/KeyInfoDialog.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/components/MigrationDdlDialog.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/components/RelationshipDialog.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/components/RequirementsPanel.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/editor/components/canvas/TableNode.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    }
+  },
+  "src/features/editor/components/canvas/edge-route-table.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/components/canvas/edge-router.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/editor/model/__tests__/model-edit-fixtures.test.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/auto-layout.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 4
+    }
+  },
+  "src/features/editor/model/changes.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/editor/model/clipboard.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/collab-merge.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    }
+  },
+  "src/features/editor/model/dbms-convert.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/doc-diff.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/initial-placement.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/keys.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/relationship-remap.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/editor/model/sync-merge.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/editor/model/validation.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/features/models/components/share-feedback-section.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/features/showcase/components/model-site-section.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/pages/community/post-form.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/pages/model-version-viewer.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  }
+}

@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { dbmsTemplate } from '@/features/editor/model/dbms'
+import type { ModelDdlResult } from '@/features/editor/api'
 import { useModelDdl, useShareDdl } from '@/features/editor/hooks'
 import { selectDirty, useEditorStore } from '@/features/editor/store/editor-store'
 import { downloadTextFile, safeFilename } from '@/lib/download'
@@ -60,6 +61,38 @@ async function copyText(text: string): Promise<boolean> {
     textarea.remove()
     return copied
   }
+}
+
+/** 생성된 스크립트 — 경고와 저장 안 된 편집 안내를 스크립트 앞에 둔다 */
+function DdlScript({ result, dirty }: { result: ModelDdlResult; dirty: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {result.warnings.length > 0 ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/[0.07] px-3 py-2 text-xs text-foreground">
+          <p className="font-medium">{t('model.editor.ddl.warningTitle')}</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {result.warnings.map((warning, index) => (
+              <li key={index}>{warning.message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {dirty ? (
+        <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+          <AlertTriangle aria-hidden className="size-3.5" />
+          {t('model.editor.ddl.unsavedNote')}
+        </p>
+      ) : null}
+
+      <pre
+        data-testid="ddl-script"
+        className="max-h-[60vh] overflow-auto whitespace-pre rounded-md bg-muted/50 p-3 font-mono text-xs leading-relaxed"
+      >
+        {result.sql}
+      </pre>
+    </>
+  )
 }
 
 export function SqlPreviewDialog({
@@ -144,31 +177,7 @@ export function SqlPreviewDialog({
             </Button>
           </div>
         ) : result ? (
-          <>
-            {result.warnings.length > 0 ? (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/[0.07] px-3 py-2 text-xs text-foreground">
-                <p className="font-medium">{t('model.editor.ddl.warningTitle')}</p>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                  {result.warnings.map((warning, index) => (
-                    <li key={index}>{warning.message}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {dirty ? (
-              <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                <AlertTriangle aria-hidden className="size-3.5" />
-                {t('model.editor.ddl.unsavedNote')}
-              </p>
-            ) : null}
-
-            <pre
-              data-testid="ddl-script"
-              className="max-h-[60vh] overflow-auto whitespace-pre rounded-md bg-muted/50 p-3 font-mono text-xs leading-relaxed"
-            >
-              {result.sql}
-            </pre>
-          </>
+          <DdlScript result={result} dirty={dirty} />
         ) : null}
 
         <DialogFooter>

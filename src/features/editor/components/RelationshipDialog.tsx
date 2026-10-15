@@ -42,6 +42,7 @@ import {
   REFERENTIAL_ACTIONS,
   RELATIONSHIP_TYPES,
   coerceChildMultiplicity,
+  type EditorDocument,
   type ErdColumn,
   type ErdRelationship,
   type ErdTable,
@@ -82,6 +83,32 @@ interface RelationFormState {
   fkName: string
   onDelete: ReferentialAction
   onUpdate: ReferentialAction
+}
+
+/** 편집 확정 패치 — FK 이름을 비우면 기존 이름을 유지한다 */
+function relationshipPatchOf(state: RelationFormState, relationship: ErdRelationship): RelationshipPatch {
+  return {
+    type: state.type,
+    identifying: state.identifying,
+    parentMultiplicity: state.parentMultiplicity,
+    childMultiplicity: state.childMultiplicity,
+    fkName: state.fkName.trim() === '' ? relationship.fkName : state.fkName.trim(),
+    onDelete: state.onDelete,
+    onUpdate: state.onUpdate,
+  }
+}
+
+/** 매핑 재계산의 기준 문서 — 스토어 문서에 두 테이블이 없으면 두 테이블과 이 관계만으로 만든다 */
+function remapBaseDocument(
+  present: EditorDocument,
+  relationship: ErdRelationship,
+  parent: ErdTable,
+  child: ErdTable,
+): EditorDocument {
+  const inStore = present.model.tables.some((table) => table.id === child.id)
+  return inStore
+    ? present
+    : { ...present, model: { ...present.model, tables: [parent, child], relationships: [relationship] } }
 }
 
 /** 줄의 자연 텍스트 폭 — truncate된 요소의 scrollWidth는 max(텍스트 폭, 현재 상자 폭)이라
@@ -243,22 +270,10 @@ export function RelationshipDialog({
       return
     }
     if (relationship) {
-      const patch: RelationshipPatch = {
-        type: state.type,
-        identifying: state.identifying,
-        parentMultiplicity: state.parentMultiplicity,
-        childMultiplicity: state.childMultiplicity,
-        fkName: state.fkName.trim() === '' ? relationship.fkName : state.fkName.trim(),
-        onDelete: state.onDelete,
-        onUpdate: state.onUpdate,
-      }
+      const patch = relationshipPatchOf(state, relationship)
       if (onConfirmChanges && effectiveParent && effectiveChild) {
         // 스토어 문서에 두 테이블이 있으면 그것으로 계산한다(다른 관계가 쓰는 컬럼을 지우지 않으려면 문서 전체가 필요하다)
-        const present = useEditorStore.getState().present
-        const inStore = present.model.tables.some((table) => table.id === effectiveChild.id)
-        const doc = inStore
-          ? present
-          : { ...present, model: { ...present.model, tables: [effectiveParent, effectiveChild], relationships: [relationship] } }
+        const doc = remapBaseDocument(useEditorStore.getState().present, relationship, effectiveParent, effectiveChild)
         const result = buildRemapChanges(doc, relationship, {
           selection: mappingSelection,
           alignTypeColumnIds: alignIds,

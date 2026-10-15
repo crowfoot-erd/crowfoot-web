@@ -97,42 +97,10 @@ export function ShareViewerPage() {
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
         </div>
       ) : share.isError || !share.data ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <p className="text-sm text-muted-foreground">
-            {isApiError(share.error) && share.error.resultCode !== 'NETWORK_ERROR'
-              ? resultCodeMessage(share.error.resultCode)
-              : t('shareViewer.notFound')}
-          </p>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/">{t('shareViewer.home')}</Link>
-          </Button>
-        </div>
+        <ShareViewerError error={share.error} />
       ) : (
         <>
-          <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-base font-semibold">{share.data.modelName}</h1>
-                <Badge variant="outline" className="gap-1 text-[10px]">
-                  <DbmsIcon databaseType={share.data.databaseType} className="size-3" />
-                  {dbmsLabel(share.data.databaseType)}
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">{t('shareViewer.badge')}</Badge>
-              </div>
-              {share.data.description ? (
-                <p className="truncate text-xs text-muted-foreground">{share.data.description}</p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <LanguageSelect />
-              <Button asChild variant="outline" size="sm">
-                <Link to="/">
-                  <Home aria-hidden />
-                  {t('shareViewer.home')}
-                </Link>
-              </Button>
-            </div>
-          </header>
+          <ShareViewerHeader share={share.data} />
           {/* 탭 본문 — ERD 탭은 에디터가 뷰포트 나머지 전체를 차지한다. 공유 토큰이
               공개 DDL(§1.10.8)·문서 좋아요(§1.10.6) 버튼의 자격이 된다 */}
           <div className="flex min-h-0 flex-1 flex-col">
@@ -188,5 +156,53 @@ export function ShareViewerPage() {
         </>
       )}
     </div>
+  )
+}
+
+/** 조회 실패 — 결과 코드 안내(네트워크 오류·코드 없음은 "찾을 수 없음")와 홈 버튼 */
+function ShareViewerError({ error }: { error: unknown }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3">
+      <p className="text-sm text-muted-foreground">
+        {isApiError(error) && error.resultCode !== 'NETWORK_ERROR'
+          ? resultCodeMessage(error.resultCode)
+          : t('shareViewer.notFound')}
+      </p>
+      <Button asChild variant="outline" size="sm">
+        <Link to="/">{t('shareViewer.home')}</Link>
+      </Button>
+    </div>
+  )
+}
+
+/** 머리 — 문서명·DBMS·공유 배지·설명, 언어 선택과 홈 버튼 */
+function ShareViewerHeader({ share }: { share: PublicShare }) {
+  const { t } = useTranslation()
+  return (
+    <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h1 className="truncate text-base font-semibold">{share.modelName}</h1>
+          <Badge variant="outline" className="gap-1 text-[10px]">
+            <DbmsIcon databaseType={share.databaseType} className="size-3" />
+            {dbmsLabel(share.databaseType)}
+          </Badge>
+          <Badge variant="secondary" className="text-[10px]">{t('shareViewer.badge')}</Badge>
+        </div>
+        {share.description ? (
+          <p className="truncate text-xs text-muted-foreground">{share.description}</p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <LanguageSelect />
+        <Button asChild variant="outline" size="sm">
+          <Link to="/">
+            <Home aria-hidden />
+            {t('shareViewer.home')}
+          </Link>
+        </Button>
+      </div>
+    </header>
   )
 }

@@ -222,11 +222,16 @@ function isFatalAuthError(error: ApiError): boolean {
   )
 }
 
+/** Access 토큰 만료 401 — refresh 후 재시도 대상인가 */
+function isAccessTokenExpired(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 401 && error.resultCode === 'AUTH_TOKEN_EXPIRED'
+}
+
 async function requestEnvelope(method: Method, path: string, options: RequestOptions): Promise<ApiEnvelope> {
   try {
     return await rawRequest(method, path, options)
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401 && error.resultCode === 'AUTH_TOKEN_EXPIRED') {
+    if (isAccessTokenExpired(error)) {
       // Access 만료 → refresh 1회(단일 플라이트) → 원요청 재시도 (§3.5)
       const outcome = await refreshAccessToken()
       if (outcome === 'success') return rawRequest(method, path, options)

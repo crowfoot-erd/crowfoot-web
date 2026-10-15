@@ -20,35 +20,12 @@ export function statementRanges(sql: string, mysql: boolean): StatementRange[] {
   let i = 0
   const n = sql.length
   while (i < n) {
-    const c = sql[i]
-    const next = sql[i + 1]
-    if (c === '-' && next === '-') {
-      i = skipLine(sql, i)
-    } else if (mysql && c === '#') {
-      i = skipLine(sql, i)
-    } else if (c === '/' && next === '*') {
-      i = skipBlockComment(sql, i, !mysql)
-    } else if (c === "'") {
-      const backslash = mysql || sql[i - 1] === 'E' || sql[i - 1] === 'e'
-      i = skipQuoted(sql, i, "'", backslash)
-    } else if (c === '"') {
-      i = skipQuoted(sql, i, '"', mysql)
-    } else if (mysql && c === '`') {
-      i = skipQuoted(sql, i, '`', false)
-    } else if (!mysql && c === '$') {
-      const tag = /^\$([A-Za-z_]\w*)?\$/.exec(sql.slice(i))
-      if (tag) {
-        const close = sql.indexOf(tag[0], i + tag[0].length)
-        i = close < 0 ? n : close + tag[0].length
-      } else {
-        i++
-      }
-    } else if (c === ';') {
+    if (sql[i] === ';') {
       ranges.push({ start, end: i })
       start = i + 1
       i++
     } else {
-      i++
+      i = skipToken(sql, i, mysql)
     }
   }
   ranges.push({ start, end: n })
@@ -76,6 +53,31 @@ export function statementToRun(
   // 커서가 빈 구간(마지막 세미콜론 뒤 등)에 있으면 내용이 있는 앞 문장으로 물러선다
   while (index > 0 && sql.slice(ranges[index].start, ranges[index].end).trim() === '') index--
   return sql.slice(ranges[index].start, ranges[index].end).trim()
+}
+
+/** i의 주석·따옴표·달러 인용을 건너뛴 다음 위치 — 그 밖의 글자면 한 글자 다음 */
+function skipToken(sql: string, i: number, mysql: boolean): number {
+  const c = sql[i]
+  const next = sql[i + 1]
+  if (c === '-' && next === '-') return skipLine(sql, i)
+  if (mysql && c === '#') return skipLine(sql, i)
+  if (c === '/' && next === '*') return skipBlockComment(sql, i, !mysql)
+  if (c === "'") {
+    const backslash = mysql || sql[i - 1] === 'E' || sql[i - 1] === 'e'
+    return skipQuoted(sql, i, "'", backslash)
+  }
+  if (c === '"') return skipQuoted(sql, i, '"', mysql)
+  if (mysql && c === '`') return skipQuoted(sql, i, '`', false)
+  if (!mysql && c === '$') return skipDollarQuoted(sql, i)
+  return i + 1
+}
+
+/** PostgreSQL 달러 인용($$ … $$, $tag$ … $tag$) — 태그가 아니면 한 글자 다음 */
+function skipDollarQuoted(sql: string, i: number): number {
+  const tag = /^\$([A-Za-z_]\w*)?\$/.exec(sql.slice(i))
+  if (!tag) return i + 1
+  const close = sql.indexOf(tag[0], i + tag[0].length)
+  return close < 0 ? sql.length : close + tag[0].length
 }
 
 function skipLine(sql: string, from: number): number {

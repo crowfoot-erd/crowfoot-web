@@ -40,6 +40,7 @@ import {
   toggleDelete,
   type EditValue,
   type RowEdits,
+  type RowUpdate,
 } from '@/features/database/row-edits'
 import { cn } from 'cn'
 
@@ -289,47 +290,16 @@ export function EditableTable({
                   )
                 }
                 if (isEditing) {
-                  const original =
-                    typeof cell === 'string' || cell === null
-                      ? cell
-                      : (update?.original[column.name] ?? null)
+                  const original = originalOf(cell, update, column.name)
                   return (
                     <td key={cellIndex} className="border-r p-0 last:border-r-0">
-                      <span className="flex items-center">
-                        <input
-                          autoFocus
-                          value={editing.draft}
-                          onChange={(event) =>
-                            setEditing({ ...editing, draft: event.target.value })
-                          }
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter')
-                              commit(rowKey, key, column.name, editing.draft, original)
-                            if (event.key === 'Escape') setEditing(null)
-                          }}
-                          onBlur={(event) => {
-                            // NULL 버튼으로 옮겨 간 포커스는 담지 않는다 — 그 버튼이 NULL로 담는다
-                            if (
-                              event.relatedTarget instanceof HTMLElement &&
-                              event.relatedTarget.dataset.nullButton
-                            )
-                              return
-                            commit(rowKey, key, column.name, editing.draft, original)
-                          }}
-                          aria-label={t('database.edit.editCell', { column: column.name })}
-                          className="h-7 w-full min-w-0 bg-background px-2 text-sm outline-none ring-1 ring-ring"
-                        />
-                        {column.nullable ? (
-                          <button
-                            type="button"
-                            data-null-button="true"
-                            onClick={() => commit(rowKey, key, column.name, null, original)}
-                            className="h-7 shrink-0 border-l px-1.5 text-[10px] text-muted-foreground hover:bg-muted"
-                          >
-                            {t('database.edit.setNull')}
-                          </button>
-                        ) : null}
-                      </span>
+                      <CellEditor
+                        column={column}
+                        draft={editing.draft}
+                        onDraftChange={(draft) => setEditing({ ...editing, draft })}
+                        onCommit={(value) => commit(rowKey, key, column.name, value, original)}
+                        onCancel={() => setEditing(null)}
+                      />
                     </td>
                   )
                 }
@@ -349,14 +319,7 @@ export function EditableTable({
                         draft: typeof shown === 'string' ? shown : '',
                       })
                     }}
-                    className={cn(
-                      'max-w-96 truncate border-r px-2 py-1 align-top last:border-r-0',
-                      column.generated ? 'cursor-default' : 'cursor-text',
-                      NUMERIC.has(column.category) && 'text-right tabular-nums',
-                      changed && 'bg-amber-500/20',
-                      deleted && 'line-through opacity-60',
-                      shown === null && 'text-muted-foreground/60 italic',
-                    )}
+                    className={viewCellClassName(column, changed, deleted, shown === null)}
                     data-changed={changed ? 'true' : undefined}
                     title={column.generated ? t('database.edit.generatedCell') : undefined}
                   >
@@ -370,6 +333,74 @@ export function EditableTable({
         })}
       </tbody>
     </table>
+  )
+}
+
+/** 편집 전 값 — 잘린 셀은 통째로 읽어 와 담아 둔 값을 쓴다(§3.7) */
+function originalOf(cell: CellValue, update: RowUpdate | undefined, column: string): EditValue {
+  return typeof cell === 'string' || cell === null ? cell : (update?.original[column] ?? null)
+}
+
+/** 보기 상태 셀의 모양 — 바꾼 셀·삭제할 행·NULL을 색과 글꼴로 구분한다 */
+function viewCellClassName(column: ColumnMeta, changed: boolean, deleted: boolean, isNull: boolean): string {
+  return cn(
+    'max-w-96 truncate border-r px-2 py-1 align-top last:border-r-0',
+    column.generated ? 'cursor-default' : 'cursor-text',
+    NUMERIC.has(column.category) && 'text-right tabular-nums',
+    changed && 'bg-amber-500/20',
+    deleted && 'line-through opacity-60',
+    isNull && 'text-muted-foreground/60 italic',
+  )
+}
+
+/** 편집 중인 셀 — Enter·포커스 이동으로 담고 Esc로 취소한다. NULL을 받는 컬럼은 NULL 버튼을 둔다 */
+function CellEditor({
+  column,
+  draft,
+  onDraftChange,
+  onCommit,
+  onCancel,
+}: {
+  column: ColumnMeta
+  draft: string
+  onDraftChange: (draft: string) => void
+  onCommit: (value: EditValue) => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <span className="flex items-center">
+      <input
+        autoFocus
+        value={draft}
+        onChange={(event) => onDraftChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') onCommit(draft)
+          if (event.key === 'Escape') onCancel()
+        }}
+        onBlur={(event) => {
+          // NULL 버튼으로 옮겨 간 포커스는 담지 않는다 — 그 버튼이 NULL로 담는다
+          if (
+            event.relatedTarget instanceof HTMLElement &&
+            event.relatedTarget.dataset.nullButton
+          )
+            return
+          onCommit(draft)
+        }}
+        aria-label={t('database.edit.editCell', { column: column.name })}
+        className="h-7 w-full min-w-0 bg-background px-2 text-sm outline-none ring-1 ring-ring"
+      />
+      {column.nullable ? (
+        <button
+          type="button"
+          data-null-button="true"
+          onClick={() => onCommit(null)}
+          className="h-7 shrink-0 border-l px-1.5 text-[10px] text-muted-foreground hover:bg-muted"
+        >
+          {t('database.edit.setNull')}
+        </button>
+      ) : null}
+    </span>
   )
 }
 

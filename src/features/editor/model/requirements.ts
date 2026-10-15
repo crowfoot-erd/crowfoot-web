@@ -204,27 +204,35 @@ export interface RequirementExportLabels {
 const domainLabel = (domain: RequirementDomain, labels: RequirementExportLabels) =>
   domain.kind === 'area' ? domain.name : domain.kind === 'unassigned' ? labels.unassigned : labels.document
 
+/** 요구사항 하나의 Markdown 절 — 제목, 내용 목록, 수용 기준 체크 목록, 연결된 테이블 */
+function requirementMarkdownLines(
+  requirement: ErdRequirement,
+  labels: RequirementExportLabels,
+  tableName: Map<string, string>,
+): string[] {
+  const lines: string[] = [`### ${requirement.code} ${requirement.title} — ${labels.state[requirementState(requirement)]}`, '']
+  const body = requirement.description
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[-•*·]\s+/, ''))
+    .filter((line) => line.length > 0)
+  for (const line of body) lines.push(`- ${line}`)
+  if (body.length > 0) lines.push('')
+  const criteria = requirement.criteria ?? []
+  for (const criterion of criteria) lines.push(`- [${criterion.done ? 'x' : ' '}] ${criterion.text}`)
+  if (criteria.length > 0) lines.push('')
+  if (requirement.tableIds.length > 0) {
+    lines.push(`${labels.tables}: ${requirement.tableIds.map((id) => `\`${tableName.get(id) ?? id}\``).join(', ')}`, '')
+  }
+  return lines
+}
+
 /** 요구사항 명세 — Markdown. 도메인마다 절을 나누고, 요구사항마다 상태, 내용, 연결된 테이블을 적는다 */
 export function requirementsToMarkdown(doc: EditorDocument, documentName: string, labels: RequirementExportLabels): string {
   const tableName = new Map(doc.model.tables.map((table) => [table.id, table.physicalName]))
   const lines: string[] = [`# ${documentName} — ${labels.heading}`, '']
   for (const domain of requirementDomains(doc)) {
     lines.push(`## ${domainLabel(domain, labels)} (${labels.progress(domain.applied, domain.total)})`, '')
-    for (const requirement of domain.requirements) {
-      lines.push(`### ${requirement.code} ${requirement.title} — ${labels.state[requirementState(requirement)]}`, '')
-      const body = requirement.description
-        .split(/\r?\n/)
-        .map((line) => line.trim().replace(/^[-•*·]\s+/, ''))
-        .filter((line) => line.length > 0)
-      for (const line of body) lines.push(`- ${line}`)
-      if (body.length > 0) lines.push('')
-      const criteria = requirement.criteria ?? []
-      for (const criterion of criteria) lines.push(`- [${criterion.done ? 'x' : ' '}] ${criterion.text}`)
-      if (criteria.length > 0) lines.push('')
-      if (requirement.tableIds.length > 0) {
-        lines.push(`${labels.tables}: ${requirement.tableIds.map((id) => `\`${tableName.get(id) ?? id}\``).join(', ')}`, '')
-      }
-    }
+    for (const requirement of domain.requirements) lines.push(...requirementMarkdownLines(requirement, labels, tableName))
     if (domain.untracedTableIds.length > 0) {
       lines.push(`> ${labels.untraced}: ${domain.untracedTableIds.map((id) => `\`${tableName.get(id) ?? id}\``).join(', ')}`, '')
     }

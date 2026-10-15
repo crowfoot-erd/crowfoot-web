@@ -25,6 +25,7 @@ import { BaseEdge, EdgeLabelRenderer, useStore, type Edge, type EdgeProps, type 
 import { shallow } from 'zustand/shallow'
 
 import { cn } from 'cn'
+import type { ErdRelationship } from '@/features/editor/model/content-schema'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import {
   insetAnchors,
@@ -99,6 +100,46 @@ function CrowFoot() {
       <line x1={16} y1={0} x2={0} y2={0} />
       <line x1={16} y1={0} x2={0} y2={7} />
     </>
+  )
+}
+
+type GlyphRelationship = Pick<ErdRelationship, 'type' | 'childMultiplicity' | 'parentMultiplicity'>
+
+/** 자식 쪽 글리프 — 1:N은 발톱 계열(0 이상 ○< / 하나 이상 |<), 1:1은 ‖ 계열.
+ *  심볼 순서는 선 쪽에서 테이블로 ○ → | → 발톱. */
+function sourceGlyphOf(relationship: GlyphRelationship) {
+  if (relationship.type === 'ONE_TO_MANY') {
+    return relationship.childMultiplicity === 'ZERO_OR_MORE' ? (
+      <>
+        <CrowFoot />
+        <OptionalCircle /> {/* 0 이상 — 발목 바깥(선 쪽)에 ○ */}
+      </>
+    ) : (
+      <>
+        <CrowFoot />
+        <OneBar /> {/* 하나 이상(|<) — 발목 바깥에 | */}
+      </>
+    )
+  }
+  return relationship.childMultiplicity === 'ZERO_OR_ONE' ? (
+    <>
+      <OneMark />
+      <OptionalCircle x={21} /> {/* 1:1 선택 — 막대 바깥에 ○ */}
+    </>
+  ) : (
+    <OneMark /> // 1:1 필수
+  )
+}
+
+/** 부모(1) 쪽 글리프 — ‖ / ‖+○ (부모는 발톱 없음 — 선 쪽에서 ‖ 앞에 ○) */
+function targetGlyphOf(relationship: GlyphRelationship) {
+  return relationship.parentMultiplicity === 'ZERO_OR_ONE' ? (
+    <>
+      <OneMark />
+      <OptionalCircle x={21} /> {/* 0 또는 하나 — 막대 바깥에 ○ */}
+    </>
+  ) : (
+    <OneMark /> // 하나
   )
 }
 
@@ -375,40 +416,8 @@ function RelationshipEdgeComponent({
   /** 자기 참조 글리프 회전각 — RF 핸들(sourcePosition)은 오른쪽 고정이라 실제 루프 면으로 교정 */
   const loopFaceAngle = isSelfLoop && selfLoop ? GLYPH_ANGLE[selfLoop.side] : null
 
-  /** 자식 쪽 글리프 — 1:N은 발톱 계열(0 이상 ○< / 하나 이상 |<), 1:1은 ‖ 계열.
-   *  심볼 순서는 선 쪽에서 테이블로 ○ → | → 발톱. */
-  const sourceGlyph =
-    relationship.type === 'ONE_TO_MANY' ? (
-      relationship.childMultiplicity === 'ZERO_OR_MORE' ? (
-        <>
-          <CrowFoot />
-          <OptionalCircle /> {/* 0 이상 — 발목 바깥(선 쪽)에 ○ */}
-        </>
-      ) : (
-        <>
-          <CrowFoot />
-          <OneBar /> {/* 하나 이상(|<) — 발목 바깥에 | */}
-        </>
-      )
-    ) : relationship.childMultiplicity === 'ZERO_OR_ONE' ? (
-      <>
-        <OneMark />
-        <OptionalCircle x={21} /> {/* 1:1 선택 — 막대 바깥에 ○ */}
-      </>
-    ) : (
-      <OneMark /> // 1:1 필수
-    )
-
-  /** 부모(1) 쪽 글리프 — ‖ / ‖+○ (부모는 발톱 없음 — 선 쪽에서 ‖ 앞에 ○) */
-  const targetGlyph =
-    relationship.parentMultiplicity === 'ZERO_OR_ONE' ? (
-      <>
-        <OneMark />
-        <OptionalCircle x={21} /> {/* 0 또는 하나 — 막대 바깥에 ○ */}
-      </>
-    ) : (
-      <OneMark /> // 하나
-    )
+  const sourceGlyph = sourceGlyphOf(relationship)
+  const targetGlyph = targetGlyphOf(relationship)
 
   return (
     <g

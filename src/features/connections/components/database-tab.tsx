@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
-import type { DbConnection } from '@/api/types'
+import type { DbConnection, ManagedDatabase } from '@/api/types'
 import {
   useConnections,
   useDeleteConnection,
@@ -322,21 +322,10 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
         workspaceId={workspaceId}
         connection={editing}
       />
-      <ConfirmDialog
-        open={deleting !== null}
+      <DeleteConnectionDialog
+        deleting={deleting}
+        managed={deletingManaged}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={
-          deletingManaged
-            ? t('managed.revokeTitle', { schema: deletingManaged.schemaName })
-            : t('connection.delete.title', { name: deleting?.name ?? '' })
-        }
-        description={
-          deletingManaged
-            ? `${t('connection.delete.managedNotice', { name: deleting?.name ?? '' })} ${t('managed.revokeDescription', { schema: deletingManaged.schemaName })}`
-            : t('connection.delete.description', { name: deleting?.name ?? '' })
-        }
-        confirmLabel={deletingManaged ? t('managed.revokeConfirm') : t('common.delete')}
-        destructive
         confirming={deleteMutation.isPending || revokeMutation.isPending}
         onConfirm={handleDelete}
       />
@@ -347,5 +336,42 @@ export function DatabaseTab({ workspaceId, canEdit }: DatabaseTabProps) {
         presetConnectionId={reversePreset}
       />
     </div>
+  )
+}
+
+/** 커넥션 삭제 확인창 — 서비스 제공 DB의 커넥션이면 발급 철회 확인창이 된다 */
+function DeleteConnectionDialog({
+  deleting,
+  managed,
+  onOpenChange,
+  confirming,
+  onConfirm,
+}: {
+  deleting: DbConnection | null
+  managed: ManagedDatabase | null
+  onOpenChange: (open: boolean) => void
+  confirming: boolean
+  onConfirm: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <ConfirmDialog
+      open={deleting !== null}
+      onOpenChange={onOpenChange}
+      title={
+        managed
+          ? t('managed.revokeTitle', { schema: managed.schemaName })
+          : t('connection.delete.title', { name: deleting?.name ?? '' })
+      }
+      description={
+        managed
+          ? `${t('connection.delete.managedNotice', { name: deleting?.name ?? '' })} ${t('managed.revokeDescription', { schema: managed.schemaName })}`
+          : t('connection.delete.description', { name: deleting?.name ?? '' })
+      }
+      confirmLabel={managed ? t('managed.revokeConfirm') : t('common.delete')}
+      destructive
+      confirming={confirming}
+      onConfirm={onConfirm}
+    />
   )
 }

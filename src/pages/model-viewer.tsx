@@ -16,6 +16,7 @@ import { useParams } from 'react-router-dom'
 import { ClipboardList, Loader2, MessageSquare, Rows3, Table2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import type { Model } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DbmsIcon } from '@/components/dbms-icon'
@@ -92,31 +93,7 @@ export function ModelViewerPage() {
         </div>
       ) : (
         <>
-          <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-base font-semibold">{model.data.name}</h1>
-                <Badge variant="outline" className="gap-1 text-[10px]">
-                  <DbmsIcon databaseType={model.data.databaseType} className="size-3" />
-                  {dbmsLabel(model.data.databaseType)}
-                </Badge>
-                <span className="shrink-0 text-xs text-muted-foreground">v{savedVersion ?? model.data.version}</span>
-              </div>
-              <p className="truncate text-xs text-muted-foreground">
-                {[
-                  model.data.createdBy?.name ?? t('common.system'),
-                  formatDateTime(model.data.updatedAt),
-                ].join(' · ')}
-              </p>
-              {model.data.description ? (
-                <p className="truncate text-xs text-muted-foreground">{model.data.description}</p>
-              ) : null}
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => window.close()}>
-              <X aria-hidden />
-              {t('model.viewer.close')}
-            </Button>
-          </header>
+          <ModelViewerHeader model={model.data} version={savedVersion ?? model.data.version} />
           {/* 탭 본문 — ERD 탭은 에디터가 뷰포트 나머지 전체를 차지한다 */}
           <div className="flex min-h-0 flex-1 flex-col">
             {tab === 'erd' ? (
@@ -183,5 +160,37 @@ export function ModelViewerPage() {
         </>
       )}
     </div>
+  )
+}
+
+/** 머리 — 문서명·DBMS·버전, 작성자·최근 수정·설명, 창 닫기 */
+function ModelViewerHeader({ model, version }: { model: Model; version: number }) {
+  const { t } = useTranslation()
+  return (
+    <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h1 className="truncate text-base font-semibold">{model.name}</h1>
+          <Badge variant="outline" className="gap-1 text-[10px]">
+            <DbmsIcon databaseType={model.databaseType} className="size-3" />
+            {dbmsLabel(model.databaseType)}
+          </Badge>
+          <span className="shrink-0 text-xs text-muted-foreground">v{version}</span>
+        </div>
+        <p className="truncate text-xs text-muted-foreground">
+          {[
+            model.createdBy?.name ?? t('common.system'),
+            formatDateTime(model.updatedAt),
+          ].join(' · ')}
+        </p>
+        {model.description ? (
+          <p className="truncate text-xs text-muted-foreground">{model.description}</p>
+        ) : null}
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={() => window.close()}>
+        <X aria-hidden />
+        {t('model.viewer.close')}
+      </Button>
+    </header>
   )
 }

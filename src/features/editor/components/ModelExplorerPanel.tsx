@@ -292,7 +292,7 @@ function ExplorerBody({
     .filter((rel) => !searching || hitRelationshipIds.has(rel.id))
     .filter((rel) => !areaMembers || (areaMembers.has(rel.childTableId) && areaMembers.has(rel.parentTableId)))
   const notes = searching ? doc.diagram.notes.filter((note) => hitNoteIds.has(note.id)) : doc.diagram.notes
-  const documentEmpty = doc.model.tables.length === 0 && doc.model.relationships.length === 0 && doc.diagram.notes.length === 0
+  const documentEmpty = isDocumentEmpty(doc)
 
   const physicalOf = (tableId: string) =>
     doc.model.tables.find((tb) => tb.id === tableId)?.physicalName ?? '?'
@@ -467,6 +467,11 @@ function ExplorerBody({
 
 /* ---------- 아래는 패널 내부 조각 ---------- */
 
+/** 테이블·관계·메모가 하나도 없는 문서 */
+function isDocumentEmpty(doc: EditorDocument): boolean {
+  return doc.model.tables.length === 0 && doc.model.relationships.length === 0 && doc.diagram.notes.length === 0
+}
+
 function rowClass(selected: boolean, active: boolean): string {
   return cn(
     'flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-sm px-2 text-left',
@@ -508,6 +513,45 @@ function GroupHeader({
       {collapsed ? <ChevronRight aria-hidden className="size-3" /> : <ChevronDown aria-hidden className="size-3" />}
       <span>{label}</span>
       <span className="tabular-nums">({count})</span>
+    </button>
+  )
+}
+
+/** 그룹 폴더 헤더의 아이콘 버튼 — 클릭이 헤더(목록 접기)로 번지지 않게 막는다 */
+function FolderIconButton({
+  testid,
+  onClick,
+  pressed,
+  label,
+  hoverClassName,
+  active,
+  children,
+}: {
+  testid: string
+  onClick: () => void
+  pressed?: boolean
+  label: string
+  hoverClassName: string
+  active: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={testid}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      aria-pressed={pressed}
+      aria-label={label}
+      title={label}
+      className={cn(
+        `flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors ${hoverClassName}`,
+        active ? 'text-foreground' : 'text-muted-foreground',
+      )}
+    >
+      {children}
     </button>
   )
 }
@@ -573,59 +617,38 @@ function GroupFolder({
         <span className="min-w-0 flex-1 truncate">{name}</span>
         <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
         {onView ? (
-          <button
-            type="button"
-            data-testid={`${testid}-view`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onView()
-            }}
-            aria-pressed={active}
-            aria-label={t('model.editor.area.view')}
-            title={t('model.editor.area.view')}
-            className={cn(
-              'flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:text-foreground',
-              active ? 'text-foreground' : 'text-muted-foreground',
-            )}
+          <FolderIconButton
+            testid={`${testid}-view`}
+            onClick={onView}
+            pressed={active}
+            label={t('model.editor.area.view')}
+            hoverClassName="hover:text-foreground"
+            active={active}
           >
             <Eye aria-hidden className="size-3" />
-          </button>
+          </FolderIconButton>
         ) : null}
         {canEdit && onEdit ? (
-          <button
-            type="button"
-            data-testid={`${testid}-edit`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onEdit()
-            }}
-            aria-label={t('model.editor.area.edit')}
-            title={t('model.editor.area.edit')}
-            className={cn(
-              'flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:text-foreground',
-              active ? 'text-foreground' : 'text-muted-foreground',
-            )}
+          <FolderIconButton
+            testid={`${testid}-edit`}
+            onClick={onEdit}
+            label={t('model.editor.area.edit')}
+            hoverClassName="hover:text-foreground"
+            active={active}
           >
             <Pencil aria-hidden className="size-3" />
-          </button>
+          </FolderIconButton>
         ) : null}
         {canEdit && onRemove ? (
-          <button
-            type="button"
-            data-testid={`${testid}-remove`}
-            onClick={(event) => {
-              event.stopPropagation()
-              onRemove()
-            }}
-            aria-label={t('common.delete')}
-            title={t('common.delete')}
-            className={cn(
-              'flex size-4 shrink-0 items-center justify-center rounded-sm transition-colors hover:text-destructive',
-              active ? 'text-foreground' : 'text-muted-foreground',
-            )}
+          <FolderIconButton
+            testid={`${testid}-remove`}
+            onClick={onRemove}
+            label={t('common.delete')}
+            hoverClassName="hover:text-destructive"
+            active={active}
           >
             <Trash2 aria-hidden className="size-3" />
-          </button>
+          </FolderIconButton>
         ) : null}
       </div>
       {folded ? null : children}

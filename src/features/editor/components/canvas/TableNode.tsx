@@ -173,21 +173,24 @@ interface KeyRowProps {
   onRemove: () => void
 }
 
+/** 키 종류 배지 — 표기와 색 */
+const KEY_BADGE: Record<KeyKind | 'check', { label: string; className: string }> = {
+  unique: { label: 'UK', className: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
+  check: { label: 'CK', className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+  index: { label: 'IX', className: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
+}
+
+/** 인덱스 종류 배지의 줄임 표기 — 없으면 종류 이름 그대로 */
+const INDEX_TYPE_ABBR: Record<string, string> = { FULLTEXT: 'FT', SPATIAL: 'SP' }
+
 function KeyRow({ kind, name, columnNames, indexType, uniqueIndex, suffix, canEdit, onEdit, onRemove }: KeyRowProps) {
   const { t } = useTranslation()
+  const badge = KEY_BADGE[kind]
+  const tail = suffix ? ` ${suffix}` : ''
   return (
     <div className="group/key flex items-center gap-1 border-t px-1 py-0.5 text-[10px] leading-5">
-      <span
-        className={cn(
-          'shrink-0 rounded-sm px-1 text-[9px] font-semibold',
-          kind === 'unique'
-            ? 'bg-violet-500/15 text-violet-600 dark:text-violet-400'
-            : kind === 'check'
-              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-              : 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
-        )}
-      >
-        {kind === 'unique' ? 'UK' : kind === 'check' ? 'CK' : 'IX'}
+      <span className={cn('shrink-0 rounded-sm px-1 text-[9px] font-semibold', badge.className)}>
+        {badge.label}
       </span>
       {uniqueIndex ? (
         <span data-testid="index-unique-badge" className="shrink-0 rounded-sm bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
@@ -196,7 +199,7 @@ function KeyRow({ kind, name, columnNames, indexType, uniqueIndex, suffix, canEd
       ) : null}
       {indexType && indexType !== 'BTREE' ? (
         <span data-testid="index-type-badge" className="shrink-0 rounded-sm bg-muted px-1 text-[9px] font-semibold text-muted-foreground">
-          {indexType === 'FULLTEXT' ? 'FT' : indexType === 'SPATIAL' ? 'SP' : indexType}
+          {INDEX_TYPE_ABBR[indexType] ?? indexType}
         </span>
       ) : null}
       <button
@@ -204,11 +207,11 @@ function KeyRow({ kind, name, columnNames, indexType, uniqueIndex, suffix, canEd
         className="nodrag flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1 text-left hover:bg-accent disabled:pointer-events-none"
         onClick={onEdit}
         disabled={!canEdit}
-        title={`${name} (${columnNames.join(', ')})${suffix ? ` ${suffix}` : ''}`}
+        title={`${name} (${columnNames.join(', ')})${tail}`}
       >
         <span className="truncate font-medium">{name}</span>
         <span className="truncate text-muted-foreground">
-          ({columnNames.join(', ')}){suffix ? ` ${suffix}` : ''}
+          ({columnNames.join(', ')}){tail}
         </span>
       </button>
       {canEdit ? (

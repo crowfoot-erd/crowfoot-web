@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { PublicFooter, PublicHeader } from '@/components/public-chrome'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { ShowcaseSite } from '@/features/showcase/api'
 import { ShowcaseGrid } from '@/features/showcase/components/showcase-card'
 import { useShowcaseSites } from '@/features/showcase/hooks'
 import { usePageMeta } from '@/hooks/usePageMeta'
@@ -43,41 +44,56 @@ export function ShowcasePage() {
           ) : null}
         </div>
 
-        {list.isPending ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label={t('common.loading')}>
-            {Array.from({ length: 6 }, (_, index) => (
-              <Skeleton key={index} className="h-64 w-full" />
-            ))}
-          </div>
-        ) : list.isError ? (
-          <p className="py-16 text-center text-sm text-muted-foreground" role="alert">
-            {t('showcase.error')}
-          </p>
-        ) : items.length === 0 ? (
-          <p className="py-16 text-center text-sm text-muted-foreground" data-testid="showcase-empty">
-            {t('showcase.empty')}
-          </p>
-        ) : (
-          <>
-            <ShowcaseGrid sites={items} testId="showcase-list" />
-            {list.hasNextPage ? (
-              <div className="flex justify-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void list.fetchNextPage()}
-                  disabled={list.isFetchingNextPage}
-                  data-testid="showcase-load-more"
-                >
-                  {list.isFetchingNextPage ? <Loader2 aria-hidden className="animate-spin" /> : null}
-                  {t('showcase.loadMore')}
-                </Button>
-              </div>
-            ) : null}
-          </>
-        )}
+        <ShowcaseBody list={list} items={items} />
       </main>
       <PublicFooter />
     </div>
+  )
+}
+
+/** 목록 본문 — 불러오는 중·오류·빈 목록·카드 그리드(더 보기) */
+function ShowcaseBody({ list, items }: { list: ReturnType<typeof useShowcaseSites>; items: ShowcaseSite[] }) {
+  const { t } = useTranslation()
+  if (list.isPending) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label={t('common.loading')}>
+        {Array.from({ length: 6 }, (_, index) => (
+          <Skeleton key={index} className="h-64 w-full" />
+        ))}
+      </div>
+    )
+  }
+  if (list.isError) {
+    return (
+      <p className="py-16 text-center text-sm text-muted-foreground" role="alert">
+        {t('showcase.error')}
+      </p>
+    )
+  }
+  if (items.length === 0) {
+    return (
+      <p className="py-16 text-center text-sm text-muted-foreground" data-testid="showcase-empty">
+        {t('showcase.empty')}
+      </p>
+    )
+  }
+  return (
+    <>
+      <ShowcaseGrid sites={items} testId="showcase-list" />
+      {list.hasNextPage ? (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void list.fetchNextPage()}
+            disabled={list.isFetchingNextPage}
+            data-testid="showcase-load-more"
+          >
+            {list.isFetchingNextPage ? <Loader2 aria-hidden className="animate-spin" /> : null}
+            {t('showcase.loadMore')}
+          </Button>
+        </div>
+      ) : null}
+    </>
   )
 }

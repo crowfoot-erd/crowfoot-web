@@ -164,6 +164,59 @@ export interface EditorToolbarProps {
   onOpenShortcuts: () => void
 }
 
+/** 패널 토글 — 열려 있으면 눌린 상태(secondary)로 보인다 */
+function PanelToggleButton({
+  pressed,
+  onClick,
+  label,
+  children,
+}: {
+  pressed: boolean
+  onClick: () => void
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <Button
+      type="button"
+      variant={pressed ? 'secondary' : 'ghost'}
+      size="sm"
+      className="h-7 gap-1.5 px-2"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={pressed}
+      title={label}
+    >
+      {children}
+    </Button>
+  )
+}
+
+/** 검증 요약 배지 — Error ≥ 1 destructive, Error 0이고 Warning ≥ 1이면 amber */
+function ValidationBadge({ errorCount, warningCount }: { errorCount: number; warningCount: number }) {
+  if (errorCount > 0) {
+    return (
+      <span
+        data-testid="validation-badge"
+        className="rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-white"
+      >
+        {errorCount}
+      </span>
+    )
+  }
+  if (warningCount > 0) {
+    return (
+      <span
+        data-testid="validation-badge"
+        className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-amber-950"
+      >
+        {warningCount}
+      </span>
+    )
+  }
+  return null
+}
+
 export function EditorToolbar({
   canEdit,
   saving,
@@ -210,68 +263,39 @@ export function EditorToolbar({
       ) : null}
 
       {/* 패널 토글 — 아이콘만이 아니라 메뉴명과 함께(무엇을 여는지 알 수 있게) */}
-      <Button
-        type="button"
-        variant={explorerOpen ? 'secondary' : 'ghost'}
-        size="sm"
-        className="h-7 gap-1.5 px-2"
+      <PanelToggleButton
+        pressed={explorerOpen}
         onClick={onToggleExplorer}
-        aria-label={t('model.editor.explorer.toggle')}
-        aria-pressed={explorerOpen}
-        title={t('model.editor.explorer.toggle')}
+        label={t('model.editor.explorer.toggle')}
       >
         <PanelLeft aria-hidden className="size-3.5" />
         {t('model.editor.explorer.toggle')}
-      </Button>
+      </PanelToggleButton>
 
       {/* 용어 사전 패널 — 워크스페이스 API라 공개 뷰어에서는 숨긴다(멤버 Viewer는 열람 가능) */}
       {!publicView ? (
-        <Button
-          type="button"
-          variant={termsOpen ? 'secondary' : 'ghost'}
-          size="sm"
-          className="h-7 gap-1.5 px-2"
+        <PanelToggleButton
+          pressed={termsOpen}
           onClick={onToggleTermsPanel}
-          aria-label={t('model.editor.termDictionary.toggle')}
-          aria-pressed={termsOpen}
-          title={t('model.editor.termDictionary.toggle')}
+          label={t('model.editor.termDictionary.toggle')}
         >
           <BookMarked aria-hidden className="size-3.5" />
           {t('model.editor.termDictionary.toggle')}
-        </Button>
+        </PanelToggleButton>
       ) : null}
 
       {/* 검증 패널(v1.20 05-validation §4.1) — 문서 자체만 보므로 멤버 전체가 열람한다.
           요약 배지: Error ≥ 1 destructive, Error 0이고 Warning ≥ 1이면 amber */}
       {!publicView ? (
-        <Button
-          type="button"
-          variant={validationOpen ? 'secondary' : 'ghost'}
-          size="sm"
-          className="h-7 gap-1.5 px-2"
+        <PanelToggleButton
+          pressed={validationOpen}
           onClick={onToggleValidationPanel}
-          aria-label={t('model.validation.toggle')}
-          aria-pressed={validationOpen}
-          title={t('model.validation.toggle')}
+          label={t('model.validation.toggle')}
         >
           <ShieldCheck aria-hidden className="size-3.5" />
           {t('model.validation.toggle')}
-          {validationErrorCount > 0 ? (
-            <span
-              data-testid="validation-badge"
-              className="rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-white"
-            >
-              {validationErrorCount}
-            </span>
-          ) : validationWarningCount > 0 ? (
-            <span
-              data-testid="validation-badge"
-              className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-amber-950"
-            >
-              {validationWarningCount}
-            </span>
-          ) : null}
-        </Button>
+          <ValidationBadge errorCount={validationErrorCount} warningCount={validationWarningCount} />
+        </PanelToggleButton>
       ) : null}
 
       <Button

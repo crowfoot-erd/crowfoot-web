@@ -58,6 +58,18 @@ function boxesOf(d: EditorDocument, positions: Record<string, { x: number; y: nu
   })
 }
 
+/** 직교 선분 p1→p2가 박스 내부를 지나는지 — 경계에서 eps 안쪽 스침은 허용 */
+function segmentCrossesBox(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  box: { x: number; y: number; w: number; h: number },
+  eps: number,
+): boolean {
+  return p1.y === p2.y
+    ? p1.y > box.y + eps && p1.y < box.y + box.h - eps && Math.max(p1.x, p2.x) > box.x + eps && Math.min(p1.x, p2.x) < box.x + box.w - eps
+    : p1.x > box.x + eps && p1.x < box.x + box.w - eps && Math.max(p1.y, p2.y) > box.y + eps && Math.min(p1.y, p2.y) < box.y + box.h - eps
+}
+
 describe('auto-layout — buildLayoutGraph 조립', () => {
   it('노드 = 테이블 전체(노트 제외), 크기 = 렌더 추정식, 엣지 = 부모→자식', () => {
     let d = doc()
@@ -507,10 +519,7 @@ describe('auto-layout — 그룹 클러스터링 (v1.13)', () => {
         expect(p1.x === p2.x || p1.y === p2.y, `관계 ${relationship.id} 선분이 직교가 아님`).toBe(true)
         for (const box of boxes) {
           if (box.id === relationship.parentTableId || box.id === relationship.childTableId) continue
-          const hit =
-            p1.y === p2.y
-              ? p1.y > box.y + EPS && p1.y < box.y + box.h - EPS && Math.max(p1.x, p2.x) > box.x + EPS && Math.min(p1.x, p2.x) < box.x + box.w - EPS
-              : p1.x > box.x + EPS && p1.x < box.x + box.w - EPS && Math.max(p1.y, p2.y) > box.y + EPS && Math.min(p1.y, p2.y) < box.y + box.h - EPS
+          const hit = segmentCrossesBox(p1, p2, box, EPS)
           expect(hit, `관계 ${relationship.id} 선분 (${p1.x},${p1.y})→(${p2.x},${p2.y})가 테이블 ${box.id} 뒤로 지나감`).toBe(false)
         }
       }

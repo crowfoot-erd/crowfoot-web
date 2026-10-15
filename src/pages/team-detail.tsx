@@ -34,7 +34,7 @@ import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { NotFoundContent } from '@/components/not-found-content'
 import { isApiError } from '@/api/client'
-import type { TeamMember } from '@/api/types'
+import type { TeamDetail, TeamMember } from '@/api/types'
 import {
   AddTeamMemberDialog,
   useDissolveTeam,
@@ -77,9 +77,7 @@ export function TeamDetailPage() {
 
   const name = form.watch('name')
   const description = form.watch('description')
-  const dirty =
-    !!team.data &&
-    (name.trim() !== team.data.name || description.trim() !== (team.data.description ?? ''))
+  const dirty = isSettingsChanged(team.data, name, description)
 
   if (team.isPending) {
     return (
@@ -210,64 +208,7 @@ export function TeamDetailPage() {
           ) : null}
         </div>
 
-        {members.isPending ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : members.isError ? (
-          <ErrorState onRetry={() => void members.refetch()} />
-        ) : members.data && members.data.items.length > 0 ? (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('team.members.table.name')}</TableHead>
-                  <TableHead>{t('team.members.table.email')}</TableHead>
-                  <TableHead className="w-24">{t('team.members.table.role')}</TableHead>
-                  <TableHead className="w-32">{t('team.members.table.addedBy')}</TableHead>
-                  <TableHead className="w-28">{t('team.members.table.addedAt')}</TableHead>
-                  {isOwner ? <TableHead className="w-24" /> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.data.items.map((member) => (
-                  <TableRow key={member.userId}>
-                    <TableCell className="font-medium">{member.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{member.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={member.teamRole === 'OWNER' ? 'default' : 'secondary'}>
-                        {t(`common.roleShort.${member.teamRole}`)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {member.addedBy?.name ?? t('workspace.members.grantedOnCreation')}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(member.addedAt)}</TableCell>
-                    {/* 팀 Owner 본인 행에는 제외 미노출 (서버도 400으로 안전망) */}
-                    {isOwner ? (
-                      <TableCell>
-                        {member.teamRole === 'OWNER' ? null : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setRemoveTarget(member)}
-                          >
-                            {t('team.members.remove')}
-                          </Button>
-                        )}
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <EmptyState illustration="team" title={t('team.members.empty')} />
-        )}
+        <TeamMembersBody members={members} isOwner={isOwner} onRemove={setRemoveTarget} />
       </section>
 
       {/* 정보 변경·해체 — Owner만 */}
@@ -361,5 +302,85 @@ export function TeamDetailPage() {
         onConfirm={handleDissolve}
       />
     </div>
+  )
+}
+
+/** 정보가 바뀌었는지 — 공백을 걷은 이름·설명을 저장된 값과 비교한다 */
+function isSettingsChanged(data: TeamDetail | undefined, name: string, description: string) {
+  if (!data) return false
+  return name.trim() !== data.name || description.trim() !== (data.description ?? '')
+}
+
+/** 멤버 본문 — 불러오는 중·오류·빈 목록·멤버 표(Owner에게만 제외 열) */
+function TeamMembersBody({
+  members,
+  isOwner,
+  onRemove,
+}: {
+  members: ReturnType<typeof useTeamMembers>
+  isOwner: boolean
+  onRemove: (member: TeamMember) => void
+}) {
+  const { t } = useTranslation()
+  if (members.isPending) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    )
+  }
+  if (members.isError) return <ErrorState onRetry={() => void members.refetch()} />
+  if (!members.data || members.data.items.length === 0) {
+    return <EmptyState illustration="team" title={t('team.members.empty')} />
+  }
+  return (
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('team.members.table.name')}</TableHead>
+              <TableHead>{t('team.members.table.email')}</TableHead>
+              <TableHead className="w-24">{t('team.members.table.role')}</TableHead>
+              <TableHead className="w-32">{t('team.members.table.addedBy')}</TableHead>
+              <TableHead className="w-28">{t('team.members.table.addedAt')}</TableHead>
+              {isOwner ? <TableHead className="w-24" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.data.items.map((member) => (
+              <TableRow key={member.userId}>
+                <TableCell className="font-medium">{member.name}</TableCell>
+                <TableCell className="text-muted-foreground">{member.email}</TableCell>
+                <TableCell>
+                  <Badge variant={member.teamRole === 'OWNER' ? 'default' : 'secondary'}>
+                    {t(`common.roleShort.${member.teamRole}`)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {member.addedBy?.name ?? t('workspace.members.grantedOnCreation')}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(member.addedAt)}</TableCell>
+                {/* 팀 Owner 본인 행에는 제외 미노출 (서버도 400으로 안전망) */}
+                {isOwner ? (
+                  <TableCell>
+                    {member.teamRole === 'OWNER' ? null : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => onRemove(member)}
+                      >
+                        {t('team.members.remove')}
+                      </Button>
+                    )}
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
   )
 }

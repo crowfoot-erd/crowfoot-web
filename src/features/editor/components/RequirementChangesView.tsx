@@ -11,7 +11,7 @@
 import { useTranslation } from 'react-i18next'
 
 import { cn } from 'cn'
-import type { RequirementChanges } from '@/features/editor/api'
+import type { RequirementChanges, RequirementSnapshot } from '@/features/editor/api'
 import { diffItems, diffLines } from '@/features/editor/model/requirement-diff'
 
 export function RequirementChangesView({
@@ -67,64 +67,72 @@ export function RequirementChangesView({
           {t('model.requirements.changes.unknown')}
         </p>
       ) : (
-        <>
-          {before.title !== after.title ? (
-            <Field label={t('model.requirements.changes.title')} testId="requirement-changes-title">
-              <span className="line-through text-red-700 dark:text-red-400">{before.title}</span>
-              <span aria-hidden className="mx-1 text-muted-foreground">→</span>
-              <span className="text-emerald-700 dark:text-emerald-400">{after.title}</span>
-            </Field>
-          ) : null}
-          {before.status !== after.status ? (
-            <Field label={t('model.requirements.changes.status')} testId="requirement-changes-status">
-              {statusLabel(t, before.status)} → {statusLabel(t, after.status)}
-            </Field>
-          ) : null}
-          {before.description !== after.description ? (
-            <Field label={t('model.requirements.changes.description')} testId="requirement-changes-description">
-              <ul className="grid gap-0.5 font-mono">
-                {diffLines(before.description, after.description).map((line, index) => (
-                  <li
-                    key={index}
-                    data-kind={line.kind}
-                    className={cn(
-                      'whitespace-pre-wrap break-words rounded px-1',
-                      line.kind === 'add' && 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300',
-                      line.kind === 'remove' && 'bg-red-500/10 text-red-800 line-through dark:text-red-300',
-                      line.kind === 'same' && 'text-muted-foreground',
-                    )}
-                  >
-                    <span aria-hidden className="mr-1 inline-block w-3 select-none">
-                      {line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' '}
-                    </span>
-                    {/* 화면 읽기 프로그램에는 기호 대신 말로 */}
-                    {line.kind !== 'same' ? (
-                      <span className="sr-only">
-                        {line.kind === 'add' ? t('model.requirements.changes.added') : t('model.requirements.changes.removed')}:{' '}
-                      </span>
-                    ) : null}
-                    {line.text}
-                  </li>
-                ))}
-              </ul>
-            </Field>
-          ) : null}
-          <ItemsDiff
-            label={t('model.requirements.changes.criteria')}
-            testId="requirement-changes-criteria"
-            before={before.criteria.map((criterion) => criterion.text)}
-            after={after.criteria.map((criterion) => criterion.text)}
-          />
-          <ItemsDiff
-            label={t('model.requirements.changes.tables')}
-            testId="requirement-changes-tables"
-            before={before.tables}
-            after={after.tables}
-            mono
-          />
-        </>
+        <SnapshotDiff before={before} after={after} />
       )}
     </div>
+  )
+}
+
+/** 이전 → 지금 — 제목·상태·내용·수용 기준·연결된 테이블 */
+function SnapshotDiff({ before, after }: { before: RequirementSnapshot; after: RequirementSnapshot }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {before.title !== after.title ? (
+        <Field label={t('model.requirements.changes.title')} testId="requirement-changes-title">
+          <span className="line-through text-red-700 dark:text-red-400">{before.title}</span>
+          <span aria-hidden className="mx-1 text-muted-foreground">→</span>
+          <span className="text-emerald-700 dark:text-emerald-400">{after.title}</span>
+        </Field>
+      ) : null}
+      {before.status !== after.status ? (
+        <Field label={t('model.requirements.changes.status')} testId="requirement-changes-status">
+          {statusLabel(t, before.status)} → {statusLabel(t, after.status)}
+        </Field>
+      ) : null}
+      {before.description !== after.description ? (
+        <Field label={t('model.requirements.changes.description')} testId="requirement-changes-description">
+          <ul className="grid gap-0.5 font-mono">
+            {diffLines(before.description, after.description).map((line, index) => (
+              <li
+                key={index}
+                data-kind={line.kind}
+                className={cn(
+                  'whitespace-pre-wrap break-words rounded px-1',
+                  line.kind === 'add' && 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300',
+                  line.kind === 'remove' && 'bg-red-500/10 text-red-800 line-through dark:text-red-300',
+                  line.kind === 'same' && 'text-muted-foreground',
+                )}
+              >
+                <span aria-hidden className="mr-1 inline-block w-3 select-none">
+                  {line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' '}
+                </span>
+                {/* 화면 읽기 프로그램에는 기호 대신 말로 */}
+                {line.kind !== 'same' ? (
+                  <span className="sr-only">
+                    {line.kind === 'add' ? t('model.requirements.changes.added') : t('model.requirements.changes.removed')}:{' '}
+                  </span>
+                ) : null}
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        </Field>
+      ) : null}
+      <ItemsDiff
+        label={t('model.requirements.changes.criteria')}
+        testId="requirement-changes-criteria"
+        before={before.criteria.map((criterion) => criterion.text)}
+        after={after.criteria.map((criterion) => criterion.text)}
+      />
+      <ItemsDiff
+        label={t('model.requirements.changes.tables')}
+        testId="requirement-changes-tables"
+        before={before.tables}
+        after={after.tables}
+        mono
+      />
+    </>
   )
 }
 

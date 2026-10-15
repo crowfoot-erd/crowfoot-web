@@ -214,43 +214,14 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                     {/* 그 밖의 행 작업은 메뉴로 묶는다 — 삭제가 다른 아이콘 옆에 늘 떠 있지 않게 하고,
                         아이콘만으로는 알기 어려운 작업에 글자 이름을 붙인다.
                         데이터베이스 최초 연결(1.14)은 미연결 문서에만 — 연결되면 DB 동기화(에디터)로 전환된다 */}
-                    {canCreate || isOwner ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            aria-label={t('model.list.actions', { name: model.name })}
-                          >
-                            <Ellipsis aria-hidden className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-44">
-                          {canCreate && model.sourceConnectionId === null ? (
-                            <DropdownMenuItem onSelect={() => setConnecting(model)}>
-                              <Link2 aria-hidden />
-                              {t('model.list.menu.connect')}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {canCreate ? (
-                            <DropdownMenuItem onSelect={() => setEditing(model)}>
-                              <Pencil aria-hidden />
-                              {t('model.list.menu.edit')}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {isOwner ? (
-                            <>
-                              {canCreate ? <DropdownMenuSeparator /> : null}
-                              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(model)}>
-                                <Trash2 aria-hidden />
-                                {t('model.list.menu.delete')}
-                              </DropdownMenuItem>
-                            </>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null}
+                    <ModelRowMenu
+                      model={model}
+                      canCreate={canCreate}
+                      isOwner={isOwner}
+                      onConnect={setConnecting}
+                      onEdit={setEditing}
+                      onDelete={setDeleting}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
@@ -258,36 +229,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
           </TableBody>
         </Table>
         {/* 문서가 한 페이지(20)를 넘는 워크스페이스만 — 총 건수 + 이전/다음 (notifications 관례) */}
-        {models.data && models.data.totalPages > 1 ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">{t('common.total', { count: models.data.totalCount })}</p>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                aria-label={t('common.pagination.prev')}
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                <ChevronLeft aria-hidden />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {t('common.pagination.page', { page: models.data.page, totalPages: models.data.totalPages })}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                aria-label={t('common.pagination.next')}
-                disabled={page >= models.data.totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                <ChevronRight aria-hidden />
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        <ModelPagination page={page} result={models.data} onPage={setPage} />
         </>
       ) : (
         <EmptyState
@@ -337,6 +279,107 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
         confirming={deleteMutation.isPending}
         onConfirm={handleDelete}
       />
+    </div>
+  )
+}
+
+/** 행 작업 메뉴 — 최초 연결(미연결 문서)·편집은 Editor 이상, 삭제는 Owner 전용. 아무 작업도 없으면 두지 않는다 */
+function ModelRowMenu({
+  model,
+  canCreate,
+  isOwner,
+  onConnect,
+  onEdit,
+  onDelete,
+}: {
+  model: ModelSummary
+  canCreate: boolean
+  isOwner: boolean
+  onConnect: (model: ModelSummary) => void
+  onEdit: (model: ModelSummary) => void
+  onDelete: (model: ModelSummary) => void
+}) {
+  const { t } = useTranslation()
+  if (!canCreate && !isOwner) return null
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={t('model.list.actions', { name: model.name })}
+        >
+          <Ellipsis aria-hidden className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        {canCreate && model.sourceConnectionId === null ? (
+          <DropdownMenuItem onSelect={() => onConnect(model)}>
+            <Link2 aria-hidden />
+            {t('model.list.menu.connect')}
+          </DropdownMenuItem>
+        ) : null}
+        {canCreate ? (
+          <DropdownMenuItem onSelect={() => onEdit(model)}>
+            <Pencil aria-hidden />
+            {t('model.list.menu.edit')}
+          </DropdownMenuItem>
+        ) : null}
+        {isOwner ? (
+          <>
+            {canCreate ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuItem variant="destructive" onSelect={() => onDelete(model)}>
+              <Trash2 aria-hidden />
+              {t('model.list.menu.delete')}
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** 문서가 한 페이지를 넘을 때만 — 총 건수 + 이전/다음 */
+function ModelPagination({
+  page,
+  result,
+  onPage,
+}: {
+  page: number
+  result: { totalCount: number; page: number; totalPages: number } | undefined
+  onPage: (page: number) => void
+}) {
+  const { t } = useTranslation()
+  if (!result || result.totalPages <= 1) return null
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm text-muted-foreground">{t('common.total', { count: result.totalCount })}</p>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label={t('common.pagination.prev')}
+          disabled={page <= 1}
+          onClick={() => onPage(page - 1)}
+        >
+          <ChevronLeft aria-hidden />
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          {t('common.pagination.page', { page: result.page, totalPages: result.totalPages })}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label={t('common.pagination.next')}
+          disabled={page >= result.totalPages}
+          onClick={() => onPage(page + 1)}
+        >
+          <ChevronRight aria-hidden />
+        </Button>
+      </div>
     </div>
   )
 }

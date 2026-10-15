@@ -226,43 +226,54 @@ export function DashboardPage() {
             <Link to="/community">{t('dashboard.viewAll')}</Link>
           </Button>
         </div>
-        {recentPosts.isPending ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-14" />
-            <Skeleton className="h-14" />
-            <Skeleton className="h-14" />
-          </div>
-        ) : recentPosts.isError ? (
-          <ErrorState onRetry={() => void recentPosts.refetch()} />
-        ) : recentPosts.data.items.length === 0 ? (
-          <EmptyState
-            title={t('community.recent.empty.title')}
-            description={t('community.recent.empty.description')}
-          />
-        ) : (
-          <div className="flex flex-col divide-y rounded-lg border">
-            {recentPosts.data.items.map((post) => (
-              <Link key={post.postId} to={`/community/posts/${post.postId}`}>
-                <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
-                  <Badge variant="outline" className="shrink-0 text-[10px]">
-                    {t(`community.boardName.${post.board}`)}
-                  </Badge>
-                  <span className="truncate text-sm font-medium">{post.title}</span>
-                  <span className="ml-auto flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
-                    {post.board === 'FEEDBACK' ? (
-                      <span className="flex items-center gap-1">
-                        <MessageSquare aria-hidden className="h-3.5 w-3.5" />
-                        {formatNumber(post.commentCount)}
-                      </span>
-                    ) : null}
-                    <span>{timeAgo(post.createdAt)}</span>
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <RecentPostsBody recentPosts={recentPosts} />
       </section>
+    </div>
+  )
+}
+
+/** 커뮤니티 최근글 본문 — 불러오는 중·오류·빈 목록·글 목록 */
+function RecentPostsBody({ recentPosts }: { recentPosts: ReturnType<typeof useRecentCommunityPosts> }) {
+  const { t } = useTranslation()
+  if (recentPosts.isPending) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+        <Skeleton className="h-14" />
+      </div>
+    )
+  }
+  if (recentPosts.isError) return <ErrorState onRetry={() => void recentPosts.refetch()} />
+  if (recentPosts.data.items.length === 0) {
+    return (
+      <EmptyState
+        title={t('community.recent.empty.title')}
+        description={t('community.recent.empty.description')}
+      />
+    )
+  }
+  return (
+    <div className="flex flex-col divide-y rounded-lg border">
+      {recentPosts.data.items.map((post) => (
+        <Link key={post.postId} to={`/community/posts/${post.postId}`}>
+          <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+            <Badge variant="outline" className="shrink-0 text-[10px]">
+              {t(`community.boardName.${post.board}`)}
+            </Badge>
+            <span className="truncate text-sm font-medium">{post.title}</span>
+            <span className="ml-auto flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+              {post.board === 'FEEDBACK' ? (
+                <span className="flex items-center gap-1">
+                  <MessageSquare aria-hidden className="h-3.5 w-3.5" />
+                  {formatNumber(post.commentCount)}
+                </span>
+              ) : null}
+              <span>{timeAgo(post.createdAt)}</span>
+            </span>
+          </div>
+        </Link>
+      ))}
     </div>
   )
 }

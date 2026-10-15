@@ -9,11 +9,12 @@
  *   전환기로 고르면 그 언어로 재조회(?lang=)한다. 요청 언어가 없으면 폴백 배지(서버가 en→ko 폴백)
  * - 본문은 lazy MarkdownViewer(toast-ui 전용 청크) 재사용
  */
-import { Suspense, lazy, useRef, useState } from 'react'
+import { Suspense, lazy, useRef, useState, type RefObject } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, Loader2 } from 'lucide-react'
 
+import type { CommunityPostDetail, CommunityRecentPost } from '@/api/types'
 import { isApiError } from '@/api/client'
 import { PublicFooter, PublicHeader, publicPath } from '@/components/public-chrome'
 import { Badge } from '@/components/ui/badge'
@@ -78,136 +79,170 @@ export function ReleaseNoteViewerPage() {
               <span className="text-xs font-normal tabular-nums text-muted-foreground">{tocItems.length}</span>
             ) : null}
           </h2>
-          {toc.isPending ? (
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 6 }, (_, index) => (
-                <Skeleton key={index} className="h-8 w-full" />
-              ))}
-            </div>
-          ) : (
-            <ul className="flex max-h-44 flex-col gap-0.5 overflow-y-auto rounded-md border p-1 md:max-h-none md:border-0 md:p-0">
-              {tocItems.map((item) => (
-                <li key={item.postId}>
-                  <Link
-                    to={publicPath(`/release-notes/${item.postId}`)}
-                    aria-current={item.postId === postId ? 'page' : undefined}
-                    className={cn(
-                      'flex flex-col rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted/60',
-                      item.postId === postId ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground',
-                    )}
-                  >
-                    <span className="break-words">{item.title}</span>
-                    <span className="text-[11px] font-normal tabular-nums text-muted-foreground">
-                      {formatDate(item.createdAt)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ReleaseNoteToc items={tocItems} pending={toc.isPending} postId={postId} />
         </nav>
 
         <main className="min-w-0 flex-1">
           {nothingToShow ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-24">
-              <p className="text-sm text-muted-foreground">{t('releaseNoteViewer.notFound')}</p>
-              <Button asChild variant="outline" size="sm">
-                <Link to={publicPath('/')}>
-                  <Home aria-hidden />
-                  {t('releaseNoteViewer.home')}
-                </Link>
-              </Button>
-            </div>
+            <ReleaseNoteMissing message={t('releaseNoteViewer.notFound')} />
           ) : note.isPending ? (
             <div role="status" aria-live="polite" className="flex flex-col items-center justify-center gap-4 py-24">
               <Loader2 aria-hidden className="h-8 w-8 animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
             </div>
           ) : note.isError || !note.data ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-24">
-              <p className="text-sm text-muted-foreground">
-                {isApiError(note.error) && note.error.resultCode !== 'NETWORK_ERROR'
+            <ReleaseNoteMissing
+              message={
+                isApiError(note.error) && note.error.resultCode !== 'NETWORK_ERROR'
                   ? resultCodeMessage(note.error.resultCode)
-                  : t('releaseNoteViewer.notFound')}
-              </p>
-              <Button asChild variant="outline" size="sm">
-                <Link to={publicPath('/')}>
-                  <Home aria-hidden />
-                  {t('releaseNoteViewer.home')}
-                </Link>
-              </Button>
-            </div>
+                  : t('releaseNoteViewer.notFound')
+              }
+            />
           ) : (
-            <>
-              {/* 머리말 — 사용 가이드와 같은 색 번짐 패널 */}
-              <div className="mb-8 rounded-2xl border bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 px-6 py-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="break-words text-2xl font-extrabold tracking-tight md:text-3xl">{note.data.title}</h1>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {t('releaseNoteViewer.badge')}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {note.data.author.name} · {formatDate(note.data.createdAt)}
-                </p>
-              </div>
-              {/* 콘텐츠 언어 전환기 — 여러 언어로 작성된 노트만 노출 */}
-              {(note.data.availableLangs ?? []).length > 1 ? (
-                <div
-                  role="group"
-                  aria-label={t('releaseNoteViewer.contentLanguage')}
-                  className="mb-4 flex flex-wrap items-center gap-2"
-                >
-                  <span className="text-xs text-muted-foreground">{t('releaseNoteViewer.contentLanguage')}</span>
-                  <div className="flex flex-wrap gap-1">
-                    {(note.data.availableLangs ?? []).map((lang) => (
-                      <button
-                        key={lang}
-                        type="button"
-                        aria-pressed={lang === contentLang}
-                        onClick={() => setContentLangOverride(lang as Language)}
-                        className={cn(
-                          'rounded-full border px-2.5 py-0.5 text-xs transition-colors',
-                          lang === contentLang
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'bg-background text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {t(`common.language.${lang}`)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {/* 폴백 배지 — 요청 언어 본문이 없어 다른 언어 원문으로 해석된 상태 */}
-              {(note.data.availableLangs ?? []).indexOf(contentLang) < 0 ? (
-                <p
-                  data-testid="release-note-fallback"
-                  className="mb-4 text-xs text-muted-foreground"
-                  role="status"
-                >
-                  {t('releaseNoteViewer.fallbackNotice', { lang: t(`common.language.${contentLang}`) })}
-                </p>
-              ) : null}
-              <article ref={articleRef} data-testid="release-note-detail" className={cn('flex flex-col gap-4', DOC_ARTICLE_CLASS)}
-                onClick={(event) => {
-                  const target = event.target
-                  if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')
-                }}
-              >
-                <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-                  <MarkdownViewer
-                    key={contentLang}
-                    markdown={note.data.content}
-                    className="min-h-24"
-                  />
-                </Suspense>
-              </article>
-            </>
+            <ReleaseNoteArticle
+              note={note.data}
+              contentLang={contentLang}
+              onSelectLang={setContentLangOverride}
+              articleRef={articleRef}
+            />
           )}
         </main>
       </div>
       <PublicFooter />
     </div>
+  )
+}
+
+/** 목차 — 불러오는 동안은 뼈대, 그 뒤엔 노트 링크 목록(고른 노트 강조) */
+function ReleaseNoteToc({ items, pending, postId }: { items: CommunityRecentPost[]; pending: boolean; postId: string }) {
+  if (pending) {
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 6 }, (_, index) => (
+          <Skeleton key={index} className="h-8 w-full" />
+        ))}
+      </div>
+    )
+  }
+  return (
+    <ul className="flex max-h-44 flex-col gap-0.5 overflow-y-auto rounded-md border p-1 md:max-h-none md:border-0 md:p-0">
+      {items.map((item) => (
+        <li key={item.postId}>
+          <Link
+            to={publicPath(`/release-notes/${item.postId}`)}
+            aria-current={item.postId === postId ? 'page' : undefined}
+            className={cn(
+              'flex flex-col rounded-md px-2.5 py-1.5 text-sm transition-colors hover:bg-muted/60',
+              item.postId === postId ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground',
+            )}
+          >
+            <span className="break-words">{item.title}</span>
+            <span className="text-[11px] font-normal tabular-nums text-muted-foreground">
+              {formatDate(item.createdAt)}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** 보여 줄 노트가 없을 때 — 안내 문구와 홈 버튼 */
+function ReleaseNoteMissing({ message }: { message: string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-24">
+      <p className="text-sm text-muted-foreground">{message}</p>
+      <Button asChild variant="outline" size="sm">
+        <Link to={publicPath('/')}>
+          <Home aria-hidden />
+          {t('releaseNoteViewer.home')}
+        </Link>
+      </Button>
+    </div>
+  )
+}
+
+/** 노트 본문 — 머리말·콘텐츠 언어 전환기·폴백 배지·마크다운 본문 */
+function ReleaseNoteArticle({
+  note,
+  contentLang,
+  onSelectLang,
+  articleRef,
+}: {
+  note: CommunityPostDetail
+  contentLang: Language
+  onSelectLang: (lang: Language) => void
+  articleRef: RefObject<HTMLElement | null>
+}) {
+  const { t } = useTranslation()
+  const availableLangs = note.availableLangs ?? []
+  return (
+    <>
+      {/* 머리말 — 사용 가이드와 같은 색 번짐 패널 */}
+      <div className="mb-8 rounded-2xl border bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 px-6 py-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="break-words text-2xl font-extrabold tracking-tight md:text-3xl">{note.title}</h1>
+          <Badge variant="secondary" className="text-[10px]">
+            {t('releaseNoteViewer.badge')}
+          </Badge>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {note.author.name} · {formatDate(note.createdAt)}
+        </p>
+      </div>
+      {/* 콘텐츠 언어 전환기 — 여러 언어로 작성된 노트만 노출 */}
+      {availableLangs.length > 1 ? (
+        <div
+          role="group"
+          aria-label={t('releaseNoteViewer.contentLanguage')}
+          className="mb-4 flex flex-wrap items-center gap-2"
+        >
+          <span className="text-xs text-muted-foreground">{t('releaseNoteViewer.contentLanguage')}</span>
+          <div className="flex flex-wrap gap-1">
+            {availableLangs.map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                aria-pressed={lang === contentLang}
+                onClick={() => onSelectLang(lang as Language)}
+                className={cn(
+                  'rounded-full border px-2.5 py-0.5 text-xs transition-colors',
+                  lang === contentLang
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t(`common.language.${lang}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {/* 폴백 배지 — 요청 언어 본문이 없어 다른 언어 원문으로 해석된 상태 */}
+      {availableLangs.indexOf(contentLang) < 0 ? (
+        <p
+          data-testid="release-note-fallback"
+          className="mb-4 text-xs text-muted-foreground"
+          role="status"
+        >
+          {t('releaseNoteViewer.fallbackNotice', { lang: t(`common.language.${contentLang}`) })}
+        </p>
+      ) : null}
+      <article ref={articleRef} data-testid="release-note-detail" className={cn('flex flex-col gap-4', DOC_ARTICLE_CLASS)}
+        onClick={(event) => {
+          const target = event.target
+          if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')
+        }}
+      >
+        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+          <MarkdownViewer
+            key={contentLang}
+            markdown={note.content}
+            className="min-h-24"
+          />
+        </Suspense>
+      </article>
+    </>
   )
 }

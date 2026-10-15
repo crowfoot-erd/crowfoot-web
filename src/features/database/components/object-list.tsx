@@ -160,36 +160,68 @@ export function ObjectList({
             {t('database.objects.noMatch')}
           </p>
         ) : (
-          <>
-            {sections ? (
-              sections.map((section) => (
-                <GroupSection
-                  key={section.key}
-                  section={section}
-                  folded={folded.has(section.key)}
-                  onToggle={() => toggle(section.key)}
-                  selected={selected}
-                  onSelect={onSelect}
-                />
-              ))
-            ) : (
-              <ObjectGroup
-                label={t('database.objects.tables')}
-                items={tables}
-                selected={selected}
-                onSelect={onSelect}
-              />
-            )}
-            <ObjectGroup
-              label={t('database.objects.views')}
-              items={views}
-              selected={selected}
-              onSelect={onSelect}
-            />
-          </>
+          <ObjectSections
+            sections={sections}
+            tables={tables}
+            views={views}
+            folded={folded}
+            onToggle={toggle}
+            selected={selected}
+            onSelect={onSelect}
+          />
         )}
       </div>
     </aside>
+  )
+}
+
+/** 걸러 낸 목록 — 문서 그룹이 있으면 그룹 묶음으로, 없으면 테이블 한 묶음으로. 뷰는 따로 둔다 */
+function ObjectSections({
+  sections,
+  tables,
+  views,
+  folded,
+  onToggle,
+  selected,
+  onSelect,
+}: {
+  sections: Section[] | null
+  tables: DatabaseObject[]
+  views: DatabaseObject[]
+  folded: ReadonlySet<string>
+  onToggle: (key: string) => void
+  selected: string | null
+  onSelect: (name: string) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {sections ? (
+        sections.map((section) => (
+          <GroupSection
+            key={section.key}
+            section={section}
+            folded={folded.has(section.key)}
+            onToggle={() => onToggle(section.key)}
+            selected={selected}
+            onSelect={onSelect}
+          />
+        ))
+      ) : (
+        <ObjectGroup
+          label={t('database.objects.tables')}
+          items={tables}
+          selected={selected}
+          onSelect={onSelect}
+        />
+      )}
+      <ObjectGroup
+        label={t('database.objects.views')}
+        items={views}
+        selected={selected}
+        onSelect={onSelect}
+      />
+    </>
   )
 }
 

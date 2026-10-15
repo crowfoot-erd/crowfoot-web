@@ -56,6 +56,22 @@ const facesToward = (b: RouterBox, f: FaceSide, target: RouterPoint) => {
   return f === 'left' ? target.x <= c.x : f === 'right' ? target.x >= c.x : f === 'top' ? target.y <= c.y : target.y >= c.y
 }
 
+/** 관계 하나의 면 쌍 후보 중 비용이 가장 작은 쌍 — 더 싼 쌍이 없으면 현재 쌍(같은 객체)을 그대로 돌려준다 */
+function cheapestFaces(e: BalanceEnds, cost: (e: BalanceEnds, cf: FaceSide, pf: FaceSide) => number): BalanceEnds['sides'] {
+  let best = e.sides
+  let bestCost = cost(e, e.sides.child, e.sides.parent)
+  for (const cf of facingFaces(e.child, e.parent)) {
+    for (const pf of facingFaces(e.parent, e.child)) {
+      const c = cost(e, cf, pf)
+      if (c < bestCost - 1e-6) {
+        bestCost = c
+        best = { child: cf, parent: pf }
+      }
+    }
+  }
+  return best
+}
+
 /**
  * 4면 분산 연결면 배정(v1.37, 사용자 요청 — "상·하·좌·우 4면을 최대한 활용해 겹치지 않도록") — 관계마다 상대 사분면을 향한 면(가로·세로) 조합 최대 4쌍에서, 선 길이 + 그 면에 이미 붙은
  * 선 수 × 가중치 + 상대를 등진 면 벌점이 가장 작은 쌍을 고른다. 모든 관계를 몇 차례 다시 배정해 수렴시킨다.
@@ -81,17 +97,7 @@ function balanceFaces(list: BalanceEnds[]): void {
     let changed = false
     for (const e of list) {
       add(e, -1)
-      let best = e.sides
-      let bestCost = cost(e, e.sides.child, e.sides.parent)
-      for (const cf of facingFaces(e.child, e.parent)) {
-        for (const pf of facingFaces(e.parent, e.child)) {
-          const c = cost(e, cf, pf)
-          if (c < bestCost - 1e-6) {
-            bestCost = c
-            best = { child: cf, parent: pf }
-          }
-        }
-      }
+      const best = cheapestFaces(e, cost)
       if (best !== e.sides) {
         e.sides = best
         changed = true

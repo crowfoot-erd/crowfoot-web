@@ -13,8 +13,9 @@ export default tseslint.config(
   {
     files: ['**/*.{ts,tsx}'],
     rules: {
-      // 큰 편집기 컴포넌트·배치 알고리즘에 몰리는 체계적 지표 — 분해는 별도 리팩터링 과제로 다룬다
-      'sonarjs/cognitive-complexity': 'off',
+      // 함수 복잡도 15 초과는 오류. 켜기 전부터 있던 함수는 eslint-suppressions.json 기준선으로 묶는다 —
+      // 새로 넘는 함수는 막히고, 기준선 함수를 나누면 `pnpm lint --prune-suppressions`로 기준선에서 뺀다
+      'sonarjs/cognitive-complexity': ['error', 15],
       // 짧은 중첩 삼항(JSX 분기·정렬 비교)이 프로젝트 관용구 — 취향 성격
       'sonarjs/no-nested-conditional': 'off',
       // className·메시지 조립의 중첩 템플릿 리터럴 — 가독성 취향 성격

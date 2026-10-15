@@ -1241,6 +1241,17 @@ function overlaps(a: Box, b: Box): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 }
 
+/** (x, y)에 놓은 박스가 장애물과 겹치면 겹친 장애물 오른쪽으로 밀어내기를 반복한 x */
+function clearRightOf(box: Box, startX: number, y: number, obstacles: Box[]): number {
+  let x = startX
+  for (let guard = 0; guard <= obstacles.length; guard += 1) {
+    const hit = obstacles.find((other) => overlaps({ ...box, x, y }, other))
+    if (!hit) break
+    x = hit.x + hit.w + NOTE_TABLE_GAP
+  }
+  return x
+}
+
 /**
  * 자동 배치 후 노트의 새 좌표 — 어떤 노트도 테이블 위에 포개지지 않게 한다.
  * · 연관 노트(linkedTableId): 테이블 우측(폭+24) 상단 정렬, 같은 테이블은 문서 순서로 세로
@@ -1281,15 +1292,9 @@ export function positionNotes(
       const pos = tablePositions[note.linkedTableId]
       const size = sizeOf(table, doc.diagram.nodes[table.id]?.width ?? null, sizes)
       const offsetY = nextY.get(note.linkedTableId) ?? 0
-      let x = pos.x + size.w + NOTE_TABLE_GAP
       const y = pos.y + offsetY
       // 우측 스택 자리에 다른 테이블이나 먼저 놓은 노트가 있으면 겹치지 않을 때까지 오른쪽으로
-      const obstacles = [...tableBoxes, ...placedNotes]
-      for (let guard = 0; guard <= obstacles.length; guard += 1) {
-        const hit = obstacles.find((box) => overlaps({ ...noteBox, x, y }, box))
-        if (!hit) break
-        x = hit.x + hit.w + NOTE_TABLE_GAP
-      }
+      const x = clearRightOf(noteBox, pos.x + size.w + NOTE_TABLE_GAP, y, [...tableBoxes, ...placedNotes])
       if (Math.round(x) !== note.x || Math.round(y) !== note.y) {
         out[note.id] = { x: Math.round(x), y: Math.round(y) }
         noteBox.x = Math.round(x)

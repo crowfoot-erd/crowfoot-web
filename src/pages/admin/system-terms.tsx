@@ -131,63 +131,13 @@ export function AdminSystemTermsPage() {
                 />
               </div>
               {/* 알파벳 인덱스 — 전체·a-z·#(알파벳 외 이니셜) */}
-              <div
-                role="group"
-                aria-label={t('admin.systemTerms.alphabetLabel')}
-                className="flex flex-wrap items-center gap-px border-b px-3 py-2"
-              >
-                <button
-                  type="button"
-                  data-testid="admin-term-letter-all"
-                  aria-pressed={letter === null}
-                  onClick={() => {
-                    setLetter(null)
-                    setPage(1)
-                  }}
-                  className={
-                    letter === null
-                      ? 'rounded-sm bg-accent px-2 py-0.5 text-xs font-semibold'
-                      : 'rounded-sm px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent/60'
-                  }
-                >
-                  {t('admin.systemTerms.alphabetAll')}
-                </button>
-                {ALPHABET.map((char) => (
-                  <button
-                    key={char}
-                    type="button"
-                    data-testid={`admin-term-letter-${char}`}
-                    aria-pressed={letter === char}
-                    onClick={() => {
-                      setLetter(char)
-                      setPage(1)
-                    }}
-                    className={
-                      letter === char
-                        ? 'rounded-sm bg-accent px-1.5 py-0.5 font-mono text-xs font-semibold uppercase'
-                        : 'rounded-sm px-1.5 py-0.5 font-mono text-xs text-muted-foreground uppercase hover:bg-accent/60'
-                    }
-                  >
-                    {char}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  data-testid="admin-term-letter-etc"
-                  aria-pressed={letter === '#'}
-                  onClick={() => {
-                    setLetter('#')
-                    setPage(1)
-                  }}
-                  className={
-                    letter === '#'
-                      ? 'rounded-sm bg-accent px-2 py-0.5 text-xs font-semibold'
-                      : 'rounded-sm px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent/60'
-                  }
-                >
-                  {t('admin.systemTerms.letterEtc')}
-                </button>
-              </div>
+              <LetterIndex
+                letter={letter}
+                onSelect={(next) => {
+                  setLetter(next)
+                  setPage(1)
+                }}
+              />
 
               {items.length === 0 ? (
                 <div className="p-4">
@@ -334,6 +284,61 @@ export function AdminSystemTermsPage() {
         confirming={deleteMutation.isPending}
         onConfirm={handleDelete}
       />
+    </div>
+  )
+}
+
+/** 알파벳 인덱스 — 전체·a-z·#(알파벳 외 이니셜), 고른 이니셜 강조 */
+function LetterIndex({ letter, onSelect }: { letter: string | null; onSelect: (letter: string | null) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div
+      role="group"
+      aria-label={t('admin.systemTerms.alphabetLabel')}
+      className="flex flex-wrap items-center gap-px border-b px-3 py-2"
+    >
+      <button
+        type="button"
+        data-testid="admin-term-letter-all"
+        aria-pressed={letter === null}
+        onClick={() => onSelect(null)}
+        className={
+          letter === null
+            ? 'rounded-sm bg-accent px-2 py-0.5 text-xs font-semibold'
+            : 'rounded-sm px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent/60'
+        }
+      >
+        {t('admin.systemTerms.alphabetAll')}
+      </button>
+      {ALPHABET.map((char) => (
+        <button
+          key={char}
+          type="button"
+          data-testid={`admin-term-letter-${char}`}
+          aria-pressed={letter === char}
+          onClick={() => onSelect(char)}
+          className={
+            letter === char
+              ? 'rounded-sm bg-accent px-1.5 py-0.5 font-mono text-xs font-semibold uppercase'
+              : 'rounded-sm px-1.5 py-0.5 font-mono text-xs text-muted-foreground uppercase hover:bg-accent/60'
+          }
+        >
+          {char}
+        </button>
+      ))}
+      <button
+        type="button"
+        data-testid="admin-term-letter-etc"
+        aria-pressed={letter === '#'}
+        onClick={() => onSelect('#')}
+        className={
+          letter === '#'
+            ? 'rounded-sm bg-accent px-2 py-0.5 text-xs font-semibold'
+            : 'rounded-sm px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent/60'
+        }
+      >
+        {t('admin.systemTerms.letterEtc')}
+      </button>
     </div>
   )
 }

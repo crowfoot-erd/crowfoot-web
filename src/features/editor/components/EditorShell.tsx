@@ -114,6 +114,56 @@ function readValidationOpen(): boolean {
   }
 }
 
+/** 서버 버전과 같은 기준의 임시본 — 기준이 다르면 폐기한다 */
+function loadRestorableDraft(model: Pick<Model, 'workspaceId' | 'modelId' | 'version'>) {
+  const draft = loadDraft(model.workspaceId, model.modelId)
+  const restore = draft && draft.baseVersion === model.version ? draft : null
+  if (draft && !restore) clearDraft(model.workspaceId, model.modelId)
+  return restore
+}
+
+/** 문서를 열 때 수화할 본문 — 임시본 복원·서버 본문 파싱·위치 없는 테이블 배치.
+ *  파싱에 실패하면 null(로드 실패와 같게 취급한다) */
+function openModelContent(
+  model: Pick<Model, 'workspaceId' | 'modelId' | 'version' | 'content'>,
+  canEdit: boolean,
+) {
+  // 임시 저장 복원 — 문서를 닫을 때 저장이 못 끝난 편집(배포 중단·페이지 강제 재로드 등).
+  // baseVersion이 서버 버전과 같을 때만 복구한다: 다르면 남이 저장했거나 임시본이 다른
+  // 곳에서 이미 저장돼 서버가 앞선 것이다 — 임시본을 폐기하고 서버 본문으로 연다.
+  // 임시본 복원은 권한(canEdit) 기준 — 역할(readOnly)은 채널 연결 뒤에 늦게 오는데,
+  // 편집이 가능해야 임시본이 생기므로 Viewer가 궁여지책으로 만난 일은 없다
+  const restore = canEdit ? loadRestorableDraft(model) : null
+
+  const tryParse = (text: string) => {
+    try {
+      return parseContent(text)
+    } catch {
+      return null
+    }
+  }
+  // 서버 본문은 요약 diff의 기준점(savedDocument)으로도 쓴다 — 임시본을 화면에 띄우는
+  // 복원 경로에서도 마지막 저장본은 서버 것이므로. 파싱 실패는 로드 실패와 같게 취급한다
+  // 위치 없는 테이블(MCP가 만든 것)은 여기서 놓는다(02-ui.md §18). 편집할 수 있는 사람이 열었으면
+  // 놓은 결과가 문서 변경이 되어 자동 저장으로 남고, 볼 수만 있는 사람에게는 화면에만 놓인다
+  const serverRaw = tryParse(model.content)
+  const serverParsed = serverRaw ? placeMissingTables(serverRaw) : null
+  // 예전 화면이 남긴 임시본은 그 화면이 모르던 항목(요구사항 등)을 담고 있지 않다 — 서버 값을 이어 붙인다
+  const restoreContent = restore ? carryOverFromServer(restore.content, model.content) : null
+  const draftRaw = restoreContent ? tryParse(restoreContent) : null
+  const draftParsed = draftRaw ? placeMissingTables(draftRaw) : null
+  const placedOnOpen = canEdit && !draftParsed && serverRaw !== null && serverParsed !== serverRaw
+  if (restore && !draftParsed) clearDraft(model.workspaceId, model.modelId) // 깨진 임시본 — 폐기
+  const parsed = draftParsed ?? serverParsed
+  if (!parsed) return null
+  const savedDocument = placedOnOpen
+    ? { model: serverRaw.model, diagram: serverRaw.diagram }
+    : serverParsed
+      ? { model: serverParsed.model, diagram: serverParsed.diagram }
+      : undefined
+  return { parsed, restoreContent, draftParsed, savedDocument, placedOnOpen }
+}
+
 export interface EditorShellProps {
   model: Model
   canEdit: boolean
@@ -268,39 +318,20 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
     if (state.modelId === model.modelId && state.baseVersion === model.version) return
     restoredDraftRef.current = null
 
-    // 임시 저장 복원 — 문서를 닫을 때 저장이 못 끝난 편집(배포 중단·페이지 강제 재로드 등).
-    // baseVersion이 서버 버전과 같을 때만 복구한다: 다르면 남이 저장했거나 임시본이 다른
-    // 곳에서 이미 저장돼 서버가 앞선 것이다 — 임시본을 폐기하고 서버 본문으로 연다.
-    // 임시본 복원은 권한(canEdit) 기준 — 역할(readOnly)은 채널 연결 뒤에 늦게 오는데,
-    // 편집이 가능해야 임시본이 생기므로 Viewer가 궁여지책으로 만난 일은 없다
-    const draft = canEdit ? loadDraft(model.workspaceId, model.modelId) : null
-    const restore = draft && draft.baseVersion === model.version ? draft : null
-    if (draft && !restore) clearDraft(model.workspaceId, model.modelId)
-
-    const tryParse = (text: string) => {
-      try {
-        return parseContent(text)
-      } catch {
-        return null
-      }
-    }
-    // 서버 본문은 요약 diff의 기준점(savedDocument)으로도 쓴다 — 임시본을 화면에 띄우는
-    // 복원 경로에서도 마지막 저장본은 서버 것이므로. 파싱 실패는 로드 실패와 같게 취급한다
-    // 위치 없는 테이블(MCP가 만든 것)은 여기서 놓는다(02-ui.md §18). 편집할 수 있는 사람이 열었으면
-    // 놓은 결과가 문서 변경이 되어 자동 저장으로 남고, 볼 수만 있는 사람에게는 화면에만 놓인다
-    const serverRaw = tryParse(model.content)
-    const serverParsed = serverRaw ? placeMissingTables(serverRaw) : null
-    // 예전 화면이 남긴 임시본은 그 화면이 모르던 항목(요구사항 등)을 담고 있지 않다 — 서버 값을 이어 붙인다
-    const restoreContent = restore ? carryOverFromServer(restore.content, model.content) : null
-    const draftRaw = restoreContent ? tryParse(restoreContent) : null
-    const draftParsed = draftRaw ? placeMissingTables(draftRaw) : null
-    const placedOnOpen = canEdit && !draftParsed && serverRaw !== null && serverParsed !== serverRaw
-    if (restore && !draftParsed) clearDraft(model.workspaceId, model.modelId) // 깨진 임시본 — 폐기
-    const parsed = draftParsed ?? serverParsed
-    if (!parsed) {
+    const opened = openModelContent(
+      {
+        workspaceId: model.workspaceId,
+        modelId: model.modelId,
+        version: model.version,
+        content: model.content,
+      },
+      canEdit,
+    )
+    if (!opened) {
       setParseError(true)
       return
     }
+    const { parsed, restoreContent, draftParsed, savedDocument, placedOnOpen } = opened
     setParseError(false)
     restoredDraftRef.current = draftParsed ? restoreContent : null
     // dirty인데 외부에서 버전이 올랐다 → 거부(로컬 보존), 충돌은 저장 시 409로 처리
@@ -311,11 +342,7 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
         baseVersion: model.version,
         databaseType: model.databaseType,
         document: { model: parsed.model, diagram: parsed.diagram },
-        savedDocument: placedOnOpen
-          ? { model: serverRaw.model, diagram: serverRaw.diagram }
-          : serverParsed
-            ? { model: serverParsed.model, diagram: serverParsed.diagram }
-            : undefined,
+        savedDocument,
         unsaved: placedOnOpen,
       })
   }, [model.modelId, model.version, model.content, model.workspaceId, canEdit])

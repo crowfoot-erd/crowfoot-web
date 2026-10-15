@@ -47,6 +47,22 @@ function granteeName(membership: Membership): string {
   return membership.user?.name ?? membership.team?.name ?? '-'
 }
 
+/** 검색어(소문자)로 거르기 — 사용자명·이메일·팀명 중 하나에 들어 있으면 남긴다. 비었으면 그대로 */
+function filterMemberships(items: Membership[], normalizedFilter: string): Membership[] {
+  if (!normalizedFilter) return items
+  return items.filter((membership) => {
+    const haystack = [
+      membership.user?.name,
+      membership.user?.email,
+      membership.team?.name,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return haystack.includes(normalizedFilter)
+  })
+}
+
 export function MembersTab({ workspaceId, workspaceName, isOwner }: MembersTabProps) {
   const { t } = useTranslation()
   const memberships = useMemberships(workspaceId)
@@ -57,20 +73,7 @@ export function MembersTab({ workspaceId, workspaceName, isOwner }: MembersTabPr
   const [revokeTarget, setRevokeTarget] = useState<Membership | null>(null)
 
   const items = memberships.data?.items ?? []
-  const normalizedFilter = filter.trim().toLowerCase()
-  const filtered = normalizedFilter
-    ? items.filter((membership) => {
-        const haystack = [
-          membership.user?.name,
-          membership.user?.email,
-          membership.team?.name,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        return haystack.includes(normalizedFilter)
-      })
-    : items
+  const filtered = filterMemberships(items, filter.trim().toLowerCase())
 
   /** MEMBERSHIP_NOT_FOUND 등 — 안내 후 목록 재조회 (§3.6) */
   const handleMutationError = (error: unknown) => {
@@ -247,7 +250,7 @@ export function MembersTab({ workspaceId, workspaceName, isOwner }: MembersTabPr
         </div>
       )}
 
-      {memberships.data && memberships.data.items.length > 0 ? (
+      {items.length > 0 ? (
         <p className="text-xs text-muted-foreground">{t('workspace.members.addDialog.teamGrantNotice')}</p>
       ) : null}
 

@@ -151,6 +151,24 @@ function ViewDataItem({
   )
 }
 
+/** 그룹 메뉴 재료 — 대상 테이블과 추가·제외할 수 있는 그룹 */
+function groupMenuState(target: MenuTarget, selectedTableIds: readonly string[], groups: readonly ContextMenuGroup[]) {
+  /** 그룹 조작 대상 — 우클릭한 테이블이 선택 상태면 선택 전체, 아니면 그 테이블만 */
+  const tableId = target.kind === 'table' ? target.tableId : null
+  let groupTargets: string[] = []
+  if (tableId !== null) groupTargets = selectedTableIds.includes(tableId) ? [...selectedTableIds] : [tableId]
+  const targetSet = new Set(groupTargets)
+  /** 한 테이블은 한 그룹에 — 이미 소속인 대상은 '그룹에 추가' 경로에 들어가지 않는다 */
+  const groupedIds = new Set(groups.flatMap((g) => g.tableIds))
+  const ungroupedTargets = groupTargets.filter((id) => !groupedIds.has(id))
+  const allGrouped = groupTargets.length > 0 && ungroupedTargets.length === 0
+  const addableGroups = allGrouped ? [] : groups
+  const removableGroups = groups.filter((g) => g.tableIds.some((id) => targetSet.has(id)))
+  /** 우클릭한 테이블의 소속 그룹 — 문서 순서 첫 그룹(렌더 색을 고정하는 그룹)을 편집한다 */
+  const targetGroup = tableId !== null ? groups.find((g) => g.tableIds.includes(tableId)) : undefined
+  return { groupTargets, ungroupedTargets, allGrouped, addableGroups, removableGroups, targetGroup }
+}
+
 export function CanvasContextMenu({
   toFlow,
   selectedTableIds,
@@ -187,23 +205,11 @@ export function CanvasContextMenu({
     </>
   )
 
-  /** 그룹 조작 대상 — 우클릭한 테이블이 선택 상태면 선택 전체, 아니면 그 테이블만 */
-  const groupTargets =
-    target.kind === 'table'
-      ? selectedTableIds.includes(target.tableId)
-        ? [...selectedTableIds]
-        : [target.tableId]
-      : []
-  const targetSet = new Set(groupTargets)
-  /** 한 테이블은 한 그룹에 — 이미 소속인 대상은 '그룹에 추가' 경로에 들어가지 않는다 */
-  const groupedIds = new Set(groups.flatMap((g) => g.tableIds))
-  const ungroupedTargets = groupTargets.filter((id) => !groupedIds.has(id))
-  const allGrouped = groupTargets.length > 0 && ungroupedTargets.length === 0
-  const addableGroups = allGrouped ? [] : groups
-  const removableGroups = groups.filter((g) => g.tableIds.some((id) => targetSet.has(id)))
-  /** 우클릭한 테이블의 소속 그룹 — 문서 순서 첫 그룹(렌더 색을 고정하는 그룹)을 편집한다 */
-  const targetGroup =
-    target.kind === 'table' ? groups.find((g) => g.tableIds.includes(target.tableId)) : undefined
+  const { groupTargets, ungroupedTargets, allGrouped, addableGroups, removableGroups, targetGroup } = groupMenuState(
+    target,
+    selectedTableIds,
+    groups,
+  )
 
   return (
     <ContextMenuPrimitive.Root>

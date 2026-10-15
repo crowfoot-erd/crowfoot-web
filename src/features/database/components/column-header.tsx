@@ -52,6 +52,13 @@ export function LogicalNameText({
   )
 }
 
+/** 정렬 방향 → 머리글의 aria-sort 값 */
+function ariaSortOf(direction: 'ASC' | 'DESC' | null): 'ascending' | 'descending' | 'none' {
+  if (direction === 'ASC') return 'ascending'
+  if (direction === 'DESC') return 'descending'
+  return 'none'
+}
+
 export function ColumnHeader({
   column,
   logicalName,
@@ -99,15 +106,7 @@ export function ColumnHeader({
   return (
     <th
       scope="col"
-      aria-sort={
-        onSort
-          ? direction === 'ASC'
-            ? 'ascending'
-            : direction === 'DESC'
-              ? 'descending'
-              : 'none'
-          : undefined
-      }
+      aria-sort={onSort ? ariaSortOf(direction) : undefined}
       className={cn(
         'border-b border-r px-0 py-0 text-left font-medium last:border-r-0',
         widths && 'relative overflow-hidden',

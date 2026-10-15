@@ -162,6 +162,13 @@ function PanelBody({ workspaceId, databaseType, canEdit, tab: tabProp, onTabChan
 
 /* ---------- 워크스페이스 사전 탭 ---------- */
 
+/** 도메인 타입 필터(null이면 전체)와 검색어(소문자, 빈 값이면 전체)로 용어를 거른다 — 토큰·라벨 부분 일치 */
+function filterStandardTerms(terms: readonly WorkspaceTerm[], domainFilter: string | null, q: string): readonly WorkspaceTerm[] {
+  const scoped = domainFilter ? terms.filter((row) => row.domainTypeId === domainFilter) : terms
+  if (!q) return scoped
+  return scoped.filter((row) => row.term.toLowerCase().includes(q) || row.label.toLowerCase().includes(q))
+}
+
 function StandardTab({
   workspaceId,
   databaseType,
@@ -221,12 +228,7 @@ function StandardTab({
   )
 
   const q = query.trim().toLowerCase()
-  const scoped = domainFilter ? standardTerms.filter((row) => row.domainTypeId === domainFilter) : standardTerms
-  const filtered = q
-    ? scoped.filter(
-        (row) => row.term.toLowerCase().includes(q) || row.label.toLowerCase().includes(q),
-      )
-    : scoped
+  const filtered = filterStandardTerms(standardTerms, domainFilter, q)
 
   return (
     <>
@@ -298,88 +300,21 @@ function StandardTab({
           </p>
         ) : (
           filtered.map((row) => (
-            <div
+            <StandardTermRow
               key={row.termId}
-              data-testid={`term-row-${row.term}`}
-              className={
-                canEdit
-                  ? 'group flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-sm px-2 text-left hover:bg-accent/60'
-                  : 'flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left'
+              row={row}
+              databaseType={databaseType}
+              canEdit={canEdit}
+              domainNameOf={domainNameOf}
+              deleting={deleteMutation.isPending}
+              onEdit={openEdit}
+              onShowDomain={onShowDomain}
+              onDelete={(termId) =>
+                deleteMutation.mutate(termId, {
+                  onError: (error) => toast.error(errorMessage(error)),
+                })
               }
-              onClick={canEdit ? () => openEdit(row) : undefined}
-              onKeyDown={
-                canEdit
-                  ? (event) => {
-                      if (event.key === 'Enter') openEdit(row)
-                    }
-                  : undefined
-              }
-              role={canEdit ? 'button' : undefined}
-              tabIndex={canEdit ? 0 : undefined}
-            >
-              <code className="min-w-0 shrink-0 truncate font-mono text-xs text-muted-foreground">
-                {row.term}
-              </code>
-              <span aria-hidden className="shrink-0 text-muted-foreground">
-                →
-              </span>
-              <span className="min-w-0 flex-1 truncate">{row.label}</span>
-              {row.domainTypeId && domainNameOf.has(row.domainTypeId) ? (
-                // 도메인 타입을 가리키는 용어 — 타입 표기 대신 도메인 타입 이름. 누르면 도메인 타입 탭의 그 항목으로 간다
-                <button
-                  type="button"
-                  className="shrink-0 rounded-sm bg-violet-500/15 px-1 text-[10px] font-medium text-violet-600 hover:bg-violet-500/25 dark:text-violet-400"
-                  data-testid={`term-domain-${row.term}`}
-                  title={t('model.editor.domainType.badge', { name: domainNameOf.get(row.domainTypeId) })}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    if (row.domainTypeId) onShowDomain(row.domainTypeId)
-                  }}
-                >
-                  {domainNameOf.get(row.domainTypeId)}
-                </button>
-              ) : row.types?.[databaseType] ? (
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                  {row.types[databaseType]}
-                </span>
-              ) : null}
-              {canEdit ? (
-                <>
-                  {/* 수정 진입 — 연필 아이콘(행 클릭과 같은 동작) */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-                    aria-label={`${t('common.edit')} — ${row.term}`}
-                    title={`${t('common.edit')} — ${row.term}`}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      openEdit(row)
-                    }}
-                  >
-                    <Pencil aria-hidden className="size-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-                    aria-label={`${t('common.delete')} — ${row.term}`}
-                    title={`${t('common.delete')} — ${row.term}`}
-                    disabled={deleteMutation.isPending}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      deleteMutation.mutate(row.termId, {
-                        onError: (error) => toast.error(errorMessage(error)),
-                      })
-                    }}
-                  >
-                    <Trash2 aria-hidden className="size-3.5" />
-                  </Button>
-                </>
-              ) : null}
-            </div>
+            />
           ))
         )}
       </div>
@@ -401,6 +336,131 @@ function StandardTab({
         />
       ) : null}
     </>
+  )
+}
+
+/** 워크스페이스 사전의 한 행 — 편집 권한이 있으면 누르면 수정 다이얼로그를 연다 */
+function StandardTermRow({
+  row,
+  databaseType,
+  canEdit,
+  domainNameOf,
+  deleting,
+  onEdit,
+  onShowDomain,
+  onDelete,
+}: {
+  row: WorkspaceTerm
+  databaseType: string
+  canEdit: boolean
+  /** 도메인 타입 id → 이름 */
+  domainNameOf: ReadonlyMap<string, string>
+  deleting: boolean
+  onEdit: (row: WorkspaceTerm) => void
+  onShowDomain: (domainTypeId: string) => void
+  onDelete: (termId: string) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div
+      data-testid={`term-row-${row.term}`}
+      className={
+        canEdit
+          ? 'group flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-sm px-2 text-left hover:bg-accent/60'
+          : 'flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left'
+      }
+      onClick={canEdit ? () => onEdit(row) : undefined}
+      onKeyDown={
+        canEdit
+          ? (event) => {
+              if (event.key === 'Enter') onEdit(row)
+            }
+          : undefined
+      }
+      role={canEdit ? 'button' : undefined}
+      tabIndex={canEdit ? 0 : undefined}
+    >
+      <code className="min-w-0 shrink-0 truncate font-mono text-xs text-muted-foreground">
+        {row.term}
+      </code>
+      <span aria-hidden className="shrink-0 text-muted-foreground">
+        →
+      </span>
+      <span className="min-w-0 flex-1 truncate">{row.label}</span>
+      <StandardTermSuffix row={row} databaseType={databaseType} domainNameOf={domainNameOf} onShowDomain={onShowDomain} />
+      {canEdit ? (
+        <>
+          {/* 수정 진입 — 연필 아이콘(행 클릭과 같은 동작) */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+            aria-label={`${t('common.edit')} — ${row.term}`}
+            title={`${t('common.edit')} — ${row.term}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit(row)
+            }}
+          >
+            <Pencil aria-hidden className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+            aria-label={`${t('common.delete')} — ${row.term}`}
+            title={`${t('common.delete')} — ${row.term}`}
+            disabled={deleting}
+            onClick={(event) => {
+              event.stopPropagation()
+              onDelete(row.termId)
+            }}
+          >
+            <Trash2 aria-hidden className="size-3.5" />
+          </Button>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/** 행의 타입 접미 — 도메인 타입을 가리키면 그 이름(누르면 도메인 타입 탭으로), 아니면 문서 DB 종류의 타입 */
+function StandardTermSuffix({
+  row,
+  databaseType,
+  domainNameOf,
+  onShowDomain,
+}: {
+  row: WorkspaceTerm
+  databaseType: string
+  domainNameOf: ReadonlyMap<string, string>
+  onShowDomain: (domainTypeId: string) => void
+}) {
+  const { t } = useTranslation()
+  if (row.domainTypeId && domainNameOf.has(row.domainTypeId)) {
+    // 도메인 타입을 가리키는 용어 — 타입 표기 대신 도메인 타입 이름. 누르면 도메인 타입 탭의 그 항목으로 간다
+    return (
+      <button
+        type="button"
+        className="shrink-0 rounded-sm bg-violet-500/15 px-1 text-[10px] font-medium text-violet-600 hover:bg-violet-500/25 dark:text-violet-400"
+        data-testid={`term-domain-${row.term}`}
+        title={t('model.editor.domainType.badge', { name: domainNameOf.get(row.domainTypeId) })}
+        onClick={(event) => {
+          event.stopPropagation()
+          if (row.domainTypeId) onShowDomain(row.domainTypeId)
+        }}
+      >
+        {domainNameOf.get(row.domainTypeId)}
+      </button>
+    )
+  }
+  if (!row.types?.[databaseType]) return null
+  return (
+    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+      {row.types[databaseType]}
+    </span>
   )
 }
 
@@ -467,63 +527,13 @@ function SystemTab({
       </div>
 
       {/* 알파벳 인덱스 — 전체·a-z·#(알파벳 외 이니셜). 선택 시 그 이니셜 토큰만 1페이지부터 */}
-      <div
-        role="group"
-        aria-label={t('model.editor.termDictionary.alphabetLabel')}
-        className="flex flex-wrap items-center gap-px border-b px-1 py-1"
-      >
-        <button
-          type="button"
-          data-testid="term-letter-all"
-          aria-pressed={letter === null}
-          onClick={() => {
-            setLetter(null)
-            setPage(1)
-          }}
-          className={
-            letter === null
-              ? 'rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-semibold'
-              : 'rounded-sm px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent/60'
-          }
-        >
-          {t('model.editor.termDictionary.alphabetAll')}
-        </button>
-        {ALPHABET.map((char) => (
-          <button
-            key={char}
-            type="button"
-            data-testid={`term-letter-${char}`}
-            aria-pressed={letter === char}
-            onClick={() => {
-              setLetter(char)
-              setPage(1)
-            }}
-            className={
-              letter === char
-                ? 'rounded-sm bg-accent px-1 py-0.5 font-mono text-[10px] font-semibold uppercase'
-                : 'rounded-sm px-1 py-0.5 font-mono text-[10px] text-muted-foreground uppercase hover:bg-accent/60'
-            }
-          >
-            {char}
-          </button>
-        ))}
-        <button
-          type="button"
-          data-testid="term-letter-etc"
-          aria-pressed={letter === '#'}
-          onClick={() => {
-            setLetter('#')
-            setPage(1)
-          }}
-          className={
-            letter === '#'
-              ? 'rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-semibold'
-              : 'rounded-sm px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent/60'
-          }
-        >
-          {t('model.editor.termDictionary.letterEtc')}
-        </button>
-      </div>
+      <LetterIndex
+        letter={letter}
+        onSelect={(next) => {
+          setLetter(next)
+          setPage(1)
+        }}
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1 text-sm">
         {systemStatus.isPending ? (
@@ -550,34 +560,15 @@ function SystemTab({
         ) : (
           // 페이지 전환 중에도 이전 페이지를 보여준다(keepPreviousData) — 흐리게 표시
           <div className={systemStatus.isPlaceholderData ? 'opacity-60' : undefined}>
-            {items.map((row: SystemTerm) => {
-              const label = resolveLabel(row.labels, locale)
-              return (
-                <div
-                  key={row.termId}
-                  data-testid={`term-builtin-${row.term}`}
-                  className="flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left"
-                >
-                  <code className="min-w-0 shrink-0 truncate font-mono text-xs text-muted-foreground">
-                    {row.term}
-                  </code>
-                  <span aria-hidden className="shrink-0 text-muted-foreground">
-                    →
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  {row.types?.[databaseType] ? (
-                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                      {row.types[databaseType]}
-                    </span>
-                  ) : null}
-                  {overridden.has(row.term) ? (
-                    <Badge variant="secondary" className="shrink-0 px-1 text-[9px]">
-                      {t('model.editor.termDictionary.overridden')}
-                    </Badge>
-                  ) : null}
-                </div>
-              )
-            })}
+            {items.map((row: SystemTerm) => (
+              <SystemTermRow
+                key={row.termId}
+                row={row}
+                label={resolveLabel(row.labels, locale)}
+                databaseType={databaseType}
+                overridden={overridden.has(row.term)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -616,5 +607,99 @@ function SystemTab({
         </Button>
       </div>
     </>
+  )
+}
+
+/** 시스템 사전의 한 행 — 열람 전용. 워크스페이스 사전이 같은 토큰을 덮어 쓰고 있으면 배지 */
+function SystemTermRow({
+  row,
+  label,
+  databaseType,
+  overridden,
+}: {
+  row: SystemTerm
+  label: string
+  databaseType: string
+  overridden: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <div
+      data-testid={`term-builtin-${row.term}`}
+      className="flex h-7 select-none items-center gap-1.5 rounded-sm px-2 text-left"
+    >
+      <code className="min-w-0 shrink-0 truncate font-mono text-xs text-muted-foreground">
+        {row.term}
+      </code>
+      <span aria-hidden className="shrink-0 text-muted-foreground">
+        →
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {row.types?.[databaseType] ? (
+        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+          {row.types[databaseType]}
+        </span>
+      ) : null}
+      {overridden ? (
+        <Badge variant="secondary" className="shrink-0 px-1 text-[9px]">
+          {t('model.editor.termDictionary.overridden')}
+        </Badge>
+      ) : null}
+    </div>
+  )
+}
+
+/** 알파벳 인덱스 — 전체(null)·a-z·#(알파벳 외 이니셜) 가운데 하나를 고른다 */
+function LetterIndex({ letter, onSelect }: { letter: string | null; onSelect: (letter: string | null) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div
+      role="group"
+      aria-label={t('model.editor.termDictionary.alphabetLabel')}
+      className="flex flex-wrap items-center gap-px border-b px-1 py-1"
+    >
+      <button
+        type="button"
+        data-testid="term-letter-all"
+        aria-pressed={letter === null}
+        onClick={() => onSelect(null)}
+        className={
+          letter === null
+            ? 'rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-semibold'
+            : 'rounded-sm px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent/60'
+        }
+      >
+        {t('model.editor.termDictionary.alphabetAll')}
+      </button>
+      {ALPHABET.map((char) => (
+        <button
+          key={char}
+          type="button"
+          data-testid={`term-letter-${char}`}
+          aria-pressed={letter === char}
+          onClick={() => onSelect(char)}
+          className={
+            letter === char
+              ? 'rounded-sm bg-accent px-1 py-0.5 font-mono text-[10px] font-semibold uppercase'
+              : 'rounded-sm px-1 py-0.5 font-mono text-[10px] text-muted-foreground uppercase hover:bg-accent/60'
+          }
+        >
+          {char}
+        </button>
+      ))}
+      <button
+        type="button"
+        data-testid="term-letter-etc"
+        aria-pressed={letter === '#'}
+        onClick={() => onSelect('#')}
+        className={
+          letter === '#'
+            ? 'rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-semibold'
+            : 'rounded-sm px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent/60'
+        }
+      >
+        {t('model.editor.termDictionary.letterEtc')}
+      </button>
+    </div>
   )
 }

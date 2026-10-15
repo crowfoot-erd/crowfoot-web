@@ -26,6 +26,7 @@ import {
 import type { DocDiffAction, DocDiffKind } from '@/features/editor/model/doc-diff'
 import type { ErdChange } from '@/features/editor/model/changes'
 import { applyChanges } from '@/features/editor/model/changes'
+import type { ChangeTargetKey } from '@/features/editor/model/collab-merge'
 import { changeTargetKeys, deriveChanges, dirtyTargetKeys } from '@/features/editor/model/collab-merge'
 import type {
   EditorDocument,
@@ -67,20 +68,45 @@ interface ResolveRow {
 /** 커맨드가 내 dirty 키와 겹치는가 — '*'(구조)는 같은 객체의 어떤 키와도 겹친다
  *  (detectLwwConflicts의 구조 규칙과 동일하게 판정한다) */
 function overlapsMine(change: ErdChange, myKeys: Set<string>): boolean {
-  for (const key of changeTargetKeys(change)) {
-    const prefix = `${key.kind}:${key.id}:`
-    if (myKeys.has(`${prefix}${key.field}`)) return true
-    if (key.field === '*') {
-      for (const k of myKeys) if (k.startsWith(prefix)) return true
-    } else {
-      for (const k of myKeys) if (k.startsWith(prefix) && k.endsWith(':*')) return true
-    }
+  return changeTargetKeys(change).some((key) => keyOverlapsMine(key, myKeys))
+}
+
+function keyOverlapsMine(key: ChangeTargetKey, myKeys: Set<string>): boolean {
+  const prefix = `${key.kind}:${key.id}:`
+  if (myKeys.has(`${prefix}${key.field}`)) return true
+  if (key.field === '*') {
+    for (const k of myKeys) if (k.startsWith(prefix)) return true
+  } else {
+    for (const k of myKeys) if (k.startsWith(prefix) && k.endsWith(':*')) return true
   }
   return false
 }
 
 const noteName = (note: { title: string; text: string }): string =>
   note.title || note.text.split('\n')[0] || ''
+
+/** 컬럼 항목의 테이블·이름 — 내 문서에 없으면 ID로 표시한다 */
+function columnLabel(
+  columns: Map<string, { column: ErdColumn; table: ErdTable }>,
+  columnId: string,
+): { table: string; name: string } {
+  const found = columns.get(columnId)
+  return { table: found ? found.table.physicalName : '', name: found?.column.physicalName ?? columnId }
+}
+
+function relationshipLabel(
+  relationshipsById: Map<string, { fkName: string; childTableId: string }>,
+  relationshipId: string,
+  tableName: (id: string) => string,
+): { table: string; name: string } {
+  const rel = relationshipsById.get(relationshipId)
+  return { table: rel ? tableName(rel.childTableId) : '', name: rel?.fkName ?? relationshipId }
+}
+
+function noteLabel(notesById: Map<string, { title: string; text: string }>, noteId: string): string {
+  const note = notesById.get(noteId)
+  return note ? noteName(note) : noteId
+}
 
 /** 커맨드 → 표시 항목. 제거·패치는 내 문서(=분기 전 공통 조상 쪽)에서 이름을 찾고,
  *  생성은 커맨드 페이로드에 이름이 있다 */
@@ -107,18 +133,12 @@ function changeToRow(
       return { ...base, kind: 'table', action: 'update', table: tableName(change.tableId), name: tableName(change.tableId), detail: keys(change.patch as Record<string, unknown>) }
     case 'column/add':
       return { ...base, kind: 'column', action: 'add', table: tableName(change.tableId), name: change.column.physicalName }
-    case 'column/remove': {
-      const found = columns.get(change.columnId)
-      return { ...base, kind: 'column', action: 'remove', table: found ? found.table.physicalName : '', name: found?.column.physicalName ?? change.columnId }
-    }
-    case 'column/patch': {
-      const found = columns.get(change.columnId)
-      return { ...base, kind: 'column', action: 'update', table: found ? found.table.physicalName : '', name: found?.column.physicalName ?? change.columnId, detail: keys(change.patch as Record<string, unknown>) }
-    }
-    case 'column/move': {
-      const found = columns.get(change.columnId)
-      return { ...base, kind: 'column', action: 'move', table: found ? found.table.physicalName : '', name: found?.column.physicalName ?? change.columnId }
-    }
+    case 'column/remove':
+      return { ...base, kind: 'column', action: 'remove', ...columnLabel(columns, change.columnId) }
+    case 'column/patch':
+      return { ...base, kind: 'column', action: 'update', ...columnLabel(columns, change.columnId), detail: keys(change.patch as Record<string, unknown>) }
+    case 'column/move':
+      return { ...base, kind: 'column', action: 'move', ...columnLabel(columns, change.columnId) }
     case 'primaryKey/set': {
       const table = tablesById.get(change.tableId)
       const prev = table?.primaryKey ? table.primaryKey.columnIds.length : 0
@@ -145,20 +165,16 @@ function changeToRow(
     }
     case 'relationship/create':
       return { ...base, kind: 'relationship', action: 'add', table: tableName(change.relationship.childTableId), name: change.relationship.fkName }
-    case 'relationship/patch': {
-      const rel = relationshipsById.get(change.relationshipId)
-      return { ...base, kind: 'relationship', action: 'update', table: rel ? tableName(rel.childTableId) : '', name: rel?.fkName ?? change.relationshipId, detail: keys(change.patch as Record<string, unknown>) }
-    }
-    case 'relationship/remove': {
-      const rel = relationshipsById.get(change.relationshipId)
-      return { ...base, kind: 'relationship', action: 'remove', table: rel ? tableName(rel.childTableId) : '', name: rel?.fkName ?? change.relationshipId }
-    }
+    case 'relationship/patch':
+      return { ...base, kind: 'relationship', action: 'update', ...relationshipLabel(relationshipsById, change.relationshipId, tableName), detail: keys(change.patch as Record<string, unknown>) }
+    case 'relationship/remove':
+      return { ...base, kind: 'relationship', action: 'remove', ...relationshipLabel(relationshipsById, change.relationshipId, tableName) }
     case 'note/create':
       return { ...base, kind: 'note', action: 'add', table: '', name: noteName(change.note) }
     case 'note/remove':
-      return { ...base, kind: 'note', action: 'remove', table: '', name: notesById.get(change.noteId) ? noteName(notesById.get(change.noteId)!) : change.noteId }
+      return { ...base, kind: 'note', action: 'remove', table: '', name: noteLabel(notesById, change.noteId) }
     case 'note/patch':
-      return { ...base, kind: 'note', action: 'update', table: '', name: notesById.get(change.noteId) ? noteName(notesById.get(change.noteId)!) : change.noteId, detail: keys(change.patch as Record<string, unknown>) }
+      return { ...base, kind: 'note', action: 'update', table: '', name: noteLabel(notesById, change.noteId), detail: keys(change.patch as Record<string, unknown>) }
     case 'area/create':
       return { ...base, kind: 'area', action: 'add', table: '', name: change.area.name }
     case 'area/remove':

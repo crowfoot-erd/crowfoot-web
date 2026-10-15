@@ -151,6 +151,28 @@ function DomainDot({ domain }: { domain: RequirementDomain }) {
   )
 }
 
+/** 도메인 머리의 진행 — 반영 비율과 반영 대기 수. 다루는 요구사항이 없으면 감춘다 */
+function DomainProgress({ domain }: { domain: RequirementDomain }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {domain.total > 0 ? (
+        <span className="flex items-center gap-2">
+          <ProgressBar applied={domain.applied} total={domain.total} className="w-20" />
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {t('model.requirements.progress', { applied: domain.applied, total: domain.total })}
+          </span>
+        </span>
+      ) : null}
+      {domain.counts.PENDING > 0 ? (
+        <span className={cn('rounded border px-1.5 text-xs font-medium leading-5', STATE_CLASS.PENDING)}>
+          {t('model.requirements.state.PENDING')} {domain.counts.PENDING}
+        </span>
+      ) : null}
+    </>
+  )
+}
+
 function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sourceConnectionId = null }: RequirementsPanelProps) {
   const { t } = useTranslation()
   const rf = useReactFlow()
@@ -565,19 +587,7 @@ function PanelBody({ canEdit, documentName, workspaceId = '', modelId = '', sour
                               {rows.length}
                             </span>
                           </button>
-                          {domain.total > 0 ? (
-                            <span className="flex items-center gap-2">
-                              <ProgressBar applied={domain.applied} total={domain.total} className="w-20" />
-                              <span className="text-xs tabular-nums text-muted-foreground">
-                                {t('model.requirements.progress', { applied: domain.applied, total: domain.total })}
-                              </span>
-                            </span>
-                          ) : null}
-                          {domain.counts.PENDING > 0 ? (
-                            <span className={cn('rounded border px-1.5 text-xs font-medium leading-5', STATE_CLASS.PENDING)}>
-                              {t('model.requirements.state.PENDING')} {domain.counts.PENDING}
-                            </span>
-                          ) : null}
+                          <DomainProgress domain={domain} />
                           <span className="ml-auto flex items-center gap-1">
                             {domain.kind === 'area' && domain.tableIds.length > 0 ? (
                               <Button

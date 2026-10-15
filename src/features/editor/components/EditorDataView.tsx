@@ -45,7 +45,6 @@ export function EditorDataView({
   sourceConnectionId: string | null
   canEdit: boolean
 }) {
-  const { t } = useTranslation()
   const object = useDataView((state) => state.object)
   const tab = useDataView((state) => state.tab)
   const request = useDataView((state) => state.request)
@@ -70,28 +69,11 @@ export function EditorDataView({
       data-testid="editor-data-view"
     >
       {!sourceConnectionId || sourceMissing ? (
-        <div className="flex flex-1 items-center justify-center p-6">
-          <EmptyState
-            title={
-              sourceMissing
-                ? t('database.embedded.sourceMissing.title')
-                : t('database.embedded.noSource.title')
-            }
-            description={
-              sourceMissing
-                ? t('database.embedded.sourceMissing.description')
-                : t('database.embedded.noSource.description')
-            }
-            action={
-              !sourceMissing && canEdit ? (
-                <Button type="button" onClick={() => setConnectOpen(true)}>
-                  <Link2 aria-hidden />
-                  {t('model.connect.toolbar')}
-                </Button>
-              ) : undefined
-            }
-          />
-        </div>
+        <NoSourceState
+          sourceMissing={sourceMissing}
+          canEdit={canEdit}
+          onConnect={() => setConnectOpen(true)}
+        />
       ) : connections.isPending ? (
         spinner
       ) : (
@@ -129,6 +111,43 @@ export function EditorDataView({
           model={{ modelId, name: modelName, databaseType }}
         />
       ) : null}
+    </div>
+  )
+}
+
+/** 원천 커넥션이 없거나 지워졌을 때의 안내 */
+function NoSourceState({
+  sourceMissing,
+  canEdit,
+  onConnect,
+}: {
+  sourceMissing: boolean
+  canEdit: boolean
+  onConnect(): void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-1 items-center justify-center p-6">
+      <EmptyState
+        title={
+          sourceMissing
+            ? t('database.embedded.sourceMissing.title')
+            : t('database.embedded.noSource.title')
+        }
+        description={
+          sourceMissing
+            ? t('database.embedded.sourceMissing.description')
+            : t('database.embedded.noSource.description')
+        }
+        action={
+          !sourceMissing && canEdit ? (
+            <Button type="button" onClick={onConnect}>
+              <Link2 aria-hidden />
+              {t('model.connect.toolbar')}
+            </Button>
+          ) : undefined
+        }
+      />
     </div>
   )
 }
