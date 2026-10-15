@@ -143,7 +143,7 @@ describe('버전 기록 뷰어 — 비교 모드 (?compare=N)', () => {
     const trigger = screen.getByRole('combobox', { name: '기준 버전' })
     fireEvent.pointerDown(trigger, { button: 0 })
     fireEvent.click(trigger)
-    fireEvent.click(await screen.findByRole('option', { name: 'v2' }))
+    fireEvent.click(await screen.findByRole('option', { name: /^v2/ }))
 
     await waitFor(() => {
       const updated = screen.getByTestId('version-compare-panel')
@@ -162,7 +162,8 @@ describe('버전 기록 뷰어 — 비교 모드 (?compare=N)', () => {
     fireEvent.pointerDown(trigger, { button: 0 })
     fireEvent.click(trigger)
     const options = await screen.findAllByRole('option')
-    expect(options.map((option) => option.textContent)).toEqual(['v3', 'v2', 'v1'])
+    // 태그 버전은 번호 옆에 태그가 붙는다(v2 · 1.1, v1 · 1.0 — 태그 간 비교 §1.7)
+    expect(options.map((option) => option.textContent)).toEqual(['v3', 'v2' + '1.1', 'v1' + '1.0'])
     fireEvent.click(screen.getByRole('option', { name: 'v3' }))
 
     // v3는 v1 복원 — v0 → v3도 v0 → v1과 같은 grade 추가 요약
@@ -221,6 +222,16 @@ describe('버전 기록 뷰어 — 비교 모드 (?compare=N)', () => {
     expect(await screen.findByRole('heading', { name: '주문 서비스 ERD' })).toBeVisible()
     await waitFor(() => expect(screen.getByText('읽기 전용')).toBeVisible())
     expect(document.querySelectorAll('[data-compare]')).toHaveLength(0)
+  })
+
+  it('태그 간 비교 — v2?compare=1(1.0 → 1.1)은 기준·대상 선택지에 태그를 함께 보인다', async () => {
+    renderViewer(2, '?compare=1')
+
+    expect(await screen.findByTestId('version-compare-panel')).toBeVisible()
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '기준 버전' })).toHaveTextContent('v1' + '1.0'),
+    )
+    expect(screen.getByRole('combobox', { name: '비교 버전' })).toHaveTextContent('v2' + '1.1')
   })
 
   it('마이그레이션 DDL — 비교 범위(v0 → v1) ALTER 스크립트를 다이얼로그로 보여준다', async () => {

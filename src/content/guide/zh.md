@@ -41,6 +41,8 @@ Crowfoot 的界面大致分为三类。
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**、**{{shell.sidebar.communityFeedback}}**、**{{shell.sidebar.communityMyComments}}**、**{{shell.sidebar.communityMyLikes}}**、**{{shell.sidebar.communityNotifications}}** |
 | **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**、**{{shell.sidebar.adminCodes}}**、**{{shell.sidebar.adminManaged}}**、**{{shell.sidebar.adminSystemTerms}}**、**{{shell.sidebar.adminShowcase}}**、**{{shell.sidebar.adminAuditLogs}}**、**{{shell.sidebar.adminTraffic}}** |
 
+在手机等窄屏上，顶部菜单和侧边栏会收起。点击左上角的 **{{shell.nav.menu}}** 按钮(☰)，会在一个抽屉中打开顶部菜单、当前页面的侧边栏以及主题和语言。
+
 ### 1.3 编辑器窗口
 
 ![编辑器整体界面](/guide-assets/zh/editor-overview.webp)
@@ -926,10 +928,13 @@ Crowfoot 的界面大致分为三类。
 
 ### 14.2 版本对比
 
+![版本比较 — 显示标签的版本选择](/guide-assets/zh/editor-version-compare.webp)
+
 点击 **{{model.editor.history.compare}}** 可以查看两个版本的差异。
 
 * 画布按所对比的版本绘制，发生变化的表会带有 `+`（添加）和 `~`（修改）标记。
 * 已删除的表会单独列出。
+* 有两个以上标签时，在版本记录窗口上方的 **{{model.editor.history.tagCompare.title}}** 中选择两个标签进行比较。较旧的一方为基准。比较页面的版本列表中也会显示标签。
 * 用 **{{model.editor.compare.exit}}** 返回文档。
 
 ### 14.3 迁移 DDL

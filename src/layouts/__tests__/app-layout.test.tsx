@@ -5,7 +5,7 @@
  * when: 헤더 렌더
  * then: 우측 상단에 메인(랜딩 /) 바로가기 버튼 — 이름 + 아이콘 순서
  */
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
@@ -48,5 +48,42 @@ describe('AppLayout 헤더', () => {
     expect(guide).toHaveTextContent('사용 가이드')
     expect(guide).toHaveAttribute('href', '/guide')
     expect(guide).toHaveAttribute('target', '_blank')
+  })
+})
+
+describe('AppLayout 폰 메뉴 서랍 (v1.46)', () => {
+  function renderAdmin() {
+    resetSessionState()
+    asAuthenticated()
+    renderWithProviders(
+      <Route element={<AppLayout />}>
+        <Route path="/admin/users" element={<div>users-stub</div>} />
+        <Route path="/admin/codes" element={<div>codes-stub</div>} />
+      </Route>,
+      { route: '/admin/users' },
+    )
+  }
+
+  it('메뉴 버튼으로 서랍을 열면 주 메뉴와 지금 화면의 사이드바(관리자 메뉴)가 함께 나온다', async () => {
+    renderAdmin()
+
+    fireEvent.click(await screen.findByTestId('mobile-nav-open'))
+
+    const drawer = await screen.findByTestId('mobile-nav')
+    expect(within(drawer).getByRole('link', { name: '워크스페이스' })).toHaveAttribute('href', '/workspaces')
+    expect(within(drawer).getByRole('link', { name: '관리자' })).toHaveAttribute('href', '/admin/users')
+    expect(within(drawer).getByRole('link', { name: /코드 테이블/ })).toHaveAttribute('href', '/admin/codes')
+    expect(within(drawer).getByRole('link', { name: /트래픽 통계/ })).toBeVisible()
+  })
+
+  it('서랍의 메뉴를 누르면 그 화면으로 가고 서랍이 닫힌다', async () => {
+    renderAdmin()
+
+    fireEvent.click(await screen.findByTestId('mobile-nav-open'))
+    const drawer = await screen.findByTestId('mobile-nav')
+    fireEvent.click(within(drawer).getByRole('link', { name: /코드 테이블/ }))
+
+    expect(await screen.findByText('codes-stub')).toBeVisible()
+    await waitFor(() => expect(screen.queryByTestId('mobile-nav')).toBeNull())
   })
 })

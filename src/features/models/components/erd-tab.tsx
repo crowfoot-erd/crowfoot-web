@@ -107,7 +107,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search aria-hidden className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={keyword}
@@ -117,12 +117,13 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
               if (page > 1) setPage(1)
             }}
             placeholder={t('model.list.searchPlaceholder')}
-            className="h-9 w-64 pl-8"
+            className="h-9 w-full pl-8 sm:w-64"
             aria-label={t('model.list.searchPlaceholder')}
           />
         </div>
         {canCreate ? (
-          <div className="flex items-center gap-2">
+          // 폭이 모자라면(폰) 버튼을 여러 줄로 감는다(v1.46)
+          <div className="flex flex-wrap items-center gap-2">
             <ImportCrownButton workspaceId={workspaceId} />
             <DatabaseImportButton workspaceId={workspaceId} />
             <SqlImportButton workspaceId={workspaceId} />

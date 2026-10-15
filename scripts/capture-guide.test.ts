@@ -793,6 +793,16 @@ const EDITOR_SCENES: Scene[] = [
     },
   },
   {
+    // 버전 비교 화면 머리 — 기준·대상 선택지에 태그(v1 · 1.0 → v2 · 1.1)와 마이그레이션 DDL 버튼
+    name: 'editor-version-compare',
+    run: async (s) => {
+      await goto(s, `/workspaces/${WS}/models/${MODEL}/history/2?compare=1`, 0)
+      await s.page.getByTestId('version-compare-panel').waitFor({ timeout: 20_000 })
+      await s.page.waitForTimeout(1200)
+      await s.shot('editor-version-compare', { locator: s.page.locator('header').first() })
+    },
+  },
+  {
     name: 'editor-sql',
     run: async (s) => {
       await openEditor(s)

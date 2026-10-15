@@ -178,7 +178,8 @@
       "teams": "チーム",
       "admin": "管理",
       "community": "コミュニティ",
-      "home": "ホーム"
+      "home": "ホーム",
+      "menu": "メニュー"
     },
     "sidebar": {
       "mine": "自分のワークスペース",
@@ -1149,6 +1150,12 @@
         "tagSaved": "タグを保存しました",
         "tagRemoved": "タグを削除しました",
         "tagDuplicated": "この文書の別のバージョンがすでに使っているタグです",
+        "tagCompare": {
+          "title": "タグを比較",
+          "base": "基準タグ",
+          "target": "対象タグ",
+          "open": "比較"
+        },
         "restore": "このバージョンに戻す",
         "restoreConfirmTitle": "バージョンの復元",
         "restoreConfirmDescription": "バージョン{{version}}のドキュメントを新しいバージョンとして保存します。現在のドキュメントはバージョン履歴にそのまま残ります。",

@@ -83,13 +83,18 @@ const parseForCanvas = (raw: string | null | undefined) => placeMissingTables(pa
 
 const EXPLORER_OPEN_KEY = 'crowfoot.editor.explorer-open'
 
+/** 익스플로러 열림 기억 — 기억이 없으면 넓은 화면은 열고, 폰(md 미만)은 캔버스를 가리지 않게 닫는다(v1.46) */
 function readExplorerOpen(): boolean {
   try {
     const raw = localStorage.getItem(EXPLORER_OPEN_KEY)
-    return raw === null ? true : raw === 'true'
+    return raw === null ? !isNarrowViewport() : raw === 'true'
   } catch {
     return true
   }
+}
+
+function isNarrowViewport(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
 }
 
 /** 용어 사전 패널 열림 기억 — 익스플로러와 같은 관례. 보조 자산이라 기본은 닫힘 */
@@ -886,7 +891,8 @@ function EditorShellInner({ model, canEdit, onSaved, publicView = false, shareTo
   }, [model.modelId])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // min-w-0 — 옆에 패널이 붙는 버전 비교 화면에서 캔버스가 줄어들 수 있게 한다(v1.46 — 전에는 화면 폭을 넘었다)
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* 요구사항 탭(화면 맨 아래) — 문서에 속한 내용이라 공개 뷰어도 읽기 전용으로 본다(02-ui.md §17).
           에디터는 감추기만 하고 내리지 않는다 — 자동 저장과 협업 채널이 요구사항 편집에도 그대로 동작한다 */}
       <RequirementsPanel

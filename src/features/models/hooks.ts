@@ -71,6 +71,9 @@ export const modelKeys = {
    *  detail 서브트리라 저장 성공 무효화에 함께 갱신된다 */
   versions: (workspaceId: string, modelId: string, page: number, keyword = '') =>
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', page, keyword] as const,
+  /** 태그 붙은 버전(최근 100개) — 태그 간 비교 후보. versions 접두라 태그 편집 무효화에 함께 걸린다 */
+  taggedVersions: (workspaceId: string, modelId: string) =>
+    ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', 'tagged'] as const,
   /** 버전 상세(해당 시점 content 전문) — 버전 뷰어 */
   versionDetail: (workspaceId: string, modelId: string, version: number) =>
     ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions', 'detail', version] as const,
@@ -240,6 +243,17 @@ export function useModelVersions(
     queryKey: modelKeys.versions(workspaceId, modelId, page, keyword),
     queryFn: ({ signal }) =>
       fetchModelVersions(workspaceId, modelId, { page, size: 20, keyword: keyword || undefined }, signal),
+    enabled: enabled && workspaceId.length > 0 && modelId.length > 0,
+  })
+}
+
+/** 태그 붙은 버전 — 최신순 최대 100개(태그 간 비교 후보·비교 화면 선택지의 태그 표시) */
+export function useTaggedModelVersions(workspaceId: string, modelId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: modelKeys.taggedVersions(workspaceId, modelId),
+    queryFn: ({ signal }) =>
+      fetchModelVersions(workspaceId, modelId, { page: 1, size: 100, tagged: true }, signal),
+    select: (page) => page.items,
     enabled: enabled && workspaceId.length > 0 && modelId.length > 0,
   })
 }

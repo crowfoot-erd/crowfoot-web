@@ -178,7 +178,8 @@
       "teams": "Teams",
       "admin": "Admin",
       "community": "Community",
-      "home": "Home"
+      "home": "Home",
+      "menu": "Menu"
     },
     "sidebar": {
       "mine": "My workspaces",
@@ -1149,6 +1150,12 @@
         "tagSaved": "Tag saved",
         "tagRemoved": "Tag removed",
         "tagDuplicated": "Another version of this document already uses this tag",
+        "tagCompare": {
+          "title": "Compare tags",
+          "base": "Base tag",
+          "target": "Target tag",
+          "open": "Compare"
+        },
         "restore": "Restore this version",
         "restoreConfirmTitle": "Restore version",
         "restoreConfirmDescription": "Saves the document of version {{version}} as a new version. The current document stays in the version history.",

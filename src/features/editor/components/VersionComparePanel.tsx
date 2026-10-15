@@ -50,7 +50,7 @@ export function VersionComparePanel({ baseVersion, targetVersion, diff, classifi
     <aside
       data-testid="version-compare-panel"
       aria-label={t('model.editor.compare.title')}
-      className="flex w-80 shrink-0 flex-col border-l bg-background"
+      className="flex max-h-[40svh] w-full shrink-0 flex-col border-t bg-background md:max-h-none md:w-80 md:border-t-0 md:border-l"
     >
       <div className="border-b px-3 py-2">
         <p className="text-sm font-semibold">{t('model.editor.compare.title')}</p>

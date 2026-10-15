@@ -41,6 +41,8 @@ Crowfootの画面は大きく3種類あります。
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**、**{{shell.sidebar.communityFeedback}}**、**{{shell.sidebar.communityMyComments}}**、**{{shell.sidebar.communityMyLikes}}**、**{{shell.sidebar.communityNotifications}}** |
 | **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**、**{{shell.sidebar.adminCodes}}**、**{{shell.sidebar.adminManaged}}**、**{{shell.sidebar.adminSystemTerms}}**、**{{shell.sidebar.adminShowcase}}**、**{{shell.sidebar.adminAuditLogs}}**、**{{shell.sidebar.adminTraffic}}** |
 
+スマートフォンのような狭い画面では、上部メニューとサイドバーがたたまれます。左上の**{{shell.nav.menu}}**ボタン(☰)を押すと、上部メニュー、今の画面のサイドバー、テーマと言語が1つの引き出しに開きます。
+
 ### 1.3 エディタウィンドウ
 
 ![エディタの全体画面](/guide-assets/ja/editor-overview.webp)
@@ -926,10 +928,13 @@ ERDドキュメントと一緒に開くと、左の一覧のテーブルをド�
 
 ### 14.2 バージョン比較
 
+![バージョン比較 — タグが表示されるバージョン選択](/guide-assets/ja/editor-version-compare.webp)
+
 **{{model.editor.history.compare}}**を押すと、2つのバージョンの違いを確認できます。
 
 * キャンバスは比較対象のバージョンをもとに描画され、変更されたテーブルには`+`（追加）や`~`（変更）の印が付きます。
 * 削除されたテーブルは、別の一覧に表示されます。
+* タグが2つ以上あれば、バージョン履歴画面の上部の**{{model.editor.history.tagCompare.title}}**で2つのタグを選んで比較します。古いほうが基準です。比較画面のバージョン一覧にもタグが表示されます。
 * **{{model.editor.compare.exit}}**でドキュメントに戻ります。
 
 ### 14.3 マイグレーションDDL

@@ -284,13 +284,13 @@ describe('VersionHistoryDialog — 태그', () => {
 
     const v3 = rowsOf(await openList())[0]
     fireEvent.click(within(v3).getByTestId('version-tag-edit'))
-    fireEvent.change(within(v3).getByTestId('version-tag-input'), { target: { value: ' 1.1 ' } })
+    fireEvent.change(within(v3).getByTestId('version-tag-input'), { target: { value: ' 1.2 ' } })
     fireEvent.change(within(v3).getByTestId('version-tag-description-input'), { target: { value: '결제 추가' } })
     fireEvent.click(within(v3).getByRole('button', { name: '태그 저장' }))
 
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('태그를 저장했습니다'))
     const refreshed = within(rowsOf(await openList())[0]).getByTestId('version-tag')
-    expect(within(refreshed).getByText('1.1')).toBeVisible()
+    expect(within(refreshed).getByText('1.2')).toBeVisible()
     expect(within(refreshed).getByText('결제 추가')).toBeVisible()
   })
 
@@ -346,6 +346,68 @@ describe('VersionHistoryDialog — 태그', () => {
     await openList()
     fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '1.0' } })
     await waitFor(() => expect(rowsOf(screen.getByTestId('version-history-list')).map((r) => r.dataset.version)).toEqual(['1']))
+  })
+})
+
+describe('VersionHistoryDialog — 태그 비교', () => {
+  it('태그가 둘 이상이면 비교 줄이 보이고, 처음에는 바로 앞 태그(1.0) → 최근 태그(1.1)를 비교 화면으로 연다', async () => {
+    seedSession()
+    renderDialog()
+
+    const bar = await screen.findByTestId('tag-compare-bar')
+    expect(within(bar).getByRole('combobox', { name: '기준 태그' })).toHaveTextContent('1.0')
+    expect(within(bar).getByRole('combobox', { name: '대상 태그' })).toHaveTextContent('1.1')
+    const link = within(bar).getByTestId('tag-compare-open')
+    expect(link).toHaveAttribute('href', '/workspaces/101/models/501/history/2?compare=1')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('고른 순서를 바꿔도 오래된 태그가 기준이다', async () => {
+    seedSession()
+    renderDialog()
+
+    const bar = await screen.findByTestId('tag-compare-bar')
+    const base = within(bar).getByRole('combobox', { name: '기준 태그' })
+    fireEvent.pointerDown(base, { button: 0 })
+    fireEvent.click(base)
+    fireEvent.click(await screen.findByRole('option', { name: /^1\.1/ }))
+    const target = within(bar).getByRole('combobox', { name: '대상 태그' })
+    fireEvent.pointerDown(target, { button: 0 })
+    fireEvent.click(target)
+    fireEvent.click(await screen.findByRole('option', { name: /^1\.0/ }))
+
+    await waitFor(() =>
+      expect(within(bar).getByTestId('tag-compare-open')).toHaveAttribute(
+        'href',
+        '/workspaces/101/models/501/history/2?compare=1',
+      ),
+    )
+  })
+
+  it('같은 태그를 고르면 비교 버튼이 꺼진다', async () => {
+    seedSession()
+    renderDialog()
+
+    const bar = await screen.findByTestId('tag-compare-bar')
+    const base = within(bar).getByRole('combobox', { name: '기준 태그' })
+    fireEvent.pointerDown(base, { button: 0 })
+    fireEvent.click(base)
+    fireEvent.click(await screen.findByRole('option', { name: /^1\.1/ }))
+
+    await waitFor(() => expect(within(bar).getByRole('button', { name: '비교' })).toBeDisabled())
+    expect(within(bar).queryByTestId('tag-compare-open')).toBeNull()
+  })
+
+  it('태그가 하나뿐이면 비교 줄이 없다 — 태그를 지우면 사라진다', async () => {
+    seedSession()
+    renderDialog()
+
+    expect(await screen.findByTestId('tag-compare-bar')).toBeVisible()
+    const v2 = rowsOf(await openList())[1]
+    fireEvent.click(within(v2).getByTestId('version-tag-edit'))
+    fireEvent.click(within(v2).getByRole('button', { name: '태그 지우기' }))
+
+    await waitFor(() => expect(screen.queryByTestId('tag-compare-bar')).toBeNull())
   })
 })
 

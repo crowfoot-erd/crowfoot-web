@@ -9,8 +9,9 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { cn } from 'cn'
+import { SidebarFrame } from '@/layouts/components/sidebar-frame'
 
-export function AdminSidebar() {
+export function AdminSidebar({ inDrawer = false }: { inDrawer?: boolean }) {
   const { t } = useTranslation()
 
   const menuClass = ({ isActive }: { isActive: boolean }) =>
@@ -22,8 +23,7 @@ export function AdminSidebar() {
     )
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r md:block">
-      <div className="sticky top-14 flex h-[calc(100svh-3.5rem)] flex-col gap-2 overflow-y-auto p-3">
+    <SidebarFrame inDrawer={inDrawer}>
         <p className="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t('shell.sidebar.adminTitle')}
         </p>
@@ -72,7 +72,6 @@ export function AdminSidebar() {
             {t('shell.sidebar.backToWorkspaces')}
           </Link>
         </Button>
-      </div>
-    </aside>
+    </SidebarFrame>
   )
 }

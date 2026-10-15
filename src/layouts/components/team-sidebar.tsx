@@ -12,8 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/error-state'
 import { CreateTeamDialog, useMyTeams } from '@/features/teams'
 import { cn } from 'cn'
+import { SidebarFrame } from '@/layouts/components/sidebar-frame'
 
-export function TeamSidebar() {
+export function TeamSidebar({ inDrawer = false }: { inDrawer?: boolean }) {
   const { t } = useTranslation()
   const [createOpen, setCreateOpen] = useState(false)
   const teams = useMyTeams()
@@ -23,8 +24,8 @@ export function TeamSidebar() {
   const joined = items.filter((team) => !team.isOwner)
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r md:block">
-      <div className="sticky top-14 flex h-[calc(100svh-3.5rem)] flex-col gap-2 overflow-y-auto p-3">
+    <>
+      <SidebarFrame inDrawer={inDrawer}>
         <Button type="button" size="sm" className="w-full justify-start" onClick={() => setCreateOpen(true)}>
           <Plus aria-hidden />
           {t('shell.sidebar.newTeam')}
@@ -52,10 +53,10 @@ export function TeamSidebar() {
             ) : null}
           </nav>
         )}
-      </div>
+      </SidebarFrame>
 
       <CreateTeamDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </aside>
+    </>
   )
 }
 

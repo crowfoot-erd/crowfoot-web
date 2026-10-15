@@ -41,6 +41,8 @@ The left sidebar changes depending on what you select in the top menu.
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**, **{{shell.sidebar.communityFeedback}}**, **{{shell.sidebar.communityMyComments}}**, **{{shell.sidebar.communityMyLikes}}**, **{{shell.sidebar.communityNotifications}}** |
 | **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**, **{{shell.sidebar.adminCodes}}**, **{{shell.sidebar.adminManaged}}**, **{{shell.sidebar.adminSystemTerms}}**, **{{shell.sidebar.adminShowcase}}**, **{{shell.sidebar.adminAuditLogs}}**, **{{shell.sidebar.adminTraffic}}** |
 
+On narrow screens such as phones, the top menu and the sidebar are folded away. Press the **{{shell.nav.menu}}** button (☰) at the top left to open a drawer with the top menu, the sidebar of the current screen, and the theme and language.
+
 ### 1.3 The editor window
 
 ![The whole editor window](/guide-assets/en/editor-overview.webp)
@@ -926,10 +928,13 @@ Each time a document is saved, a version is kept. Open the list with **{{model.e
 
 ### 14.2 Comparing versions
 
+![Version comparison — version lists showing tags](/guide-assets/en/editor-version-compare.webp)
+
 Click **{{model.editor.history.compare}}** to see the differences between two versions.
 
 * The canvas is drawn from the compared version, and changed tables are marked with `+` (added) and `~` (changed).
 * Deleted tables are listed separately.
+* When there are two or more tags, pick two tags in **{{model.editor.history.tagCompare.title}}** at the top of the version history window to compare them. The older one is the base. Tags also appear in the version lists on the comparison screen.
 * Return to the document with **{{model.editor.compare.exit}}**.
 
 ### 14.3 Migration DDL

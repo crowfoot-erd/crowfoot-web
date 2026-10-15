@@ -6,6 +6,7 @@
  * 클라이언트 i18n이 맡는다 — 요약 본문은 언어 중립 JSON으로 서버에 저장되기 때문.
  * 행별 동작: 조회(버전 뷰어 새 창)·메모 편집(Editor+ 인라인, 비우면 삭제)·태그(Editor+ — `1.0` 같은
  * 이름과 설명, 13-model-versions §1.7). 태그는 버전 번호 옆에 배지와 설명으로 보인다.
+ * 태그가 둘 이상이면 위쪽 줄에서 두 태그를 골라 비교 화면을 연다(TagCompareBar).
  * 현재 버전(스토어 baseVersion)에는 배지를 붙인다 — 편집 중 저장이 반영된 값이다.
  */
 import { useEffect, useState } from 'react'
@@ -38,6 +39,7 @@ import {
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { diffItemDisplayName } from '@/features/editor/model/doc-diff'
 import { VersionTagLabel } from '@/features/editor/components/VersionTagLabel'
+import { TagCompareBar } from '@/features/editor/components/TagCompareBar'
 
 export interface VersionHistoryDialogProps {
   open: boolean
@@ -177,6 +179,8 @@ export function VersionHistoryDialog({
             data-testid="version-search-input"
           />
         </div>
+
+        <TagCompareBar workspaceId={workspaceId} modelId={modelId} enabled={open} />
 
         {versions.isPending ? (
           <div className="flex h-24 items-center justify-center gap-2 text-sm text-muted-foreground">

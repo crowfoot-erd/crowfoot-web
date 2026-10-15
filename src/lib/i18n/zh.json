@@ -178,7 +178,8 @@
       "teams": "团队",
       "admin": "管理",
       "community": "社区",
-      "home": "首页"
+      "home": "首页",
+      "menu": "菜单"
     },
     "sidebar": {
       "mine": "我的工作区",
@@ -1149,6 +1150,12 @@
         "tagSaved": "已保存标签",
         "tagRemoved": "已删除标签",
         "tagDuplicated": "此文档的其他版本已在使用此标签",
+        "tagCompare": {
+          "title": "比较标签",
+          "base": "基准标签",
+          "target": "目标标签",
+          "open": "比较"
+        },
         "restore": "恢复此版本",
         "restoreConfirmTitle": "恢复版本",
         "restoreConfirmDescription": "会将版本 {{version}} 的文档另存为新版本。当前文档仍保留在版本历史中。",

@@ -255,7 +255,8 @@ export function EditorToolbar({
   const redo = useEditorStore((s) => s.redo)
 
   return (
-    <div className="flex h-10 items-center gap-1 border-b bg-background px-2">
+    // 폭이 모자라면(폰) 화면을 넓히지 않고 이 줄 안에서 옆으로 민다(v1.46) — 버튼은 줄어들지 않는다
+    <div className="flex h-10 items-center gap-1 overflow-x-auto border-b bg-background px-2 [scrollbar-width:none] [&>*]:shrink-0">
       {!canEdit ? (
         <Badge variant="secondary" className="mr-1">
           {t('model.editor.toolbar.readOnly')}

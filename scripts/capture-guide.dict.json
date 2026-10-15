@@ -89,6 +89,11 @@
   "ja": "初回リリース",
   "zh": "首次发布"
  },
+ "메모 위치 정리": {
+  "en": "Tidy up note position",
+  "ja": "メモの位置を整理",
+  "zh": "整理备注位置"
+ },
  "복합 UK 위치가 깔끔합니다.": {
   "en": "The composite unique key is neatly placed.",
   "ja": "複合ユニークキーの配置がきれいです。",

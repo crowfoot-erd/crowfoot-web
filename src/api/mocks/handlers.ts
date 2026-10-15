@@ -215,6 +215,8 @@ function buildVersionRows(): Record<string, VersionRow[]> {
         version: 2,
         changeSummary: versionContents.v2Summary,
         memo: null,
+        tag: '1.1',
+        tagDescription: '메모 위치 정리',
         createdBy: kim,
         createdAt: '2026-09-09T05:00:00Z',
         content: versionContents.v2,
@@ -1393,8 +1395,11 @@ export const handlers = [
     const size = Math.min(100, Math.max(1, Number(url.searchParams.get('size')) || 20))
     // keyword는 메모·태그 부분 일치(대소문자 무시) — 페이징은 걸린 뒤 기준으로 계산한다
     const keyword = (url.searchParams.get('keyword') ?? '').trim().toLowerCase()
+    // tagged=true는 태그 붙은 버전만(태그 간 비교 후보 — §1.7)
+    const taggedOnly = url.searchParams.get('tagged') === 'true'
     const rows = [...(fixtures.versions[matched.modelId] ?? [])]
       .sort((a, b) => b.version - a.version)
+      .filter((row) => !taggedOnly || row.tag != null)
       .filter(
         (row) =>
           !keyword ||

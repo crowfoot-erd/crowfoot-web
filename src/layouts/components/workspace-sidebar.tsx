@@ -16,8 +16,9 @@ import { ErrorState } from '@/components/error-state'
 import { useCreateWorkspaceDialog, useMyWorkspaces } from '@/features/workspaces'
 import type { MyWorkspace } from '@/api/types'
 import { cn } from 'cn'
+import { SidebarFrame } from '@/layouts/components/sidebar-frame'
 
-export function WorkspaceSidebar() {
+export function WorkspaceSidebar({ inDrawer = false }: { inDrawer?: boolean }) {
   const { t } = useTranslation()
   const workspaces = useMyWorkspaces()
   const openDialog = useCreateWorkspaceDialog((state) => state.openDialog)
@@ -28,8 +29,7 @@ export function WorkspaceSidebar() {
   const shared = items.filter((workspace) => workspace.myRole !== 'OWNER')
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r md:block">
-      <div className="sticky top-14 flex h-[calc(100svh-3.5rem)] flex-col gap-2 overflow-y-auto p-3">
+    <SidebarFrame inDrawer={inDrawer}>
         <Button type="button" size="sm" className="w-full justify-start" onClick={openDialog}>
           <Plus aria-hidden />
           {t('shell.sidebar.newWorkspace')}
@@ -74,8 +74,7 @@ export function WorkspaceSidebar() {
             ) : null}
           </>
         )}
-      </div>
-    </aside>
+    </SidebarFrame>
   )
 }
 

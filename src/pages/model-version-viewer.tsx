@@ -6,7 +6,7 @@
  * - 되돌리기(복원): 과거 content를 "새 버전으로" 저장한다 — 과거 버전은 불변. 현재 버전
  *   복원은 같은 내용을 다시 저장하는 것이라 노출하지 않는다. baseVersion은 문서 상세
  *   version(복원 시점 최신)을 쓰고, 충돌(409)은 안내 후 문서에서 다시 시도하게 한다.
- * - 비교 모드 ?compare=N(§1.11.3): 이 화면 버전(newer)을 기준 버전 N(base)과 비교한다.
+ * - 비교 모드 ?compare=N(§1.11.3): 이 화면 버전(newer)을 기준 버전 N(base)과 비교한다. 선택지에는 태그도 보인다(v1.46).
  *   상세 2회·diff는 클라이언트(diffDocuments itemLimit 500) — 캔버스는 최신 버전 하나만
  *   그리고 변경 테이블에 +/~ 배지(CompareHighlightContext), 우측 패널에 변경 목록.
  *   기준(과거)·비교(새) 버전을 헤더 Select 두 개로 각각 고른다 — 다이얼로그 [비교]는
@@ -52,6 +52,7 @@ import {
   useModel,
   useModelVersionDetail,
   useRestoreModelVersion,
+  useTaggedModelVersions,
 } from '@/features/models'
 import { useMyWorkspaces } from '@/features/workspaces'
 
@@ -98,6 +99,12 @@ export function ModelVersionViewerPage() {
     modelId,
     compareVersion ?? -1,
     compareVersion !== null && Number.isFinite(compareVersion),
+  )
+  // 비교 선택지에 태그를 함께 보인다(태그 간 비교 — 13-model-versions §1.7)
+  const tagged = useTaggedModelVersions(workspaceId, modelId, compareVersion !== null)
+  const tagByVersion = useMemo(
+    () => new Map((tagged.data ?? []).map((entry) => [entry.version, entry.tag ?? ''])),
+    [tagged.data],
   )
 
   const myRole = myWorkspaces.data?.items.find((ws) => ws.workspaceId === workspaceId)?.myRole
@@ -186,7 +193,7 @@ export function ModelVersionViewerPage() {
         </div>
       ) : (
         <>
-          <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
+          <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-base font-semibold">{model.data.name}</h1>
@@ -216,12 +223,12 @@ export function ModelVersionViewerPage() {
               </p>
               {detail.data.memo ? <p className="truncate text-xs font-medium">{detail.data.memo}</p> : null}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {compareVersion !== null ? (
                 <>
                   <Select value={String(compareVersion)} onValueChange={changeCompare}>
                     <SelectTrigger
-                      className="h-8 w-24 text-xs"
+                      className="h-8 w-32 text-xs"
                       aria-label={t('model.editor.compare.baseLabel')}
                       data-testid="compare-base-select"
                     >
@@ -232,7 +239,7 @@ export function ModelVersionViewerPage() {
                         .reverse()
                         .map((v) => (
                           <SelectItem key={v} value={String(v)} className="font-mono text-xs">
-                            v{v}
+                            <VersionOptionLabel version={v} tag={tagByVersion.get(v)} />
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -242,7 +249,7 @@ export function ModelVersionViewerPage() {
                   </span>
                   <Select value={String(detail.data.version)} onValueChange={changeTarget}>
                     <SelectTrigger
-                      className="h-8 w-24 text-xs"
+                      className="h-8 w-32 text-xs"
                       aria-label={t('model.editor.compare.targetLabel')}
                       data-testid="compare-target-select"
                     >
@@ -257,7 +264,7 @@ export function ModelVersionViewerPage() {
                         .reverse()
                         .map((v) => (
                           <SelectItem key={v} value={String(v)} className="font-mono text-xs">
-                            v{v}
+                            <VersionOptionLabel version={v} tag={tagByVersion.get(v)} />
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -307,7 +314,8 @@ export function ModelVersionViewerPage() {
               </Button>
             </div>
           </header>
-          <div className="flex min-h-0 flex-1">
+          {/* 폰(md 미만)은 변경 목록을 캔버스 아래에 둔다(v1.46) */}
+          <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <CompareHighlightContext.Provider value={compare?.marks ?? null}>
               <EditorShell
                 model={toViewerModel(model.data, detail.data.version, detail.data.content)}
@@ -317,13 +325,13 @@ export function ModelVersionViewerPage() {
             </CompareHighlightContext.Provider>
             {compareVersion !== null ? (
               base.isPending ? (
-                <aside className="flex w-80 shrink-0 items-center justify-center border-l">
+                <aside className="flex h-24 w-full shrink-0 items-center justify-center border-t md:h-auto md:w-80 md:border-t-0 md:border-l">
                   <Loader2 aria-hidden className="size-4 animate-spin text-muted-foreground" />
                 </aside>
               ) : compareLoadFailed ? (
                 <aside
                   data-testid="compare-panel-error"
-                  className="flex w-80 shrink-0 flex-col items-center justify-center gap-2 border-l px-4 text-center"
+                  className="flex w-full shrink-0 flex-col items-center justify-center gap-2 border-t px-4 py-4 text-center md:w-80 md:border-t-0 md:border-l md:py-0"
                 >
                   <p className="text-xs text-muted-foreground">{t('model.editor.compare.loadFailed')}</p>
                   <Button type="button" variant="outline" size="sm" className="h-7" onClick={exitCompare}>
@@ -371,5 +379,15 @@ export function ModelVersionViewerPage() {
         />
       ) : null}
     </div>
+  )
+}
+
+/** 비교 선택지 한 줄 — v{N}과 태그(있으면). 태그 버전을 번호만으로 찾지 않게 한다 */
+function VersionOptionLabel({ version, tag }: { version: number; tag: string | undefined }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      v{version}
+      {tag ? <span className="text-emerald-700 dark:text-emerald-300">{tag}</span> : null}
+    </span>
   )
 }

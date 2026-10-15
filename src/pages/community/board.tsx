@@ -112,9 +112,10 @@ export function CommunityBoardPage({ board }: CommunityBoardPageProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('community.board.table.title')}</TableHead>
-                  <TableHead className="w-32">{t('community.board.table.author')}</TableHead>
-                  <TableHead className="w-20">{t('community.board.table.comments')}</TableHead>
-                  <TableHead className="w-32">{t('community.board.table.createdAt')}</TableHead>
+                  {/* 폰(sm 미만)은 코멘트·작성일 칸을 숨기고 제목 아래에 작성일을 보인다(v1.46) — 제목 칸이 눌리지 않게 */}
+                  <TableHead className="w-24 sm:w-32">{t('community.board.table.author')}</TableHead>
+                  <TableHead className="hidden w-20 sm:table-cell">{t('community.board.table.comments')}</TableHead>
+                  <TableHead className="hidden w-32 sm:table-cell">{t('community.board.table.createdAt')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -128,12 +129,13 @@ export function CommunityBoardPage({ board }: CommunityBoardPageProps) {
                       >
                         {post.title}
                       </Link>
+                      <span className="text-xs text-muted-foreground sm:hidden">{formatDate(post.createdAt)}</span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{post.author.name}</TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">
+                    <TableCell className="hidden text-muted-foreground tabular-nums sm:table-cell">
                       {board === 'FEEDBACK' ? post.commentCount : <span className="text-muted-foreground/50">—</span>}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(post.createdAt)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(post.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

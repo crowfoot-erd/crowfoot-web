@@ -51,6 +51,14 @@ export function modelVersionPath(workspaceId: string, modelId: string, version: 
   return `/workspaces/${workspaceId}/models/${modelId}/history/${version}`
 }
 
+/** 두 버전 비교 화면 경로 — 새 버전(to) 뷰어를 기준 버전(from)과 비교 모드로 연다.
+ *  순서와 상관없이 작은 쪽이 기준이다(태그 간 비교 — 13-model-versions §1.7) */
+export function versionRangeComparePath(workspaceId: string, modelId: string, a: number, b: number): string {
+  const from = Math.min(a, b)
+  const to = Math.max(a, b)
+  return `${modelVersionPath(workspaceId, modelId, to)}?compare=${from}`
+}
+
 export interface CreateModelInput {
   name: string
   description?: string
@@ -330,12 +338,17 @@ export function cloneFromTemplate(workspaceId: string, body: CloneFromTemplateIn
 export function fetchModelVersions(
   workspaceId: string,
   modelId: string,
-  params: OffsetPagingParams & { keyword?: string } = {},
+  params: OffsetPagingParams & { keyword?: string; tagged?: boolean } = {},
   signal?: AbortSignal,
 ): Promise<PageResult<ModelVersionEntry>> {
   return apiGetPage<ModelVersionEntry>(
     `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions`,
-    { page: params.page, size: params.size, keyword: params.keyword || undefined },
+    {
+      page: params.page,
+      size: params.size,
+      keyword: params.keyword || undefined,
+      tagged: params.tagged ? 'true' : undefined,
+    },
     signal,
   )
 }

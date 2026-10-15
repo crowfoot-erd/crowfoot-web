@@ -1369,7 +1369,8 @@ export function ErdCanvas({
         connectionRadius={24}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
-        <TableColorMiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2" />
+        {/* 폰(md 미만)에서는 미니맵이 캔버스를 크게 가려 숨긴다(v1.46) */}
+        <TableColorMiniMap pannable zoomable onClick={handleMinimapClick} className="!bottom-2 !right-2 max-md:!hidden" />
       </ReactFlow>
 
       {/* 빈 캔버스 시작 가이드 — 편집 가능하고 테이블이 0개일 때만(첫 테이블이 생기면 자동 소멸).

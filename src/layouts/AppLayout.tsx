@@ -14,6 +14,7 @@ import { useMe } from '@/features/auth'
 import { CreateWorkspaceDialog } from '@/features/workspaces'
 import { AdminSidebar } from '@/layouts/components/admin-sidebar'
 import { CommunitySidebar } from '@/layouts/components/community-sidebar'
+import { MobileNav } from '@/layouts/components/mobile-nav'
 import { NotificationBell } from '@/layouts/components/notification-bell'
 import { TeamSidebar } from '@/layouts/components/team-sidebar'
 import { UserMenu } from '@/layouts/components/user-menu'
@@ -25,10 +26,7 @@ export function AppLayout() {
   const location = useLocation()
 
   // 관리자 화면(/admin/*)은 관리자 메뉴로, 팀 화면(/teams/*)은 팀 리스트로,
-  // 커뮤니티 화면(/community/*)은 게시판 메뉴로 사이드바를 교체한다 (storyboard 00-common §3.1)
-  const isAdminScreen = location.pathname.startsWith('/admin')
-  const isTeamScreen = location.pathname.startsWith('/teams')
-  const isCommunityScreen = location.pathname.startsWith('/community')
+  // 커뮤니티 화면(/community/*)은 게시판 메뉴로 사이드바를 교체한다 (storyboard 00-common §3.1 — ContextSidebar)
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -41,13 +39,15 @@ export function AppLayout() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
-        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4 md:gap-6">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 md:gap-6">
+          {/* 폰(md 미만) — 주 메뉴·사이드바·테마·언어를 서랍 하나에 모은다(v1.46) */}
+          <MobileNav admin={me.data?.admin === true} sidebar={<ContextSidebar pathname={location.pathname} inDrawer />} />
           <Link to="/dashboard" className="flex items-center gap-2 text-base font-semibold">
             <Logo className="size-5" />
             {t('common.appName')}
           </Link>
 
-          <nav aria-label="primary" className="flex items-center gap-1">
+          <nav aria-label="primary" className="hidden items-center gap-1 md:flex">
             <NavLink to="/workspaces" className={navLinkClass}>
               {t('shell.nav.workspaces')}
             </NavLink>
@@ -70,14 +70,16 @@ export function AppLayout() {
 
           <div className="ml-auto flex items-center gap-1">
             {/* 메인(랜딩) 바로가기 — 시작 페이지는 로그인 상태에서도 열람 가능 */}
-            <Button asChild variant="ghost" size="sm" className="gap-1.5">
+            <Button asChild variant="ghost" size="sm" className="hidden gap-1.5 md:inline-flex">
               <Link to="/" data-testid="shell-home-link">
                 {t('shell.nav.home')}
                 <Home aria-hidden className="size-4" />
               </Link>
             </Button>
-            <ThemeToggle />
-            <LanguageSelect />
+            <div className="hidden items-center gap-1 md:flex">
+              <ThemeToggle />
+              <LanguageSelect />
+            </div>
             <NotificationBell />
             <UserMenu />
           </div>
@@ -85,15 +87,7 @@ export function AppLayout() {
       </header>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1">
-        {isAdminScreen ? (
-          <AdminSidebar />
-        ) : isTeamScreen ? (
-          <TeamSidebar />
-        ) : isCommunityScreen ? (
-          <CommunitySidebar />
-        ) : (
-          <WorkspaceSidebar />
-        )}
+        <ContextSidebar pathname={location.pathname} />
         <main className="relative isolate min-w-0 flex-1 px-4 py-6 md:px-8">
           {/* 본문 위쪽의 옅은 색 번짐 — 랜딩·사용 가이드와 같은 분위기 (2026-10-03 사용자 요청 — 사이트 전체 디자인 통일) */}
           <div
@@ -114,4 +108,12 @@ export function AppLayout() {
       <CreateWorkspaceDialog />
     </div>
   )
+}
+
+/** 화면에 맞는 사이드바 — 데스크톱은 왼쪽 aside, 폰은 메뉴 서랍(inDrawer) 안에 같은 내용을 쓴다 */
+function ContextSidebar({ pathname, inDrawer = false }: { pathname: string; inDrawer?: boolean }) {
+  if (pathname.startsWith('/admin')) return <AdminSidebar inDrawer={inDrawer} />
+  if (pathname.startsWith('/teams')) return <TeamSidebar inDrawer={inDrawer} />
+  if (pathname.startsWith('/community')) return <CommunitySidebar inDrawer={inDrawer} />
+  return <WorkspaceSidebar inDrawer={inDrawer} />
 }

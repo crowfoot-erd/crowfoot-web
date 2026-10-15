@@ -178,7 +178,8 @@
       "teams": "팀",
       "admin": "관리자",
       "community": "커뮤니티",
-      "home": "메인으로"
+      "home": "메인으로",
+      "menu": "메뉴"
     },
     "sidebar": {
       "mine": "나의 워크스페이스",
@@ -1149,6 +1150,12 @@
         "tagSaved": "태그를 저장했습니다",
         "tagRemoved": "태그를 지웠습니다",
         "tagDuplicated": "이 문서의 다른 버전이 이미 쓰는 태그입니다",
+        "tagCompare": {
+          "title": "태그 비교",
+          "base": "기준 태그",
+          "target": "대상 태그",
+          "open": "비교"
+        },
         "restore": "이 버전으로 되돌리기",
         "restoreConfirmTitle": "버전 복원",
         "restoreConfirmDescription": "버전 {{version}}의 문서를 새 버전으로 저장합니다. 현재 문서는 버전 기록에 그대로 남습니다.",

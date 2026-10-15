@@ -2,6 +2,7 @@
  * 공개 화면의 머리와 바닥 — 랜딩과 공유 문서 목록이 함께 쓴다 (04-front/storyboard/00-common.md S-00)
  *
  * 머리: 로고, 사용 가이드(새 창), 테마, 언어, 로그인 또는 사용자 메뉴. 바닥: 저작권, 버전, 사용 가이드, 약관.
+ * 폰(sm 미만)에서는 머리의 사용 가이드·테마를 숨기고(사용 가이드는 바닥에 있다) 바닥을 두 줄로 쌓는다(v1.46).
  */
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -37,12 +38,14 @@ export function PublicHeader({ wide = false }: { wide?: boolean } = {}) {
       {/* 언어·테마는 행동 버튼 왼쪽 — 인증 상태 — 앱 셸과 같은 사용자 메뉴(정보·로그아웃)를 헤더에 둔다 */}
       <div className="flex items-center gap-1">
         {/* 사용 가이드 — 로그인하지 않아도 어떤 기능이 있는지 볼 수 있다(/guide) */}
-        <Button asChild variant="ghost" size="sm">
+        <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
           <a href={guideHref} target="_blank" rel="noopener noreferrer" data-testid="landing-guide-link">
             {t('guide.title')}
           </a>
         </Button>
-        <ThemeToggle />
+        <span className="hidden sm:inline-flex">
+          <ThemeToggle />
+        </span>
         <LanguageSelect />
         {authenticated ? (
           <>
@@ -66,7 +69,7 @@ export function PublicFooter() {
   const guideHref = publicPath('/guide')
   return (
     <footer className="border-t">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 text-xs text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-4 py-3 text-xs text-muted-foreground sm:h-14 sm:flex-row sm:items-center sm:justify-between sm:py-0">
         <span className="flex items-center gap-3">
           <span>{t('common.footer')}</span>
           {/* 현재 버전 — 첫 방문에서도 지금 몇 버전인지 알 수 있게 (v1.17) */}
@@ -74,7 +77,7 @@ export function PublicFooter() {
             {t('landing.footer.currentVersion', { version: APP_VERSION })}
           </span>
         </span>
-        <span className="flex items-center gap-3">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <a href={guideHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
             {t('landing.footer.guide')}
           </a>

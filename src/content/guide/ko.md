@@ -41,6 +41,8 @@ Crowfoot의 화면은 크게 세 종류입니다.
 | **{{shell.nav.community}}** | **{{shell.sidebar.communityReleaseNotes}}**, **{{shell.sidebar.communityFeedback}}**, **{{shell.sidebar.communityMyComments}}**, **{{shell.sidebar.communityMyLikes}}**, **{{shell.sidebar.communityNotifications}}** |
 | **{{shell.nav.admin}}** | **{{shell.sidebar.adminUsers}}**, **{{shell.sidebar.adminCodes}}**, **{{shell.sidebar.adminManaged}}**, **{{shell.sidebar.adminSystemTerms}}**, **{{shell.sidebar.adminShowcase}}**, **{{shell.sidebar.adminAuditLogs}}**, **{{shell.sidebar.adminTraffic}}** |
 
+폰처럼 좁은 화면에서는 위쪽 메뉴와 사이드바가 접힙니다. 왼쪽 위의 **{{shell.nav.menu}}** 버튼(☰)을 누르면 위쪽 메뉴, 지금 화면의 사이드바, 테마와 언어가 서랍 하나에 열립니다.
+
 ### 1.3 에디터 창
 
 ![에디터 전체 화면](/guide-assets/ko/editor-overview.webp)
@@ -926,10 +928,13 @@ ERD 문서와 함께 열면 왼쪽 목록의 테이블을 문서의 그룹별로
 
 ### 14.2 버전 비교
 
+![버전 비교 — 태그가 함께 보이는 버전 선택](/guide-assets/ko/editor-version-compare.webp)
+
 **{{model.editor.history.compare}}**를 누르면 두 버전의 차이를 볼 수 있습니다.
 
 * 캔버스는 비교 버전을 기준으로 그려지고, 바뀐 테이블에 `+`(추가)와 `~`(변경) 표시가 붙습니다.
 * 삭제된 테이블은 따로 목록으로 나옵니다.
+* 태그가 둘 이상이면 버전 기록 창 위쪽의 **{{model.editor.history.tagCompare.title}}**에서 두 태그를 골라 비교합니다. 오래된 쪽이 기준입니다. 비교 화면의 버전 목록에도 태그가 함께 보입니다.
 * **{{model.editor.compare.exit}}**로 문서로 돌아옵니다.
 
 ### 14.3 마이그레이션 DDL
