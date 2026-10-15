@@ -68,6 +68,7 @@ function shapeKeys(node: unknown, prefix = ''): string[] {
 }
 
 function placeholders(value: string): Set<string> {
+  // eslint-disable-next-line sonarjs/super-linear-regex -- 시험 고정 입력(번역 문구)에만 쓰는 정규식
   return new Set(value.match(/\{\{[^}]+}}/g) ?? [])
 }
 

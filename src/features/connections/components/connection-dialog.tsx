@@ -80,7 +80,7 @@ function connectionSchema(requiredMessage: string, schemaPatternMessage: string)
     schemaName: z
       .string()
       .trim()
-      .refine((v) => v === '' || /^[A-Za-z_][A-Za-z0-9_]{0,99}$/.test(v), schemaPatternMessage),
+      .refine((v) => v === '' || /^[A-Za-z_]\w{0,99}$/.test(v), schemaPatternMessage),
     username: required,
     // 편집에서는 빈 비밀번호 = 기존 유지 — 등록에서만 필요
     password: z.string(),

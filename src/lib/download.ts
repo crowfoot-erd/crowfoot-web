@@ -14,8 +14,17 @@ export function downloadTextFile(filename: string, text: string, mime = 'text/pl
 
 /** 파일명으로 쓸 수 없는 문자(경로 구분자·예약 문자·공백)를 밑줄로 — 빈 결과는 fallback */
 export function safeFilename(name: string, fallback = 'model'): string {
-  const cleaned = name.replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '')
+  const cleaned = trimUnderscores(name.replace(/[\\/:*?"<>|\s]+/g, '_'))
   return cleaned || fallback
+}
+
+/** 앞뒤 밑줄 제거 — /^_+|_+$/g와 같은 결과를 역추적 없이 선형으로 */
+function trimUnderscores(value: string): string {
+  let start = 0
+  let end = value.length
+  while (start < end && value[start] === '_') start++
+  while (end > start && value[end - 1] === '_') end--
+  return value.slice(start, end)
 }
 
 /** dataURL 다운로드 — 캔버스 캡처 이미지 등. Blob 변환 없이 href에 그대로 건다 */

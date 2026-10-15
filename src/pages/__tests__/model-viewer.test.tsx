@@ -60,6 +60,7 @@ describe('ERD 문서 열기', () => {
     //       탭 순서는 ERD · 요구사항 · 데이터 보기 · 댓글(v1.35 — 데이터 보기는 Editor 이상)
     const tabs = screen.getByTestId('model-viewer-tabs')
     const tabButtons = within(tabs).getAllByRole('tab')
+    // eslint-disable-next-line sonarjs/super-linear-regex -- 시험 고정 입력(탭 라벨)에만 쓰는 정규식
     expect(tabButtons.map((tab) => tab.textContent?.replace(/\d+$/, ''))).toEqual(['ERD', '요구사항', '데이터 보기', '댓글'])
     expect(tabButtons[0]).toHaveAttribute('aria-selected', 'true')
     expect(tabButtons[3]).toHaveAttribute('aria-selected', 'false')
@@ -156,7 +157,7 @@ describe('ERD 문서 열기', () => {
     // 501은 본인(me=2)이 만든 문서 — 원댓글에만 답글 버튼이 뜬다(답글은 작성자 전용)
     const items = screen.getAllByTestId('share-comment-item')
     const topLevel = items.filter((item) => item.querySelector('[data-testid="share-comment-reply-button"]'))
-    expect(topLevel.length).toBe(2) // 원댓글 31·33 — 답글 32에는 없다
+    expect(topLevel).toHaveLength(2) // 원댓글 31·33 — 답글 32에는 없다
     fireEvent.click(topLevel[0].querySelector('[data-testid="share-comment-reply-button"]')!)
     expect(screen.getByTestId('share-comment-reply-form')).toBeVisible()
   })
@@ -180,6 +181,7 @@ describe('ERD 문서 열기', () => {
 
     // Viewer에게는 데이터 보기 탭이 없다 — 데이터 브라우저와 같은 권한(Editor 이상)
     const tabButtons = await screen.findAllByRole('tab')
+    // eslint-disable-next-line sonarjs/super-linear-regex -- 시험 고정 입력(탭 라벨)에만 쓰는 정규식
     expect(tabButtons.map((tab) => tab.textContent?.replace(/\d+$/, ''))).toEqual(['ERD', '요구사항', '댓글'])
     fireEvent.click(tabButtons[2])
     expect(await screen.findByTestId('share-feedback-section')).toBeVisible()

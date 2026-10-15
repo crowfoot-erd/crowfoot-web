@@ -6,12 +6,14 @@
  * 실제 타입을 재노출하는 선언으로 우회한다 — API 표면은 패키지 타입 그대로.
  */
 declare module '@toast-ui/editor' {
+  // eslint-disable-next-line sonarjs/no-internal-api-use -- 패키지 exports에 types 조건이 없어 내부 경로 타입을 재노출하는 우회(파일 머리 주석)
   import Editor from '../../node_modules/@toast-ui/editor/types/index'
 
   export default Editor
 }
 
 declare module '@toast-ui/editor/dist/toastui-editor-viewer' {
+  // eslint-disable-next-line sonarjs/no-internal-api-use -- 패키지 exports에 types 조건이 없어 내부 경로 타입을 재노출하는 우회(파일 머리 주석)
   import { Viewer } from '../../node_modules/@toast-ui/editor/types/index'
 
   export default Viewer

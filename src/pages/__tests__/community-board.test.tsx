@@ -86,7 +86,7 @@ describe('커뮤니티 게시판 목록', () => {
     renderBoard('RELEASE_NOTE')
 
     // then: 릴리스 노트 쓰기는 관리자 전용 — 버튼 미노출
-    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판'))
+    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /새 글/ })).not.toBeInTheDocument()
   })
 

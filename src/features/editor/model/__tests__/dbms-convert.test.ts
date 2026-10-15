@@ -69,7 +69,7 @@ describe('convertDocumentDbms — 컬럼 타입', () => {
       'VARCHAR',
       'BOOLEAN',
     ])
-    expect(document.model.tables[0].columns[2].length).toBe(100)
+    expect(document.model.tables[0].columns[2]).toHaveLength(100)
     // MySQL DATETIME → PostgreSQL TIMESTAMP(2컬럼), MySQL TINYINT(1) → PostgreSQL BOOLEAN(1컬럼). VARCHAR는 같다
     expect(report.typeChanges).toEqual([
       { code: 'BOOLEAN', fromType: 'TINYINT(1)', toType: 'BOOLEAN', columnCount: 1 },

@@ -103,7 +103,7 @@ export function checkReferencesColumn(expression: string, columnName: string): b
       if (expression.slice(start, i).toLowerCase() === target) return true
       continue
     }
-    if (/[0-9]/.test(ch)) {
+    if (/\d/.test(ch)) {
       // 숫자 뒤에 붙은 글자(1e5·0x1F)는 식별자가 아니다
       while (i < expression.length && /[\p{L}\p{N}.]/u.test(expression[i])) i += 1
       continue
@@ -211,6 +211,7 @@ export function withIndexExtras(
 }
 
 /** PostgreSQL 캐스트 — `::text`, `::character varying(20)`, `::text[]` (core SchemaDiffer.PG_CAST와 같다) */
+// eslint-disable-next-line sonarjs/regex-complexity -- core SchemaDiffer.PG_CAST와 같은 식을 유지해야 비교 결과가 일치한다
 const PG_CAST = /::(?:character varying|double precision|timestamp(?: with(?:out)? time zone)?|[a-z_][a-z0-9_]*)(?:\(\d+(?:,\s*\d+)?\))?(?:\[\])?/g
 /** `= ANY (ARRAY[` — IN 목록을 PostgreSQL이 다시 쓴 꼴 */
 const PG_ANY_ARRAY = /=\s*any\s*\(+\s*array\s*\[/g

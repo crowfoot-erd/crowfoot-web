@@ -1,0 +1,2 @@
+# 커밋 전 정적 분석 — 스테이징된 ts/tsx만 eslint(+sonarjs), 자동 수정 없음(리포가 prettier 정리 안 됨)
+pnpm exec lint-staged

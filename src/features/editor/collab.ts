@@ -173,9 +173,9 @@ export interface UseModelCollabOptions {
   userId: string | undefined
   userName: string | undefined
   /** 내 프로필 사진 URL — 있을 때만 CONNECT 헤더 X-USER-AVATAR 로 실린다 */
-  avatarUrl?: string | null | undefined
+  avatarUrl?: string | null
   /** 내 GitHub 핸들(login) — 있을 때만 CONNECT 헤더 X-USER-LOGIN 으로 실어 보낸다 */
-  githubLogin?: string | null | undefined
+  githubLogin?: string | null
   /** 남의 저장 푸시(자기 반향은 서버가 savedBy 를 실어 주므로 여기서 걸러낸다) */
   onRemoteSaved?: (event: RemoteSavedPayload) => void
   /** 남의 채팅 수신(자기 에코 제외) — 닫힌 채팅 패널의 토스트·배지 알림용 */
@@ -385,6 +385,7 @@ export function useModelCollab(options: UseModelCollabOptions): ModelCollabHandl
           }
           const incoming = toChatMessage(event)
           // seq 정렬 — 발언 이벤트의 도착 순서는 뒤집힐 수 있다(브로커 멀티스레드)
+          // eslint-disable-next-line sonarjs/no-nested-functions -- STOMP 구독 콜백 안의 상태 갱신 함수 — 연결 수명(effect·onConnect)에 묶인 의도된 중첩
           setMessages((prev) => [...prev, incoming].sort((a, b) => a.seq - b.seq).slice(-CHAT_WINDOW))
           if (incoming.userId && incoming.userId !== userId) {
             onIncomingChatRef.current?.(incoming)
@@ -405,6 +406,7 @@ export function useModelCollab(options: UseModelCollabOptions): ModelCollabHandl
           if (!event.userId || event.userId === userId) return // 자기 커서 에코 — 그리지 않는다
           const movedBy = event.userId // 좁힘을 콜백 안까지 유지
           setRemoteCursors((prev) => {
+            // eslint-disable-next-line sonarjs/no-nested-functions -- STOMP 구독 콜백 안의 상태 갱신 함수 — 연결 수명(effect·onConnect)에 묶인 의도된 중첩
             const next = prev.filter((c) => c.userId !== movedBy)
             if (event.cursor) {
               next.push({ userId: movedBy, name: event.name ?? '', cursor: event.cursor, at: event.at ?? '' })

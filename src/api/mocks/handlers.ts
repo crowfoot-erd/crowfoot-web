@@ -269,7 +269,8 @@ function contentStateOf(model: { modelId: string; version: number }): ContentSta
 
 /** 저장(§1.5)·복원(§1.11) 성공이 버전 기록에 스냅샷을 append 한다 — 서버 트랜잭션 계약 */
 function appendSnapshot(modelId: string, version: number, changeSummary: string | null, content: string): void {
-  ;(fixtures.versions[modelId] ??= []).push({
+  fixtures.versions[modelId] ??= []
+  fixtures.versions[modelId].push({
     version,
     changeSummary,
     memo: null,
@@ -2546,6 +2547,7 @@ export const handlers = [
             databaseName: 'crowfoot',
             schemaName: 'cf_u2_d1',
             username: 'cf_u2_d1',
+            // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- MSW 목 픽스처의 가짜 발급 비밀번호(실제 계정 아님)
             password: 'Xk9!vQ2mZR7#pLw4nTaE',
           },
         }),

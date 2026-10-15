@@ -103,8 +103,11 @@ export function compactLabelFontSize(screenPx: number, zoom: number): number {
   return screenPx / Math.max(zoom, COMPACT_LABEL_ZOOM_FLOOR)
 }
 
+/** 컬럼 행 영역 — PK·FK·일반 */
+type ColumnZone = 'pk' | 'fk' | 'general'
+
 /** 컬럼 표시 모드가 이 영역 행을 그리는지 — 'keys'면 일반 컬럼을 접는다 (PK·FK·UK/IX는 유지) */
-export function isZoneVisible(zone: 'pk' | 'fk' | 'general', mode: ColumnDisplayMode): boolean {
+export function isZoneVisible(zone: ColumnZone, mode: ColumnDisplayMode): boolean {
   return mode !== 'keys' || zone !== 'general'
 }
 
@@ -231,7 +234,7 @@ interface ColumnRowProps {
   isPk: boolean
   isFk: boolean
   /** 행이 속한 영역 — 식별 관계 FK는 PK에 포함되므로 'pk' */
-  zone: 'pk' | 'fk' | 'general'
+  zone: ColumnZone
   /** 그립 드래그 가능 여부 — FK 영역 행은 재정렬이 없다 */
   reorderable: boolean
   /** 이 테이블의 PK 컬럼 수 — 복합 PK에서는 AI를 제공하지 않는다 */
@@ -863,8 +866,8 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
   /** 영역별 행 분류 — 표시 순서 = PK → FK(PK 바로 밑) → 일반. index는 원본 배열 기준(드래그 드롭 위치).
    *  파싱 시점 정규화(content-io)로 데이터가 이미 이 순서지만, 순서가 흐트러져 저장된 문서에 대비해
    *  렌더에서도 영역 순서를 가둔다(stable sort — 영역 안 순서는 유지). */
-  const ZONE_RANK: Record<'pk' | 'fk' | 'general', number> = { pk: 0, fk: 1, general: 2 }
-  const zoneRows: { zone: 'pk' | 'fk' | 'general'; column: ErdColumn; index: number }[] = (table?.columns ?? [])
+  const ZONE_RANK: Record<ColumnZone, number> = { pk: 0, fk: 1, general: 2 }
+  const zoneRows: { zone: ColumnZone; column: ErdColumn; index: number }[] = (table?.columns ?? [])
     .map((column, index) => ({
       zone: pkIds.has(column.id)
         ? ('pk' as const)

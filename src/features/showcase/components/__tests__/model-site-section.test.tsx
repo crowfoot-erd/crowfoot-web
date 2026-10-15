@@ -140,6 +140,7 @@ describe('만든 사이트 칸', () => {
     renderDialog()
 
     const section = await siteSection()
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- http 주소 거부 동작을 확인하는 입력값
     await user.type(await within(section).findByLabelText('사이트 주소'), 'http://10.0.0.1')
     await user.click(within(section).getByRole('button', { name: '사이트 저장' }))
 

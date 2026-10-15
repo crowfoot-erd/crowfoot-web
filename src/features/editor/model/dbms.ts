@@ -264,10 +264,14 @@ export interface ParsedPhysicalType {
 export function parsePhysicalType(raw: string, dbmsId: string): ParsedPhysicalType | null {
   const trimmed = raw.trim()
   if (trimmed === '') return null
-  const match = /^([A-Za-z][A-Za-z0-9_ ]*?)\s*(?:\(([^()]*)\))?$/.exec(trimmed)
+  // 이름은 공백 아닌 글자로 끝난다 — 뒤 공백은 \s*가 맡아 두 수량자가 겹치지 않는다(역추적 없음)
+  const match = /^([A-Za-z](?:[\w ]*\w)?)\s*(?:\(([^()]*)\))?$/.exec(trimmed)
   if (!match) return null
   // 비교는 인자를 뺀 기본 이름으로 — 'TINYINT(1)'과 'TINYINT'가 같은 타입으로 만난다
-  const base = (text: string) => text.replace(/\(.*$/, '').replace(/\s+/g, ' ').trim().toUpperCase()
+  const base = (text: string) => {
+    const paren = text.indexOf('(') // 첫 '(' 이후 인자 제거 — 타입 이름에는 줄바꿈이 없다
+    return (paren < 0 ? text : text.slice(0, paren)).replace(/\s+/g, ' ').trim().toUpperCase()
+  }
   const name = base(match[1])
   const args = (match[2] ?? '').split(',').map((part) => part.trim())
 

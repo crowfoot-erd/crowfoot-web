@@ -182,7 +182,7 @@ describe('도메인 타입 탭 (용어 사전 패널)', () => {
 
     fireEvent.click(within(preview).getByRole('button', { name: '선택한 컬럼 2개에 전파' }))
     expect(column('c-email')).toMatchObject({ length: 255, domain: { version: 2, overrides: [] } })
-    expect(column('c-backup').length).toBe(255)
+    expect(column('c-backup')).toHaveLength(255)
 
     useEditorStore.getState().undo()
     expect(column('c-email')).toMatchObject({ length: 191, domain: { version: 1 } })

@@ -196,6 +196,7 @@ describe('content-io', () => {
   })
 
   it('FK 컬럼은 PK 바로 밑(일반 위)으로 정규화된다 — 배열 끝에 붙은 레거시 문서 자가 치유', () => {
+    // eslint-disable-next-line sonarjs/no-identical-functions -- 케이스별 자족 픽스처 생성기 — 시험 독립성을 위해 의도적으로 복제
     const mk = (id: string) => ({
       id,
       logicalName: '',

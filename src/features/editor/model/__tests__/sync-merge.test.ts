@@ -137,7 +137,6 @@ describe('diffSync — 보존 규칙', () => {
     })
     // DB — amount 정밀도가 달라졌다(패치 유발)
     const db = dbOrders()
-    db.columns = db.columns.map((c) => (c.physicalName === 'memo' ? c : c))
     const amount = dbCol('db-c-orders-amount', 'amount', { dataType: 'DECIMAL', precision: 12, scale: 2, nullable: false })
     db.columns = [...db.columns, amount]
     const curWithAmount = structuredClone(cur)
@@ -240,7 +239,7 @@ describe('diffSync — 컬럼', () => {
     const { changes } = diffSync(cur, db)
     const next = applyChanges(cur, changes)
     const status = next.model.tables[0]!.columns.find((c) => c.physicalName === 'status')!
-    expect(status.length).toBe(50)
+    expect(status).toHaveLength(50)
     expect(status.defaultValue).toBe('0')
     // id·memo 등 차이 없는 컬럼은 패치되지 않는다
     const patched = changes.filter((c) => c.type === 'column/patch')

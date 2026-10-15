@@ -974,7 +974,7 @@ describe('EditorShell — 키(유니크·인덱스)', () => {
     })
     // 노드 키 영역 표시 — 행 1곳만 발견된다(키 이름은 자동 폭 측정 미러에 없다 —
     // 긴 키 이름이 상자를 부풀려 컬럼 이름↔타입 사이 빈칸을 만드는 일을 막는다)
-    expect((await screen.findAllByText(/email DESC/)).length).toBe(1)
+    expect((await screen.findAllByText(/email DESC/))).toHaveLength(1)
   })
 })
 
@@ -1132,7 +1132,7 @@ describe('EditorShell — 자동 저장', () => {
       () => {
         const state = useEditorStore.getState()
         expect(state.baseVersion).toBe(4)
-        expect(state.past.length).toBe(state.savedDepth)
+        expect(state.past).toHaveLength(state.savedDepth)
       },
       { timeout: 5000 },
     )
@@ -2565,7 +2565,7 @@ describe('EditorShell — 협업 3차 실시간 편집(v1.17)', () => {
 
     const state = useEditorStore.getState()
     expect(state.baseVersion).toBe(7) // 승계
-    expect(state.past.length).toBe(dirtyDepth) // 되돌리지 않는다 — dirty 그대로
+    expect(state.past).toHaveLength(dirtyDepth) // 되돌리지 않는다 — dirty 그대로
     expect(state.present.model.tables).toHaveLength(1)
     expect(screen.queryByText('버전 충돌')).toBeNull() // 리졸버·배너 없음
   })
@@ -2640,7 +2640,7 @@ describe('EditorShell — 협업 3차 실시간 편집(v1.17)', () => {
 
     await waitFor(() => expect(useEditorStore.getState().baseVersion).toBe(4))
     const state = useEditorStore.getState()
-    expect(state.past.length).toBe(state.savedDepth) // 깨끗 — dirty 없음
+    expect(state.past).toHaveLength(state.savedDepth) // 깨끗 — dirty 없음
     expect(screen.queryByText('버전 충돌')).toBeNull()
   })
 
@@ -2726,7 +2726,7 @@ describe('EditorShell — 검증 패널(v1.20, 05-validation §4.1)', () => {
     fireEvent.click(screen.getByRole('button', { name: /검증/ }))
 
     const rows = await screen.findAllByTestId('validation-issue')
-    expect(rows.length).toBe(2)
+    expect(rows).toHaveLength(2)
     // 같은 테이블·같은 등급 → Rule ID 정렬(EMPTY_TABLE이 MISSING_PK보다 앞선다)
     expect(rows[0]).toHaveTextContent('컬럼 없는 테이블')
     expect(rows[1]).toHaveTextContent('기본키 없음')

@@ -14,7 +14,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --max-warnings=0 --no-warn-ignored"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -67,8 +71,11 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-sonarjs": "4.2.2",
+    "husky": "9.1.7",
     "jest-axe": "^11.0.0",
     "jsdom": "^30.0.1",
+    "lint-staged": "16.4.0",
     "msw": "^2.15.0",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",

@@ -36,7 +36,7 @@ export function statementRanges(sql: string, mysql: boolean): StatementRange[] {
     } else if (mysql && c === '`') {
       i = skipQuoted(sql, i, '`', false)
     } else if (!mysql && c === '$') {
-      const tag = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i))
+      const tag = /^\$([A-Za-z_]\w*)?\$/.exec(sql.slice(i))
       if (tag) {
         const close = sql.indexOf(tag[0], i + tag[0].length)
         i = close < 0 ? n : close + tag[0].length

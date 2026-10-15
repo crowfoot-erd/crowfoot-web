@@ -46,9 +46,10 @@ export function mcpServerName(workspaceName: string, workspaceId: string): strin
   const slug = workspaceName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    // 위 치환이 연속 구분자를 '-' 하나로 접으므로 앞뒤에는 '-'가 하나씩만 남는다(역추적 없는 꼴)
+    .replace(/^-|-$/g, '')
     .slice(0, 30)
-    .replace(/-+$/g, '')
+    .replace(/-$/, '')
   return slug.length > 0 ? `crowfoot-${slug}` : `crowfoot-${workspaceId}`
 }
 

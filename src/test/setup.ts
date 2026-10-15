@@ -57,6 +57,7 @@ globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserv
 class DOMMatrixReadOnlyStub {
   m22: number
   constructor(transform?: string) {
+    // eslint-disable-next-line sonarjs/super-linear-regex -- jsdom 스텁 — 라이브러리가 넘기는 짧은 transform 문자열만 받는다
     const scale = transform?.match(/matrix.*\((.+)\)/)?.[1]?.split(', ').pop()
     this.m22 = scale !== undefined ? Number(scale) : 1
   }

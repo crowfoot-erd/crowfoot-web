@@ -78,7 +78,7 @@ describe('커뮤니티 게시글 상세', () => {
     renderDetail('902')
 
     // then: 릴리스 노트는 읽기 전용 — 코멘트 섹션 없음
-    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판'))
+    expect(await screen.findByText('v1.4.0 — 커뮤니티 게시판')).toBeInTheDocument()
     expect(screen.queryByTestId('comment-section')).not.toBeInTheDocument()
   })
 
@@ -95,7 +95,7 @@ describe('커뮤니티 게시글 상세', () => {
     renderDetail('802')
 
     // then: 작성자(kim=3)도 관리자도 아닌 사용자 — 첨부 미노출
-    expect(await screen.findByText('ERD 내보내기 포맷 제안'))
+    expect(await screen.findByText('ERD 내보내기 포맷 제안')).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.queryByRole('link', { name: /수정/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /삭제/ })).not.toBeInTheDocument()

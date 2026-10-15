@@ -7,6 +7,7 @@
 export function summarizeMarkdown(markdown: string, max = 160): string {
   const stripped = markdown
     .replace(/```[\s\S]*?```/g, ' ') // 코드 펜스 — 요약에서는 통째로 제거
+    // eslint-disable-next-line sonarjs/super-linear-regex -- 관리자 작성 릴리스 노트 본문만 받는다 — 선형 꼴로 바꾸면 괄호 포함 URL 처리가 달라진다
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // 이미지·링크 → 표시 문자만
     .replace(/`([^`]*)`/g, '$1') // 인라인 코드
     .replace(/^\s{0,3}#{1,6}\s+/gm, '') // 헤딩

@@ -171,7 +171,7 @@ describe('전파', () => {
     const { doc, stale } = staleDoc()
     const after = applyChanges(doc, buildPropagationChanges(stale, new Set(['t-users/c-backup'])))
 
-    expect(column(after, 'c-backup').length).toBe(255)
+    expect(column(after, 'c-backup')).toHaveLength(255)
     expect(column(after, 'c-email').defaultValue).toBeNull()
     expect(column(after, 'c-email').domain?.overrides).toEqual(['length', 'defaultValue'])
   })

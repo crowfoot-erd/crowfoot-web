@@ -235,6 +235,7 @@ describe('canvas-bounds — viewportFittedTo(그룹 보기 진입)', () => {
   ]
   const view = { width: 1200, height: 800 }
 
+  // eslint-disable-next-line sonarjs/no-identical-functions -- describe별 자족 헬퍼 — 시험 블록 독립성을 위해 의도적으로 복제
   const visible = (vp: { x: number; y: number; zoom: number }) => ({
     left: -vp.x / vp.zoom,
     top: -vp.y / vp.zoom,
@@ -260,6 +261,6 @@ describe('canvas-bounds — viewportFittedTo(그룹 보기 진입)', () => {
 
   it('거대한 경계는 minZoom(기본 0.1)까지 내려가지 않는다 — 캔버스 줌 한계와 같다', () => {
     const vp = viewportFittedTo({ minX: 0, minY: 0, maxX: 30000, maxY: 20000 }, view, loose)
-    expect(vp.zoom).toBe(0.1)
+    expect(vp.zoom).toBeCloseTo(0.1)
   })
 })

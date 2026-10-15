@@ -263,11 +263,6 @@ function packCluster(
     }
     return { minX, minY, maxX, maxY, area: (maxX - minX) * (maxY - minY) }
   }
-  const axisGap = (a: Box, b: Box): number => {
-    const gx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w))
-    const gy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h))
-    return Math.max(gx, gy)
-  }
   const fits = (candidate: Box, selfId: string): boolean => {
     for (const [otherId, other] of boxes) {
       if (otherId !== selfId && axisGap(candidate, other) < gap) return false
@@ -991,11 +986,6 @@ export function layoutHubPositions(
       // 한도에서 허브 방향으로 당겨 원 낭비를 없앤다(2026-09-29 사용자 피드백 — 간격이 너무
       // 멀어 한 화면에 여러 그룹이 들어오지 않는다). 보장 복도 폭(nodeNode)은 그대로 지키고
       // 거리만 축소한다. 허브 핀 고정·문서 순 방문·고정 라운드/이분탐색 — 결정론 유지
-      const axisGap = (a: Box, b: Box): number => {
-        const gx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w))
-        const gy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h))
-        return Math.max(gx, gy) // 옆 이웃은 x분리, 위·아래 이웃은 y분리 하나만 있으면 된다
-      }
       const groupIds = new Set(comp.filter((entity) => entity.isGroup).map((entity) => entity.id))
       /** 쌍별 보장 간격 — 그룹↔그룹은 상자가 안쪽 여백을 포함하므로 HUB_GROUP_CLEARANCE로
        *  조여 묶음끼리 인접하게, 나머지 쌍은 nodeNode 복도를 지킨다 */
@@ -1237,6 +1227,13 @@ interface Box {
   y: number
   w: number
   h: number
+}
+
+/** 두 AABB의 축 간격 — 옆 이웃은 x분리, 위·아래 이웃은 y분리 하나만 있으면 된다(겹치면 음수) */
+function axisGap(a: Box, b: Box): number {
+  const gx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w))
+  const gy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h))
+  return Math.max(gx, gy)
 }
 
 /** 두 AABB가 겹치는지 — 경계 접촉은 겹침이 아니다 */

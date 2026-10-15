@@ -34,6 +34,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # 정적 분석(eslint + sonarjs) — 위반(경고 포함)이 있으면 이미지 push 전에 배포를 멈춘다
+      - name: Lint (eslint + sonarjs)
+        run: pnpm lint --max-warnings=0
+
       - name: Build (vite — .env.production 적용)
         run: pnpm build
 

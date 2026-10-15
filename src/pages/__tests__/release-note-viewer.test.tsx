@@ -31,6 +31,11 @@ function renderViewer(postId: string) {
 }
 
 describe('릴리스 노트 공개 뷰어', () => {
+  // 마지막 2케이스는 UI 언어를 바꾼다 — 파일 단위 격리지만 후속 파일 내 오염만 막는다(훅은 describe 전체에 적용)
+  afterEach(() => {
+    void i18n.changeLanguage('ko')
+  })
+
   it('게스트 — 릴리스 노트를 마크다운 원문과 함께 렌더한다', async () => {
     renderViewer('902')
 
@@ -105,11 +110,6 @@ describe('릴리스 노트 공개 뷰어', () => {
     // then: FEEDBACK 본문이 공개 뷰어에 노출되지 않는다
     expect(await screen.findByText('게시글을 찾을 수 없습니다.')).toBeVisible()
     expect(screen.queryByText('ERD 내보내기 포맷 제안')).not.toBeInTheDocument()
-  })
-
-  // 이하 2케이스는 UI 언어를 바꾼다 — 파일 단위 격리지만 후속 파일 내 오염만 막는다
-  afterEach(() => {
-    void i18n.changeLanguage('ko')
   })
 
   it('게스트 — 여러 언어 글은 콘텐츠 언어 전환기로 ?lang=en을 재조회한다', async () => {

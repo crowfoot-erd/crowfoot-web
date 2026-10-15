@@ -57,7 +57,7 @@ export function buildTermMap(
 function splitCamelCase(token: string): string[] {
   return token
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/([A-Z])(?=[A-Z][a-z])/g, '$1 ') // 약어 끝 경계 — ([A-Z]+)([A-Z][a-z])와 같은 결과, 역추적 없음
     .split(' ')
     .filter(Boolean)
 }
