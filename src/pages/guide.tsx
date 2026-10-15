@@ -24,6 +24,7 @@ import { usePageMeta } from '@/hooks/usePageMeta'
 import { currentLanguage, type Language } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { DOC_ARTICLE_CLASS, useDocImages } from '@/lib/doc-article'
+import { openImageInNewWindow } from '@/lib/data-url'
 
 // toast-ui 청크 분리 — 메인 번들에 포함하지 않는다(release-note-viewer 관례)
 const MarkdownViewer = lazy(() => import('@/features/community/components/markdown-viewer'))
@@ -347,7 +348,7 @@ export default function GuidePage() {
             className={DOC_ARTICLE_CLASS}
             onClick={(event) => {
               const target = event.target
-              if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')
+              if (target instanceof HTMLImageElement) openImageInNewWindow(target.currentSrc || target.src)
             }}
           >
             {markdown === null ? (

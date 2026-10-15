@@ -26,11 +26,3 @@ function trimUnderscores(value: string): string {
   while (end > start && value[end - 1] === '_') end--
   return value.slice(start, end)
 }
-
-/** dataURL 다운로드 — 캔버스 캡처 이미지 등. Blob 변환 없이 href에 그대로 건다 */
-export function downloadDataUrl(filename: string, dataUrl: string): void {
-  const anchor = document.createElement('a')
-  anchor.href = dataUrl
-  anchor.download = filename
-  anchor.click()
-}

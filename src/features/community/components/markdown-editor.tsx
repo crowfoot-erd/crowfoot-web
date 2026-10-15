@@ -17,7 +17,7 @@ import Editor from '@toast-ui/editor'
 import '@toast-ui/editor/dist/toastui-editor.css'
 import '@toast-ui/editor/dist/theme/toastui-editor-dark.css'
 
-import { InlineImageTooLargeError, fileToDataUrl } from '@/lib/file-to-data-url'
+import { InlineImageTooLargeError, fileToDataUrl } from '@/lib/data-url'
 import { INTL_LOCALES, currentLanguage } from '@/lib/i18n'
 import { useTheme } from '@/lib/theme'
 

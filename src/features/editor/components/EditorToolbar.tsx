@@ -75,7 +75,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
-import { downloadDataUrl, downloadTextFile, safeFilename } from '@/lib/download'
+import { downloadDataUrl } from '@/lib/data-url'
+import { downloadTextFile, safeFilename } from '@/lib/download'
 import {
   LayoutCancelledError,
   cancelLayout,

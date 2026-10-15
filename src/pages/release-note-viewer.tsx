@@ -28,6 +28,7 @@ import { summarizeMarkdown } from '@/lib/markdown'
 import { resultCodeMessage } from '@/lib/result-code'
 import { cn } from 'cn'
 import { DOC_ARTICLE_CLASS, useDocImages } from '@/lib/doc-article'
+import { openImageInNewWindow } from '@/lib/data-url'
 
 /** 릴리스 노트 그림 px 대 화면 px — 레티나 2배(deviceScaleFactor 2)로 찍는다(docs/assets/release-notes) */
 const RELEASE_NOTE_IMAGE_PIXEL_RATIO = 2
@@ -232,7 +233,7 @@ function ReleaseNoteArticle({
       <article ref={articleRef} data-testid="release-note-detail" className={cn('flex flex-col gap-4', DOC_ARTICLE_CLASS)}
         onClick={(event) => {
           const target = event.target
-          if (target instanceof HTMLImageElement) window.open(target.src, '_blank', 'noopener,noreferrer')
+          if (target instanceof HTMLImageElement) openImageInNewWindow(target.currentSrc || target.src)
         }}
       >
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>

@@ -2083,7 +2083,8 @@ describe('EditorShell — 이미지 내보내기', () => {
 
     await waitFor(() => expect(clicked).toHaveLength(1))
     expect(clicked[0].download).toBe('주문_서비스_ERD.png')
-    expect(clicked[0].href).toBe('data:image/png;base64,MOCK')
+    // data URL은 공통 처리(@/lib/data-url)가 blob: 주소로 바꿔 내려받는다
+    expect(clicked[0].href).toMatch(/^blob:/)
     // 캡처는 문서 전체(viewport DOM) 대상 — 노드는 컬링 없이 항상 전부 렌더돼 있다
     expect(clickSpy).toHaveBeenCalled()
   })
