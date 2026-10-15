@@ -2,7 +2,7 @@
  * 버전 기록 다이얼로그 테스트 (08-core/02-model.md §1.11)
  *
  * MSW fixtures.versions(501 v0~v3)로 목록 순서·현재 배지·메모/자동 요약 렌더(특수형 포함)·
- * 인라인 메모 편집(PATCH 왕복)·페이징·빈 목록을 검증한다. 저장(PUT)이 버전 기록에
+ * 인라인 메모 편집(PATCH 왕복)·태그(배지·설명·붙이기·지우기·중복 409)·페이징·빈 목록을 검증한다. 저장(PUT)이 버전 기록에
  * 스냅샷을 append 하는 연속 시나리오는 MSW 실제 핸들러에 PUT을 날린 뒤 목록을 연다.
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -29,6 +29,7 @@ afterEach(() => {
   resetEditorStore()
   vi.restoreAllMocks()
   toastMock.success.mockClear()
+  toastMock.error.mockClear()
 })
 
 /** 편집기 세션 수화 — 다이얼로그의 현재 버전 배지는 스토어 baseVersion을 본다 */
@@ -262,6 +263,89 @@ describe('VersionHistoryDialog — 메모 편집', () => {
     const list = await openList()
     expect(screen.queryByRole('button', { name: '메모 편집' })).toBeNull()
     expect(within(list).getAllByRole('link', { name: /조회/ })).toHaveLength(4)
+  })
+})
+
+describe('VersionHistoryDialog — 태그', () => {
+  it('태그가 붙은 버전(v1 · 1.0)은 버전 번호 옆에 배지와 설명을 보인다', async () => {
+    seedSession()
+    renderDialog()
+
+    const v1 = rowsOf(await openList())[2]
+    const tag = within(v1).getByTestId('version-tag')
+    expect(within(tag).getByText('1.0')).toBeVisible()
+    expect(within(tag).getByText('첫 배포')).toBeVisible()
+    expect(within(rowsOf(await openList())[0]).queryByTestId('version-tag')).toBeNull()
+  })
+
+  it('태그와 설명을 붙이면 PATCH 뒤 목록에 보인다', async () => {
+    seedSession()
+    renderDialog()
+
+    const v3 = rowsOf(await openList())[0]
+    fireEvent.click(within(v3).getByTestId('version-tag-edit'))
+    fireEvent.change(within(v3).getByTestId('version-tag-input'), { target: { value: ' 1.1 ' } })
+    fireEvent.change(within(v3).getByTestId('version-tag-description-input'), { target: { value: '결제 추가' } })
+    fireEvent.click(within(v3).getByRole('button', { name: '태그 저장' }))
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('태그를 저장했습니다'))
+    const refreshed = within(rowsOf(await openList())[0]).getByTestId('version-tag')
+    expect(within(refreshed).getByText('1.1')).toBeVisible()
+    expect(within(refreshed).getByText('결제 추가')).toBeVisible()
+  })
+
+  it('같은 문서의 다른 버전이 쓰는 태그는 태그 전용 오류를 알리고 편집을 닫지 않는다', async () => {
+    seedSession()
+    renderDialog()
+
+    const v3 = rowsOf(await openList())[0]
+    fireEvent.click(within(v3).getByTestId('version-tag-edit'))
+    fireEvent.change(within(v3).getByTestId('version-tag-input'), { target: { value: '1.0' } })
+    fireEvent.click(within(v3).getByRole('button', { name: '태그 저장' }))
+
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('이 문서의 다른 버전이 이미 쓰는 태그입니다'),
+    )
+    expect(within(v3).getByTestId('version-tag-input')).toBeVisible()
+  })
+
+  it('태그 지우기는 태그와 설명을 함께 지운다', async () => {
+    seedSession()
+    renderDialog()
+
+    const v1 = rowsOf(await openList())[2]
+    fireEvent.click(within(v1).getByTestId('version-tag-edit'))
+    fireEvent.click(within(v1).getByRole('button', { name: '태그 지우기' }))
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('태그를 지웠습니다'))
+    expect(within(rowsOf(await openList())[2]).queryByTestId('version-tag')).toBeNull()
+  })
+
+  it('태그 이름이 비어 있으면 저장 버튼이 꺼져 있다', async () => {
+    seedSession()
+    renderDialog()
+
+    const v3 = rowsOf(await openList())[0]
+    fireEvent.click(within(v3).getByTestId('version-tag-edit'))
+    expect(within(v3).getByRole('button', { name: '태그 저장' })).toBeDisabled()
+  })
+
+  it('canEdit=false(뷰어)면 태그 버튼이 없고 태그는 보인다', async () => {
+    seedSession()
+    renderDialog(false)
+
+    const list = await openList()
+    expect(within(list).queryByTestId('version-tag-edit')).toBeNull()
+    expect(within(rowsOf(list)[2]).getByTestId('version-tag')).toBeVisible()
+  })
+
+  it('검색어는 태그도 잡는다 — ‘1.0’이면 v1만 남는다', async () => {
+    seedSession()
+    renderDialog()
+
+    await openList()
+    fireEvent.change(screen.getByTestId('version-search-input'), { target: { value: '1.0' } })
+    await waitFor(() => expect(rowsOf(screen.getByTestId('version-history-list')).map((r) => r.dataset.version)).toEqual(['1']))
   })
 })
 

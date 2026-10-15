@@ -919,7 +919,8 @@ Crowfoot 的界面大致分为三类。
 文档每次保存都会生成一个版本。通过 **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}** 打开。
 
 * 每个版本会显示保存的人、时间和变更内容摘要（添加、修改、删除、移动）。
-* 用 **{{model.editor.history.editMemo}}** 为版本添加备注。搜索框会在备注中查找。
+* 用 **{{model.editor.history.editMemo}}** 为版本添加备注。搜索框会在备注和标签中查找。
+* 用 **{{model.editor.history.tag}}** 为版本加上 `1.0` 这样的标签和简短说明。标签显示在版本号旁边，同一文档中不能重复。加了标签的版本即使很旧也不会从记录中删除。
 * **{{model.editor.history.view}}** 以只读方式打开该版本的文档。
 * **{{model.editor.history.restore}}** 会把该版本的内容保存为一个新版本，当前文档也会原样保留在记录中。
 

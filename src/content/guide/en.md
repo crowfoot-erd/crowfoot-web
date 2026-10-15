@@ -919,7 +919,8 @@ Report an inappropriate site with the flag button on its card. Only signed-in us
 Each time a document is saved, a version is kept. Open the list with **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}**.
 
 * Each version shows who saved it, when, and a summary of what changed (added, changed, deleted, moved).
-* Use **{{model.editor.history.editMemo}}** to leave a note on a version. The search box searches these notes.
+* Use **{{model.editor.history.editMemo}}** to leave a note on a version. The search box searches notes and tags.
+* Use **{{model.editor.history.tag}}** to give a version a tag such as `1.0` and a short description. The tag appears next to the version number and must be unique within a document. Tagged versions are never removed from the history, however old they get.
 * **{{model.editor.history.view}}** opens that version read-only.
 * **{{model.editor.history.restore}}** saves the content of that version as a new version. The current content also remains in the history.
 

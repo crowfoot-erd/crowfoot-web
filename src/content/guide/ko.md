@@ -919,7 +919,8 @@ ERD 문서와 함께 열면 왼쪽 목록의 테이블을 문서의 그룹별로
 문서를 저장할 때마다 버전이 하나씩 남습니다. **{{model.editor.toolbar.tools}}** › **{{model.editor.toolbar.history}}**으로 엽니다.
 
 * 버전마다 저장한 사람, 시각, 바뀐 내용 요약(추가, 변경, 삭제, 이동)이 나옵니다.
-* **{{model.editor.history.editMemo}}**으로 버전에 메모를 남깁니다. 검색 칸에 적으면 메모에서 찾습니다.
+* **{{model.editor.history.editMemo}}**으로 버전에 메모를 남깁니다. 검색 칸에 적으면 메모와 태그에서 찾습니다.
+* **{{model.editor.history.tag}}**로 버전에 `1.0` 같은 태그와 짧은 설명을 붙입니다. 태그는 버전 번호 옆에 보이고, 한 문서 안에서 겹칠 수 없습니다. 태그가 붙은 버전은 오래되어도 기록에서 지워지지 않습니다.
 * **{{model.editor.history.view}}**는 그 버전의 문서를 읽기 전용으로 엽니다.
 * **{{model.editor.history.restore}}**는 그 버전의 내용을 새 버전으로 저장합니다. 되돌리기 전의 문서도 기록에 그대로 남습니다.
 

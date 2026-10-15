@@ -31,6 +31,7 @@ import {
   type SharedListSort,
   fetchTemplates,
   patchModelVersionMemo,
+  patchModelVersionTag,
   restoreModelVersion,
   revokeModelShare,
   sqlImport,
@@ -264,6 +265,21 @@ export function usePatchModelVersionMemo(workspaceId: string, modelId: string) {
   return useMutation({
     mutationFn: ({ version, memo }: { version: number; memo: string | null }) =>
       patchModelVersionMemo(workspaceId, modelId, version, { memo }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions'],
+      })
+    },
+  })
+}
+
+/** 버전 태그 편집 — tag null은 지우기. 성공 시 목록 전체 페이지 무효화 */
+export function usePatchModelVersionTag(workspaceId: string, modelId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ version, tag, tagDescription }: { version: number; tag: string | null; tagDescription: string | null }) =>
+      patchModelVersionTag(workspaceId, modelId, version, { tag, tagDescription }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['workspaces', workspaceId, 'models', 'detail', modelId, 'versions'],

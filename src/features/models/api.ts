@@ -367,6 +367,20 @@ export function patchModelVersionMemo(
   )
 }
 
+/** 버전 태그 편집 — tag null은 태그·설명 삭제. 같은 문서의 다른 버전이 쓰는 태그는 409 DUPLICATED_NAME.
+ *  갱신된 목록 행 응답 (13-model-versions §1.7) */
+export function patchModelVersionTag(
+  workspaceId: string,
+  modelId: string,
+  version: number,
+  body: { tag: string | null; tagDescription?: string | null },
+) {
+  return apiPatch<ModelVersionEntry>(
+    `/api/v1/core/workspaces/${workspaceId}/models/${modelId}/versions/${version}/tag`,
+    body,
+  )
+}
+
 /** 버전 복원 — 과거 content를 새 버전으로 저장한다(과거 버전은 불변).
  *  응답은 저장과 같은 계약(새 version·updatedAt — SaveContentResponse). */
 export function restoreModelVersion(

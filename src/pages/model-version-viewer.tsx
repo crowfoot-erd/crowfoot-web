@@ -2,7 +2,7 @@
  * 버전 기록 뷰어 (08-core/02-model.md §1.11 — /workspaces/{ws}/models/{id}/history/{version})
  *
  * - 해당 시점 스냅샷을 읽기 전용 캔버스로 연다 — 본체는 EditorShell(publicView) 재사용
- * - 헤더는 문서명·v{N}·메모·작성자·일시, 현재 버전이면 "현재" 배지
+ * - 헤더는 문서명·v{N}·태그·메모·작성자·일시, 현재 버전이면 "현재" 배지
  * - 되돌리기(복원): 과거 content를 "새 버전으로" 저장한다 — 과거 버전은 불변. 현재 버전
  *   복원은 같은 내용을 다시 저장하는 것이라 노출하지 않는다. baseVersion은 문서 상세
  *   version(복원 시점 최신)을 쓰고, 충돌(409)은 안내 후 문서에서 다시 시도하게 한다.
@@ -45,6 +45,7 @@ import { diffDocuments } from '@/features/editor/model/doc-diff'
 import { classifyTableChanges, toTableIdMarks } from '@/features/editor/model/version-compare'
 import { CompareHighlightContext } from '@/features/editor/components/canvas/compare-context'
 import { VersionComparePanel } from '@/features/editor/components/VersionComparePanel'
+import { VersionTagLabel } from '@/features/editor/components/VersionTagLabel'
 import {
   modelEditorPath,
   modelVersionPath,
@@ -190,6 +191,7 @@ export function ModelVersionViewerPage() {
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-base font-semibold">{model.data.name}</h1>
                 <Badge variant="outline" className="font-mono text-[10px]">v{detail.data.version}</Badge>
+                <VersionTagLabel entry={detail.data} />
                 {detail.data.version === model.data.version ? (
                   <Badge variant="secondary" className="text-[10px]">
                     {t('model.editor.history.current')}

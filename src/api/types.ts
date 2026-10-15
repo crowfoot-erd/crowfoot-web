@@ -462,6 +462,10 @@ export interface ModelVersionEntry {
   /** 자동 변경 요약 JSON 원문 — null은 요약 없는 저장(직접 생성 v0) */
   changeSummary: string | null
   memo: string | null
+  /** 버전 태그(예: 1.0) — 문서 안에서 유일, 붙은 버전은 보존 정책에서 빠진다(13-model-versions §1.7) */
+  tag: string | null
+  /** 태그 설명 — 태그가 없으면 null */
+  tagDescription: string | null
   createdBy: { userId: string; name: string } | null
   createdAt: string
 }

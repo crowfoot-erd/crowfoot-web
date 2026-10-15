@@ -147,6 +147,9 @@ interface VersionRow {
   /** 자동 변경 요약 JSON 원문 — null은 직접 생성 v0(요약 없음) */
   changeSummary: string | null
   memo: string | null
+  /** 버전 태그(§1.7) — 생략은 태그 없음 */
+  tag?: string | null
+  tagDescription?: string | null
   createdBy: { userId: string; name: string } | null
   createdAt: string
   content: string
@@ -202,6 +205,8 @@ function buildVersionRows(): Record<string, VersionRow[]> {
         version: 1,
         changeSummary: versionContents.v1Summary,
         memo: '등급 컬럼 추가',
+        tag: '1.0',
+        tagDescription: '첫 배포',
         createdBy: admin,
         createdAt: '2026-09-08T02:00:00Z',
         content: versionContents.v1,
@@ -1386,11 +1391,16 @@ export const handlers = [
     const url = new URL(request.url)
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1)
     const size = Math.min(100, Math.max(1, Number(url.searchParams.get('size')) || 20))
-    // keyword는 메모 부분 일치(대소문자 무시) — 페이징은 걸린 뒤 기준으로 계산한다
+    // keyword는 메모·태그 부분 일치(대소문자 무시) — 페이징은 걸린 뒤 기준으로 계산한다
     const keyword = (url.searchParams.get('keyword') ?? '').trim().toLowerCase()
     const rows = [...(fixtures.versions[matched.modelId] ?? [])]
       .sort((a, b) => b.version - a.version)
-      .filter((row) => !keyword || (row.memo ?? '').toLowerCase().includes(keyword))
+      .filter(
+        (row) =>
+          !keyword ||
+          (row.memo ?? '').toLowerCase().includes(keyword) ||
+          (row.tag ?? '').toLowerCase().includes(keyword),
+      )
     const slice = rows.slice((page - 1) * size, page * size)
     return HttpResponse.json(
       ok({
@@ -1402,6 +1412,8 @@ export const handlers = [
           version: row.version,
           changeSummary: row.changeSummary,
           memo: row.memo,
+          tag: row.tag ?? null,
+          tagDescription: row.tagDescription ?? null,
           createdBy: row.createdBy,
           createdAt: row.createdAt,
         })),
@@ -1423,6 +1435,8 @@ export const handlers = [
           content: row.content,
           changeSummary: row.changeSummary,
           memo: row.memo,
+          tag: row.tag ?? null,
+          tagDescription: row.tagDescription ?? null,
           createdBy: row.createdBy,
           createdAt: row.createdAt,
         },
@@ -1454,6 +1468,42 @@ export const handlers = [
           version: row.version,
           changeSummary: row.changeSummary,
           memo: row.memo,
+          tag: row.tag ?? null,
+          tagDescription: row.tagDescription ?? null,
+          createdBy: row.createdBy,
+          createdAt: row.createdAt,
+        },
+      }),
+    )
+  }),
+
+  // 버전 태그(§1.7) — tag null은 태그·설명 삭제, 같은 문서의 다른 버전이 쓰는 태그는 409
+  http.patch(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/versions/:version/tag`, async ({ params, request }) => {
+    const matched = fixtures.models.responses.find((model) => model.modelId === params.modelId)
+    if (!matched) return fail('MODEL_NOT_FOUND', 404)
+    const version = Number(params.version)
+    const rows = fixtures.versions[matched.modelId] ?? []
+    const row = rows.find((entry) => entry.version === version)
+    if (!row) return fail('MODEL_VERSION_NOT_FOUND', 404)
+    const body = (await request.json().catch(() => ({}))) as { tag?: string | null; tagDescription?: string | null }
+    if (!('tag' in body)) return fail('INVALID_REQUEST', 400)
+    const tag = body.tag == null ? null : body.tag.trim()
+    if (tag !== null && (tag.length === 0 || tag.length > 50)) return fail('INVALID_REQUEST', 400)
+    if (tag !== null && rows.some((entry) => entry.version !== version && entry.tag === tag)) {
+      return fail('DUPLICATED_NAME', 409)
+    }
+    const description = tag === null ? '' : (body.tagDescription ?? '').trim()
+    if (description.length > 200) return fail('INVALID_REQUEST', 400)
+    row.tag = tag
+    row.tagDescription = description === '' ? null : description
+    return HttpResponse.json(
+      ok({
+        response: {
+          version: row.version,
+          changeSummary: row.changeSummary,
+          memo: row.memo,
+          tag: row.tag,
+          tagDescription: row.tagDescription,
           createdBy: row.createdBy,
           createdAt: row.createdAt,
         },

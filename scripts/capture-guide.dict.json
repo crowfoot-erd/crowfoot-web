@@ -84,6 +84,11 @@
   "ja": "等級カラムを追加",
   "zh": "添加等级列"
  },
+ "첫 배포": {
+  "en": "First release",
+  "ja": "初回リリース",
+  "zh": "首次发布"
+ },
  "복합 UK 위치가 깔끔합니다.": {
   "en": "The composite unique key is neatly placed.",
   "ja": "複合ユニークキーの配置がきれいです。",

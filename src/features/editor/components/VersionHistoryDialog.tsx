@@ -4,12 +4,13 @@
  * 행은 "v{n} · 일시 · 작성자"와 함께 메모(사용자 자유 메모, 있으면 우선) 또는 자동 변경
  * 요약(changeSummary — doc-diff 구조 diff·리버스·복원 특수형)을 렌더한다. 렌더 문구는
  * 클라이언트 i18n이 맡는다 — 요약 본문은 언어 중립 JSON으로 서버에 저장되기 때문.
- * 행별 동작: 조회(버전 뷰어 새 창)·메모 편집(Editor+ 인라인, 비우면 삭제).
+ * 행별 동작: 조회(버전 뷰어 새 창)·메모 편집(Editor+ 인라인, 비우면 삭제)·태그(Editor+ — `1.0` 같은
+ * 이름과 설명, 13-model-versions §1.7). 태그는 버전 번호 옆에 배지와 설명으로 보인다.
  * 현재 버전(스토어 baseVersion)에는 배지를 붙인다 — 편집 중 저장이 반영된 값이다.
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ExternalLink, GitCompareArrows, Loader2, PencilLine, Search } from 'lucide-react'
+import { ExternalLink, GitCompareArrows, Loader2, PencilLine, Search, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { ChangeSummary, ModelVersionEntry } from '@/api/types'
@@ -26,10 +27,17 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime } from '@/lib/format'
 import { errorMessage } from '@/lib/result-code'
+import { isApiError } from '@/api/client'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { modelVersionPath, useModelVersions, usePatchModelVersionMemo } from '@/features/models'
+import {
+  modelVersionPath,
+  useModelVersions,
+  usePatchModelVersionMemo,
+  usePatchModelVersionTag,
+} from '@/features/models'
 import { useEditorStore } from '@/features/editor/store/editor-store'
 import { diffItemDisplayName } from '@/features/editor/model/doc-diff'
+import { VersionTagLabel } from '@/features/editor/components/VersionTagLabel'
 
 export interface VersionHistoryDialogProps {
   open: boolean
@@ -38,7 +46,7 @@ export interface VersionHistoryDialogProps {
   modelId: string
   /** 문서명 — 안내 문구 */
   modelName: string
-  /** 메모 편집 권한 — Editor 이상 (조회는 Viewer도 가능) */
+  /** 메모·태그 편집 권한 — Editor 이상 (조회는 Viewer도 가능) */
   canEdit: boolean
 }
 
@@ -79,10 +87,13 @@ export function VersionHistoryDialog({
   const currentVersion = useEditorStore((s) => s.baseVersion)
   const versions = useModelVersions(workspaceId, modelId, page, debouncedKeyword, open)
   const memoMutation = usePatchModelVersionMemo(workspaceId, modelId)
+  const tagMutation = usePatchModelVersionTag(workspaceId, modelId)
 
   // 인라인 메모 편집 상태 — 행 버전 번호로 편집 대상을 가린다
   const [editing, setEditing] = useState<number | null>(null)
   const [memoDraft, setMemoDraft] = useState('')
+  // 태그 편집 대상 — 메모 편집과 동시에 열지 않는다
+  const [tagEditing, setTagEditing] = useState<number | null>(null)
 
   // 검색어가 바뀌면 결과 궤적이 달라진다 — 1페이지로 되돌린다
   useEffect(() => {
@@ -96,11 +107,37 @@ export function VersionHistoryDialog({
     setKeyword('')
     setEditing(null)
     setMemoDraft('')
+    setTagEditing(null)
   }, [open])
 
   const beginEdit = (entry: ModelVersionEntry) => {
+    setTagEditing(null)
     setEditing(entry.version)
     setMemoDraft(entry.memo ?? '')
+  }
+
+  const beginTagEdit = (entry: ModelVersionEntry) => {
+    setEditing(null)
+    setTagEditing(entry.version)
+  }
+
+  // tag null은 태그·설명 지우기 — 겹치는 태그(409)는 태그 전용 문구로 알린다
+  const saveTag = (version: number, tag: string | null, tagDescription: string | null) => {
+    tagMutation.mutate(
+      { version, tag, tagDescription },
+      {
+        onSuccess: () => {
+          toast.success(t(tag == null ? 'model.editor.history.tagRemoved' : 'model.editor.history.tagSaved'))
+          setTagEditing(null)
+        },
+        onError: (error) =>
+          toast.error(
+            isApiError(error) && error.resultCode === 'DUPLICATED_NAME'
+              ? t('model.editor.history.tagDuplicated')
+              : errorMessage(error),
+          ),
+      },
+    )
   }
 
   const saveMemo = (version: number) => {
@@ -166,7 +203,8 @@ export function VersionHistoryDialog({
                       {t('model.editor.history.current')}
                     </Badge>
                   ) : null}
-                  <span className="ml-auto text-muted-foreground">
+                  <VersionTagLabel entry={entry} />
+                  <span className="ml-auto shrink-0 text-muted-foreground">
                     {[
                       entry.createdBy?.name ?? t('common.system'),
                       formatDateTime(entry.createdAt),
@@ -206,44 +244,27 @@ export function VersionHistoryDialog({
                       </Button>
                     </div>
                   </div>
+                ) : tagEditing === entry.version ? (
+                  <TagEditor
+                    entry={entry}
+                    pending={tagMutation.isPending}
+                    onSave={(tag, tagDescription) => saveTag(entry.version, tag, tagDescription)}
+                    onCancel={() => setTagEditing(null)}
+                  />
                 ) : (
                   <>
                     {entry.memo ? (
                       <p className="mt-1 text-xs font-medium">{entry.memo}</p>
                     ) : null}
                     <ChangeSummaryView raw={entry.changeSummary} memoShown={entry.memo != null} />
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <Button asChild type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs">
-                        <a href={modelVersionPath(workspaceId, modelId, entry.version)} target="_blank" rel="noreferrer">
-                          {t('model.editor.history.view')}
-                          <ExternalLink aria-hidden className="size-3" />
-                        </a>
-                      </Button>
-                      {entry.version > 0 ? (
-                        <Button asChild type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
-                          <a
-                            href={modelVersionComparePath(workspaceId, modelId, entry.version)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <GitCompareArrows aria-hidden className="size-3" />
-                            {t('model.editor.history.compare')}
-                          </a>
-                        </Button>
-                      ) : null}
-                      {canEdit ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={() => beginEdit(entry)}
-                        >
-                          <PencilLine aria-hidden className="size-3" />
-                          {t('model.editor.history.editMemo')}
-                        </Button>
-                      ) : null}
-                    </div>
+                    <VersionRowActions
+                      entry={entry}
+                      workspaceId={workspaceId}
+                      modelId={modelId}
+                      canEdit={canEdit}
+                      onEditMemo={() => beginEdit(entry)}
+                      onEditTag={() => beginTagEdit(entry)}
+                    />
                   </>
                 )}
               </li>
@@ -280,6 +301,142 @@ export function VersionHistoryDialog({
         ) : null}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** 행 동작 — 조회(새 창)·직전 버전과 비교·메모 편집·태그(편집은 Editor 이상) */
+function VersionRowActions({
+  entry,
+  workspaceId,
+  modelId,
+  canEdit,
+  onEditMemo,
+  onEditTag,
+}: {
+  entry: ModelVersionEntry
+  workspaceId: string
+  modelId: string
+  canEdit: boolean
+  onEditMemo: () => void
+  onEditTag: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5">
+      <Button asChild type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs">
+        <a href={modelVersionPath(workspaceId, modelId, entry.version)} target="_blank" rel="noreferrer">
+          {t('model.editor.history.view')}
+          <ExternalLink aria-hidden className="size-3" />
+        </a>
+      </Button>
+      {entry.version > 0 ? (
+        <Button asChild type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+          <a
+            href={modelVersionComparePath(workspaceId, modelId, entry.version)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <GitCompareArrows aria-hidden className="size-3" />
+            {t('model.editor.history.compare')}
+          </a>
+        </Button>
+      ) : null}
+      {canEdit ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-xs"
+          onClick={onEditMemo}
+        >
+          <PencilLine aria-hidden className="size-3" />
+          {t('model.editor.history.editMemo')}
+        </Button>
+      ) : null}
+      {canEdit ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-xs"
+          onClick={onEditTag}
+          data-testid="version-tag-edit"
+        >
+          <Tag aria-hidden className="size-3" />
+          {t('model.editor.history.tag')}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+/** 인라인 태그 편집 — 이름(필수, 50자)과 설명(선택, 200자). 이미 태그가 있으면 지우기도 연다 */
+function TagEditor({
+  entry,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  entry: ModelVersionEntry
+  pending: boolean
+  onSave: (tag: string | null, tagDescription: string | null) => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const [tag, setTag] = useState(entry.tag ?? '')
+  const [description, setDescription] = useState(entry.tagDescription ?? '')
+  const trimmed = tag.trim()
+
+  return (
+    <form
+      className="mt-1.5 grid gap-1.5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (trimmed !== '') onSave(trimmed, description.trim() === '' ? null : description.trim())
+      }}
+    >
+      <div className="flex gap-1.5">
+        <Input
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+          maxLength={50}
+          aria-label={t('model.editor.history.tag')}
+          placeholder={t('model.editor.history.tagPlaceholder')}
+          className="h-8 w-28 shrink-0 font-mono text-xs"
+          autoFocus
+          data-testid="version-tag-input"
+        />
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={200}
+          aria-label={t('model.editor.history.tagDescription')}
+          placeholder={t('model.editor.history.tagDescriptionPlaceholder')}
+          className="h-8 text-xs"
+          data-testid="version-tag-description-input"
+        />
+      </div>
+      <div className="flex gap-1.5">
+        <Button type="submit" size="sm" className="h-7" disabled={pending || trimmed === ''}>
+          {t('model.editor.history.saveTag')}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-7" onClick={onCancel} disabled={pending}>
+          {t('common.cancel')}
+        </Button>
+        {entry.tag ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 text-destructive"
+            onClick={() => onSave(null, null)}
+            disabled={pending}
+          >
+            {t('model.editor.history.removeTag')}
+          </Button>
+        ) : null}
+      </div>
+    </form>
   )
 }
 
