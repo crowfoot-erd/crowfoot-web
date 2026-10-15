@@ -14,6 +14,7 @@ import {
   htmlLang,
   languageFromPath,
   setLanguage,
+  stripLanguagePrefix,
 } from '@/lib/i18n'
 
 const ORIGINAL_LANGUAGES = Object.getOwnPropertyDescriptor(window.navigator, 'languages')
@@ -124,5 +125,14 @@ describe('setLanguage — 수동 변경 흔적', () => {
 describe('CONTENT_FALLBACK_LANGS — 콘텐츠 폴백 체인', () => {
   it('서버 해석과 같은 방향이다 — en을 거쳐 ko', () => {
     expect([...CONTENT_FALLBACK_LANGS]).toEqual(['en', 'ko'])
+  })
+})
+
+describe('stripLanguagePrefix', () => {
+  it('언어 prefix를 떼고, 접두가 없거나 다른 단어면 그대로 둔다', () => {
+    expect(stripLanguagePrefix('/en/admin/users')).toBe('/admin/users')
+    expect(stripLanguagePrefix('/zh')).toBe('/')
+    expect(stripLanguagePrefix('/admin/users')).toBe('/admin/users')
+    expect(stripLanguagePrefix('/english/x')).toBe('/english/x')
   })
 })

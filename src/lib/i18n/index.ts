@@ -38,6 +38,11 @@ export function languageFromPath(pathname: string): Language | null {
   return match ? (match[1] as Language) : null
 }
 
+/** 언어 prefix를 뗀 경로 — /en/admin/users → /admin/users, 접두 없는 경로는 그대로 */
+export function stripLanguagePrefix(pathname: string): string {
+  return pathname.replace(/^\/(en|ja|zh)(?=\/|$)/, '') || '/'
+}
+
 /** html lang 속성값 — zh는 간체 명시(zh-Hans), 나머지는 언어 코드 그대로 */
 export function htmlLang(language: Language): string {
   return language === 'zh' ? 'zh-Hans' : language

@@ -86,4 +86,19 @@ describe('AppLayout 폰 메뉴 서랍 (v1.46)', () => {
     expect(await screen.findByText('codes-stub')).toBeVisible()
     await waitFor(() => expect(screen.queryByTestId('mobile-nav')).toBeNull())
   })
+
+  it('언어 prefix(/en)가 붙은 관리자 화면에서도 서랍에 관리자 메뉴가 나온다', async () => {
+    resetSessionState()
+    asAuthenticated()
+    renderWithProviders(
+      <Route element={<AppLayout />}>
+        <Route path="/en/admin/traffic" element={<div>traffic-stub</div>} />
+      </Route>,
+      { route: '/en/admin/traffic' },
+    )
+
+    fireEvent.click(await screen.findByTestId('mobile-nav-open'))
+    const drawer = await screen.findByTestId('mobile-nav')
+    expect(within(drawer).getAllByRole('link', { name: /코드 테이블|Code tables/ }).length).toBeGreaterThan(0)
+  })
 })

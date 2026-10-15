@@ -11,6 +11,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { cn } from 'cn'
 import { useMe } from '@/features/auth'
+import { stripLanguagePrefix } from '@/lib/i18n'
 import { CreateWorkspaceDialog } from '@/features/workspaces'
 import { AdminSidebar } from '@/layouts/components/admin-sidebar'
 import { CommunitySidebar } from '@/layouts/components/community-sidebar'
@@ -111,7 +112,9 @@ export function AppLayout() {
 }
 
 /** 화면에 맞는 사이드바 — 데스크톱은 왼쪽 aside, 폰은 메뉴 서랍(inDrawer) 안에 같은 내용을 쓴다 */
-function ContextSidebar({ pathname, inDrawer = false }: { pathname: string; inDrawer?: boolean }) {
+function ContextSidebar({ pathname: rawPath, inDrawer = false }: { pathname: string; inDrawer?: boolean }) {
+  // 언어 prefix(/en·/ja·/zh)를 떼고 본다 — 전에는 /en/admin/*에서도 워크스페이스 사이드바가 나왔다(v1.46)
+  const pathname = stripLanguagePrefix(rawPath)
   if (pathname.startsWith('/admin')) return <AdminSidebar inDrawer={inDrawer} />
   if (pathname.startsWith('/teams')) return <TeamSidebar inDrawer={inDrawer} />
   if (pathname.startsWith('/community')) return <CommunitySidebar inDrawer={inDrawer} />
