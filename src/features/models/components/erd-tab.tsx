@@ -9,7 +9,7 @@
  *   연결된 문서는 DB 종류 배지에 링크 표시로 구분한다
  */
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Ellipsis, Globe, Link2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Ellipsis, Globe, Link2, Pencil, Plus, Search, Trash2, Unlink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -40,6 +40,7 @@ import { DatabaseImportButton } from '@/features/connections'
 import {
   ConnectDatabaseDialog,
   CreateModelDialog,
+  DisconnectDatabaseDialog,
   EditModelDialog,
   ImportCrownButton,
   modelEditorPath,
@@ -64,6 +65,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
   const [siteFor, setSiteFor] = useState<ModelSummary | null>(null)
   const [deleting, setDeleting] = useState<ModelSummary | null>(null)
   const [connecting, setConnecting] = useState<ModelSummary | null>(null)
+  const [disconnecting, setDisconnecting] = useState<ModelSummary | null>(null)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1)
   const debouncedKeyword = useDebouncedValue(keyword)
   const models = useModels(workspaceId, debouncedKeyword.trim(), page)
@@ -220,6 +222,7 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
                       canCreate={canCreate}
                       isOwner={isOwner}
                       onConnect={setConnecting}
+                      onDisconnect={setDisconnecting}
                       onEdit={setEditing}
                       onDelete={setDeleting}
                     />
@@ -270,6 +273,15 @@ export function ErdTab({ workspaceId, canCreate, isOwner }: ErdTabProps) {
           model={connecting}
         />
       ) : null}
+      {/* 연결 해지(1.17) — 에디터 도구 메뉴와 같은 확인 다이얼로그 */}
+      {disconnecting ? (
+        <DisconnectDatabaseDialog
+          open
+          onOpenChange={(open) => !open && setDisconnecting(null)}
+          workspaceId={workspaceId}
+          model={disconnecting}
+        />
+      ) : null}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
@@ -290,6 +302,7 @@ function ModelRowMenu({
   canCreate,
   isOwner,
   onConnect,
+  onDisconnect,
   onEdit,
   onDelete,
 }: {
@@ -297,6 +310,7 @@ function ModelRowMenu({
   canCreate: boolean
   isOwner: boolean
   onConnect: (model: ModelSummary) => void
+  onDisconnect: (model: ModelSummary) => void
   onEdit: (model: ModelSummary) => void
   onDelete: (model: ModelSummary) => void
 }) {
@@ -319,6 +333,12 @@ function ModelRowMenu({
           <DropdownMenuItem onSelect={() => onConnect(model)}>
             <Link2 aria-hidden />
             {t('model.list.menu.connect')}
+          </DropdownMenuItem>
+        ) : null}
+        {canCreate && model.sourceConnectionId !== null ? (
+          <DropdownMenuItem onSelect={() => onDisconnect(model)}>
+            <Unlink aria-hidden />
+            {t('model.list.menu.disconnect')}
           </DropdownMenuItem>
         ) : null}
         {canCreate ? (

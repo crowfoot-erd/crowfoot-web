@@ -2128,6 +2128,16 @@ export const handlers = [
     },
   ),
 
+  // 문서-데이터베이스 연결 해지(§1.17) — 픽스처 불변 원칙: 해지된 요약만 조립해 돌려준다(멱등)
+  http.delete(
+    `${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId/connections`,
+    ({ params }) => {
+      const model = fixtures.models.responses.find((item) => item.modelId === params.modelId)
+      if (!model) return fail('MODEL_NOT_FOUND', 404)
+      return HttpResponse.json(ok({ response: { ...model, sourceConnectionId: null } }))
+    },
+  ),
+
   // 모델 삭제 — 204
   http.delete(`${BASE}/api/v1/core/workspaces/:workspaceId/models/:modelId`, () =>
     new HttpResponse(null, { status: 204 }),

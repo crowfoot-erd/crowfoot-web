@@ -8,6 +8,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   cloneFromTemplate,
   connectModel,
+  disconnectModel,
   createModel,
   createModelComment,
   createModelShare,
@@ -154,6 +155,18 @@ export function useConnectModel(workspaceId: string) {
   return useMutation({
     mutationFn: ({ modelId, connectionId }: { modelId: string; connectionId: string }) =>
       connectModel(workspaceId, modelId, connectionId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
+    },
+  })
+}
+
+/** 연결 해지(§1.17) — 목록·상세가 같은 models 프리픽스라 함께 재조회돼 진입점이 '연결'로 돌아간다 */
+export function useDisconnectModel(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (modelId: string) => disconnectModel(workspaceId, modelId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'models'] })
     },

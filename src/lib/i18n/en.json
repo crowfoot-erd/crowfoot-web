@@ -757,6 +757,7 @@
       "actions": "Actions for {{name}}",
       "menu": {
         "connect": "Connect to database",
+        "disconnect": "Disconnect database",
         "edit": "Edit name and description",
         "delete": "Delete"
       }
@@ -839,6 +840,13 @@
       "rowAction": "Connect {{name}} to a database",
       "toolbar": "Connect database",
       "connected": "Connected to a database"
+    },
+    "disconnect": {
+      "title": "Disconnect database",
+      "description": "Disconnects '{{model}}' from its database. The connection, the database, and its tables and data are not deleted. After disconnecting, DB sync and migration are unavailable until you connect again.",
+      "confirm": "Disconnect",
+      "successToast": "Disconnected '{{name}}' from its database",
+      "toolbar": "Disconnect database"
     },
     "viewer": {
       "close": "Close window"

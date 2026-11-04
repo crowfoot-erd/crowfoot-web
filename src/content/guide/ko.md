@@ -135,7 +135,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 
 ![문서 행 메뉴](/guide-assets/ko/document-row-menu.webp)
 
-행 오른쪽 끝의 점 세 개 버튼을 누르면 **{{model.list.menu.edit}}**과 **{{model.list.menu.delete}}**가 나옵니다. 데이터베이스에 연결하지 않은 문서에는 **{{model.list.menu.connect}}**도 나옵니다.
+행 오른쪽 끝의 점 세 개 버튼을 누르면 **{{model.list.menu.edit}}**과 **{{model.list.menu.delete}}**가 나옵니다. 데이터베이스에 연결하지 않은 문서에는 **{{model.list.menu.connect}}**도 나옵니다. 연결된 문서에는 그 자리에 **{{model.list.menu.disconnect}}**가 나옵니다.
 
 * **{{model.list.menu.edit}}**에서는 이름과 설명만 바꿀 수 있습니다. 데이터베이스 종류와 버전은 바꿀 수 없습니다.
 * 행의 지구본 아이콘을 누르면 **{{model.site.heading}}** 창이 열립니다. 이 문서로 만든 사이트를 등록합니다(13.3절).
@@ -693,6 +693,13 @@ SQL 스크립트 창에서 **{{model.editor.deploy.button}}**를 누르면 스�
 * 기존 테이블에 더한 인덱스도 마이그레이션 DDL에 들어갑니다.
 
 데이터베이스에 연결하지 않은 문서는 문서 목록의 행 메뉴에서 **{{model.list.menu.connect}}**로 연결합니다.
+
+연결을 끊으려면 문서 목록의 행 메뉴에서 **{{model.list.menu.disconnect}}**를 고르거나, 에디터의 **{{model.editor.toolbar.tools}}** › **{{model.disconnect.toolbar}}**를 고릅니다.
+
+![데이터베이스 연결 해지](/guide-assets/ko/document-disconnect.webp)
+
+* 문서와 데이터베이스의 연결만 끊습니다. 커넥션과 데이터베이스, 그 안의 테이블과 데이터는 지워지지 않습니다.
+* 끊은 문서에는 DB 동기화가 나오지 않습니다. 다른 데이터베이스에 연결하려면 끊은 뒤 **{{model.list.menu.connect}}**로 다시 연결합니다.
 
 ### 10.5 다른 DBMS로 복제
 

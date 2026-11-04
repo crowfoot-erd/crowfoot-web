@@ -4,7 +4,7 @@
  * ERD 탭 행 액션과 에디터 툴바가 같은 이 컴포넌트로 연결시킨다(양쪽 진입점, 공통 구조).
  * 대상은 문서 DBMS와 같은 dbmsType의 커넥션만 노출한다(다르면 서버가 400으로 거부).
  * 이미 연결된 문서에는 진입점 자체가 없으므로 409 MODEL_ALREADY_CONNECTED는
- * 서버 가드 실패 안내로만 다룬다(해지·전환은 후속 버전).
+ * 서버 가드 실패 안내로만 다룬다(해지는 disconnect-database-dialog — §1.17).
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

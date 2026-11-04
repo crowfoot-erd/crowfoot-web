@@ -135,7 +135,7 @@ Crowfoot 的界面大致分为三类。
 
 ![文档行菜单](/guide-assets/zh/document-row-menu.webp)
 
-点击行最右侧的“⋯”按钮，会出现 **{{model.list.menu.edit}}** 和 **{{model.list.menu.delete}}**。尚未连接数据库的文档还会出现 **{{model.list.menu.connect}}**。
+点击行最右侧的“⋯”按钮，会出现 **{{model.list.menu.edit}}** 和 **{{model.list.menu.delete}}**。尚未连接数据库的文档还会出现 **{{model.list.menu.connect}}**。已连接的文档在相同位置显示 **{{model.list.menu.disconnect}}**。
 
 * 在 **{{model.list.menu.edit}}** 中只能修改名称和说明，不能更改数据库类型和版本。
 * 点击行中的地球图标会打开 **{{model.site.heading}}** 对话框，用于登记用此文档做成的网站（见 13.3 节）。
@@ -693,6 +693,13 @@ Crowfoot 的界面大致分为三类。
 * 在现有表上新增的索引也会包含在迁移 DDL 中。
 
 尚未连接数据库的文档，可以在文档列表的行菜单中用 **{{model.list.menu.connect}}** 连接。
+
+如需断开连接，请在文档列表的行菜单中选择 **{{model.list.menu.disconnect}}**，或在编辑器中选择 **{{model.editor.toolbar.tools}}** › **{{model.disconnect.toolbar}}**。
+
+![断开数据库连接](/guide-assets/zh/document-disconnect.webp)
+
+* 只会断开文档与数据库之间的连接。连接、数据库及其中的表和数据不会被删除。
+* 断开后的文档不再显示同步数据库。如需改用其他数据库，请先断开，再用 **{{model.list.menu.connect}}** 重新连接。
 
 ### 10.5 复制为其他 DBMS
 

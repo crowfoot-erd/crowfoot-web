@@ -45,6 +45,7 @@ import {
   Share2,
   ShieldCheck,
   Undo2,
+  Unlink,
   Waypoints,
   Wrench,
   ZoomIn,
@@ -61,6 +62,7 @@ import { DbmsIcon } from '@/components/dbms-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useConnections } from '@/features/connections/hooks'
 import { ConnectDatabaseDialog } from '@/features/models/components/connect-database-dialog'
+import { DisconnectDatabaseDialog } from '@/features/models/components/disconnect-database-dialog'
 import { ShareDialog } from '@/features/models/components/share-dialog'
 import { modelKeys, useShareFeedback, useToggleShareReaction } from '@/features/models/hooks'
 import { useSessionStore } from '@/stores/session'
@@ -941,7 +943,7 @@ function ShareButton({
  *  · 다른 DBMS로 복제(§3.5 — 편집 권한) · 도메인 타입(§16 — 멤버 전체, 쓰기는 편집 권한)
  *  · 버전 기록(08-core/02-model.md §1.11 — 멤버 전체)
  *  항목은 어느 다이얼로그를 열지만 정하고, 다이얼로그는 메뉴 밖에서 렌더한다. */
-type ToolDialog = 'logicalNames' | 'connect' | 'sync' | 'migration' | 'convert' | 'history'
+type ToolDialog = 'logicalNames' | 'connect' | 'disconnect' | 'sync' | 'migration' | 'convert' | 'history'
 
 function ToolsMenu({
   canEdit,
@@ -1012,6 +1014,13 @@ function ToolsMenu({
               onSelect={() => setActive('sync')}
             />
           ) : null}
+          {/* 연결 해지(§1.17) — 연결된 문서에만. 해지하면 상세가 재조회돼 '데이터베이스 연결'로 돌아간다 */}
+          {canEdit && sourceConnectionId ? (
+            <DropdownMenuItem onSelect={() => setActive('disconnect')}>
+              <Unlink aria-hidden />
+              {t('model.disconnect.toolbar')}
+            </DropdownMenuItem>
+          ) : null}
           {canEdit ? (
             <DropdownMenuItem onSelect={() => setActive('convert')}>
               <CopyPlus aria-hidden />
@@ -1044,6 +1053,14 @@ function ToolsMenu({
           onOpenChange={close}
           workspaceId={workspaceId}
           model={{ modelId, name: modelName, databaseType }}
+        />
+      ) : null}
+      {active === 'disconnect' ? (
+        <DisconnectDatabaseDialog
+          open
+          onOpenChange={close}
+          workspaceId={workspaceId}
+          model={{ modelId, name: modelName }}
         />
       ) : null}
       {sourceConnectionId ? (

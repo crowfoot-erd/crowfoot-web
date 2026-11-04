@@ -135,7 +135,7 @@ Crowfootの画面は大きく3種類あります。
 
 ![ドキュメント行のメニュー](/guide-assets/ja/document-row-menu.webp)
 
-行の右端にある3点ボタンを押すと、**{{model.list.menu.edit}}**と **{{model.list.menu.delete}}**が表示されます。データベースに接続していないドキュメントには、**{{model.list.menu.connect}}**も表示されます。
+行の右端にある3点ボタンを押すと、**{{model.list.menu.edit}}**と **{{model.list.menu.delete}}**が表示されます。データベースに接続していないドキュメントには、**{{model.list.menu.connect}}**も表示されます。接続済みのドキュメントには、代わりに **{{model.list.menu.disconnect}}**が表示されます。
 
 * **{{model.list.menu.edit}}**で変更できるのは名前と説明だけです。データベースの種類とバージョンは変更できません。
 * 行の地球アイコンを押すと **{{model.site.heading}}** ダイアログが開き、このドキュメントで作ったサイトを登録します（13.3節）。
@@ -693,6 +693,13 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}**を押す
 * 既存のテーブルに追加したインデックスも、マイグレーションDDLに含まれます。
 
 データベースに接続していないドキュメントは、ドキュメント一覧の行メニューにある **{{model.list.menu.connect}}**で接続します。
+
+接続を解除するには、ドキュメント一覧の行メニューで **{{model.list.menu.disconnect}}**を選ぶか、エディタの **{{model.editor.toolbar.tools}}** › **{{model.disconnect.toolbar}}**を選びます。
+
+![データベース接続を解除](/guide-assets/ja/document-disconnect.webp)
+
+* ドキュメントとデータベースの接続だけを解除します。接続設定やデータベース、その中のテーブルとデータは削除されません。
+* 解除したドキュメントにはDB同期が表示されません。別のデータベースに接続するには、解除してから **{{model.list.menu.connect}}**で接続し直します。
 
 ### 10.5 別のDBMSに複製
 

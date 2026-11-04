@@ -473,6 +473,18 @@ const APP_SCENES: Scene[] = [
       await shotMenu(s, 'document-row-menu', row.getByRole('button').last(), await row.boundingBox())
     },
   },
+  {
+    // 연결 해지 확인(v1.48 — 08-core/02-model.md §1.17). 가이드 문서는 커넥션에 연결돼 있다
+    name: 'document-disconnect',
+    run: async (s) => {
+      await goto(s, `/workspaces/${WS}`)
+      await s.page.locator('tbody tr').first().getByRole('button').last().click()
+      await s.page.getByRole('menuitem', { name: s.t('model.list.menu.disconnect'), exact: true }).click()
+      await dialog(s).waitFor()
+      await s.page.waitForTimeout(400)
+      await s.shot('document-disconnect', { locator: dialog(s) })
+    },
+  },
   { name: 'workspace-database', run: async (s) => { await goto(s, `/workspaces/${WS}?tab=database`); await s.shot('workspace-database') } },
   {
     name: 'workspace-site-dialog',

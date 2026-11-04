@@ -135,7 +135,7 @@ A workspace has six tabs below its name.
 
 ![The document row menu](/guide-assets/en/document-row-menu.webp)
 
-Click the three-dot menu at the right end of a row to see **{{model.list.menu.edit}}** and **{{model.list.menu.delete}}**. Documents that are not connected to a database also show **{{model.list.menu.connect}}**.
+Click the three-dot menu at the right end of a row to see **{{model.list.menu.edit}}** and **{{model.list.menu.delete}}**. Documents that are not connected to a database also show **{{model.list.menu.connect}}**. Connected documents show **{{model.list.menu.disconnect}}** in its place.
 
 * **{{model.list.menu.edit}}** changes only the name and description. The database type and version cannot be changed.
 * The globe icon on a row opens the **{{model.site.heading}}** dialog, where you register a site built with the document (section 13.3).
@@ -693,6 +693,13 @@ Use this when the document and the real database are out of sync. Open it with *
 * Indexes added to existing tables are also included in migration DDL.
 
 To connect an unconnected document, use **{{model.list.menu.connect}}** in its row menu in the document list.
+
+To disconnect, choose **{{model.list.menu.disconnect}}** in the row menu of the document list, or **{{model.editor.toolbar.tools}}** › **{{model.disconnect.toolbar}}** in the editor.
+
+![Disconnect database](/guide-assets/en/document-disconnect.webp)
+
+* Only the link between the document and the database is removed. The connection, the database, and its tables and data are not deleted.
+* A disconnected document no longer shows Sync DB. To use a different database, disconnect and then connect again with **{{model.list.menu.connect}}**.
 
 ### 10.5 Duplicating for another DBMS
 

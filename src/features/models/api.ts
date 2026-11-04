@@ -115,6 +115,12 @@ export function connectModel(workspaceId: string, modelId: string, connectionId:
   )
 }
 
+/** 문서-데이터베이스 연결 해지(§1.17) — 원천 커넥션을 지운다(Editor 이상). 커넥션·데이터베이스는 남는다.
+ *  응답은 갱신된 요약(sourceConnectionId null). 미연결 문서여도 200(멱등) */
+export function disconnectModel(workspaceId: string, modelId: string) {
+  return apiDelete<ModelSummary>(`/api/v1/core/workspaces/${workspaceId}/models/${modelId}/connections`)
+}
+
 /** 데이터베이스 종류 코드(활성만) — 생성 다이얼로그 드롭다운 */
 export function fetchDatabaseTypes(signal?: AbortSignal): Promise<ListResult<DatabaseType>> {
   return apiGetList<DatabaseType>('/api/v1/core/database-types', undefined, signal)
