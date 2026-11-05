@@ -111,8 +111,9 @@ export const INDEX_ORDERS = ['ASC', 'DESC'] as const
 export type IndexOrder = (typeof INDEX_ORDERS)[number]
 
 /** 인덱스 종류(v1.34) — BTREE가 기본. FULLTEXT·SPATIAL은 컬럼별 정렬이 의미 없다.
- *  v1.37: PostgreSQL 접근 방식(HASH·GIN·GIST·BRIN·SPGIST)을 더한다 — DBMS별로 고를 수 있는 종류는 dbms.ts dbmsIndexSupport */
-export const INDEX_TYPES = ['BTREE', 'FULLTEXT', 'SPATIAL', 'HASH', 'GIN', 'GIST', 'BRIN', 'SPGIST'] as const
+ *  v1.37: PostgreSQL 접근 방식(HASH·GIN·GIST·BRIN·SPGIST)을 더한다 — DBMS별로 고를 수 있는 종류는 dbms.ts dbmsIndexSupport.
+ *  pgvector 벡터 인덱스(HNSW·IVFFLAT — 04-dbms-engineering.md §3.6)도 PostgreSQL 종류다 */
+export const INDEX_TYPES = ['BTREE', 'FULLTEXT', 'SPATIAL', 'HASH', 'GIN', 'GIST', 'BRIN', 'SPGIST', 'HNSW', 'IVFFLAT'] as const
 export type IndexType = (typeof INDEX_TYPES)[number]
 
 /** 인덱스 — 복합 지원. columns 순서가 인덱스 컬럼 순서(선두 컬럼 우선), 컬럼별 정렬 포함.
@@ -142,6 +143,8 @@ export const indexSchema = z.object({
   where: z.string().nullish(),
   /** INCLUDE(키가 아닌 포함) 컬럼 id(v1.37) */
   include: z.array(z.string().min(1)).optional(),
+  /** 저장 매개변수(PostgreSQL WITH — 예: { m: '16', ef_construction: '64' }). 키·값 모두 문자열, 적힌 순서가 DDL 순서 */
+  with: z.record(z.string(), z.string()).optional(),
 }).superRefine((index, ctx) => {
   // 컬럼(1개 이상)이나 식 중 하나는 있어야 한다 — 이전 규칙 columns.min(1)을 식 인덱스만큼 넓힌다
   if (index.columns.length === 0 && !index.expression?.trim()) {

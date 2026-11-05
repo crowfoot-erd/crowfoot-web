@@ -408,12 +408,29 @@ Crowfoot 的界面大致分为三类。
 1. 点击表下方的 **{{model.editor.key.addUnique}}** 或 **{{model.editor.key.addIndex}}**。
 2. 填写名称并选择列。选择的顺序即复合键中的列顺序，可以用箭头调整。
 3. 索引可以为每一列设置排序方向（ASC、DESC）。
-4. 索引需要选择 **{{model.editor.key.indexType}}**。MySQL 可选 BTREE、FULLTEXT、SPATIAL、HASH，PostgreSQL 可选 BTREE、HASH、GIN、GIST、BRIN、SPGIST。非 BTREE 索引没有排序方向。FULLTEXT 可以填写 MySQL 全文检索解析器（例如 `ngram`）。
-5. 在 DBMS 支持时，可以为索引添加：**{{model.editor.key.uniqueIndex}}**（部分唯一、表达式唯一等无法用唯一键表示的情况）、**{{model.editor.key.keyMode}}** 中的 **{{model.editor.key.keyModeExpression}}**（例如 `lower(nickname)` — PostgreSQL、MySQL、Oracle）、按列的 **{{model.editor.key.opclass}}**（例如 `gin_trgm_ops` — PostgreSQL）、**{{model.editor.key.where}}**（例如 `deleted_at IS NULL` — PostgreSQL、SQL Server）、**{{model.editor.key.include}}**（PostgreSQL、SQL Server）。文档的 DBMS 不支持的值会保留在文档中，但不会写入 DDL。
+4. 索引需要选择 **{{model.editor.key.indexType}}**。MySQL 可选 BTREE、FULLTEXT、SPATIAL、HASH，PostgreSQL 可选 BTREE、HASH、GIN、GIST、BRIN、SPGIST、HNSW、IVFFLAT。非 BTREE 索引没有排序方向。FULLTEXT 可以填写 MySQL 全文检索解析器（例如 `ngram`）。
+5. 在 DBMS 支持时，可以为索引添加：**{{model.editor.key.uniqueIndex}}**（部分唯一、表达式唯一等无法用唯一键表示的情况）、**{{model.editor.key.keyMode}}** 中的 **{{model.editor.key.keyModeExpression}}**（例如 `lower(nickname)` — PostgreSQL、MySQL、Oracle）、按列的 **{{model.editor.key.opclass}}**（例如 `gin_trgm_ops` — PostgreSQL）、**{{model.editor.key.where}}**（例如 `deleted_at IS NULL` — PostgreSQL、SQL Server）、**{{model.editor.key.include}}**（PostgreSQL、SQL Server）。文档的 DBMS 不支持的值会保留在文档中，但不会写入 DDL。PostgreSQL 索引还可以填写 **{{model.editor.key.with}}**（例如 `fillfactor = 90`）。向量索引请参阅 6.6 节。
 
 创建的键会以 **UK**、**IX**、**CK** 行显示在表的下方。FULLTEXT 索引带有 **FT**，SPATIAL 索引带有 **SP**，GIN 等其他类型显示其名称，唯一索引带有 **UQ** 标记。表达式索引会显示表达式，部分索引会显示条件。点击该行可以修改或删除。创建关系时，会自动为外键列生成索引。
 
 点击 **{{model.editor.check.add}}** 可创建 CHECK 约束。名称会自动填为 `ck_表名_1` 的形式，表达式按原样填写括号内的内容（例如 `price >= 0`）。表达式不会被解析，修改列名后需要自行修改表达式。删除列时，使用该列的 CHECK 约束以及表达式或条件使用该列的索引也会一并删除。
+
+### 6.6 向量列与向量索引（PostgreSQL）
+
+在 PostgreSQL 文档中，可以用 pgvector 扩展的 `vector` 类型创建存放嵌入的列，并在该列上建立向量索引。其他 DBMS 文档的类型列表中不会显示 `vector`。
+
+1. 在列的类型中选择 `vector`。长度栏会变为 **{{model.editor.columnInfo.dimension}}** 栏。填写嵌入的维数（1~16000，例如 1536）后显示为 `vector(1536)`。
+2. 点击 **{{model.editor.key.addIndex}}**，在 **{{model.editor.key.indexType}}** 中选择 HNSW 或 IVFFLAT。
+3. 选择一个 `vector` 列作为键列，并在 **{{model.editor.key.opclass}}** 栏中选择距离函数。HNSW 可用 `vector_l2_ops`（欧氏距离）、`vector_ip_ops`（内积）、`vector_cosine_ops`（余弦距离）、`vector_l1_ops`（L1 距离），IVFFLAT 可用前三种。向量索引不能设为唯一。
+4. 在 **{{model.editor.key.with}}** 中填写索引参数。选择类型后，HNSW 会预先填入 `m = 16`、`ef_construction = 64`，IVFFLAT 会预先填入 `lists = 100`。用 **{{model.editor.key.withAdd}}** 添加行，用 X 按钮删除。键使用小写字母、数字和下划线，值使用字母、数字和 `. _ + -`。
+
+![向量列的维数](/guide-assets/zh/editor-vector-column.webp)
+
+![向量索引（HNSW）](/guide-assets/zh/editor-vector-index.webp)
+
+生成 SQL 时，脚本的第一条语句是 `CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`。要部署的数据库服务器必须安装 pgvector；如果数据库中还没有该扩展，只能通过超级用户账号的连接进行部署。维数超过 2000 的列无法由 pgvector 建立向量索引，因此会显示验证警告（12 节）。
+
+![含向量的文档的 SQL 脚本](/guide-assets/zh/editor-vector-sql.webp)
 
 ## 7. 关系
 
@@ -660,6 +677,7 @@ Crowfoot 的界面大致分为三类。
 点击编辑器的 **{{model.editor.toolbar.ddl}}**，会显示按目标 DBMS 的语法为整个文档生成的脚本。
 
 * 包含表、主键、唯一键、索引、外键和注释。逻辑名作为 COMMENT 输出。
+* 如果 PostgreSQL 文档中有 `vector` 列或向量索引，第一条语句是 `CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`（6.6 节）。
 * 用 **{{model.editor.ddl.copy}}** 复制，用 **{{model.editor.ddl.download}}** 下载 .sql 文件。
 * 脚本以最后保存的内容为准。如有未保存的更改，会显示提示。
 * 需要注意的事项会显示在 **{{model.editor.ddl.warningTitle}}** 中。
@@ -709,6 +727,7 @@ Crowfoot 的界面大致分为三类。
 
 * 创建前会列出写法将发生变化的类型，以及目标 DBMS 不支持的类型。
 * 不支持的类型会按原样保留在新文档中，请在创建后自行修改。
+* 复制到 PostgreSQL 以外的 DBMS 时，`vector` 列会显示为不支持的类型，向量索引（HNSW、IVFFLAT）和 **{{model.editor.key.with}}** 会显示为目标 DBMS 无法输出的索引。
 * 尚未保存的编辑也会一并带入新文档。
 * 如果目标 DBMS 不会自动为外键创建索引，会为没有索引的外键列添加索引。添加的索引也会在创建前列出。
 * 新文档名称默认为“原名称 (目标 DBMS)”，可以修改。
@@ -788,6 +807,7 @@ Crowfoot 的界面大致分为三类。
 * 包含删除时会显示警告。应用后无法撤销。
 * 视图和没有主键的表中的数据无法修改，此时标签页上方会显示原因。
 * 新行中留空的单元格会填入数据库的默认值。
+* `vector` 列的值写成方括号内以逗号分隔的数字，例如 `[0.1,0.2,0.3]`。元素个数与列的维数不同时，应用时会出现数据库错误。
 * 生成列的值由数据库计算。在新行中显示为 **{{database.edit.generatedPlaceholder}}**，不能填入或修改值。
 * 清空单元格会得到空字符串。如需填入 NULL，请使用 **{{database.edit.setNull}}** 按钮。
 * 值被改回原样的单元格会从更改中移除。
@@ -854,12 +874,16 @@ Crowfoot 的界面大致分为三类。
 | 错误 | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | 1:1 关系的外键上没有唯一键 |
 | 错误 | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | 列类型不在 Crowfoot 类型列表中 |
 | 错误 | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR、VARBINARY 没有长度（PostgreSQL 文档不检查） |
+| 错误 | {{model.validation.rules.VECTOR_UNSUPPORTED_DBMS}} | 非 PostgreSQL 文档中有 `vector` 列 |
+| 错误 | {{model.validation.rules.VECTOR_MISSING_DIMENSION}} | `vector` 列没有维数，或不在 1~16000 范围内 |
+| 错误 | {{model.validation.rules.VECTOR_INDEX_INVALID}} | 向量索引（HNSW、IVFFLAT）的键不是一个 `vector` 列、使用了不可用的运算符类，或者是唯一索引 |
 | 警告 | {{model.validation.rules.MISSING_PK}} | 没有主键的表 |
 | 警告 | {{model.validation.rules.EMPTY_TABLE}} | 没有列的表 |
 | 警告 | {{model.validation.rules.FK_MAPPING_EMPTY}} | 关系中没有关联的列 |
 | 警告 | {{model.validation.rules.ORPHAN_TABLE}} | 与任何表都没有关系 |
 | 警告 | {{model.validation.rules.CIRCULAR_REFERENCE}} | 外键沿引用链绕回到自身 |
 | 警告 | {{model.validation.rules.NAMING_CONVENTION}} | 物理名不符合命名规则 |
+| 警告 | {{model.validation.rules.VECTOR_INDEX_DIMENSION_LIMIT}} | 向量索引键列的维数超过 2000。pgvector 无法建立该索引 |
 | 警告 | {{model.validation.rules.MISSING_LOGICAL_NAME}} | 逻辑名为空 |
 | 提示 | {{model.validation.rules.FK_WITHOUT_INDEX}} | 没有以外键列开头的索引 |
 | 提示 | {{model.validation.rules.WIDE_TABLE}} | 列数超过 30 个 |

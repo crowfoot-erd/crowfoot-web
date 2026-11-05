@@ -408,12 +408,29 @@ Click the ⓘ on a table, or choose **{{model.editor.contextMenu.tableInfo}}** f
 1. Click **{{model.editor.key.addUnique}}** or **{{model.editor.key.addIndex}}** at the bottom of the table.
 2. Enter a name and choose the columns. The order in which you select them becomes the column order of a composite key. Use the arrows to change the order.
 3. For an index, you can set the sort order (ASC, DESC) of each column.
-4. For an index, choose the **{{model.editor.key.indexType}}**. MySQL offers BTREE, FULLTEXT, SPATIAL, and HASH; PostgreSQL offers BTREE, HASH, GIN, GIST, BRIN, and SPGIST. Non-BTREE indexes have no sort order. For FULLTEXT, you can enter a MySQL full-text parser (for example `ngram`).
-5. When the DBMS supports it, you can add the following to an index: **{{model.editor.key.uniqueIndex}}** (for partial or expression uniqueness that a unique key cannot express), the **{{model.editor.key.keyModeExpression}}** option of **{{model.editor.key.keyMode}}** (for example `lower(nickname)` — PostgreSQL, MySQL, Oracle), a per-column **{{model.editor.key.opclass}}** (for example `gin_trgm_ops` — PostgreSQL), a **{{model.editor.key.where}}** (for example `deleted_at IS NULL` — PostgreSQL, SQL Server), and **{{model.editor.key.include}}** (PostgreSQL, SQL Server). Values the document's DBMS does not support stay in the document but are left out of the DDL.
+4. For an index, choose the **{{model.editor.key.indexType}}**. MySQL offers BTREE, FULLTEXT, SPATIAL, and HASH; PostgreSQL offers BTREE, HASH, GIN, GIST, BRIN, SPGIST, HNSW, and IVFFLAT. Non-BTREE indexes have no sort order. For FULLTEXT, you can enter a MySQL full-text parser (for example `ngram`).
+5. When the DBMS supports it, you can add the following to an index: **{{model.editor.key.uniqueIndex}}** (for partial or expression uniqueness that a unique key cannot express), the **{{model.editor.key.keyModeExpression}}** option of **{{model.editor.key.keyMode}}** (for example `lower(nickname)` — PostgreSQL, MySQL, Oracle), a per-column **{{model.editor.key.opclass}}** (for example `gin_trgm_ops` — PostgreSQL), a **{{model.editor.key.where}}** (for example `deleted_at IS NULL` — PostgreSQL, SQL Server), and **{{model.editor.key.include}}** (PostgreSQL, SQL Server). Values the document's DBMS does not support stay in the document but are left out of the DDL. PostgreSQL indexes can also take **{{model.editor.key.with}}** (for example `fillfactor = 90`). For vector indexes, see section 6.6.
 
 The keys you create appear as **UK**, **IX**, and **CK** rows at the bottom of the table. FULLTEXT indexes are marked **FT**, SPATIAL indexes **SP**, other types such as GIN show their name, and unique indexes are marked **UQ**. Expression indexes show the expression, and partial indexes show the condition. Click a row to edit or delete it. When you create a relationship, an index on the foreign key column is created automatically.
 
 Click **{{model.editor.check.add}}** to create a CHECK constraint. The name is filled in like `ck_table_1`, and you write the expression inside the parentheses as is (for example `price >= 0`). The expression is not parsed, so update it yourself when you rename a column. Deleting a column also deletes the CHECK constraints that use it, and the indexes whose expression or condition uses it.
+
+### 6.6 Vector columns and vector indexes (PostgreSQL)
+
+In a PostgreSQL document you can create columns that hold embeddings with the `vector` type of the pgvector extension, and put vector indexes on them. The type list of documents for other DBMSs does not show `vector`.
+
+1. Choose `vector` as the column type. The length field becomes a **{{model.editor.columnInfo.dimension}}** field. Enter the number of embedding dimensions (1–16000, for example 1536); the type is shown as `vector(1536)`.
+2. Click **{{model.editor.key.addIndex}}** and choose HNSW or IVFFLAT as the **{{model.editor.key.indexType}}**.
+3. Select one `vector` column as the key and choose a distance function in the **{{model.editor.key.opclass}}** field. HNSW takes `vector_l2_ops` (Euclidean distance), `vector_ip_ops` (inner product), `vector_cosine_ops` (cosine distance), and `vector_l1_ops` (L1 distance); IVFFLAT takes the first three. A vector index cannot be unique.
+4. Enter index parameters in **{{model.editor.key.with}}**. When you choose the type, HNSW is prefilled with `m = 16` and `ef_construction = 64`, and IVFFLAT with `lists = 100`. Add rows with **{{model.editor.key.withAdd}}** and remove them with the X button. Keys use lowercase letters, digits, and underscores; values use letters, digits, and `. _ + -`.
+
+![Dimension of a vector column](/guide-assets/en/editor-vector-column.webp)
+
+![Vector index (HNSW)](/guide-assets/en/editor-vector-index.webp)
+
+The generated SQL starts with `CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`. The target database server must have pgvector installed, and if the database does not have the extension yet, you can deploy only through a connection with a superuser account. pgvector cannot build a vector index on a column with more than 2000 dimensions, so validation shows a warning for it (section 12).
+
+![SQL script of a document with vectors](/guide-assets/en/editor-vector-sql.webp)
 
 ## 7. Relationships
 
@@ -660,6 +677,7 @@ The **{{workspace.detail.tabs.database}}** tab of a workspace has two parts.
 Click **{{model.editor.toolbar.ddl}}** in the editor to get a script of the whole document in the syntax of the target DBMS.
 
 * It includes tables, primary keys, unique keys, indexes, foreign keys, and comments. Logical names are output as COMMENT clauses.
+* If a PostgreSQL document has a `vector` column or a vector index, the script starts with `CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;` (section 6.6).
 * Copy it with **{{model.editor.ddl.copy}}** or get a .sql file with **{{model.editor.ddl.download}}**.
 * The script is based on the last saved content. If you have unsaved changes, a notice tells you so.
 * Potential issues are listed under **{{model.editor.ddl.warningTitle}}**.
@@ -709,6 +727,7 @@ To disconnect, choose **{{model.list.menu.disconnect}}** in the row menu of the 
 
 * Before creating it, Crowfoot shows the types whose notation changes and the types that are incompatible with the target DBMS.
 * Incompatible types keep their original values in the new document. Fix them yourself afterward.
+* When you copy to a DBMS other than PostgreSQL, `vector` columns are listed as incompatible types, and vector indexes (HNSW, IVFFLAT) and **{{model.editor.key.with}}** are listed as indexes the target DBMS cannot output.
 * Unsaved edits are included in the new document.
 * If the target DBMS does not create indexes for foreign keys automatically, indexes are added to foreign key columns that do not have one. These indexes are also shown before the document is created.
 * The new document is named "original name (target DBMS)" by default, and you can change it.
@@ -788,6 +807,7 @@ The bar at the bottom shows how many rows are added, edited, and deleted. Click 
 * A warning appears if the batch includes deletions. Changes cannot be undone once applied.
 * The data of views and tables without a primary key cannot be edited. In that case, the reason is shown above the tab.
 * Cells left blank in a new row get the database's default value.
+* Enter a `vector` value as comma-separated numbers in square brackets, such as `[0.1,0.2,0.3]`. If the number of elements differs from the column dimensions, the database returns an error when you apply.
 * Generated columns are calculated by the database. In a new row they show **{{database.edit.generatedPlaceholder}}**, and you cannot enter or edit their values.
 * Clearing a cell sets it to an empty string. To set NULL, use the **{{database.edit.setNull}}** button.
 * A cell changed back to its original value is dropped from the changes.
@@ -854,12 +874,16 @@ Click **{{model.validation.toggle}}** on the toolbar to open the **{{model.valid
 | Error | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | A 1:1 relationship has no unique key on its foreign key |
 | Error | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | The column type is not in the Crowfoot type list |
 | Error | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR or VARBINARY has no length (not checked in PostgreSQL documents) |
+| Error | {{model.validation.rules.VECTOR_UNSUPPORTED_DBMS}} | A document that is not PostgreSQL has a `vector` column |
+| Error | {{model.validation.rules.VECTOR_MISSING_DIMENSION}} | A `vector` column has no dimensions, or they are outside 1–16000 |
+| Error | {{model.validation.rules.VECTOR_INDEX_INVALID}} | A vector index (HNSW, IVFFLAT) does not have exactly one `vector` key column, uses an operator class it cannot take, or is unique |
 | Warning | {{model.validation.rules.MISSING_PK}} | A table has no primary key |
 | Warning | {{model.validation.rules.EMPTY_TABLE}} | A table has no columns |
 | Warning | {{model.validation.rules.FK_MAPPING_EMPTY}} | A relationship has no linked columns |
 | Warning | {{model.validation.rules.ORPHAN_TABLE}} | A table is not related to any other table |
 | Warning | {{model.validation.rules.CIRCULAR_REFERENCE}} | Foreign keys form a loop that leads back to the same table |
 | Warning | {{model.validation.rules.NAMING_CONVENTION}} | A physical name does not follow the naming rules |
+| Warning | {{model.validation.rules.VECTOR_INDEX_DIMENSION_LIMIT}} | The key column of a vector index has more than 2000 dimensions. pgvector cannot build the index |
 | Warning | {{model.validation.rules.MISSING_LOGICAL_NAME}} | A logical name is empty |
 | Info | {{model.validation.rules.FK_WITHOUT_INDEX}} | No index starts with the foreign key column |
 | Info | {{model.validation.rules.WIDE_TABLE}} | A table has more than 30 columns |

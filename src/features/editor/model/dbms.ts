@@ -22,6 +22,8 @@ export type DataTypeCategory =
   | 'json'
   | 'uuid'
   | 'binary'
+  /** pgvector 벡터(04-dbms-engineering.md §3.6) — 차원 수는 length에 둔다 */
+  | 'vector'
 
 export interface DataTypeSpec {
   /** 공용 논리 코드 — content에 저장되는 값 */
@@ -33,6 +35,8 @@ export interface DataTypeSpec {
   precision?: boolean
   /** 소수 초 자릿수(0~6) 지정 가능 — 값은 precision에 저장한다(DATETIME(6)) */
   fraction?: boolean
+  /** 쓸 수 있는 템플릿 id — 없으면 모든 DBMS. 드롭다운은 목록 밖 문서에서 이 타입을 빼고 보여 준다(01-core.md §17.2) */
+  dbms?: readonly string[]
 }
 
 /** 공용 타입 카탈로그 — DBMS 공통분모의 논리 타입 (1차 하드코딩, 2차 Domain로 확장) */
@@ -60,10 +64,36 @@ export const DATA_TYPES: DataTypeSpec[] = [
   { code: 'BLOB', category: 'binary' },
   { code: 'BINARY', category: 'binary', length: true },
   { code: 'VARBINARY', category: 'binary', length: true },
+  { code: 'VECTOR', category: 'vector', length: true, dbms: ['postgres'] },
 ]
+
+/** 벡터 차원 범위 — pgvector vector(n)의 n (VECTOR_MISSING_DIMENSION) */
+export const VECTOR_DIMENSION_MIN = 1
+export const VECTOR_DIMENSION_MAX = 16000
+/** 벡터 인덱스(HNSW·IVFFLAT)가 받는 차원 상한 — 넘으면 pgvector가 인덱스를 만들지 못한다(VECTOR_INDEX_DIMENSION_LIMIT) */
+export const VECTOR_INDEX_DIMENSION_MAX = 2000
 
 export function dataTypeSpec(code: string): DataTypeSpec | undefined {
   return DATA_TYPES.find((t) => t.code === code)
+}
+
+/** 이 템플릿(또는 database_types 코드) 문서가 쓸 수 있는 타입인가 — 카탈로그 밖 코드는 판단하지 않는다(true) */
+export function isTypeSupported(code: string, dbmsId: string): boolean {
+  const allowed = dataTypeSpec(code)?.dbms
+  return !allowed || allowed.includes(templateIdForDatabase(dbmsId))
+}
+
+/** 길이 칸의 뜻 — VECTOR는 차원 수를 둔다(01-core.md §17.2). label은 번역 키 끝말, placeholder는 예시 값 */
+export function lengthField(code: string): { label: 'length' | 'dimension'; placeholder: string } {
+  return dataTypeSpec(code)?.category === 'vector'
+    ? { label: 'dimension', placeholder: '1536' }
+    : { label: 'length', placeholder: '255' }
+}
+
+/** 타입 드롭다운의 카탈로그 — 문서 DBMS가 쓰지 못하는 타입(VECTOR 등)은 뺀다.
+ *  이미 그 값인 컬럼(current)은 값을 지키도록 남긴다(01-core.md §17.2) */
+export function dataTypesFor(dbmsId: string, current?: string): DataTypeSpec[] {
+  return DATA_TYPES.filter((t) => t.code === current || isTypeSupported(t.code, dbmsId))
 }
 
 /** 타입 크기 표기 — (길이) / (정밀도,스케일) / 날짜시간 소수 초 (자릿수). 크기가 없으면 '' */
@@ -134,6 +164,7 @@ export const DBMS_TEMPLATES: DbmsTemplate[] = [
       VARBINARY: 'BYTEA',
       MEDIUMTEXT: 'TEXT',
       LONGTEXT: 'TEXT',
+      VECTOR: 'vector', // pgvector — 표시는 vector(1536)
     },
     autoIncrement: 'type',
   },
@@ -230,15 +261,53 @@ export interface IndexSupport {
   include: boolean
   /** 컬럼별 연산자 클래스 */
   opclass: boolean
+  /** 인덱스 저장 매개변수(WITH (키 = 값, …) — 04-dbms-engineering.md §3.6) */
+  with: boolean
 }
 
 const INDEX_SUPPORT: Record<string, IndexSupport> = {
-  postgres: { types: ['BTREE', 'HASH', 'GIN', 'GIST', 'BRIN', 'SPGIST'], unique: true, expression: true, where: true, include: true, opclass: true },
-  mysql: { types: ['BTREE', 'FULLTEXT', 'SPATIAL', 'HASH'], unique: true, expression: true, where: false, include: false, opclass: false },
-  oracle: { types: ['BTREE'], unique: true, expression: true, where: false, include: false, opclass: false },
-  mssql: { types: ['BTREE'], unique: true, expression: false, where: true, include: true, opclass: false },
-  common: { types: ['BTREE'], unique: true, expression: false, where: false, include: false, opclass: false },
+  postgres: {
+    types: ['BTREE', 'HASH', 'GIN', 'GIST', 'BRIN', 'SPGIST', 'HNSW', 'IVFFLAT'],
+    unique: true,
+    expression: true,
+    where: true,
+    include: true,
+    opclass: true,
+    with: true,
+  },
+  mysql: { types: ['BTREE', 'FULLTEXT', 'SPATIAL', 'HASH'], unique: true, expression: true, where: false, include: false, opclass: false, with: false },
+  oracle: { types: ['BTREE'], unique: true, expression: true, where: false, include: false, opclass: false, with: false },
+  mssql: { types: ['BTREE'], unique: true, expression: false, where: true, include: true, opclass: false, with: false },
+  common: { types: ['BTREE'], unique: true, expression: false, where: false, include: false, opclass: false, with: false },
 }
+
+/* ---------- pgvector 벡터 인덱스(04-dbms-engineering.md §3.6) ---------- */
+
+/** 벡터 인덱스 종류 — 키는 VECTOR 컬럼 하나, 연산자 클래스 필수, 유니크 불가 */
+export const VECTOR_INDEX_TYPES: readonly IndexType[] = ['HNSW', 'IVFFLAT']
+
+export function isVectorIndexType(type: IndexType | null | undefined): boolean {
+  return type != null && VECTOR_INDEX_TYPES.includes(type)
+}
+
+/** 벡터 인덱스 종류별로 쓸 수 있는 연산자 클래스(거리 함수) — 첫 항목이 pgvector 기본 */
+export const VECTOR_OPCLASSES: Readonly<Record<string, readonly string[]>> = {
+  HNSW: ['vector_l2_ops', 'vector_ip_ops', 'vector_cosine_ops', 'vector_l1_ops'],
+  IVFFLAT: ['vector_l2_ops', 'vector_ip_ops', 'vector_cosine_ops'],
+}
+
+/** 종류별로 먼저 보여 주는 저장 매개변수와 그 기본값 — 에디터 제안용(서버는 키 이름·값 범위를 검사하지 않는다) */
+export const INDEX_WITH_SUGGESTIONS: Readonly<Record<string, readonly { key: string; value: string }[]>> = {
+  HNSW: [
+    { key: 'm', value: '16' },
+    { key: 'ef_construction', value: '64' },
+  ],
+  IVFFLAT: [{ key: 'lists', value: '100' }],
+}
+
+/** 저장 매개변수 형식 — 서버가 SQL 주입을 막는 규칙과 같다 */
+export const INDEX_WITH_KEY_PATTERN = /^[a-z_][a-z0-9_]{0,62}$/
+export const INDEX_WITH_VALUE_PATTERN = /^[A-Za-z0-9_.+-]{1,64}$/
 
 /** 템플릿 id(또는 database_types 코드)의 인덱스 기능 — 모르는 DBMS는 공용(BTREE·유니크만) */
 export function dbmsIndexSupport(dbmsId: string): IndexSupport {

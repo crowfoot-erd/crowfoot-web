@@ -10,11 +10,13 @@
  * 특수 인덱스(v1.37): 유니크 인덱스, 키 구성(컬럼 ↔ 식 원문), 컬럼별 연산자 클래스, 조건(WHERE), 포함 컬럼(INCLUDE).
  * 문서 DBMS가 지원하는 항목만 보여 준다(dbms.ts dbmsIndexSupport). 지원하지 않아도 이미 값이 있으면 보여 주고
  * 그대로 저장한다 — 지우는 것은 사용자의 몫이다(DDL 생성기가 경고와 함께 뺀다).
+ * pgvector(04-dbms-engineering.md §3.6): 벡터 인덱스(HNSW·IVFFLAT)는 연산자 클래스 칸에 거리 함수 목록을 제안하고,
+ * 저장 매개변수(WITH) 칸은 종류를 바꿀 때 그 종류의 키(HNSW m·ef_construction, IVFFLAT lists)를 먼저 채운다.
  * 협업(v1.17): 열려 있는 동안 소속 테이블의 Edit Session Lock을 잡는다(useEditLock).
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
@@ -34,7 +36,14 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { stripOuterParens, type KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn, ErdTable, IndexOrder, IndexType } from '@/features/editor/model/content-schema'
-import { dbmsIndexSupport } from '@/features/editor/model/dbms'
+import {
+  dbmsIndexSupport,
+  INDEX_WITH_KEY_PATTERN,
+  INDEX_WITH_SUGGESTIONS,
+  INDEX_WITH_VALUE_PATTERN,
+  isVectorIndexType,
+  VECTOR_OPCLASSES,
+} from '@/features/editor/model/dbms'
 import { useEditLock } from '@/features/editor/collab-locks'
 
 export interface KeyInfoSubmit {
@@ -56,6 +65,8 @@ export interface KeyInfoSubmit {
   include: string[]
   /** 컬럼별 연산자 클래스 — 빈 값은 담지 않는다 */
   opclasses: Record<string, string>
+  /** 저장 매개변수(WITH) — 적힌 순서. 빈 행은 담지 않는다 */
+  with: Record<string, string>
 }
 
 export interface KeyInfoDialogProps {
@@ -76,6 +87,7 @@ export interface KeyInfoDialogProps {
     where?: string | null
     include?: string[]
     opclasses?: Record<string, string>
+    with?: Record<string, string>
   } | null
   table: ErdTable | null
   /** 문서 전체 키 이름(소문자) — 중복 검증. 편집 대상 자기 이름은 제외된 상태로 전달된다 */
@@ -83,6 +95,105 @@ export interface KeyInfoDialogProps {
   /** 선택 컬럼에 대한 기본 이름 제안 — 문서(모델)를 아는 쪽에서 계산해 전달한다 */
   suggestName: (columns: ErdColumn[]) => string
   onConfirm: (values: KeyInfoSubmit) => void
+}
+
+/** 저장 매개변수 편집 행 — id는 목록 렌더 키 */
+type WithRow = { id: number; key: string; value: string }
+
+let withRowSeq = 0
+function toWithRows(entries: readonly { key: string; value: string }[]): WithRow[] {
+  return entries.map((entry) => ({ id: ++withRowSeq, key: entry.key, value: entry.value }))
+}
+
+/** 종류의 제안 매개변수 행(HNSW m·ef_construction, IVFFLAT lists) */
+function suggestedWithRows(type: IndexType): WithRow[] {
+  return toWithRows(INDEX_WITH_SUGGESTIONS[type] ?? [])
+}
+
+/** 사용자가 손대지 않은 행인가 — 비었거나 이전 종류의 제안 그대로면 종류를 바꿀 때 새 제안으로 갈아 끼운다 */
+function untouchedWithRows(rows: WithRow[], type: IndexType): boolean {
+  if (rows.every((row) => row.key.trim() === '' && row.value.trim() === '')) return true
+  const suggested = INDEX_WITH_SUGGESTIONS[type] ?? []
+  return rows.length === suggested.length && rows.every((row, i) => row.key === suggested[i].key && row.value === suggested[i].value)
+}
+
+/** 채운 행만 맵으로 — 키·값 규칙(서버와 같다)을 어기거나 같은 키가 두 번이면 null(저장 불가) */
+function withParamsOf(rows: WithRow[]): Record<string, string> | null {
+  const filled = rows
+    .map((row) => ({ key: row.key.trim(), value: row.value.trim() }))
+    .filter((row) => row.key !== '' || row.value !== '')
+  const valid = filled.every((row) => INDEX_WITH_KEY_PATTERN.test(row.key) && INDEX_WITH_VALUE_PATTERN.test(row.value))
+  if (!valid || new Set(filled.map((row) => row.key)).size !== filled.length) return null
+  return Object.fromEntries(filled.map((row) => [row.key, row.value]))
+}
+
+/** 저장 매개변수(WITH) 편집 칸 — 키 = 값 행 목록 */
+function IndexWithEditor({
+  rows,
+  onChange,
+  supported,
+}: {
+  rows: WithRow[]
+  onChange: (rows: WithRow[]) => void
+  /** 문서 DBMS가 WITH를 DDL로 내는가 — 아니면 안내만 더한다 */
+  supported: boolean
+}) {
+  const { t } = useTranslation()
+  const patchRow = (id: number, patch: Partial<Omit<WithRow, 'id'>>) =>
+    onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  return (
+    <div className="grid gap-1 text-sm" data-testid="index-with">
+      <p className="font-medium">{t('model.editor.key.with')}</p>
+      {rows.map((row, i) => (
+        <div key={row.id} className="flex items-center gap-1.5">
+          <Input
+            data-testid="index-with-key"
+            value={row.key}
+            onChange={(event) => patchRow(row.id, { key: event.target.value })}
+            placeholder="m"
+            aria-label={`${t('model.editor.key.withKey')} ${i + 1}`}
+            className="h-8 font-mono text-xs"
+          />
+          <span aria-hidden className="text-muted-foreground">=</span>
+          <Input
+            data-testid="index-with-value"
+            value={row.value}
+            onChange={(event) => patchRow(row.id, { value: event.target.value })}
+            placeholder="16"
+            aria-label={`${t('model.editor.key.withValue')} ${i + 1}`}
+            className="h-8 font-mono text-xs"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-8 shrink-0"
+            onClick={() => onChange(rows.filter((other) => other.id !== row.id))}
+            aria-label={`${t('model.editor.key.withRemove')} ${i + 1}`}
+          >
+            <X aria-hidden className="size-3.5" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="justify-self-start"
+        onClick={() => onChange([...rows, ...toWithRows([{ key: '', value: '' }])])}
+      >
+        <Plus aria-hidden className="size-3.5" />
+        {t('model.editor.key.withAdd')}
+      </Button>
+      <p className="text-xs text-muted-foreground">{t('model.editor.key.withHint')}</p>
+      {withParamsOf(rows) === null ? (
+        <p data-testid="index-with-error" className="text-xs text-destructive">{t('model.editor.key.withInvalid')}</p>
+      ) : null}
+      {!supported ? (
+        <p className="text-xs text-amber-600 dark:text-amber-500">{t('model.editor.key.unsupportedHint')}</p>
+      ) : null}
+    </div>
+  )
 }
 
 type KeyInfoForm = {
@@ -144,6 +255,9 @@ export function KeyInfoDialog({
   const [where, setWhere] = useState('')
   const [include, setInclude] = useState<string[]>([])
   const [opclasses, setOpclasses] = useState<Record<string, string>>({})
+  // 저장 매개변수(WITH — pgvector §3.6)
+  const [withRows, setWithRows] = useState<WithRow[]>([])
+  const opclassListId = useId()
 
   useEffect(() => {
     if (open) {
@@ -162,6 +276,7 @@ export function KeyInfoDialog({
       setWhere(target?.where ?? '')
       setInclude(target?.include ?? [])
       setOpclasses(target?.opclasses ?? {})
+      setWithRows(toWithRows(Object.entries(target?.with ?? {}).map(([key, value]) => ({ key, value }))))
     }
   }, [open, target])
 
@@ -173,11 +288,21 @@ export function KeyInfoDialog({
   const typeOptions = support.types.includes(indexType) ? support.types : [...support.types, indexType]
   const typeUnsupported = !support.types.includes(indexType)
   const hasOpclass = Object.values(target?.opclasses ?? {}).some((value) => value !== '')
-  const showUnique = kind === 'index' && (support.unique || (target?.unique ?? false))
+  const vectorIndex = kind === 'index' && isVectorIndexType(indexType)
+  // 벡터 인덱스는 유니크일 수 없다 — 켜져 있을 때만 보여 끌 수 있게 한다
+  const showUnique = kind === 'index' && (support.unique || (target?.unique ?? false)) && (!vectorIndex || unique)
   const showExpression = kind === 'index' && (support.expression || (target?.expression ?? '').trim() !== '')
   const showWhere = kind === 'index' && (support.where || (target?.where ?? '').trim() !== '')
   const showInclude = kind === 'index' && (support.include || (target?.include ?? []).length > 0)
   const showOpclass = kind === 'index' && (support.opclass || hasOpclass)
+  const showWith = kind === 'index' && (support.with || Object.keys(target?.with ?? {}).length > 0)
+  const vectorOpclasses = vectorIndex ? (VECTOR_OPCLASSES[indexType] ?? []) : []
+
+  /** 종류를 바꾼다 — PostgreSQL 문서에서 매개변수를 손대지 않았으면 새 종류의 제안 키로 채운다 */
+  const changeIndexType = (next: IndexType) => {
+    if (support.with && untouchedWithRows(withRows, indexType)) setWithRows(suggestedWithRows(next))
+    setIndexType(next)
+  }
 
   const columnIds = form.watch('columnIds')
   const expressionMode = kind === 'index' && form.watch('expressionMode')
@@ -222,7 +347,7 @@ export function KeyInfoDialog({
 
   const kindLabel = t(kind === 'unique' ? 'model.editor.key.unique' : 'model.editor.key.index')
 
-  const handleSubmit = form.handleSubmit((values) => {
+  const submitForm = form.handleSubmit((values) => {
     const trimmedParser = parser.trim()
     const isIndex = kind === 'index'
     const useExpression = isIndex && values.expressionMode
@@ -252,9 +377,19 @@ export function KeyInfoDialog({
         ? tableColumnIds.filter((id) => include.includes(id) && (useExpression || !values.columnIds.includes(id)))
         : [],
       opclasses: isIndex ? keyOpclasses : {},
+      // 유니크는 매개변수 행이 없어 늘 빈 맵이다
+      with: withParamsOf(withRows) ?? {},
     })
     onOpenChange(false)
   })
+  // 저장 매개변수 형식이 틀리면 저장하지 않는다 — 칸 아래에 이유를 보여 준다
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (withParamsOf(withRows) === null) {
+      event.preventDefault()
+      return
+    }
+    void submitForm(event)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -298,7 +433,7 @@ export function KeyInfoDialog({
                   <select
                     data-testid="index-type"
                     value={indexType}
-                    onChange={(event) => setIndexType(event.target.value as IndexType)}
+                    onChange={(event) => changeIndexType(event.target.value as IndexType)}
                     className="h-9 rounded-md border border-input bg-background px-2 text-sm font-normal"
                   >
                     {typeOptions.map((type) => (
@@ -326,6 +461,9 @@ export function KeyInfoDialog({
             ) : null}
             {kind === 'index' && indexType !== 'BTREE' ? (
               <p className="-mt-2 text-xs text-muted-foreground">{t('model.editor.key.indexTypeHint')}</p>
+            ) : null}
+            {vectorIndex ? (
+              <p data-testid="index-vector-hint" className="-mt-2 text-xs text-muted-foreground">{t('model.editor.key.vectorHint')}</p>
             ) : null}
             {kind === 'index' && typeUnsupported ? (
               <p className="-mt-2 text-xs text-amber-600 dark:text-amber-500">{t('model.editor.key.unsupportedHint')}</p>
@@ -421,10 +559,12 @@ export function KeyInfoDialog({
                             {selected && showOpclass ? (
                               <input
                                 data-testid="index-opclass"
-                                className="h-5 w-24 shrink-0 rounded-sm border border-input bg-background px-1 font-mono text-[10px]"
+                                className="h-5 w-32 shrink-0 rounded-sm border border-input bg-background px-1 font-mono text-[10px]"
                                 value={opclasses[column.id] ?? ''}
                                 onChange={(event) => setOpclasses((prev) => ({ ...prev, [column.id]: event.target.value }))}
-                                placeholder={t('model.editor.key.opclass')}
+                                placeholder={vectorIndex ? vectorOpclasses[0] : t('model.editor.key.opclass')}
+                                // 벡터 인덱스는 거리 함수 목록을 제안한다(직접 적어도 된다)
+                                list={vectorIndex ? opclassListId : undefined}
                                 aria-label={`${t('model.editor.key.opclass')} — ${column.physicalName}`}
                                 title={t('model.editor.key.opclass')}
                               />
@@ -467,6 +607,13 @@ export function KeyInfoDialog({
                       })}
                       {(table?.columns ?? []).length === 0 ? (
                         <p className="px-1 py-2 text-xs text-muted-foreground">{t('model.editor.key.noColumns')}</p>
+                      ) : null}
+                      {vectorIndex ? (
+                        <datalist id={opclassListId} data-testid="index-opclass-options">
+                          {vectorOpclasses.map((opclass) => (
+                            <option key={opclass} value={opclass} />
+                          ))}
+                        </datalist>
                       ) : null}
                     </div>
                   </FormControl>
@@ -526,6 +673,8 @@ export function KeyInfoDialog({
                 ) : null}
               </div>
             ) : null}
+
+            {showWith ? <IndexWithEditor rows={withRows} onChange={setWithRows} supported={support.with} /> : null}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

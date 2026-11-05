@@ -408,12 +408,29 @@ Crowfootの画面は大きく3種類あります。
 1. テーブルの下にある **{{model.editor.key.addUnique}}** または **{{model.editor.key.addIndex}}**を押します。
 2. 名前を入力してカラムを選びます。選んだ順番が複合キーのカラム順になります。順番は矢印で変更できます。
 3. インデックスでは、カラムごとに並び順（ASC、DESC）を指定できます。
-4. インデックスは **{{model.editor.key.indexType}}**を選びます。MySQLはBTREE、FULLTEXT、SPATIAL、HASH、PostgreSQLはBTREE、HASH、GIN、GIST、BRIN、SPGISTです。BTREE以外のインデックスには並び順がありません。FULLTEXTではMySQLの全文検索パーサー（例：`ngram`）を指定できます。
-5. DBMSが対応していれば、インデックスに次を追加できます。**{{model.editor.key.uniqueIndex}}**（部分・式のユニークのようにユニークキーで表せない場合）、**{{model.editor.key.keyMode}}**の**{{model.editor.key.keyModeExpression}}**（例：`lower(nickname)` — PostgreSQL・MySQL・Oracle）、カラムごとの**{{model.editor.key.opclass}}**（例：`gin_trgm_ops` — PostgreSQL）、**{{model.editor.key.where}}**（例：`deleted_at IS NULL` — PostgreSQL・SQL Server）、**{{model.editor.key.include}}**（PostgreSQL・SQL Server）。ドキュメントのDBMSが対応していない値は消えずに残りますが、DDLには含まれません。
+4. インデックスは **{{model.editor.key.indexType}}**を選びます。MySQLはBTREE、FULLTEXT、SPATIAL、HASH、PostgreSQLはBTREE、HASH、GIN、GIST、BRIN、SPGIST、HNSW、IVFFLATです。BTREE以外のインデックスには並び順がありません。FULLTEXTではMySQLの全文検索パーサー（例：`ngram`）を指定できます。
+5. DBMSが対応していれば、インデックスに次を追加できます。**{{model.editor.key.uniqueIndex}}**（部分・式のユニークのようにユニークキーで表せない場合）、**{{model.editor.key.keyMode}}**の**{{model.editor.key.keyModeExpression}}**（例：`lower(nickname)` — PostgreSQL・MySQL・Oracle）、カラムごとの**{{model.editor.key.opclass}}**（例：`gin_trgm_ops` — PostgreSQL）、**{{model.editor.key.where}}**（例：`deleted_at IS NULL` — PostgreSQL・SQL Server）、**{{model.editor.key.include}}**（PostgreSQL・SQL Server）。ドキュメントのDBMSが対応していない値は消えずに残りますが、DDLには含まれません。PostgreSQLのインデックスには**{{model.editor.key.with}}**も指定できます（例：`fillfactor = 90`）。ベクトルインデックスは6.6節を参照してください。
 
 作成したキーは、テーブルの下に **UK**、**IX**、**CK** の行として表示されます。FULLTEXTインデックスには **FT**、SPATIALインデックスには **SP**、GINなどその他の種類にはその名前、ユニークインデックスには **UQ** が付きます。式インデックスは式を、部分インデックスは条件を併せて表示します。行をクリックすると編集や削除ができます。リレーションを作成すると、外部キーカラムのインデックスが自動で作成されます。
 
 **{{model.editor.check.add}}**を押すとCHECK制約を作成します。名前は`ck_テーブル_1`のように入力され、式は括弧の中の内容をそのまま書きます（例：`price >= 0`）。式は解釈しないため、カラム名を変えたら式も自分で直してください。カラムを削除すると、そのカラムを使うCHECK制約と、式や条件がそのカラムを使うインデックスも一緒に削除されます。
+
+### 6.6 ベクトルカラムとベクトルインデックス（PostgreSQL）
+
+PostgreSQLのドキュメントでは、pgvector拡張の`vector`型で埋め込みを格納するカラムを作り、そのカラムにベクトルインデックスを置けます。他のDBMSのドキュメントの型一覧には`vector`は表示されません。
+
+1. カラムの型で`vector`を選びます。長さの欄が**{{model.editor.columnInfo.dimension}}**の欄に変わります。埋め込みの次元数（1〜16000、例：1536）を入力すると`vector(1536)`と表示されます。
+2. **{{model.editor.key.addIndex}}**をクリックし、**{{model.editor.key.indexType}}**でHNSWまたはIVFFLATを選びます。
+3. キーカラムとして`vector`カラムを1つ選び、**{{model.editor.key.opclass}}**の欄で距離関数を選びます。HNSWは`vector_l2_ops`（ユークリッド距離）、`vector_ip_ops`（内積）、`vector_cosine_ops`（コサイン距離）、`vector_l1_ops`（L1距離）を、IVFFLATは前の3つを使います。ベクトルインデックスはユニークにできません。
+4. **{{model.editor.key.with}}**にインデックスのパラメータを入力します。種類を選ぶと、HNSWは`m = 16`、`ef_construction = 64`、IVFFLATは`lists = 100`があらかじめ入ります。**{{model.editor.key.withAdd}}**で行を追加し、Xボタンで削除します。キーは小文字・数字・アンダースコア、値は英数字と`. _ + -`で書きます。
+
+![ベクトルカラムの次元](/guide-assets/ja/editor-vector-column.webp)
+
+![ベクトルインデックス（HNSW）](/guide-assets/ja/editor-vector-index.webp)
+
+SQLを生成すると、スクリプトの最初の文として`CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`が入ります。デプロイ先のデータベースサーバーにpgvectorがインストールされている必要があり、データベースにまだ拡張がない場合はスーパーユーザーアカウントのコネクションでのみデプロイできます。次元が2000を超えるカラムにはpgvectorがベクトルインデックスを作れないため、検証の警告が表示されます（12節）。
+
+![ベクトルを含むドキュメントのSQLスクリプト](/guide-assets/ja/editor-vector-sql.webp)
 
 ## 7. リレーション
 
@@ -660,6 +677,7 @@ Crowfootの画面は大きく3種類あります。
 エディタの **{{model.editor.toolbar.ddl}}**を押すと、ドキュメント全体を対象DBMSの文法で記述したスクリプトが表示されます。
 
 * テーブル、主キー、ユニークキー、インデックス、外部キー、コメントが含まれます。論理名はCOMMENTとして出力されます。
+* PostgreSQLのドキュメントに`vector`カラムやベクトルインデックスがあると、最初の文として`CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`が入ります（6.6節）。
 * **{{model.editor.ddl.copy}}**でコピーし、**{{model.editor.ddl.download}}**で.sqlファイルとして保存します。
 * スクリプトは最後に保存した内容をもとに生成されます。保存していない変更がある場合は案内が表示されます。
 * 注意すべき点がある場合は、**{{model.editor.ddl.warningTitle}}**に表示されます。
@@ -709,6 +727,7 @@ SQLスクリプトウィンドウの **{{model.editor.deploy.button}}**を押す
 
 * 作成前に、表記が変わる型と、対象DBMSに対応しない型が表示されます。
 * 対応しない型は元の値のまま新しいドキュメントに残るため、作成後に手動で修正してください。
+* PostgreSQL以外のDBMSへ移すと、`vector`カラムは対応しない型として、ベクトルインデックス（HNSW、IVFFLAT）と**{{model.editor.key.with}}**は対象DBMSが出力できないインデックスとして表示されます。
 * 保存していない編集も、新しいドキュメントに含まれます。
 * 対象DBMSが外部キーのインデックスを自動で作成しない場合は、インデックスのない外部キーカラムにインデックスを追加します。追加されるインデックスも作成前に表示されます。
 * 新しいドキュメント名の既定値は「元の名前 (対象DBMS)」で、変更できます。
@@ -788,6 +807,7 @@ ERDドキュメントと一緒に開くと、左の一覧のテーブルをド�
 * 削除が含まれている場合は警告が表示されます。適用後は元に戻せません。
 * ビューと、主キーのないテーブルのデータは編集できません。その場合は、タブの上に理由が表示されます。
 * 新しい行で空欄のままにしたセルには、データベースのデフォルト値が入ります。
+* `vector`カラムの値は`[0.1,0.2,0.3]`のように角かっこの中にカンマ区切りで書きます。要素数がカラムの次元と違うと、適用時にデータベースのエラーになります。
 * 生成カラムの値はデータベースが計算します。新しい行では **{{database.edit.generatedPlaceholder}}** と表示され、値の入力や変更はできません。
 * セルを空にすると空文字列になります。NULLを入れるには **{{database.edit.setNull}}** ボタンを使います。
 * 値を元に戻したセルは、変更の対象から外れます。
@@ -854,12 +874,16 @@ ERDドキュメントと一緒に開くと、左の一覧のテーブルをド�
 | エラー | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | 1:1リレーションなのに外部キーにユニークキーがない |
 | エラー | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | カラムの型がCrowfootの型一覧にない |
 | エラー | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR、VARBINARYに長さがない（PostgreSQLのドキュメントは検査しない） |
+| エラー | {{model.validation.rules.VECTOR_UNSUPPORTED_DBMS}} | PostgreSQL以外のドキュメントに`vector`カラムがある |
+| エラー | {{model.validation.rules.VECTOR_MISSING_DIMENSION}} | `vector`カラムに次元がない、または1〜16000の範囲外 |
+| エラー | {{model.validation.rules.VECTOR_INDEX_INVALID}} | ベクトルインデックス（HNSW、IVFFLAT）のキーが`vector`カラム1つでない、使えない演算子クラス、またはユニーク |
 | 警告 | {{model.validation.rules.MISSING_PK}} | 主キーのないテーブル |
 | 警告 | {{model.validation.rules.EMPTY_TABLE}} | カラムのないテーブル |
 | 警告 | {{model.validation.rules.FK_MAPPING_EMPTY}} | リレーションに対応付けられたカラムがない |
 | 警告 | {{model.validation.rules.ORPHAN_TABLE}} | どのテーブルともリレーションがない |
 | 警告 | {{model.validation.rules.CIRCULAR_REFERENCE}} | 外部キーをたどると自分自身に戻ってくる |
 | 警告 | {{model.validation.rules.NAMING_CONVENTION}} | 物理名が命名規則に合っていない |
+| 警告 | {{model.validation.rules.VECTOR_INDEX_DIMENSION_LIMIT}} | ベクトルインデックスのキーカラムの次元が2000を超える。pgvectorがインデックスを作れない |
 | 警告 | {{model.validation.rules.MISSING_LOGICAL_NAME}} | 論理名が空になっている |
 | 参考 | {{model.validation.rules.FK_WITHOUT_INDEX}} | 外部キーカラムで始まるインデックスがない |
 | 参考 | {{model.validation.rules.WIDE_TABLE}} | カラムが30個を超えている |

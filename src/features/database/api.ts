@@ -38,6 +38,8 @@ export type ColumnCategory =
   | 'datetime'
   | 'json'
   | 'uuid'
+  /** pgvector — 값은 `[0.1,0.2,…]` 텍스트, typeName은 vector(1536) 꼴(00-data-browser.md §2.2) */
+  | 'vector'
   | 'binary'
   | 'other'
 

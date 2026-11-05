@@ -408,12 +408,29 @@ Crowfoot의 화면은 크게 세 종류입니다.
 1. 테이블 아래의 **{{model.editor.key.addUnique}}** 또는 **{{model.editor.key.addIndex}}**를 누릅니다.
 2. 이름을 적고 컬럼을 고릅니다. 고른 순서가 복합 키의 컬럼 순서가 됩니다. 화살표로 순서를 바꿀 수 있습니다.
 3. 인덱스는 컬럼마다 정렬(ASC, DESC)을 정할 수 있습니다.
-4. 인덱스는 **{{model.editor.key.indexType}}**을 고릅니다. MySQL은 BTREE, FULLTEXT, SPATIAL, HASH, PostgreSQL은 BTREE, HASH, GIN, GIST, BRIN, SPGIST입니다. BTREE가 아닌 인덱스는 정렬이 없습니다. FULLTEXT는 MySQL 전문 검색 파서(예: `ngram`)를 적을 수 있습니다.
-5. DBMS가 지원하면 인덱스에 다음을 더할 수 있습니다. **{{model.editor.key.uniqueIndex}}**(부분·식 유니크처럼 유니크 키로 쓸 수 없는 경우), **{{model.editor.key.keyMode}}**의 **{{model.editor.key.keyModeExpression}}**(예: `lower(nickname)` — PostgreSQL·MySQL·Oracle), 컬럼별 **{{model.editor.key.opclass}}**(예: `gin_trgm_ops` — PostgreSQL), **{{model.editor.key.where}}**(예: `deleted_at IS NULL` — PostgreSQL·SQL Server), **{{model.editor.key.include}}**(PostgreSQL·SQL Server). 문서의 DBMS가 지원하지 않는 값은 지워지지 않고 남지만 DDL에는 실리지 않습니다.
+4. 인덱스는 **{{model.editor.key.indexType}}**을 고릅니다. MySQL은 BTREE, FULLTEXT, SPATIAL, HASH, PostgreSQL은 BTREE, HASH, GIN, GIST, BRIN, SPGIST, HNSW, IVFFLAT입니다. BTREE가 아닌 인덱스는 정렬이 없습니다. FULLTEXT는 MySQL 전문 검색 파서(예: `ngram`)를 적을 수 있습니다.
+5. DBMS가 지원하면 인덱스에 다음을 더할 수 있습니다. **{{model.editor.key.uniqueIndex}}**(부분·식 유니크처럼 유니크 키로 쓸 수 없는 경우), **{{model.editor.key.keyMode}}**의 **{{model.editor.key.keyModeExpression}}**(예: `lower(nickname)` — PostgreSQL·MySQL·Oracle), 컬럼별 **{{model.editor.key.opclass}}**(예: `gin_trgm_ops` — PostgreSQL), **{{model.editor.key.where}}**(예: `deleted_at IS NULL` — PostgreSQL·SQL Server), **{{model.editor.key.include}}**(PostgreSQL·SQL Server). 문서의 DBMS가 지원하지 않는 값은 지워지지 않고 남지만 DDL에는 실리지 않습니다. PostgreSQL 인덱스에는 **{{model.editor.key.with}}**도 적을 수 있습니다(예: `fillfactor = 90`). 벡터 인덱스는 6.6절을 봅니다.
 
 만든 키는 테이블 아래에 **UK**, **IX**, **CK** 줄로 나옵니다. FULLTEXT 인덱스에는 **FT**, SPATIAL 인덱스에는 **SP**, GIN 같은 다른 종류에는 그 이름이, 유니크 인덱스에는 **UQ**가 붙습니다. 식 인덱스는 식을, 부분 인덱스는 조건을 함께 보여 줍니다. 줄을 누르면 고치거나 지울 수 있습니다. 관계를 만들면 외래 키 컬럼의 인덱스가 자동으로 생깁니다.
 
 **{{model.editor.check.add}}**를 누르면 CHECK 제약을 만듭니다. 이름은 `ck_테이블_1`처럼 채워지고, 식은 괄호 안의 내용을 그대로 적습니다(예: `price >= 0`). 식은 해석하지 않으므로 컬럼 이름을 바꾸면 식도 직접 고쳐야 합니다. 컬럼을 지우면 그 컬럼을 쓰는 CHECK 제약과, 식이나 조건이 그 컬럼을 쓰는 인덱스도 함께 지워집니다.
+
+### 6.6 벡터 컬럼과 벡터 인덱스(PostgreSQL)
+
+PostgreSQL 문서에서는 pgvector 확장의 `vector` 타입으로 임베딩을 담는 컬럼을 만들고, 그 컬럼에 벡터 인덱스를 둘 수 있습니다. 다른 DBMS 문서의 타입 목록에는 `vector`가 나오지 않습니다.
+
+1. 컬럼의 타입에서 `vector`를 고릅니다. 길이 칸이 **{{model.editor.columnInfo.dimension}}** 칸으로 바뀝니다. 임베딩의 차원 수(1~16000, 예: 1536)를 적으면 `vector(1536)`으로 표시됩니다.
+2. **{{model.editor.key.addIndex}}**를 누르고 **{{model.editor.key.indexType}}**에서 HNSW 또는 IVFFLAT를 고릅니다.
+3. 키 컬럼으로 `vector` 컬럼 하나를 고르고, **{{model.editor.key.opclass}}** 칸에서 거리 함수를 고릅니다. HNSW는 `vector_l2_ops`(유클리드 거리), `vector_ip_ops`(내적), `vector_cosine_ops`(코사인 거리), `vector_l1_ops`(L1 거리)를, IVFFLAT는 앞의 세 가지를 씁니다. 벡터 인덱스는 유니크로 만들 수 없습니다.
+4. **{{model.editor.key.with}}**에 인덱스 매개변수를 적습니다. 종류를 고르면 HNSW는 `m = 16`, `ef_construction = 64`, IVFFLAT는 `lists = 100`이 먼저 채워집니다. **{{model.editor.key.withAdd}}**로 행을 더하고 X 버튼으로 지웁니다. 키는 소문자, 숫자, 밑줄로, 값은 영문, 숫자와 `. _ + -`로 적습니다.
+
+![벡터 컬럼의 차원](/guide-assets/ko/editor-vector-column.webp)
+
+![벡터 인덱스(HNSW)](/guide-assets/ko/editor-vector-index.webp)
+
+SQL을 만들면 스크립트 첫 문장으로 `CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`이 들어갑니다. 배포할 데이터베이스 서버에 pgvector가 설치돼 있어야 하고, 데이터베이스에 확장이 아직 없으면 슈퍼유저 계정의 커넥션으로만 배포할 수 있습니다. 차원이 2000을 넘는 컬럼에는 pgvector가 벡터 인덱스를 만들지 못하므로 검증 경고가 나옵니다(12절).
+
+![벡터가 든 문서의 SQL 스크립트](/guide-assets/ko/editor-vector-sql.webp)
 
 ## 7. 관계
 
@@ -660,6 +677,7 @@ Crowfoot의 화면은 크게 세 종류입니다.
 에디터의 **{{model.editor.toolbar.ddl}}**을 누르면 문서 전체를 대상 DBMS 문법으로 만든 스크립트가 나옵니다.
 
 * 테이블, 기본 키, 유니크 키, 인덱스, 외래 키, 코멘트가 들어갑니다. 논리명은 COMMENT로 들어갑니다.
+* PostgreSQL 문서에 `vector` 컬럼이나 벡터 인덱스가 있으면 첫 문장으로 `CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;`이 들어갑니다(6.6절).
 * **{{model.editor.ddl.copy}}**로 복사하고, **{{model.editor.ddl.download}}**로 .sql 파일을 내려받습니다.
 * 스크립트는 마지막으로 저장한 내용을 기준으로 만듭니다. 저장하지 않은 변경 사항이 있으면 안내가 나옵니다.
 * 주의할 점이 있으면 **{{model.editor.ddl.warningTitle}}**에 나옵니다.
@@ -709,6 +727,7 @@ SQL 스크립트 창에서 **{{model.editor.deploy.button}}**를 누르면 스�
 
 * 만들기 전에 표기가 바뀌는 타입과 대상 DBMS에 맞지 않는 타입을 보여 줍니다.
 * 맞지 않는 타입은 새 문서에 원래 값 그대로 남습니다. 문서를 만든 뒤 직접 고칩니다.
+* PostgreSQL이 아닌 DBMS로 옮기면 `vector` 컬럼은 맞지 않는 타입으로, 벡터 인덱스(HNSW, IVFFLAT)와 **{{model.editor.key.with}}**는 대상 DBMS가 내지 못하는 인덱스로 보여 줍니다.
 * 저장하지 않은 편집도 새 문서에 함께 들어갑니다.
 * 대상 DBMS가 외래 키 인덱스를 자동으로 만들지 않으면, 인덱스가 없는 외래 키 컬럼에 인덱스를 더합니다. 더해지는 인덱스도 만들기 전에 보여 줍니다.
 * 새 문서 이름의 기본값은 "원래 이름 (대상 DBMS)"이고, 고칠 수 있습니다.
@@ -788,6 +807,7 @@ ERD 문서와 함께 열면 왼쪽 목록의 테이블을 문서의 그룹별로
 * 삭제가 들어 있으면 경고가 나옵니다. 적용한 뒤에는 되돌릴 수 없습니다.
 * 뷰와 기본 키가 없는 테이블의 데이터는 고칠 수 없습니다. 이때는 탭 위에 그 이유가 나옵니다.
 * 새 행에서 비워 둔 칸에는 데이터베이스의 기본값이 들어갑니다.
+* `vector` 컬럼의 값은 `[0.1,0.2,0.3]`처럼 대괄호 안에 쉼표로 적습니다. 원소 수가 컬럼의 차원과 다르면 적용할 때 데이터베이스 오류가 납니다.
 * 생성 컬럼은 데이터베이스가 값을 계산합니다. 새 행에서는 **{{database.edit.generatedPlaceholder}}**으로 보이고, 값을 넣거나 고칠 수 없습니다.
 * 칸을 비우면 빈 문자열이 됩니다. NULL을 넣으려면 **{{database.edit.setNull}}** 버튼을 씁니다.
 * 값을 원래대로 되돌린 칸은 변경에서 빠집니다.
@@ -854,12 +874,16 @@ ERD 문서와 함께 열면 왼쪽 목록의 테이블을 문서의 그룹별로
 | 오류 | {{model.validation.rules.ONE_TO_ONE_MISSING_UK}} | 1:1 관계인데 외래 키에 유니크 키가 없음 |
 | 오류 | {{model.validation.rules.UNKNOWN_DATA_TYPE}} | 컬럼 타입이 Crowfoot 타입 목록에 없음 |
 | 오류 | {{model.validation.rules.MISSING_TYPE_LENGTH}} | VARCHAR, VARBINARY에 길이가 없음(PostgreSQL 문서는 검사하지 않음) |
+| 오류 | {{model.validation.rules.VECTOR_UNSUPPORTED_DBMS}} | PostgreSQL이 아닌 문서에 `vector` 컬럼이 있음 |
+| 오류 | {{model.validation.rules.VECTOR_MISSING_DIMENSION}} | `vector` 컬럼에 차원이 없거나 1~16000 밖임 |
+| 오류 | {{model.validation.rules.VECTOR_INDEX_INVALID}} | 벡터 인덱스(HNSW, IVFFLAT)의 키가 `vector` 컬럼 하나가 아니거나, 쓸 수 없는 연산자 클래스이거나, 유니크임 |
 | 경고 | {{model.validation.rules.MISSING_PK}} | 기본 키가 없는 테이블 |
 | 경고 | {{model.validation.rules.EMPTY_TABLE}} | 컬럼이 없는 테이블 |
 | 경고 | {{model.validation.rules.FK_MAPPING_EMPTY}} | 관계에 연결된 컬럼이 없음 |
 | 경고 | {{model.validation.rules.ORPHAN_TABLE}} | 어느 테이블과도 관계가 없음 |
 | 경고 | {{model.validation.rules.CIRCULAR_REFERENCE}} | 외래 키를 따라가면 자기 자신으로 돌아옴 |
 | 경고 | {{model.validation.rules.NAMING_CONVENTION}} | 물리명이 명명 규칙에 맞지 않음 |
+| 경고 | {{model.validation.rules.VECTOR_INDEX_DIMENSION_LIMIT}} | 벡터 인덱스의 키 컬럼 차원이 2000을 넘음. pgvector가 인덱스를 만들지 못함 |
 | 경고 | {{model.validation.rules.MISSING_LOGICAL_NAME}} | 논리명이 비어 있음 |
 | 참고 | {{model.validation.rules.FK_WITHOUT_INDEX}} | 외래 키 컬럼으로 시작하는 인덱스가 없음 |
 | 참고 | {{model.validation.rules.WIDE_TABLE}} | 컬럼이 30개를 넘음 |

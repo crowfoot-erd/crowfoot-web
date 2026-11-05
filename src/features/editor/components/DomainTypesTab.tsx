@@ -33,7 +33,7 @@ import {
   useUpdateDomainType,
 } from '@/features/domain-types/hooks'
 import { DomainPropagationDialog } from '@/features/editor/components/DomainPropagationDialog'
-import { DATA_TYPES, dataTypeSpec, physicalType } from '@/features/editor/model/dbms'
+import { dataTypesFor, dataTypeSpec, lengthField, physicalType } from '@/features/editor/model/dbms'
 import { domainUsage, findStaleColumns, type StaleColumn } from '@/features/editor/model/domain-type'
 import { typeLabel } from '@/features/editor/model/domain-type-format'
 import { useEditorStore } from '@/features/editor/store/editor-store'
@@ -316,7 +316,7 @@ export function DomainTypesTab({ workspaceId, canEdit, dbmsId, terms, focusId, o
                   onChange={(event) => setForm({ ...form, dataType: event.target.value, length: '', precision: '', scale: '' })}
                   className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                 >
-                  {DATA_TYPES.map((type) => (
+                  {dataTypesFor(dbmsId, form.dataType).map((type) => (
                     <option key={type.code} value={type.code}>
                       {physicalType(type.code, dbmsId)}
                     </option>
@@ -325,8 +325,9 @@ export function DomainTypesTab({ workspaceId, canEdit, dbmsId, terms, focusId, o
               </label>
               {spec?.length ? (
                 <label className="grid gap-1 text-sm">
-                  {t('model.editor.domainType.field.length')}
-                  <Input type="number" inputMode="numeric" value={form.length} onChange={(event) => setForm({ ...form, length: event.target.value })} />
+                  {/* VECTOR는 길이 칸에 차원 수를 둔다 */}
+                  {t(`model.editor.domainType.field.${lengthField(form.dataType).label}`)}
+                  <Input type="number" inputMode="numeric" placeholder={lengthField(form.dataType).placeholder} value={form.length} onChange={(event) => setForm({ ...form, length: event.target.value })} />
                 </label>
               ) : null}
               {spec?.precision ? (

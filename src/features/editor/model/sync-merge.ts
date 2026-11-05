@@ -130,9 +130,30 @@ function materializeTable(dbTable: ErdTable, doc: EditorDocument): ErdTable {
   }
 }
 
-/** 이름을 뺀 인덱스 내용 키 — 식·조건은 expressionKey로 */
+/** 저장 매개변수(WITH) 비교 키 — 키·값 대소문자를 무시한다(core 차분과 같다 — 04-dbms-engineering.md §3.6) */
+function withKey(params: Record<string, string> | undefined): Record<string, string> | undefined {
+  const entries = Object.entries(params ?? {})
+  return entries.length > 0
+    ? Object.fromEntries(entries.map(([key, value]) => [key.toLowerCase(), value.toLowerCase()]))
+    : undefined
+}
+
+/** 두 WITH가 대소문자를 무시해 같은가 — 키 순서는 보지 않는다 */
+function sameWith(a: Record<string, string> | undefined, b: Record<string, string> | undefined): boolean {
+  const left = Object.entries(withKey(a) ?? {})
+  const right = withKey(b) ?? {}
+  return left.length === Object.keys(right).length && left.every(([key, value]) => right[key] === value)
+}
+
+/** 이름을 뺀 인덱스 내용 키 — 식·조건은 expressionKey로, WITH는 withKey로 */
 function indexContentKey(index: ErdIndex): string {
-  return indexSignature({ ...index, name: '', expression: expressionKey(index.expression), where: expressionKey(index.where) })
+  return indexSignature({
+    ...index,
+    name: '',
+    expression: expressionKey(index.expression),
+    where: expressionKey(index.where),
+    with: withKey(index.with),
+  })
 }
 
 /** DB 인덱스를 문서 인덱스로 옮긴다 — 컬럼·INCLUDE id는 물리명으로 live 테이블 id에 맞춘다. 못 맞추면 null */
@@ -189,6 +210,11 @@ function syncIndexes(
       if (expressionKey(own.where) === expressionKey(mapped.where)) {
         if (own.where != null) next.where = own.where
         else delete next.where
+      }
+      // WITH도 대소문자만 다르면 문서 값을 지킨다
+      if (sameWith(own.with, mapped.with)) {
+        if (own.with != null) next.with = own.with
+        else delete next.with
       }
       if (indexSignature(own) !== indexSignature(next)) {
         indexes[at] = next

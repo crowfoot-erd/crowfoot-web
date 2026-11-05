@@ -5,13 +5,24 @@
  */
 import type {
   ErdColumn,
+  ErdIndex,
   ErdModelData,
   ErdRelationship,
   ErdTable,
   ErdValidationException,
 } from '@/features/editor/model/content-schema'
-import { dataTypeSpec, dbmsAutoIndexesFk, templateIdForDatabase } from '@/features/editor/model/dbms'
-import { indexCoversColumns } from '@/features/editor/model/keys'
+import {
+  dataTypeSpec,
+  dbmsAutoIndexesFk,
+  isTypeSupported,
+  isVectorIndexType,
+  templateIdForDatabase,
+  VECTOR_DIMENSION_MAX,
+  VECTOR_DIMENSION_MIN,
+  VECTOR_INDEX_DIMENSION_MAX,
+  VECTOR_OPCLASSES,
+} from '@/features/editor/model/dbms'
+import { indexCoversColumns, isExpressionIndex } from '@/features/editor/model/keys'
 import { splitLogicalName } from '@/features/editor/model/logical-name'
 
 export type ValidationCode =
@@ -25,12 +36,16 @@ export type ValidationCode =
   | 'COMPOSITE_KEY_DUPLICATE_COLUMN'
   | 'UNKNOWN_DATA_TYPE'
   | 'MISSING_TYPE_LENGTH'
+  | 'VECTOR_UNSUPPORTED_DBMS'
+  | 'VECTOR_MISSING_DIMENSION'
+  | 'VECTOR_INDEX_INVALID'
   | 'MISSING_PK'
   | 'EMPTY_TABLE'
   | 'FK_MAPPING_EMPTY'
   | 'ORPHAN_TABLE'
   | 'CIRCULAR_REFERENCE'
   | 'NAMING_CONVENTION'
+  | 'VECTOR_INDEX_DIMENSION_LIMIT'
   | 'MISSING_LOGICAL_NAME'
   | 'FK_WITHOUT_INDEX'
   | 'WIDE_TABLE'
@@ -174,6 +189,19 @@ function fkLeadingColumnIndexed(rel: ErdRelationship, child: ErdTable): boolean 
   return child.indexes.some((ix) => indexCoversColumns(ix) && ix.columns[0]?.columnId === leading)
 }
 
+/** 벡터 인덱스(HNSW·IVFFLAT)가 §3.6 규칙을 어기는가 (VECTOR_INDEX_INVALID — 04-dbms-engineering.md §3.6).
+ *  유니크면 무효. 식 키 인덱스는 키 컬럼 조건(VECTOR 하나·연산자 클래스)을 보지 않는다 */
+function vectorIndexInvalid(index: ErdIndex, table: ErdTable): boolean {
+  if (index.unique) return true
+  if (isExpressionIndex(index)) return false
+  if (index.columns.length !== 1) return true
+  const [key] = index.columns
+  const column = table.columns.find((c) => c.id === key.columnId)
+  if (!column || column.dataType.trim().toUpperCase() !== 'VECTOR') return true
+  const opclass = (key.opclass ?? '').trim().toLowerCase()
+  return !(VECTOR_OPCLASSES[index.type] ?? []).includes(opclass)
+}
+
 /** 순환 참조에 참여하는 테이블 — 방향 간선(부모→자식) 그래프의 크기 ≥2 SCC.
  *  자기 참조(길이 1 사이클)는 정당한 계층 표현이므로 제외한다. 반복형 Tarjan. */
 function tablesInFkCycles(model: ErdModelData): Set<string> {
@@ -297,6 +325,15 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
       } else if (lengthRequired && LENGTH_REQUIRED_TYPES.has(typeCode) && column.length == null) {
         issues.push({ level: 'error', code: 'MISSING_TYPE_LENGTH', tableId: table.id, columnId: column.id })
       }
+      // pgvector(§3.6) — PostgreSQL 문서 전용 타입, 차원은 length(1~16000)
+      if (typeCode === 'VECTOR') {
+        if (!isTypeSupported(typeCode, databaseType)) {
+          issues.push({ level: 'error', code: 'VECTOR_UNSUPPORTED_DBMS', tableId: table.id, columnId: column.id })
+        }
+        if (column.length == null || column.length < VECTOR_DIMENSION_MIN || column.length > VECTOR_DIMENSION_MAX) {
+          issues.push({ level: 'error', code: 'VECTOR_MISSING_DIMENSION', tableId: table.id, columnId: column.id })
+        }
+      }
     }
 
     for (const unique of table.uniques) {
@@ -307,6 +344,20 @@ export function validateModel(model: ErdModelData, databaseType = ''): Validatio
     for (const index of table.indexes) {
       if ((keyCounts.get(index.name.toLowerCase()) ?? 0) > 1) {
         issues.push({ level: 'error', code: 'DUPLICATE_KEY_NAME', tableId: table.id })
+      }
+    }
+    // 벡터 인덱스(§3.6) — 규칙 위반은 오류, 차원 2000 초과 키 컬럼은 경고(pgvector가 인덱스를 만들지 못한다)
+    for (const index of table.indexes) {
+      if (!isVectorIndexType(index.type)) continue
+      if (vectorIndexInvalid(index, table)) {
+        issues.push({ level: 'error', code: 'VECTOR_INDEX_INVALID', tableId: table.id })
+      }
+      if (isExpressionIndex(index)) continue
+      for (const key of index.columns) {
+        const column = table.columns.find((c) => c.id === key.columnId)
+        if (column?.dataType.trim().toUpperCase() === 'VECTOR' && (column.length ?? 0) > VECTOR_INDEX_DIMENSION_MAX) {
+          issues.push({ level: 'warning', code: 'VECTOR_INDEX_DIMENSION_LIMIT', tableId: table.id, columnId: column.id })
+        }
       }
     }
     for (const check of table.checks) {

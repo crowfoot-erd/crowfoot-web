@@ -18,7 +18,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from '@playwri
 import { describe, it } from 'vitest'
 
 import { fixtures } from '@/api/mocks/handlers'
-import { applyChanges, createArea, createColumn, createTable, type ErdChange } from '@/features/editor/model/changes'
+import { applyChanges, createArea, createColumn, createIndex, createTable, type ErdChange } from '@/features/editor/model/changes'
 import { emptyContent, serializeContent } from '@/features/editor/model/content-io'
 import type { EditorDocument } from '@/features/editor/model/content-schema'
 import { buildRelationship } from '@/features/editor/model/relationship'
@@ -55,10 +55,10 @@ function translator(lang: Lang) {
 
 /** 예시 데이터의 언어별 이름 */
 const NAMES: Record<Lang, Record<string, string>> = {
-  ko: { user: '김개발', model: '온라인 쇼핑몰 ERD', workspace: '쇼핑몰 개발', users: '회원', products: '상품', orders: '주문', order_items: '주문 상품', payments: '결제', reviews: '리뷰', member: '회원', catalog: '상품', order: '주문', email: '이메일', amount: '금액', createdAt: '생성 일시', id: '번호', name: '이름', status: '상태', deliveryMemo: '배송 메모', memo: '결제 금액은 부가세 포함입니다.' },
-  en: { user: 'Alex Kim', model: 'Online Store ERD', workspace: 'Store Dev', users: 'Users', products: 'Products', orders: 'Orders', order_items: 'Order items', payments: 'Payments', reviews: 'Reviews', member: 'Members', catalog: 'Catalog', order: 'Orders', email: 'Email', amount: 'Amount', createdAt: 'Created at', id: 'ID', name: 'Name', status: 'Status', deliveryMemo: 'Delivery memo', memo: 'Amounts include VAT.' },
-  ja: { user: 'キム・ゲバル', model: 'オンラインストア ERD', workspace: 'ストア開発', users: '会員', products: '商品', orders: '注文', order_items: '注文商品', payments: '決済', reviews: 'レビュー', member: '会員', catalog: '商品', order: '注文', email: 'メール', amount: '金額', createdAt: '作成日時', id: '番号', name: '名前', status: '状態', deliveryMemo: '配送メモ', memo: '金額は税込みです。' },
-  zh: { user: '金开发', model: '在线商城 ERD', workspace: '商城开发', users: '会员', products: '商品', orders: '订单', order_items: '订单商品', payments: '支付', reviews: '评价', member: '会员', catalog: '商品', order: '订单', email: '邮箱', amount: '金额', createdAt: '创建时间', id: '编号', name: '名称', status: '状态', deliveryMemo: '配送备注', memo: '金额含税。' },
+  ko: { user: '김개발', model: '온라인 쇼핑몰 ERD', workspace: '쇼핑몰 개발', users: '회원', products: '상품', orders: '주문', order_items: '주문 상품', payments: '결제', reviews: '리뷰', member: '회원', catalog: '상품', order: '주문', email: '이메일', amount: '금액', createdAt: '생성 일시', id: '번호', name: '이름', status: '상태', deliveryMemo: '배송 메모', memo: '결제 금액은 부가세 포함입니다.', document_chunk: '문서 조각', embedding: '임베딩', content: '내용' },
+  en: { user: 'Alex Kim', model: 'Online Store ERD', workspace: 'Store Dev', users: 'Users', products: 'Products', orders: 'Orders', order_items: 'Order items', payments: 'Payments', reviews: 'Reviews', member: 'Members', catalog: 'Catalog', order: 'Orders', email: 'Email', amount: 'Amount', createdAt: 'Created at', id: 'ID', name: 'Name', status: 'Status', deliveryMemo: 'Delivery memo', memo: 'Amounts include VAT.', document_chunk: 'Document chunks', embedding: 'Embedding', content: 'Content' },
+  ja: { user: 'キム・ゲバル', model: 'オンラインストア ERD', workspace: 'ストア開発', users: '会員', products: '商品', orders: '注文', order_items: '注文商品', payments: '決済', reviews: 'レビュー', member: '会員', catalog: '商品', order: '注文', email: 'メール', amount: '金額', createdAt: '作成日時', id: '番号', name: '名前', status: '状態', deliveryMemo: '配送メモ', memo: '金額は税込みです。', document_chunk: 'ドキュメント断片', embedding: '埋め込み', content: '内容' },
+  zh: { user: '金开发', model: '在线商城 ERD', workspace: '商城开发', users: '会员', products: '商品', orders: '订单', order_items: '订单商品', payments: '支付', reviews: '评价', member: '会员', catalog: '商品', order: '订单', email: '邮箱', amount: '金额', createdAt: '创建时间', id: '编号', name: '名称', status: '状态', deliveryMemo: '配送备注', memo: '金额含税。', document_chunk: '文档片段', embedding: '嵌入向量', content: '内容' },
 }
 
 /** 예시 도메인 타입 */
@@ -120,8 +120,38 @@ const REQUIREMENTS: Record<Lang, [string, string][]> = {
   ],
 }
 
+/**
+ * 벡터 컬럼과 벡터 인덱스(pgvector — 04-dbms-engineering.md §3.6) — 임베딩 vector(1536)와 HNSW 인덱스(코사인 거리, m·ef_construction).
+ * 6.6절 장면만 쓴다(다른 장면의 그림이 바뀌지 않게 기본 문서에는 넣지 않는다)
+ */
+const VECTOR_TABLE = 'document_chunk'
+const VECTOR_INDEX = 'ix_document_chunk_embedding'
+function vectorTable(lang: Lang) {
+  const n = NAMES[lang]
+  const col = (name: string, dataType: string, extra: Partial<Parameters<typeof createColumn>[0] & object> = {}) =>
+    createColumn({ id: `${VECTOR_TABLE}.${name}`, physicalName: name, logicalName: name, dataType, nullable: false, ...extra })
+  return createTable(VECTOR_TABLE, {
+    id: `t_${VECTOR_TABLE}`,
+    logicalName: n.document_chunk,
+    columns: [col('id', 'BIGINT', { autoIncrement: true, logicalName: n.id }), col('content', 'TEXT', { logicalName: n.content }), col('embedding', 'VECTOR', { length: 1536, logicalName: n.embedding })],
+    primaryKey: { name: `${VECTOR_TABLE}_pk`, columnIds: [`${VECTOR_TABLE}.id`] },
+    indexes: [createIndex({
+      id: VECTOR_INDEX, name: VECTOR_INDEX, type: 'HNSW',
+      columns: [{ columnId: `${VECTOR_TABLE}.embedding`, order: 'ASC', opclass: 'vector_cosine_ops' }],
+      with: { m: '16', ef_construction: '64' },
+    })],
+  })
+}
+
+/** 벡터 테이블 하나만 담은 문서 — SQL 스크립트 장면(확장 선언과 USING hnsw가 한 화면에 보이게) */
+function vectorDocument(lang: Lang): EditorDocument {
+  const base = emptyContent()
+  const doc = applyChanges({ model: base.model, diagram: base.diagram }, [{ type: 'table/create', table: vectorTable(lang), position: { x: 60, y: 60 } }], 'postgresql')
+  return { ...doc, diagram: { ...doc.diagram, viewport: { x: 70, y: 20, zoom: 1 } } }
+}
+
 /** 예시 문서 — 온라인 쇼핑몰(테이블 6·관계 6·그룹 3·메모 1·요구사항 5). 도메인 타입을 쓰는 컬럼이 있다 */
-function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean; deliveryMemo?: boolean; checks?: boolean } = {}): EditorDocument {
+function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: boolean; note?: boolean; deliveryMemo?: boolean; checks?: boolean; vector?: boolean } = {}): EditorDocument {
   const n = NAMES[lang]
   const col = (table: string, name: string, dataType: string, extra: Partial<Parameters<typeof createColumn>[0] & object> = {}) =>
     createColumn({ id: `${table}.${name}`, physicalName: name, logicalName: name, dataType, nullable: false, ...extra })
@@ -150,6 +180,8 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
       }),
     )
   }
+  // 벡터 장면 — 결제 테이블 오른쪽에 둔다. 화면을 그쪽으로 옮겨 둔다(아래 viewport)
+  if (options.vector) tables.push(vectorTable(lang))
   // CHECK 제약(v1.34) — 테이블 노드 키 영역의 CK 행
   const orders = tables.find((t) => t.physicalName === 'orders')!
   // 문서와 다른 점 장면 — ERD에만 더하고 아직 DB에 반영하지 않은 컬럼
@@ -158,6 +190,7 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
   const positions: Record<string, { x: number; y: number }> = {
     users: { x: 60, y: 60 }, orders: { x: 640, y: 60 }, payments: { x: 1220, y: 60 },
     reviews: { x: 60, y: 520 }, order_items: { x: 640, y: 520 }, products: { x: 1220, y: 520 }, order: { x: 1220, y: 930 },
+    [VECTOR_TABLE]: { x: 1800, y: 60 },
   }
   const base = emptyContent()
   let doc: EditorDocument = { model: base.model, diagram: base.diagram }
@@ -203,6 +236,7 @@ function shopDocument(lang: Lang, options: { amountVersion?: number; flawed?: bo
     doc = applyChanges(doc, [{ type: 'note/create', note: { id: 'n_memo', x: 1820, y: 90, width: 320, text: n.memo, title: n.amount, color: 'yellow', linkedTableId: 't_payments' } }])
     return { ...doc, diagram: { ...doc.diagram, viewport: { x: -1120, y: 10, zoom: 1 } } }
   }
+  if (options.vector) return { ...doc, diagram: { ...doc.diagram, viewport: { x: -1120, y: 10, zoom: 1 } } }
   return { ...doc, diagram: { ...doc.diagram, viewport: { x: 70, y: 20, zoom: 0.7 } } }
 }
 
@@ -588,6 +622,46 @@ const openDataTab = async (s: Session, object: string) => {
   return browser
 }
 
+/** 인덱스 창 장면의 화면 높이 — 창(최대 90vh)이 잘리지 않을 만큼 */
+const KEY_DIALOG_VIEWPORT_HEIGHT = 1300
+
+/** 벡터 테이블을 더한 예시 문서로 에디터를 열고 장면을 찍는다 */
+const withVectorDocument = async (s: Session, run: () => Promise<void>) => {
+  s.overrides.set(`/models/${MODEL}`, (method) => (method === 'GET' ? { json: ok({ response: modelResponse(s.lang, shopDocument(s.lang, { vector: true })) }) } : null))
+  try {
+    await goto(s, EDITOR_PATH, 0)
+    await node(s, VECTOR_TABLE).waitFor({ timeout: 20_000 })
+    await s.page.waitForTimeout(1300)
+    await run()
+  } finally {
+    installEditorOverrides(s)
+  }
+}
+
+/** 벡터 문서의 DDL — core DdlGenerator의 순서(머리 주석, 확장 선언, CREATE TABLE, 인덱스, 코멘트)와 표기를 따른다(PgVectorTest) */
+function vectorDdl(lang: Lang) {
+  const n = NAMES[lang]
+  return [
+    `-- ${n.model} — PostgreSQL DDL`,
+    '',
+    'CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;',
+    '',
+    `CREATE TABLE ${VECTOR_TABLE} (`,
+    '    id BIGINT NOT NULL GENERATED BY DEFAULT AS IDENTITY,',
+    '    content TEXT NOT NULL,',
+    '    embedding vector(1536) NOT NULL,',
+    `    CONSTRAINT ${VECTOR_TABLE}_pk PRIMARY KEY (id)`,
+    ');',
+    '',
+    `CREATE INDEX ${VECTOR_INDEX} ON ${VECTOR_TABLE} USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);`,
+    '',
+    `COMMENT ON TABLE ${VECTOR_TABLE} IS '${n.document_chunk}';`,
+    `COMMENT ON COLUMN ${VECTOR_TABLE}.id IS '${n.id}';`,
+    `COMMENT ON COLUMN ${VECTOR_TABLE}.content IS '${n.content}';`,
+    `COMMENT ON COLUMN ${VECTOR_TABLE}.embedding IS '${n.embedding}';`,
+  ].join('\n')
+}
+
 /** 에디터 장면(1440×860) */
 const EDITOR_SCENES: Scene[] = [
   {
@@ -660,10 +734,57 @@ const EDITOR_SCENES: Scene[] = [
   {
     name: 'editor-key-dialog',
     run: async (s) => {
+      // 창이 화면 높이의 90%를 넘어 잘린다 — 저장 매개변수(WITH)와 버튼까지 담도록 이 장면만 높게 찍는다
+      await s.page.setViewportSize({ width: 1440, height: KEY_DIALOG_VIEWPORT_HEIGHT })
       await openEditor(s)
       await node(s, 'orders').getByRole('button', { name: s.t('model.editor.key.addIndex') }).click()
       await dialog(s).waitFor()
       await s.shot('editor-key-dialog', { locator: dialog(s) })
+    },
+  },
+  {
+    // 벡터 컬럼(pgvector — 04-dbms-engineering.md §3.6) — 타입 vector, 길이 칸이 "차원" 칸이 된다
+    name: 'editor-vector-column',
+    run: (s) =>
+      withVectorDocument(s, async () => {
+        await columnInput(s, VECTOR_TABLE, 'embedding').dblclick()
+        await dialog(s).waitFor()
+        await s.page.waitForTimeout(300)
+        await s.shot('editor-vector-column', { locator: dialog(s) })
+      }),
+  },
+  {
+    // 벡터 인덱스 — HNSW, 키 컬럼의 연산자 클래스(vector_cosine_ops), 저장 매개변수(WITH m·ef_construction)
+    name: 'editor-vector-index',
+    run: (s) =>
+      withVectorDocument(s, async () => {
+        await s.page.setViewportSize({ width: 1440, height: KEY_DIALOG_VIEWPORT_HEIGHT })
+        await s.page.waitForTimeout(300)
+        await node(s, VECTOR_TABLE).locator('button', { hasText: VECTOR_INDEX }).click()
+        await dialog(s).waitFor()
+        await dialog(s).getByTestId('index-with').waitFor()
+        await s.page.waitForTimeout(300)
+        await s.shot('editor-vector-index', { locator: dialog(s) })
+      }),
+  },
+  {
+    // SQL 스크립트 — 첫 문장의 확장 선언과 USING hnsw … WITH (…). 벡터 테이블 하나만 담은 문서로 한 화면에 담는다
+    name: 'editor-vector-sql',
+    run: async (s) => {
+      s.overrides.set(`/models/${MODEL}`, (method) => (method === 'GET' ? { json: ok({ response: modelResponse(s.lang, vectorDocument(s.lang)) }) } : null))
+      s.overrides.set(`/models/${MODEL}/ddl`, (method) => (method === 'GET' ? { json: ok({ response: { sql: vectorDdl(s.lang), warnings: [], tableCount: 1, relationshipCount: 0 } }) } : null))
+      try {
+        await goto(s, EDITOR_PATH, 0)
+        await node(s, VECTOR_TABLE).waitFor({ timeout: 20_000 })
+        await s.page.waitForTimeout(1300)
+        await button(s, 'model.editor.toolbar.ddl').click()
+        await dialog(s).waitFor()
+        await s.page.waitForTimeout(1200)
+        await s.shot('editor-vector-sql', { locator: dialog(s) })
+      } finally {
+        s.overrides.delete(`/models/${MODEL}/ddl`)
+        installEditorOverrides(s)
+      }
     },
   },
   {

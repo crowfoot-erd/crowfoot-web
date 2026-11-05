@@ -1117,6 +1117,7 @@ export function ErdCanvas({
           where: found.where ?? null,
           include: found.include ?? [],
           opclasses: Object.fromEntries(found.columns.flatMap((entry) => (entry.opclass ? [[entry.columnId, entry.opclass] as const] : []))),
+          with: found.with ?? {},
         }
       : null
   }, [keyDialogRef, keyDialogTable])
@@ -1157,7 +1158,19 @@ export function ErdCanvas({
     commit({ type: 'check/set', tableId: ref.tableId, checks })
   }
 
-  const handleKeyConfirm = ({ name, columnIds, orders, type, parser, unique, expression, where, include, opclasses }: KeyInfoSubmit) => {
+  const handleKeyConfirm = ({
+    name,
+    columnIds,
+    orders,
+    type,
+    parser,
+    unique,
+    expression,
+    where,
+    include,
+    opclasses,
+    with: withParams,
+  }: KeyInfoSubmit) => {
     const ref = keyDialogRef
     if (!ref) return
     const table = useEditorStore.getState().present.model.tables.find((tb) => tb.id === ref.tableId)
@@ -1173,8 +1186,8 @@ export function ErdCanvas({
         order: orders[columnId] ?? 'ASC',
         ...(opclasses[columnId] ? { opclass: opclasses[columnId] } : {}),
       }))
-      // 특수 인덱스 필드(v1.37)는 값이 있을 때만 싣는다 — 일반 인덱스는 이전과 같은 모양으로 남는다
-      const extras = { unique, expression, where, include }
+      // 특수 인덱스 필드(v1.37)와 저장 매개변수(WITH)는 값이 있을 때만 싣는다 — 일반 인덱스는 이전과 같은 모양으로 남는다
+      const extras = { unique, expression, where, include, with: withParams }
       const indexes = ref.keyId
         ? table.indexes.map((ix) => (ix.id === ref.keyId ? withIndexExtras({ ...ix, name, columns, type, parser }, extras) : ix))
         : [...table.indexes, withIndexExtras(createIndex({ name, columns, type, parser }), extras)]

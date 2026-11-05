@@ -35,14 +35,16 @@ import { cn } from 'cn'
 import type { WorkspaceTerm } from '@/api/types'
 import { createColumn, pkToggleChanges, termColumnPatch, type ColumnPatch } from '@/features/editor/model/changes'
 import {
-  DATA_TYPES,
+  dataTypesFor,
   dataTypeSpec,
   isAutoIncrementType,
+  isTypeSupported,
+  lengthField,
   physicalType,
 } from '@/features/editor/model/dbms'
 import type { DomainType } from '@/features/domain-types/api'
 import { applyDomainPatchFor } from '@/features/editor/model/domain-type'
-import { isExpressionIndex, type KeyKind } from '@/features/editor/model/keys'
+import { indexWithClause, isExpressionIndex, type KeyKind } from '@/features/editor/model/keys'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
 import type { TableColorValue } from '@/features/editor/model/content-schema'
 import { isDuplicateTableName } from '@/features/editor/model/validation'
@@ -329,6 +331,12 @@ function ColumnRowComponent({
   const aiAvailable = isPk && pkCount === 1 && isAutoIncrementType(column.dataType)
 
   const spec = dataTypeSpec(column.dataType)
+  const sizeField = lengthField(column.dataType)
+  // 문서 DBMS가 쓰지 못하는 타입(VECTOR — PostgreSQL 전용)은 옵션에 없다 — 이미 그 값인 컬럼은 값을 지키도록 더해 보여 준다
+  const rowTypeOptions =
+    spec && !isTypeSupported(column.dataType, dbmsId)
+      ? [...typeOptions, { value: column.dataType, label: physicalType(column.dataType, dbmsId) }]
+      : typeOptions
 
   return (
     <div
@@ -456,7 +464,7 @@ function ColumnRowComponent({
       <CommitSelect
         className={cn(SETTING_CELL_RULE, 'w-full truncate text-[10px] text-muted-foreground')}
         value={column.dataType}
-        options={typeOptions}
+        options={rowTypeOptions}
         onCommit={(value) =>
           patch({
             dataType: value,
@@ -513,8 +521,9 @@ function ColumnRowComponent({
             type="number"
             value={toDisplay(column.length)}
             onCommit={(value) => patch({ length: toNumberOrNull(value) })}
-            ariaLabel={`${t('model.editor.table.length')} — ${column.physicalName}`}
-            placeholder="255" /* 예시 — VARCHAR(255) */
+            // VECTOR는 길이 칸에 차원 수를 둔다(01-core.md §17.2)
+            ariaLabel={`${t(`model.editor.table.${sizeField.label}`)} — ${column.physicalName}`}
+            placeholder={sizeField.placeholder} /* 예시 — VARCHAR(255)·vector(1536) */
             disabled={!canEdit}
           />
         </span>
@@ -690,7 +699,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
    *  같은 라벨이 두 번 보이지 않는다. */
   const typeOptions = useMemo(() => {
     const seen = new Set<string>()
-    return DATA_TYPES
+    return dataTypesFor(dbmsId)
       .map((type) => ({ value: type.code, label: physicalType(type.code, dbmsId) }))
       .filter((option) => (seen.has(option.label) ? false : seen.add(option.label)))
   }, [dbmsId])
@@ -1181,6 +1190,7 @@ function TableNodeComponent({ id, selected }: NodeProps<TableNodeType>) {
                     index.include && index.include.length > 0
                       ? `INCLUDE (${index.include.map((cid) => columnById.get(cid)?.physicalName ?? '?').join(', ')})`
                       : null,
+                    indexWithClause(index.with),
                     index.where && index.where.trim() !== '' ? `WHERE ${index.where.trim()}` : null,
                   ]
                     .filter(Boolean)

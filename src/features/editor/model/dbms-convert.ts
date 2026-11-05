@@ -11,7 +11,8 @@
  *  4. 대상이 FK 인덱스를 자동으로 만들지 않는 DBMS면 비식별 1:N 관계의 FK 인덱스를 보충한다
  *     (대상이 자동으로 만드는 DBMS면 기존 인덱스를 지우지 않는다)
  *  5. 그 밖의 내용은 그대로 복사한다
- *  6. 대상 DBMS가 내지 못하는 인덱스 기능(종류·식·조건·INCLUDE·연산자 클래스 — v1.37)은 값을 그대로 두고 보고한다
+ *  6. 대상 DBMS가 내지 못하는 인덱스 기능(종류·식·조건·INCLUDE·연산자 클래스 — v1.37, WITH — §3.6)은 값을 그대로 두고 보고한다
+ *  pgvector(§3.6): 대상이 쓰지 못하는 공용 코드(VECTOR — PostgreSQL 전용)는 그대로 두고 "맞지 않는 타입"으로 보고한다
  */
 import { createIndex } from '@/features/editor/model/changes'
 import type { EditorDocument, ErdColumn, ErdRelationship, ErdTable } from '@/features/editor/model/content-schema'
@@ -19,6 +20,7 @@ import {
   dataTypeSpec,
   dbmsAutoIndexesFk,
   dbmsIndexSupport,
+  isTypeSupported,
   parsePhysicalType,
   physicalType,
   templateIdForDatabase,
@@ -61,7 +63,7 @@ export interface AddedFkIndex {
 export interface UnsupportedIndex {
   tableName: string
   indexName: string
-  /** 내지 못하는 기능 — 종류 이름(GIN 등) 또는 EXPRESSION·WHERE·INCLUDE·OPCLASS */
+  /** 내지 못하는 기능 — 종류 이름(GIN·HNSW 등) 또는 EXPRESSION·WHERE·INCLUDE·OPCLASS·WITH */
   features: string[]
 }
 
@@ -98,9 +100,16 @@ function convertColumn(
   table: ErdTable,
   column: ErdColumn,
   fromTemplate: string,
+  toTemplate: string,
   report: DbmsConversionReport,
 ): ErdColumn {
-  if (dataTypeSpec(column.dataType)) return column // 규칙 1 — 공용 코드는 그대로
+  if (dataTypeSpec(column.dataType)) {
+    // 규칙 1 — 공용 코드는 그대로. 대상이 쓰지 못하는 코드(VECTOR)는 값을 지키고 경고로 알린다(§3.6)
+    if (!isTypeSupported(column.dataType, toTemplate)) {
+      report.unsupported.push({ tableName: table.physicalName, columnName: column.physicalName, dataType: column.dataType })
+    }
+    return column
+  }
 
   const parsed = parsePhysicalType(column.dataType, fromTemplate)
   if (!parsed) {
@@ -147,14 +156,15 @@ export function convertDocumentDbms(
   // 규칙 1~3 — 컬럼 타입
   let tables = document.model.tables.map((table) => ({
     ...table,
-    columns: table.columns.map((column) => convertColumn(table, column, fromTemplate, report)),
+    columns: table.columns.map((column) => convertColumn(table, column, fromTemplate, toTemplate, report)),
   }))
 
   // 안내 — 공용 코드별로 물리 표기가 바뀌는 타입(정리된 뒤의 코드 기준)
   const codeCounts = new Map<string, number>()
   for (const table of tables) {
     for (const column of table.columns) {
-      if (dataTypeSpec(column.dataType)) {
+      // 대상이 쓰지 못하는 코드는 표기 변경이 아니라 "맞지 않는 타입"으로 이미 보고했다
+      if (dataTypeSpec(column.dataType) && isTypeSupported(column.dataType, toTemplate)) {
         codeCounts.set(column.dataType, (codeCounts.get(column.dataType) ?? 0) + 1)
       }
     }
@@ -211,6 +221,7 @@ export function convertDocumentDbms(
       if ((index.where ?? '').trim() !== '' && !support.where) features.push('WHERE')
       if ((index.include ?? []).length > 0 && !support.include) features.push('INCLUDE')
       if (index.columns.some((c) => (c.opclass ?? '') !== '') && !support.opclass) features.push('OPCLASS')
+      if (Object.keys(index.with ?? {}).length > 0 && !support.with) features.push('WITH')
       if (features.length > 0) report.unsupportedIndexes.push({ tableName: table.physicalName, indexName: index.name, features })
     }
   }

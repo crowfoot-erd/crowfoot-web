@@ -28,6 +28,7 @@ const CATEGORY_BASE: Record<ColumnCategory, number> = {
   character: 160,
   text: 240,
   json: 240,
+  vector: 240,
   binary: 128,
   other: 140,
 }

@@ -139,7 +139,12 @@ export function indexCoversColumns(index: ErdIndex): boolean {
   return !isExpressionIndex(index) && (index.where ?? '').trim() === ''
 }
 
-/** 인덱스 내용 서명 — 이름·종류·파서·컬럼(정렬·연산자 클래스)·유니크·식·조건·INCLUDE.
+/** 저장 매개변수(WITH) 비교 형태 — 키 순서는 뜻이 없으므로 키로 정렬한다. 없는 것과 빈 맵은 같다 */
+function withEntries(params: Record<string, string> | undefined): [string, string][] {
+  return Object.entries(params ?? {}).sort(([a], [b]) => a.localeCompare(b))
+}
+
+/** 인덱스 내용 서명 — 이름·종류·파서·컬럼(정렬·연산자 클래스)·유니크·식·조건·INCLUDE·WITH.
  *  비교 전용(차분·병합) — 없는 필드와 null·false·빈 배열을 같게 본다(이전 문서와 새 필드 기본값이 같은 뜻) */
 export function indexSignature(index: ErdIndex): string {
   return JSON.stringify([
@@ -151,7 +156,14 @@ export function indexSignature(index: ErdIndex): string {
     index.expression ?? null,
     index.where ?? null,
     index.include ?? [],
+    withEntries(index.with),
   ])
+}
+
+/** `WITH (m = 16, ef_construction = 64)` — 적힌 순서대로. 매개변수가 없으면 null */
+export function indexWithClause(params: Record<string, string> | undefined): string | null {
+  const entries = Object.entries(params ?? {})
+  return entries.length > 0 ? `WITH (${entries.map(([key, value]) => `${key} = ${value}`).join(', ')})` : null
 }
 
 /** 인덱스 한 줄 표기 — `UNIQUE GIN lower(nickname) INCLUDE (a) WHERE …`. 컬럼 이름은 nameOf로 푼다(차분 상세·캔버스 툴팁) */
@@ -165,6 +177,8 @@ export function indexDetail(index: ErdIndex, nameOf: (columnId: string) => strin
       : index.columns.map((c) => (c.opclass ? `${nameOf(c.columnId)} ${c.opclass}` : nameOf(c.columnId))).join(', '),
   )
   if (index.include && index.include.length > 0) parts.push(`INCLUDE (${index.include.map(nameOf).join(', ')})`)
+  const withClause = indexWithClause(index.with)
+  if (withClause) parts.push(withClause)
   if (index.where && index.where.trim() !== '') parts.push(`WHERE ${index.where.trim()}`)
   return parts.join(' ')
 }
@@ -190,23 +204,31 @@ export function indexesWithoutColumn(indexes: ErdIndex[], columnId: string, colu
     .filter((index) => index.columns.length > 0 || isExpressionIndex(index))
 }
 
-/** 특수 인덱스 필드(v1.37)를 덮어쓴다 — 값이 없으면(false·null·빈 배열) 키째 뺀다.
+/** 특수 인덱스 필드(v1.37)와 저장 매개변수(WITH)를 덮어쓴다 — 값이 없으면(false·null·빈 배열·빈 맵) 키째 뺀다.
  *  일반 인덱스가 이전 문서와 같은 모양(새 키 없음)으로 남게 한다 */
 export function withIndexExtras(
   index: ErdIndex,
-  extras: { unique: boolean; expression: string | null; where: string | null; include: string[] },
+  extras: {
+    unique: boolean
+    expression: string | null
+    where: string | null
+    include: string[]
+    with?: Record<string, string>
+  },
 ): ErdIndex {
   const rest: ErdIndex = { ...index }
   delete rest.unique
   delete rest.expression
   delete rest.where
   delete rest.include
+  delete rest.with
   return {
     ...rest,
     ...(extras.unique ? { unique: true } : {}),
     ...(extras.expression ? { expression: extras.expression, columns: [] } : {}),
     ...(extras.where ? { where: extras.where } : {}),
     ...(extras.include.length > 0 ? { include: extras.include } : {}),
+    ...(extras.with && Object.keys(extras.with).length > 0 ? { with: extras.with } : {}),
   }
 }
 

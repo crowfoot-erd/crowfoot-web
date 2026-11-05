@@ -50,7 +50,7 @@ import { stripOuterParens } from '@/features/editor/model/keys'
 import type { WorkspaceTerm } from '@/api/types'
 import type { DomainType } from '@/features/domain-types/api'
 import { DOMAIN_FIELDS, type DomainField } from '@/features/editor/model/changes'
-import { DATA_TYPES, dataTypeSpec, isAutoIncrementType, physicalType } from '@/features/editor/model/dbms'
+import { dataTypesFor, dataTypeSpec, isAutoIncrementType, lengthField, physicalType } from '@/features/editor/model/dbms'
 import { differingFields, domainValues, linkFor } from '@/features/editor/model/domain-type'
 import { typeLabel } from '@/features/editor/model/domain-type-format'
 import type { ErdColumn } from '@/features/editor/model/content-schema'
@@ -500,7 +500,8 @@ export function ColumnInfoDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {DATA_TYPES.map((type) => (
+                        {/* 문서 DBMS가 쓰지 못하는 타입(VECTOR)은 빼되, 이미 그 값이면 남긴다(01-core.md §17.2) */}
+                        {dataTypesFor(dbmsId, field.value).map((type) => (
                           <SelectItem key={type.code} value={type.code}>
                             {physicalType(type.code, dbmsId)}
                           </SelectItem>
@@ -517,9 +518,10 @@ export function ColumnInfoDialog({
                   name="length"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('model.editor.columnInfo.length')}</FormLabel>
+                      {/* VECTOR는 길이 칸에 차원 수를 둔다 — vector(1536) */}
+                      <FormLabel>{t(`model.editor.columnInfo.${lengthField(dataType).label}`)}</FormLabel>
                       <FormControl>
-                        <Input type="number" inputMode="numeric" placeholder="255" {...field} />
+                        <Input type="number" inputMode="numeric" placeholder={lengthField(dataType).placeholder} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
